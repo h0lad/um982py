@@ -1,0 +1,16 @@
+$command,LOGLISTA,response: OK*59
+#LOGLISTA,COM1,25164,98.0,UNKNOWN,1,110.000,112099,836,18;7,GNRMC COM1 1 ,GNGGA COM1 1 ,GPGLL COM1 1 ,GPGSA COM1 1 ,GNGSV COM1 1 ,GPVTG COM1 1 ,GPTHS COM1 1 ,*9915f6bd
+$GNRMC,,V,,,,,,,,,,N,V*37
+$GNGGA,,,,,,0,,,,,,,,*78
+$GNGLL,,,,,,V,N*7A
+$GPGSA,,1,,,,,,,,,,,,,,,,*73
+$GPGSV,1,1,00,,,,,*55
+$GPVTG,,,,,,,,,N*30
+$GPTHS,,V*0E
+$GNRMC,,V,,,,,,,,,,N,V*37
+$GNGGA,,,,,,0,,,,,,,,*78
+$GNGLL,,,,,,V,N*7A
+$GPGSA,,1,,,,,,,,,,,,,,,,*73
+$GPGSV,1,1,00,,,,,*55
+$GPVTG,,,,,,,,,N*30
+$GPTHS,,V*0E

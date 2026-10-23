@@ -1,0 +1,10 @@
+kind,difference_m,day1_m,day2_m
+shared,0.01,,
+shared,-0.01,,
+shared,0.02,,
+separate,0.1,,
+separate,-0.1,,
+separate,0.2,,
+repeat,,0.1,0.11
+repeat,,0.2,0.22
+repeat,,0.3,0.29

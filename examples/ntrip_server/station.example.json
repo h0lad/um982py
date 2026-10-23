@@ -1,0 +1,13 @@
+{
+  "mountpoint": "BASE01",
+  "station_id": 42,
+  "latitude": 50.0,
+  "longitude": 8.0,
+  "height": 123.4,
+  "reference_frame": "REPLACE_WITH_REPORT_FRAME",
+  "coordinate_epoch": 2026.8,
+  "source_report": "REPLACE_WITH_REVIEWED_REPORT",
+  "position_verified": false,
+  "reference_point": "ARP",
+  "country": "DEU"
+}

@@ -1,0 +1,4 @@
+antenna,system,prn,signal,direction,start_gps_s,end_gps_s,height_m,height_resolution_m,rejection
+ANT1,0,7,0,rising,1450000000,1450000600,2.1,0.08,
+ANT1,0,10,0,setting,1450000600,1450001200,2.0,0.09,
+ANT1,0,12,0,rising,1450001200,1450001800,,,low_peak_to_noise

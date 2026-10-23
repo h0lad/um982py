@@ -1,0 +1,4 @@
+high_hz,low_hz,a_high_before_m,a_low_before_m,a_high_after_m,a_low_after_m,b_high_before_m,b_low_before_m,b_high_after_m,b_low_after_m
+1575420000,1227600000,0,0,0.105,0,0,0,0.1,0
+1575420000,1227600000,0,0,0.21,0,0,0,0.2,0
+1575420000,1227600000,0,0,0.315,0,0,0,0.3,0

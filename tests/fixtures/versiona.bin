@@ -1,0 +1,16 @@
+$command,VERSIONA,response: OK*45
+#VERSIONA,98,GPS,UNKNOWN,1,103000,25164,0,18,781;"UM982","R4.10Build25164","HRPT00-S10C-P","SN-REDACTED-00000000000000000","0000000000000000","2026/05/21"*f1afc0ac
+$GNRMC,,V,,,,,,,,,,N,V*37
+$GNGGA,,,,,,0,,,,,,,,*78
+$GNGLL,,,,,,V,N*7A
+$GPGSA,,1,,,,,,,,,,,,,,,,*73
+$GPGSV,1,1,00,,,,,*55
+$GPVTG,,,,,,,,,N*30
+$GPTHS,,V*0E
+$GNRMC,,V,,,,,,,,,,N,V*37
+$GNGGA,,,,,,0,,,,,,,,*78
+$GNGLL,,,,,,V,N*7A
+$GPGSA,,1,,,,,,,,,,,,,,,,*73
+$GPGSV,1,1,00,,,,,*55
+$GPVTG,,,,,,,,,N*30
+$GPTHS,,V*0E

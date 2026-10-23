@@ -1,0 +1,47 @@
+[
+  {
+    "command": "VERSIONA",
+    "capture": "versiona.bin",
+    "bytes": 522
+  },
+  {
+    "command": "VERSIONB",
+    "capture": "versionb.bin",
+    "bytes": 532
+  },
+  {
+    "command": "MODE",
+    "capture": "mode.bin",
+    "bytes": 257
+  },
+  {
+    "command": "CONFIG",
+    "capture": "config.bin",
+    "bytes": 1369
+  },
+  {
+    "command": "MASK",
+    "capture": "mask.bin",
+    "bytes": 218
+  },
+  {
+    "command": "LOGLISTA",
+    "capture": "loglista.bin",
+    "bytes": 526
+  },
+  {
+    "command": "BESTNAVA",
+    "capture": "bestnava.bin",
+    "bytes": 452
+  },
+  {
+    "command": "BESTNAVB",
+    "capture": "bestnavb.bin",
+    "bytes": 344
+  },
+  {
+    "command": "GPTHS",
+    "capture": "gpths.bin",
+    "bytes": 354
+  }
+]

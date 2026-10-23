@@ -1,0 +1,75 @@
+{
+  "receiver": "UM982",
+  "port": "/dev/ttyUSB0",
+  "date": "2026-10-23",
+  "frames": [
+    {
+      "file": "RANGEA.bin",
+      "sha256": "b1935dbde715a5b2e9200faa86d168a8f614a3abde923ce5e97e27cd9df3897a"
+    },
+    {
+      "file": "RANGEB.bin",
+      "sha256": "46d5ed2fca7f78227a02fd06eafe89c07836193a35a19730ff4e6f7e88f871c9"
+    },
+    {
+      "file": "RANGEHB.bin",
+      "sha256": "cb57412ee84a86bc1b04c88fdfeb3f83ecff4b680c28274d261d252566d8ea19"
+    },
+    {
+      "file": "RTKSTATUSA.bin",
+      "sha256": "c71735d7447ca583eb1f0e35f66bb17ea4c155ca2d7133d16e6bd998b711dcf6"
+    },
+    {
+      "file": "RTKSTATUSB.bin",
+      "sha256": "9966929db12d1d3d8165a1677d10c23eb02ac5b45f2bc1fd52c088fe57bb3523"
+    },
+    {
+      "file": "RTKSTATUS2A.bin",
+      "sha256": "b5ed5cebd936e93c279c6f7f3010cc50c6197a4cabe5018aad1c2108e28d2470"
+    },
+    {
+      "file": "RTKSTATUS2B.bin",
+      "sha256": "0306c95caad6f58846c826bf81c379d0aeac8f6dae01794f6a90bb51540d2064"
+    },
+    {
+      "file": "RTKSTATUSDA.bin",
+      "sha256": "e0d148754c8eb7feab0740cb2035b27199b34a8e526a4e77f4886274692b1ba5"
+    },
+    {
+      "file": "RTKSTATUSDB.bin",
+      "sha256": "40ca647a48af7bc29907ede9f797a136835833d9803460103964c84780b107d0"
+    },
+    {
+      "file": "RTKSTATUS2DA.bin",
+      "sha256": "b790a200a18d0861e0da6777484dcc914a7c610a52d792f14d4a749c0528b2af"
+    },
+    {
+      "file": "RTKSTATUS2DB.bin",
+      "sha256": "ccb4bba848e8e2b844caba03be25c7bd9709ec3246f1f612fcde94ea9f17393c"
+    },
+    {
+      "file": "PTOBSINFOB.bin",
+      "sha256": "cd35b6394dbd1063dcd9a3ab88b6fe71e894837d8a0feeb66a88605c319f3a3b"
+    },
+    {
+      "file": "E6MASKBLOCKB.bin",
+      "sha256": "e97552ea32c3dca4f2679e4007036b7134819bc86309b0539c3030d62064fce6"
+    },
+    {
+      "file": "E6ORBITBLOCKB.bin",
+      "sha256": "9f8b95a4f4cc4504ee391589c12038962e9ff9349f4c7393068c73b1958361fe"
+    },
+    {
+      "file": "E6CBIASBLOCKB.bin",
+      "sha256": "1f6a4aab89eee42a929b02547aa1fcf6aa4726e941c33492eee69dc3e4a209eb"
+    },
+    {
+      "file": "E6CLOCKFULLBLOCKB.bin",
+      "sha256": "446d0df489eb914e6a643517672342687a5c2c51c4a187264a33d5a4a3689d93"
+    },
+    {
+      "file": "PPPNAVB.bin",
+      "sha256": "9374c22d7b9f5c57b16119923b787f84a3b2ec18b1562122400b535ee0aae2e0"
+    }
+  ]
+}

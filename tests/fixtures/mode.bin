@@ -1,0 +1,9 @@
+$command,MODE,response: OK*5D
+#MODE,98,GPS,UNKNOWN,1,106000,25164,0,18,630;MODE ROVER UAV,*05
+$GNRMC,,V,,,,,,,,,,N,V*37
+$GNGGA,,,,,,0,,,,,,,,*78
+$GNGLL,,,,,,V,N*7A
+$GPGSA,,1,,,,,,,,,,,,,,,,*73
+$GPGSV,1,1,00,,,,,*55
+$GPVTG,,,,,,,,,N*30
+$GPTHS,,V*0E

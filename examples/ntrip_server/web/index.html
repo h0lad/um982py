@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <meta name="description" content="Live availability, correction telemetry and connection settings for this GNSS reference station.">
+    <title>Reference station · NTRIP status</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="/style.css">
+    <script type="module" src="/app.js"></script>
+  </head>
+  <body data-state="waiting">
+    <a class="skip" href="#main">Skip to station status</a>
+    <header class="masthead wrap">
+      <a class="brand" href="/" aria-label="Reference station status home"><span class="mark" aria-hidden="true">◎</span><span>REFERENCE<span class="brand-sub">GNSS STATION STATUS</span></span></a>
+      <div class="masthead-right">
+        <span class="clock" id="clock">UTC</span>
+        <button class="refresh" id="refresh" type="button">Refresh <span aria-hidden="true">↻</span></button>
+      </div>
+    </header>
+    <main id="main" class="wrap">
+      <section class="intro" aria-labelledby="station-name">
+        <div>
+          <p class="eyebrow">NTRIP REFERENCE STATION</p>
+          <h1 id="station-name">Station status</h1>
+        </div>
+        <div class="location">
+          <span class="location-dot" aria-hidden="true"></span>
+          <span id="location">Loading station details</span>
+        </div>
+      </section>
+      <section class="hero" aria-labelledby="headline">
+        <div class="hero-main">
+          <span class="status-tag" id="state-label">CONNECTING</span>
+          <h2 id="headline" aria-live="polite">Checking the station</h2>
+          <p id="state-detail">Waiting for a current telemetry report.</p>
+        </div>
+        <div class="hero-aside">
+          <span class="hero-aside-label">LAST REPORT</span>
+          <strong id="report-age">—</strong>
+          <span id="report-time">Refreshes about every 10 seconds</span>
+        </div>
+      </section>
+      <p class="notice" id="notice" role="status" hidden></p>
+      <div class="layout">
+        <div class="primary">
+          <section class="metrics" aria-label="Current service measurements">
+            <article class="metric">
+              <span class="label">Last observation received</span>
+              <strong id="observation-age">—</strong>
+              <span class="metric-foot">Reception age, not GNSS epoch latency</span>
+            </article>
+            <article class="metric">
+              <span class="label">Source payload rate</span>
+              <strong id="source-rate">—</strong>
+              <span class="metric-foot">Recent sampled RTCM bitrate</span>
+            </article>
+            <article class="metric">
+              <span class="label">Active rover / relay streams</span>
+              <strong id="stream-count">—</strong>
+              <span class="metric-foot" id="capacity">Per-process connection budget</span>
+            </article>
+            <article class="metric">
+              <span class="label">Satellites in latest messages</span>
+              <strong id="satellite-count">—</strong>
+              <span class="metric-foot">Fresh GPS + Galileo + BeiDou masks</span>
+            </article>
+          </section>
+          <section class="card availability" aria-labelledby="availability-title">
+            <div class="section-heading">
+              <div>
+                <h2 id="availability-title">Recent availability</h2>
+                <p>Readiness sampled by this process · last 15 minutes</p>
+              </div>
+              <strong id="availability-value">—</strong>
+            </div>
+            <div class="timeline" id="timeline" role="img" aria-label="No availability samples yet"></div>
+            <div class="timeline-labels">
+              <span>15 minutes ago</span>
+              <span class="legend"><i class="legend-dot" aria-hidden="true"></i> Ready <i class="legend-dot down" aria-hidden="true"></i> Unavailable <i class="legend-dot unknown" aria-hidden="true"></i> Unobserved</span>
+              <span>Now</span>
+            </div>
+            <p class="small-note" id="availability-note">History starts with this process. Unobserved time is not counted as uptime.</p>
+          </section>
+          <section class="card" aria-labelledby="profile-title">
+            <div class="section-heading">
+              <div>
+                <h2 id="profile-title">Correction stream</h2>
+                <p>RTCM 3.2 · MSM4</p>
+              </div>
+            </div>
+            <div class="table-scroll">
+              <table>
+                <thead>
+                  <tr>
+                    <th scope="col">Message</th>
+                    <th scope="col">Expected</th>
+                    <th scope="col">Last received</th>
+                    <th scope="col">Satellites / signals</th>
+                    <th scope="col">State</th>
+                  </tr>
+                </thead>
+                <tbody id="messages">
+                  <tr>
+                    <td colspan="5">Waiting for message telemetry…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="small-note table-note">Counts describe the latest MSM masks. Check the rover for its solution status.</p>
+          </section>
+          <section class="card" aria-labelledby="reference-title">
+            <div class="section-heading">
+              <div>
+                <h2 id="reference-title">Station reference</h2>
+                <p>Operator-reviewed antenna reference point</p>
+              </div>
+              <span class="subtle-tag" id="position-review">Awaiting report</span>
+            </div>
+            <dl class="reference-grid">
+              <div>
+                <dt>Latitude / longitude</dt>
+                <dd id="coordinates">—</dd>
+              </div>
+              <div>
+                <dt>Ellipsoidal height</dt>
+                <dd id="height">—</dd>
+              </div>
+              <div>
+                <dt>Reference frame</dt>
+                <dd id="reference-frame">—</dd>
+              </div>
+              <div>
+                <dt>Coordinate epoch</dt>
+                <dd id="coordinate-epoch">—</dd>
+              </div>
+              <div>
+                <dt>RTCM station ID</dt>
+                <dd id="station-id">—</dd>
+              </div>
+              <div>
+                <dt>Coordinate message age</dt>
+                <dd id="coordinate-age">—</dd>
+              </div>
+            </dl>
+            <p class="small-note">Public coordinates are rounded. For surveying, use the precise RTCM reference position and match your rover's reference frame and epoch.</p>
+          </section>
+          <section class="card operations" aria-labelledby="service-title">
+            <div class="section-heading">
+              <div>
+                <h2 id="service-title">Service telemetry</h2>
+                <p>Aggregate counters for this caster process</p>
+              </div>
+            </div>
+            <dl class="operations-grid">
+              <div>
+                <dt>Process uptime</dt>
+                <dd id="uptime">—</dd>
+              </div>
+              <div>
+                <dt>Source</dt>
+                <dd id="source-kind">—</dd>
+              </div>
+              <div>
+                <dt>Frames received</dt>
+                <dd id="frames">—</dd>
+              </div>
+              <div>
+                <dt>RTCM payload sent</dt>
+                <dd id="sent-bytes">—</dd>
+              </div>
+              <div>
+                <dt>Output payload rate</dt>
+                <dd id="output-rate">—</dd>
+              </div>
+              <div>
+                <dt>Source interruptions</dt>
+                <dd id="source-failures">—</dd>
+              </div>
+              <div>
+                <dt>Slow clients disconnected</dt>
+                <dd id="slow-clients">—</dd>
+              </div>
+              <div>
+                <dt>Admission rejections</dt>
+                <dd id="rejections">—</dd>
+              </div>
+              <div>
+                <dt>Connections admitted</dt>
+                <dd id="connections">—</dd>
+              </div>
+            </dl>
+          </section>
+        </div>
+        <aside class="sidebar" aria-label="Connection instructions">
+          <section class="card connect" aria-labelledby="connect-title">
+            <div class="section-heading">
+              <div>
+                <h2 id="connect-title">Connect your rover</h2>
+              </div>
+            </div>
+            <span class="access-tag" id="access">Loading access policy</span>
+            <dl class="connection-fields">
+              <div>
+                <dt>Caster host</dt>
+                <dd><code id="host">—</code><button type="button" data-copy="host" aria-label="Copy caster host">Copy</button></dd>
+              </div>
+              <div>
+                <dt>Port</dt>
+                <dd><code id="port">—</code><button type="button" data-copy="port" aria-label="Copy caster port">Copy</button></dd>
+              </div>
+              <div>
+                <dt>Mountpoint</dt>
+                <dd><code id="mountpoint">—</code><button type="button" data-copy="mountpoint" aria-label="Copy mountpoint">Copy</button></dd>
+              </div>
+            </dl>
+            <ul class="connection-facts">
+              <li id="transport">Checking transport</li>
+              <li>NTRIP v1 and v2 · RTCM 3.2 / MSM4</li>
+              <li>GPS · Galileo · BeiDou</li>
+              <li>Fixed base · no GGA position required</li>
+            </ul>
+            <p class="access-help" id="access-help">Check the station's access policy before connecting.</p>
+            <a class="contact" id="contact" rel="noopener noreferrer" target="_blank" hidden>Request access ↗</a>
+            <a class="download" href="/sourcetable.txt">View NTRIP sourcetable <span aria-hidden="true">↗</span></a>
+            <details>
+              <summary>Test reception with curl</summary>
+              <pre><code id="command">Waiting for connection details</code></pre>
+              <p class="small-note">For account access, curl prompts for the password.</p>
+            </details>
+          </section>
+          <section class="card limits" aria-labelledby="limits-title">
+            <h2 id="limits-title">Rover requirements</h2>
+            <p>Check RTK fix and accuracy on your rover.</p>
+            <p>C/N₀, DOP, absolute accuracy and correction epoch latency are not measured by this status page.</p>
+            <p id="limits">Connection budgets are loading.</p>
+          </section>
+        </aside>
+      </div>
+    </main>
+    <footer class="wrap footer">
+      <span><strong>UM982</strong> reference station</span>
+      <a href="/status.json">Telemetry JSON ↗</a>
+    </footer>
+    <div id="toast" class="toast" role="status" hidden></div>
+    <noscript>
+      <p class="wrap">JavaScript is required for live telemetry. You can still open <a href="/status.json">the status JSON</a> and <a href="/sourcetable.txt">the sourcetable</a>.</p>
+    </noscript>
+  </body>
+</html>

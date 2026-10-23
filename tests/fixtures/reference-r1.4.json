@@ -1,0 +1,939 @@
+{
+  "revision": "R1.4",
+  "sha256": "e93f19f6ca72a67f9eebf1272549c96f25713f486649ffb0ab073fb02ead8145",
+  "logs": [
+    {
+      "section": "7.3.1",
+      "name": "VERSION",
+      "message_id": 37,
+      "examples": [
+        "VERSIONA",
+        "VERSIONB"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.2",
+      "name": "OBSVM",
+      "message_id": 12,
+      "examples": [
+        "OBSVMA COM1 1",
+        "OBSVMB COM1 1",
+        "OBSVM"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.3",
+      "name": "OBSVH",
+      "message_id": 13,
+      "examples": [
+        "OBSVHA COM1 1",
+        "OBSVHB COM1 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.4",
+      "name": "OBSVMCMP",
+      "message_id": 138,
+      "examples": [
+        "OBSVMCMPA COM1 1",
+        "OBSVMCMPB COM1 1"
+      ],
+      "binary": false,
+      "ascii": true
+    },
+    {
+      "section": "7.3.5",
+      "name": "OBSVHCMP",
+      "message_id": 139,
+      "examples": [
+        "OBSVHCMPA COM1 1",
+        "OBSVHCMPB COM1 1"
+      ],
+      "binary": false,
+      "ascii": true
+    },
+    {
+      "section": "7.3.6",
+      "name": "OBSVBASE",
+      "message_id": 284,
+      "examples": [
+        "OBSVBASEA COM1 ONCHANGED",
+        "OBSVBASEB COM1 ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.7",
+      "name": "BASEINFO",
+      "message_id": 176,
+      "examples": [
+        "BASEINFOA 1",
+        "BASEINFOA ONCHANGED",
+        "BASEINFOB 1",
+        "BASEINFOB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.8",
+      "name": "GPSION",
+      "message_id": 8,
+      "examples": [
+        "GPSIONA 1",
+        "GPSIONA ONCHANGED",
+        "GPSIONB 1",
+        "GPSIONB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.9",
+      "name": "BD3ION",
+      "message_id": 21,
+      "examples": [
+        "BD3IONA 1",
+        "BD3IONA ONCHANGED",
+        "BD3IONB 1",
+        "BD3IONB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.10",
+      "name": "BDSION",
+      "message_id": 4,
+      "examples": [
+        "BDSIONA 1",
+        "BDSIONA ONCHANGED",
+        "BDSIONB 1",
+        "BDSIONB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.11",
+      "name": "GALION",
+      "message_id": 9,
+      "examples": [
+        "GALIONA 1",
+        "GALIONA ONCHANGED",
+        "GALIONB 1",
+        "GALIONB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.12",
+      "name": "GPSUTC",
+      "message_id": 19,
+      "examples": [
+        "GPSUTCA 1",
+        "GPSUTCA ONCHANGED",
+        "GPSUTCB 1",
+        "GPSUTCB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.13",
+      "name": "BD3UTC",
+      "message_id": 22,
+      "examples": [
+        "BD3UTCA 1",
+        "BD3UTCA ONCHANGED",
+        "BD3UTCB 1",
+        "BD3UTCB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.14",
+      "name": "BDSUTC",
+      "message_id": 2012,
+      "examples": [
+        "BDSUTCA 1",
+        "BDSUTCA ONCHANGED",
+        "BDSUTCB 1",
+        "BDSUTCB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.15",
+      "name": "GALUTC",
+      "message_id": 20,
+      "examples": [
+        "GALUTCA 1",
+        "GALUTCA ONCHANGED",
+        "GALUTCB 1",
+        "GALUTCB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.16",
+      "name": "GPSEPH",
+      "message_id": 106,
+      "examples": [
+        "GPSEPHA COM1 60",
+        "GPSEPHA COM1 ONCHANGED",
+        "GPSEPHB COM1 60",
+        "GPSEPHB COM1 ONCHANGED",
+        "GPSEPH"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.17",
+      "name": "QZSSEPH",
+      "message_id": 110,
+      "examples": [
+        "QZSSEPHA COM1 60",
+        "QZSSEPHA COM1 ONCHANGED",
+        "QZSSEPHB COM1 60",
+        "QZSSEPHB COM1 ONCHANGED",
+        "QZSSEPH"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.18",
+      "name": "BD3EPH",
+      "message_id": 2999,
+      "examples": [
+        "BD3EPHA COM1 60",
+        "BD3EPHA COM1 ONCHANGED",
+        "BD3EPHB COM1 60",
+        "BD3EPHB COM1 ONCHANGED",
+        "BD3EPH"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.19",
+      "name": "BDSEPH",
+      "message_id": 108,
+      "examples": [
+        "BDSEPHA COM1 60",
+        "BDSEPHA COM1 ONCHANGED",
+        "BDSEPHB COM1 60",
+        "BDSEPHB COM1 ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.20",
+      "name": "GLOEPH",
+      "message_id": 107,
+      "examples": [
+        "GLOEPHA COM1 60",
+        "GLOEPHA COM1 ONCHANGED",
+        "GLOEPHB COM1 60",
+        "GLOEPHB COM1 ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.21",
+      "name": "GALEPH",
+      "message_id": 109,
+      "examples": [
+        "GALEPHA COM1 60",
+        "GALEPHA COM1 ONCHANGED",
+        "GALEPHB COM1 60",
+        "GALEPHB COM1 ONCHANGED",
+        "GALEPH"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.22",
+      "name": "IRNSSEPH",
+      "message_id": 112,
+      "examples": [
+        "IRNSSEPHA COM1 60",
+        "IRNSSEPHA COM1 ONCHANGED",
+        "IRNSSEPHB COM1 60",
+        "IRNSSEPHB COM1 ONCHANGED",
+        "IRNSSEPH"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.23",
+      "name": "AGRIC",
+      "message_id": 11276,
+      "examples": [
+        "AGRICA 1",
+        "AGRICA COM2 1",
+        "AGRICB 1",
+        "AGRICB COM2 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.24",
+      "name": "PVTSLN",
+      "message_id": 1021,
+      "examples": [
+        "PVTSLNA 1",
+        "PVTSLNB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.25",
+      "name": "UNILOGLIST",
+      "message_id": null,
+      "examples": [
+        "UNILOGLIST"
+      ],
+      "binary": false,
+      "ascii": true
+    },
+    {
+      "section": "7.3.26",
+      "name": "BESTNAV",
+      "message_id": 2118,
+      "examples": [
+        "BESTNAVA 1",
+        "BESTNAVB 1",
+        "BESTNAV"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.27",
+      "name": "BESTNAVXYZ",
+      "message_id": 240,
+      "examples": [
+        "BESTNAVXYZA 1",
+        "BESTNAVXYZB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.28",
+      "name": "BESTNAVH",
+      "message_id": 2119,
+      "examples": [
+        "BESTNAVHA 1",
+        "BESTNAVHB 1",
+        "BESTNAVH"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.29",
+      "name": "BESTNAVXYZH",
+      "message_id": 242,
+      "examples": [
+        "BESTNAVXYZHA 1",
+        "BESTNAVXYZHB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.30",
+      "name": "BESTSAT",
+      "message_id": 1041,
+      "examples": [
+        "BESTSATA 1",
+        "BESTSATB 1",
+        "BESTSAT"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.31",
+      "name": "ADRNAV",
+      "message_id": 142,
+      "examples": [
+        "ADRNAVA 1",
+        "ADRNAVB 1",
+        "ADRNAV"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.32",
+      "name": "ADRNAVH",
+      "message_id": 2117,
+      "examples": [
+        "ADRNAVHA 1",
+        "ADRNAVHB 1",
+        "ADRNAVH"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.33",
+      "name": "PPPNAV",
+      "message_id": 1026,
+      "examples": [
+        "PPPNAVA 1",
+        "PPPNAVB 1",
+        "PPPNAV"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.34",
+      "name": "SPPNAV",
+      "message_id": 46,
+      "examples": [
+        "SPPNAVA 1",
+        "SPPNAVB 1",
+        "SPPNAV"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.35",
+      "name": "SPPNAVH",
+      "message_id": 2116,
+      "examples": [
+        "SPPNAVHA 1",
+        "SPPNAVHB 1",
+        "SPPNAVH"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.36",
+      "name": "STADOP",
+      "message_id": 954,
+      "examples": [
+        "STADOPA 1",
+        "STADOPB 1",
+        "STADOP"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.37",
+      "name": "STADOPH",
+      "message_id": 2122,
+      "examples": [
+        "STADOPHA 1",
+        "STADOPHB 1",
+        "STADOPH"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.38",
+      "name": "ADRDOP",
+      "message_id": 953,
+      "examples": [
+        "ADRDOPA 1",
+        "ADRDOPB 1",
+        "ADRDOP"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.39",
+      "name": "ADRDOPH",
+      "message_id": 2121,
+      "examples": [
+        "ADRDOPHA 1",
+        "ADRDOPHB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.40",
+      "name": "PPPDOP",
+      "message_id": 1025,
+      "examples": [
+        "PPPDOPA 1",
+        "PPPDOPB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.41",
+      "name": "SPPDOP",
+      "message_id": 173,
+      "examples": [
+        "SPPDOPA 1",
+        "SPPDOPA ONCHANGED",
+        "SPPDOPB 1",
+        "SPPDOPB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.42",
+      "name": "SPPDOPH",
+      "message_id": 2120,
+      "examples": [
+        "SPPDOPHA 1",
+        "SPPDOPHA ONCHANGED",
+        "SPPDOPHB 1",
+        "SPPDOPHB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.43",
+      "name": "SATSINFO",
+      "message_id": 2124,
+      "examples": [
+        "SATSINFOA 1",
+        "SATSINFOB 1",
+        "SATSINFO"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.44",
+      "name": "BASEPOS",
+      "message_id": 49,
+      "examples": [
+        "BASEPOSA 1",
+        "BASEPOSB 1",
+        "BASEPOS"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.45",
+      "name": "SATELLITE",
+      "message_id": 1042,
+      "examples": [
+        "SATELLITEA 1",
+        "SATELLITEB 1",
+        "SATELLITE"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.46",
+      "name": "SATECEF",
+      "message_id": 2115,
+      "examples": [
+        "SATECEFA 1",
+        "SATECEFB 1",
+        "SATECEF"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.47",
+      "name": "RECTIME",
+      "message_id": 102,
+      "examples": [
+        "RECTIMEA 1",
+        "RECTIMEB 1",
+        "RECTIME"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.48",
+      "name": "UNIHEADING",
+      "message_id": 972,
+      "examples": [
+        "UNIHEADINGA 1",
+        "UNIHEADINGB 1",
+        "UNIHEADING"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.49",
+      "name": "UNIHEADING2",
+      "message_id": 1331,
+      "examples": [
+        "UNIHEADING2A ONCHANGED",
+        "UNIHEADING2B ONCHANGED",
+        "UNIHEADING2"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.50",
+      "name": "HEADINGSTATUS",
+      "message_id": 521,
+      "examples": [
+        "HEADINGSTATUSA 1",
+        "HEADINGSTATUSB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.51",
+      "name": "RTKSTATUS",
+      "message_id": 509,
+      "examples": [
+        "RTKSTATUSA 1",
+        "RTKSTATUSB 1",
+        "RTKSTATUS"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.52",
+      "name": "AGNSSSTATUS",
+      "message_id": 512,
+      "examples": [
+        "AGNSSSTATUSA 1",
+        "AGNSSSTATUSB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.53",
+      "name": "RTCSTATUS",
+      "message_id": 510,
+      "examples": [
+        "RTCSTATUSA 1",
+        "RTCSTATUSB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.54",
+      "name": "JAMSTATUS",
+      "message_id": 511,
+      "examples": [
+        "JAMSTATUSA 1",
+        "JAMSTATUSB 1",
+        "JAMSTATUS"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.55",
+      "name": "FREQJAMSTATUS",
+      "message_id": 519,
+      "examples": [
+        "FREQJAMSTATUSA 1",
+        "FREQJAMSTATUSB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.56",
+      "name": "RTCMSTATUS",
+      "message_id": 2125,
+      "examples": [
+        "RTCMSTATUSA ONCHANGED",
+        "RTCMSTATUSB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.57",
+      "name": "HWSTATUS",
+      "message_id": 218,
+      "examples": [
+        "HWSTATUSA 1",
+        "HWSTATUSB 1",
+        "HWSTATUS"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.58",
+      "name": "AGC",
+      "message_id": 220,
+      "examples": [
+        "AGCA 1",
+        "AGCB 1",
+        "AGC"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.59",
+      "name": "KSXT",
+      "message_id": null,
+      "examples": [],
+      "binary": false,
+      "ascii": true
+    },
+    {
+      "section": "7.3.60",
+      "name": "INFOPART1",
+      "message_id": 1019,
+      "examples": [
+        "INFOPART1A",
+        "INFOPART1B"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.61",
+      "name": "INFOPART2",
+      "message_id": 1020,
+      "examples": [
+        "INFOPART2A",
+        "INFOPART2B"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.62",
+      "name": "MSPOS",
+      "message_id": 520,
+      "examples": [
+        "MSPOSA 1",
+        "MSPOSB 1"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.63",
+      "name": "TROPINFO",
+      "message_id": 2318,
+      "examples": [
+        "TROPINFOA ONCHANGED",
+        "TROPINFOB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.64",
+      "name": "PPPB2BINFO1",
+      "message_id": 2302,
+      "examples": [
+        "PPPB2BINFO1A ONCHANGED",
+        "PPPB2BINFO1B ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.65",
+      "name": "PPPB2BINFO2",
+      "message_id": 2304,
+      "examples": [
+        "PPPB2BINFO2A ONCHANGED",
+        "PPPB2BINFO2B ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.66",
+      "name": "PPPB2BINFO3",
+      "message_id": 2306,
+      "examples": [
+        "PPPB2BINFO3A ONCHANGED",
+        "PPPB2BINFO3B ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.67",
+      "name": "PPPB2BINFO4",
+      "message_id": 2308,
+      "examples": [
+        "PPPB2BINFO4A ONCHANGED",
+        "PPPB2BINFO4B ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.68",
+      "name": "PPPB2BINFO5",
+      "message_id": 2310,
+      "examples": [
+        "PPPB2BINFO5A ONCHANGED",
+        "PPPB2BINFO5B ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.69",
+      "name": "PPPB2BINFO6",
+      "message_id": 2312,
+      "examples": [
+        "PPPB2BINFO6A ONCHANGED",
+        "PPPB2BINFO6B ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.70",
+      "name": "PPPB2BINFO7",
+      "message_id": 2314,
+      "examples": [
+        "PPPB2BINFO7A ONCHANGED",
+        "PPPB2BINFO7B ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.71",
+      "name": "E6MASKBLOCK",
+      "message_id": 2319,
+      "examples": [
+        "E6MASKBLOCKA ONCHANGED",
+        "E6MASKBLOCKB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.72",
+      "name": "E6ORBITBLOCK",
+      "message_id": 2320,
+      "examples": [
+        "E6ORBITBLOCKA ONCHANGED",
+        "E6ORBITBLOCKB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.73",
+      "name": "E6CLOCKFULLBLOCK",
+      "message_id": 2321,
+      "examples": [
+        "E6CLOCKFULLBLOCKA ONCHANGED",
+        "E6CLOCKFULLBLOCKB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.74",
+      "name": "E6CLOCKSUBBLOCK",
+      "message_id": 2322,
+      "examples": [
+        "E6CLOCKSUBBLOCKA ONCHANGED",
+        "E6CLOCKSUBBLOCKB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.75",
+      "name": "E6CBIASBLOCK",
+      "message_id": 2323,
+      "examples": [
+        "E6CBIASBLOCKA ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.76",
+      "name": "E6PBIASBLOCK",
+      "message_id": 2324,
+      "examples": [
+        "E6PBIASBLOCKA ONCHANGED",
+        "E6PBIASBLOCKB ONCHANGED"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.77",
+      "name": "BSLNENUHD2",
+      "message_id": 1316,
+      "examples": [
+        "BSLNENUHD2A ONCHANGED",
+        "BSLNENUHD2B ONCHANGED",
+        "BSLNENUHD2"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.78",
+      "name": "BSLNXYZHD2",
+      "message_id": 1317,
+      "examples": [
+        "BSLNXYZHD2A ONCHANGED",
+        "BSLNXYZHD2B ONCHANGED",
+        "BSLNXYZHD2"
+      ],
+      "binary": true,
+      "ascii": true
+    },
+    {
+      "section": "7.3.79",
+      "name": "DOPHD2",
+      "message_id": 1333,
+      "examples": [
+        "DOPHD2A ONCHANGED",
+        "DOPHD2B ONCHANGED",
+        "DOPHD2"
+      ],
+      "binary": true,
+      "ascii": true
+    }
+  ]
+}

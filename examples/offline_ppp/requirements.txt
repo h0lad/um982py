@@ -1,0 +1,4 @@
+# The devel revision imports numba and PyYAML without declaring them upstream.
+cssrlib @ git+https://github.com/hirokawa/cssrlib.git@df0f26332498f1d581109f2ab1caffd68748e18c
+numba
+PyYAML

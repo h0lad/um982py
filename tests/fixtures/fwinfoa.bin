@@ -1,0 +1,16 @@
+$command,FWINFOA,response: OK*00
+#FWINFOA,COM1,25164,98.0,UNKNOWN,1,482.000,484098,537,18;1,ENCLOSURE,"HRPT00-S10C-P","SN-REDACTED-00000000000000000","UM982","R4.10Build25164","1.4-42227","0000000000000000","2026/05/21"*c1041f1d
+$GNRMC,,V,,,,,,,,,,N,V*37
+$GNGGA,,,,,,0,,,,,,,,*78
+$GNGLL,,,,,,V,N*7A
+$GPGSA,,1,,,,,,,,,,,,,,,,*73
+$GPGSV,1,1,00,,,,,*55
+$GPVTG,,,,,,,,,N*30
+$GPTHS,,V*0E
+$GNRMC,,V,,,,,,,,,,N,V*37
+$GNGGA,,,,,,0,,,,,,,,*78
+$GNGLL,,,,,,V,N*7A
+$GPGSA,,1,,,,,,,,,,,,,,,,*73
+$GPGSV,1,1,00,,,,,*55
+$GPVTG,,,,,,,,,N*30
+$GPTHS,,V*0E

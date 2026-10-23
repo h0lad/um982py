@@ -1,0 +1,32 @@
+[
+  {
+    "command": "LOGLISTB",
+    "capture": "loglistb.bin",
+    "bytes": 357
+  },
+  {
+    "command": "FWINFOA",
+    "capture": "fwinfoa.bin",
+    "bytes": 553
+  },
+  {
+    "command": "FWINFOB",
+    "capture": "fwinfob.bin",
+    "bytes": 756
+  },
+  {
+    "command": "TEMPERATUREA",
+    "capture": "temperaturea.bin",
+    "bytes": 361
+  },
+  {
+    "command": "STATUS",
+    "capture": "status.bin",
+    "bytes": 355
+  },
+  {
+    "command": "HELP",
+    "capture": "help.bin",
+    "bytes": 399
+  }
+]

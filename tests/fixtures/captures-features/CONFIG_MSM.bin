@@ -1,0 +1,6 @@
+$command,VERSIONA,response: OK*45
+$command,CONFIG,response: OK*54
+$command,MODE,response: OK*5D
+$command,MASK,response: OK*4A
+$command,LOGLISTA,response: OK*59
+$command,CONFIG MSM,response: PARSING FAILED MISSING FIELD,*7A

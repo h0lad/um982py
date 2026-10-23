@@ -1,0 +1,173 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PIP_DISABLE_PIP_VERSION_CHECK: "1"
+  PYTHONUNBUFFERED: "1"
+
+jobs:
+  quality:
+    name: Lint and type check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Ruff lint
+        run: ruff check .
+
+      - name: Ruff format
+        run: ruff format --check .
+
+      - name: Mypy
+        run: python -m mypy
+
+  test:
+    name: Tests (Python ${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.12", "3.13", "3.14"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install project
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Run test suite
+        run: |
+          python -m pytest \
+            --cov=um982py \
+            --cov-report=term-missing \
+            --cov-report=xml
+
+      - name: Upload coverage
+        if: matrix.python-version == '3.12'
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-xml
+          path: coverage.xml
+          if-no-files-found: error
+
+  reference:
+    name: Independent reference checks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install reference tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y proj-bin
+          python -m pip install -e ".[dev]"
+          python -m pip install numpy==2.2.6 scipy==1.15.3 \
+            georinex==1.16.2 pynmeagps==1.1.8 pyrtcm==1.2.1
+          python -m pip install numba==0.68.1 bitstruct==8.24.0 PyYAML==6.0.3
+          python -m pip install --no-deps 'cssrlib @ git+https://github.com/hirokawa/cssrlib.git@df0f26332498f1d581109f2ab1caffd68748e18c'
+          git clone --depth 1 --branch v2.4.3-b34 https://github.com/tomojitakasu/RTKLIB.git "$RUNNER_TEMP/rtklib"
+          make -C "$RUNNER_TEMP/rtklib/app/consapp/convbin/gcc" -j2
+      - name: Compare against independent implementations
+        env:
+          RTKLIB_CONVBIN: ${{ runner.temp }}/rtklib/app/consapp/convbin/gcc/convbin
+        run: |
+          python -c 'import georinex, numpy, scipy, pynmeagps, pyrtcm, cssrlib, numba, bitstruct'
+          test -x "$RTKLIB_CONVBIN"
+          command -v cs2cs
+          python -m pytest tests/test_external_references.py tests/test_igs_ground_truth.py tests/test_rinex_rtklib.py -q
+      - name: Compare PPP with published NYA1 coordinates
+        env:
+          UM982_NYA1_REFERENCE_DIR: ${{ runner.temp }}/nya1-reference
+          OPENBLAS_NUM_THREADS: "1"
+        run: |
+          python -m tests.prepare_ppp_reference --output "$UM982_NYA1_REFERENCE_DIR"
+          python -m pytest tests/test_offline_ppp.py::test_nya1_against_published_code_network_solution -q
+
+  package:
+    name: Build and smoke test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [quality, test, reference]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pyproject.toml
+
+      - name: Install build tools
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -e ".[dev]"
+
+      - name: Build distributions
+        run: python -m hatchling build -d dist
+
+      - name: Run packaging tests
+        run: python -m pytest tests/test_packaging.py
+
+      - name: Check wheel contents
+        run: |
+          python - <<'PY'
+          import glob
+          import sys
+          import zipfile
+
+          wheel = glob.glob("dist/*.whl")[0]
+          with zipfile.ZipFile(wheel) as archive:
+              names = archive.namelist()
+
+          if any(name.endswith(".bin") for name in names):
+              sys.exit("wheel must not contain capture binaries")
+          if "um982py/py.typed" not in names:
+              sys.exit("wheel must contain py.typed")
+          print(f"{wheel}: {len(names)} files, no capture binaries")
+          PY
+
+      - name: Install wheel and run CLI
+        run: |
+          python -m pip install --no-deps --force-reinstall dist/*.whl
+          um982py --help > /dev/null
+
+      - name: Upload distributions
+        uses: actions/upload-artifact@v4
+        with:
+          name: distributions
+          path: dist/*
+          if-no-files-found: error

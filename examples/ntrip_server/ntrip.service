@@ -1,0 +1,40 @@
+[Unit]
+Description=UM982 NTRIP reference station
+After=network-online.target
+Wants=network-online.target
+StartLimitIntervalSec=120
+StartLimitBurst=5
+
+[Service]
+Type=simple
+User=ntrip
+Group=ntrip
+SupplementaryGroups=dialout
+WorkingDirectory=/opt/um982py
+ExecStart=/opt/um982py/.venv/bin/python -m examples.ntrip_server --mode private --station /etc/ntrip/station.json --users /etc/ntrip/users.json --port /dev/ttyUSB0 --baud 921600 --bind 0.0.0.0 --listen-port 2101 --tls-cert /etc/ntrip/fullchain.pem --tls-key /etc/ntrip/privkey.pem
+Restart=on-failure
+RestartSec=5
+TimeoutStopSec=10
+UMask=0077
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+CapabilityBoundingSet=
+AmbientCapabilities=
+DevicePolicy=closed
+DeviceAllow=/dev/ttyUSB0 rw
+LimitNOFILE=8192
+TasksMax=64
+MemoryMax=512M
+Environment=PYTHONDONTWRITEBYTECODE=1
+
+[Install]
+WantedBy=multi-user.target

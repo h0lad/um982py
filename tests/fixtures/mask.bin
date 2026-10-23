@@ -1,0 +1,9 @@
+$command,MASK,response: OK*4A
+$CONFIG,MASK,MASK 5.0*25
+$GNRMC,,V,,,,,,,,,,N,V*37
+$GNGGA,,,,,,0,,,,,,,,*78
+$GNGLL,,,,,,V,N*7A
+$GPGSA,,1,,,,,,,,,,,,,,,,*73
+$GPGSV,1,1,00,,,,,*55
+$GPVTG,,,,,,,,,N*30
+$GPTHS,,V*0E

@@ -1,0 +1,18 @@
+{
+  "reference": "RTKLIB eph2pos, vacuum propagation, constant specified receiver motion",
+  "commit": "71db0ffa0d9735697c6adfd06fdf766d0e5ce807",
+  "start_epoch": 1476713084.0,
+  "epochs": 16,
+  "observer_ecef_m": [
+    3782565.552835869,
+    899482.8071071643,
+    5039202.934866487
+  ],
+  "velocity_ecef_mps": [
+    0.03,
+    -0.02,
+    0.01
+  ],
+  "receiver_clock_drift_mps": 0.04,
+  "limitations": "synthetic algebraic sky without visibility masking, atmosphere, multipath or noise"
+}
