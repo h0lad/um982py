@@ -6,6 +6,8 @@ build-backend = "hatchling.build"
 name = "um982py"
 version = "1.0.0"
 description = "Unicore UM982 GNSS library"
+license = "EUPL-1.2"
+license-files = ["LICENSE"]
 readme = "README.md"
 requires-python = ">=3.12"
 keywords = ["gnss", "gps", "um982py", "unicore", "nmea", "rtcm", "rinex"]
