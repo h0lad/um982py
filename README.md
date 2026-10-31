@@ -74,3 +74,7 @@ To run hardware tests against a receiver:
 ```bash
 python -m pytest tests/hardware --hardware-port /dev/ttyUSB0 --hardware-baud 921600
 ```
+
+# License 
+
+EUPL-1.2
