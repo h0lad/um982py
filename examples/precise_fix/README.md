@@ -7,7 +7,7 @@ than 10 seconds. Receiver scatter alone cannot measure accuracy.
 ## Run
 
 After [installing the package](../README.md#running-the-examples), run these
-commands from the `lib/um982py` directory.
+commands from the repository root.
 
 Connect to a receiver:
 

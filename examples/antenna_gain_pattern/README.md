@@ -6,7 +6,7 @@ effects. For a helix/patch comparison, use `dual_antenna_rf_audit`.
 ## Run
 
 After [installing the package](../README.md#running-the-examples), run these
-commands from the `lib/um982py` directory.
+commands from the repository root.
 
 Connect to a receiver:
 

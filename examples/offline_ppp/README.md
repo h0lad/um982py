@@ -6,7 +6,7 @@ solver. The result is an experimental float PPP estimate in the reference frame
 of the selected products. The script does not resolve ambiguities or certify the
 estimate's accuracy.
 
-The steps below run from `lib/um982py` after [installing the package](../README.md#running-the-examples).
+The steps below run from the repository root after [installing the package](../README.md#running-the-examples).
 Install the optional Python PPP dependencies:
 
 ```bash

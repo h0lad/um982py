@@ -6,8 +6,8 @@ its own satellite observations and computes the position and RTK solution.
 The Python client transports data and reports the receiver's results without
 calculating the RTK solution itself.
 
-Run commands from `lib/um982py`. From the outer workspace in this checkout,
-first run `cd lib/um982py` and follow [the example installation instructions](../README.md#running-the-examples).
+Run commands from the repository root after following
+[the example installation instructions](../README.md#running-the-examples).
 
 ## Run
 

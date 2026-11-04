@@ -4,7 +4,7 @@ Compare receiver-reported per-axis standard deviations against errors at an inde
 
 ## Run
 
-From the `lib/um982py` project directory, run the **synthetic demonstration**:
+From the repository root, run the **synthetic demonstration**:
 
 ```bash
 python -m examples.uncertainty_coverage --input examples/uncertainty_coverage/sample.csv

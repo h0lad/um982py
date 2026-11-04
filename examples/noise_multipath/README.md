@@ -4,7 +4,7 @@ Compare shared-antenna and separate-antenna differences and held-out repeat-trac
 
 ## Run
 
-From the `lib/um982py` project directory, run the **synthetic demonstration**:
+From the repository root, run the **synthetic demonstration**:
 
 ```bash
 python -m examples.noise_multipath --input examples/noise_multipath/sample.csv

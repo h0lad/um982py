@@ -4,7 +4,7 @@ Measure linearly detrended phase variability on explicitly selected continuous c
 
 ## Run
 
-From the `lib/um982py` project directory, run the **synthetic demonstration**:
+From the repository root, run the **synthetic demonstration**:
 
 ```bash
 python -m examples.phase_fluctuations --input examples/phase_fluctuations/sample.csv

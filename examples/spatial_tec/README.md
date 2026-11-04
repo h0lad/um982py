@@ -4,7 +4,7 @@ Compare matched changes in slant total electron content (TEC) from two stations.
 
 ## Run
 
-From the `lib/um982py` project directory, run the **synthetic demonstration**:
+From the repository root, run the **synthetic demonstration**:
 
 ```bash
 python -m examples.spatial_tec --input examples/spatial_tec/sample.csv

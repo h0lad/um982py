@@ -10,7 +10,7 @@ Use `--plot` to save C/N₀ differences when `matplotlib` is installed.
 ## Run
 
 After [installing the package](../README.md#running-the-examples), run these
-commands from the `lib/um982py` directory.
+commands from the repository root.
 
 Connect to a receiver:
 

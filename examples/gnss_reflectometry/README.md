@@ -38,7 +38,7 @@ or survey measurement may differ. Record how the height was established and
 use a consistent antenna reference. Do not assume a hardware calibration or
 position accuracy that you have not established.
 
-Run the commands from `lib/um982py` in a source checkout after following the
+Run the commands from the repository root in a source checkout after following the
 [installation instructions](../README.md#running-the-examples). Choose paths
 for your data and replace `/dev/ttyUSB0` if your receiver uses another port.
 
@@ -286,7 +286,7 @@ requires a separate `matplotlib` installation.
 
 The files in `examples/gnss_reflectometry/data/` contain **synthetic values**
 for learning the output format. They are not measurements and do not validate
-the reflector-height algorithm. From `lib/um982py`, run:
+the reflector-height algorithm. From the repository root, run:
 
 ```bash
 python -m examples.gnss_reflectometry.snow_series \

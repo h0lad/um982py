@@ -9,7 +9,7 @@ included B2b test capture.
 ## Run
 
 After [installing the package](../README.md#running-the-examples), run these
-commands from the `lib/um982py` directory.
+commands from the repository root.
 
 Connect to a receiver:
 

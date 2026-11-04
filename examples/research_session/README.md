@@ -6,8 +6,11 @@ Live sessions also preserve the raw stream in `capture.bin` by default.
 
 ```bash
 python -m examples.research_session --port /dev/ttyUSB0 --output-dir /tmp/session --duration 90
-python -m examples.research_session --replay tests/fixtures/captures/GPSEPHA.bin --output-dir /tmp/replay-session
+python -m examples.research_session --replay tests/fixtures/obsvm-example.txt --output-dir /tmp/replay-session
 ```
+
+The supplied OBSVM sample produces `primary.obs` and `manifest.json`. To export
+`gps.nav` as well, replay a session containing both observations and GPSEPH.
 
 Choose an empty destination directory. When available, supply surveyed
 coordinates and antenna information through `--metadata` and

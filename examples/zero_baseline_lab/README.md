@@ -5,7 +5,7 @@ Measures double-difference noise between two receivers on a zero baseline.
 ## Run
 
 After [installing the package](../README.md#running-the-examples), run these
-commands from the `lib/um982py` directory.
+commands from the repository root.
 
 Replay a capture:
 

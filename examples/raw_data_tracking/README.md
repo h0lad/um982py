@@ -5,7 +5,7 @@ Parses raw baseband containers, inner messages, and notices.
 ## Run
 
 After [installing the package](../README.md#running-the-examples), run these
-commands from the `lib/um982py` directory.
+commands from the repository root.
 
 Connect to a receiver:
 

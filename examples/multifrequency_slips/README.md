@@ -4,7 +4,7 @@ Enumerate ideal responses to known injected integer cycle slips on three signals
 
 ## Run
 
-From the `lib/um982py` project directory, run the **synthetic demonstration**:
+From the repository root, run the **synthetic demonstration**:
 
 ```bash
 python -m examples.multifrequency_slips --input examples/multifrequency_slips/sample.csv

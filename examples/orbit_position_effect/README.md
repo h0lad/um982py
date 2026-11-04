@@ -4,7 +4,7 @@ Estimate the linearized position effect of satellite orbit and clock differences
 
 ## Run
 
-From the `lib/um982py` project directory, run the **synthetic demonstration**:
+From the repository root, run the **synthetic demonstration**:
 
 ```bash
 python -m examples.orbit_position_effect --input examples/orbit_position_effect/sample.csv

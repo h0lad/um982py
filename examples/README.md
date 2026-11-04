@@ -9,8 +9,8 @@ rate separately, since `--baud` applies only to local serial devices.
 
 ## Running the examples
 
-From the outer workspace, change to `lib/um982py` and install the package before
-running the examples:
+From the repository root (the directory containing `pyproject.toml`), install
+the package before running the examples:
 
 ```bash
 python -m pip install .
@@ -130,6 +130,7 @@ receiver configuration if it changes the signal group.
 - [`navigation_message_hex`](navigation_message_hex/README.md): Dumps navigation messages as annotated hex.
 - [`navigation_messages`](navigation_messages/README.md): Builds navigation tables, sky views and orbit figures.
 - [`rinex_export`](rinex_export/README.md): Writes multi-GNSS RINEX 3.05 from RANGE logs with an omission report.
+- [`rinex_navigation`](rinex_navigation/README.md): Exports GPS broadcast ephemerides as RINEX 3.05 navigation data with an unknown-field report.
 - [`telemetry_bridge`](telemetry_bridge/README.md): Streams decoded frames as newline-delimited JSON.
 
 ### Receiver and baseband diagnostics

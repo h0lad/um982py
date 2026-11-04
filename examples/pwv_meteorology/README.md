@@ -5,7 +5,7 @@ Derives precipitable water vapour from zenith wet delay.
 ## Run
 
 After [installing the package](../README.md#running-the-examples), run these
-commands from the `lib/um982py` directory.
+commands from the repository root.
 
 Connect to a receiver:
 

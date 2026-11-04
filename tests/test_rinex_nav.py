@@ -1,3 +1,4 @@
+import json
 import math
 from dataclasses import replace
 from pathlib import Path
@@ -62,6 +63,18 @@ def test_navigation_cli_replays_capture(tmp_path: Path) -> None:
 
     source = Path(__file__).parent / "fixtures/captures/GPSEPHA.bin"
     output = tmp_path / "gps.rnx"
-    assert main(["--replay", str(source), "--output", str(output)]) == 0
+    report = tmp_path / "gps.json"
+    assert (
+        main(["--replay", str(source), "--output", str(output), "--json", str(report)])
+        == 0
+    )
     assert "N: GNSS NAV DATA" in output.read_text()
     assert "END OF HEADER" in output.read_text()
+    data = json.loads(report.read_text())
+    assert data["messages"] > 0
+    assert data["unknown_fields"] == [
+        "l2_codes",
+        "l2_p_data_flag",
+        "fit_interval",
+        "transmission_time",
+    ]

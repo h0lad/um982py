@@ -4,10 +4,9 @@ Mount the antenna, survey the marker, process it with PPP and write the station
 manifest. Read the [quick start](README.md) first. Access control and operation
 continue in [ACCESS.md](ACCESS.md) and [OPERATIONS.md](OPERATIONS.md).
 
-Run the commands below from the `lib/um982py` project directory. Steps 1–3 use
+Run the commands below from the repository root. Steps 1–3 use
 the local receiver, while step 4 uploads the file to an online service. The final
-station should use the reviewed result, not the rough receiver position. From
-the outer workspace, run `cd lib/um982py` first and follow the
+station should use the reviewed result, not the rough receiver position. Follow the
 [installation instructions](../README.md#running-the-examples).
 
 ## 1. Install the antenna and record its details

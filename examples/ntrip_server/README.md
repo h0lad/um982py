@@ -13,8 +13,7 @@ obtain and review one.
 
 ## Run
 
-Run the commands from the `lib/um982py` project directory. From the outer
-workspace in this checkout, run `cd lib/um982py` first. Install the project and
+Run the commands from the repository root. Install the project and
 its serial dependency as described in [running the examples](../README.md#running-the-examples).
 
 For a new base station, follow the [step-by-step survey](SURVEY.md):
