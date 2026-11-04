@@ -1,4 +1,31 @@
-## Monitor position and fix quality
+# What's this?
+
+This is a Python (3.12+) library for the Unicore UM982 GNSS receiver.
+
+Most likely quite a  few feature will also work the the UM960 and UM980. This is untested.
+
+
+## Usage
+
+The CLI accepts a serial port or a transparent TCP-to-UART gateway:
+
+```bash
+um982py --port /dev/ttyUSB0 --baud 921600 version
+um982py --port tcp://192.0.2.10:4001 doctor
+```
+##  Development
+
+```bash
+python -m pip install -e '.[dev]'
+ruff check .
+ruff format --check .
+python -m mypy
+python -m pytest
+```
+
+## Examples
+
+### Monitor position and fix quality
 
 ```python
 from time import sleep
@@ -22,7 +49,7 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
         sleep(1)
 ```
 
-## Read vehicle heading from two antennas
+### Read vehicle heading from two antennas
 
 ```python
 from um982py import Receiver
@@ -39,7 +66,7 @@ else:
     print("Dual-antenna heading is not available yet")
 ```
 
-## Feed NTRIP corrections to an RTK rover
+### Feed NTRIP corrections to an RTK rover
 
 ```python
 import os
@@ -83,7 +110,7 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
         decoder.finish()
 ```
 
-## Capture a measurement session and export RINEX
+### Capture a measurement session and export RINEX
 
 ```python
 from pathlib import Path
@@ -106,3 +133,6 @@ Path("field.obs").write_text(result.text, encoding="ascii")
 print(f"Exported {result.epochs} epochs, {result.satellite_records} satellite records")
 print(f"Omitted observations: {result.omitted}")
 ```
+## Licese
+
+AGPLv3
