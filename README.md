@@ -2,7 +2,7 @@
 
 This is a Python (3.12+) library for the Unicore UM982 GNSS receiver.
 
-Most likely quite a  few feature will also work the the UM960 and UM980. This is untested.
+Most likely quite a few features will also work the the UM960 and UM980. This is untested.
 
 
 ## Usage
@@ -133,6 +133,6 @@ Path("field.obs").write_text(result.text, encoding="ascii")
 print(f"Exported {result.epochs} epochs, {result.satellite_records} satellite records")
 print(f"Omitted observations: {result.omitted}")
 ```
-## Licese
+## License
 
 AGPLv3
