@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import pairwise
+from statistics import median
 
+from examples._observation_arcs import CarrierState
 from um982py.geodesy import wavelength
 from um982py.stats import mean, stddev
 
@@ -30,15 +33,17 @@ class Observation:
     frequency_hz: float
     pseudorange: float
     carrier_phase: float
+    carrier_state: CarrierState | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class TecSample:
-    """Slant TEC in TECU of one satellite at one epoch."""
+    """Uncalibrated TEC proxy in TECU of one satellite at one epoch."""
 
     prn: int
     epoch: float
     tec: float
+    arc: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +53,7 @@ class TecRate:
     prn: int
     epoch: float
     rate: float
+    arc: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,6 +63,7 @@ class TecIndex:
     prn: int
     epoch: float
     index: float
+    arc: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,7 +97,7 @@ def _frequency_pair(
 
 
 def slant_tec(observations: Sequence[Observation]) -> float | None:
-    """Return code TEC in TECU, or None without a dual-frequency pair."""
+    """Return a code TEC proxy including uncalibrated instrumental biases."""
     pair = _frequency_pair(observations)
     if pair is None:
         return None
@@ -112,7 +119,7 @@ def phase_tec(observations: Sequence[Observation]) -> float | None:
 
 
 def level_tec(code: Sequence[float], phase: Sequence[float]) -> tuple[float, ...]:
-    """Carrier TEC levelled to the code TEC, removing the ambiguity."""
+    """Level an uninterrupted carrier arc; code biases remain in the result."""
     if len(code) != len(phase):
         raise ValueError("code and phase must have equal length")
     if not code:
@@ -143,19 +150,23 @@ def tec_report(observations: Sequence[Observation], epoch: float) -> TecReport:
     )
 
 
-def rate_of_tec(samples: Sequence[TecSample]) -> tuple[TecRate, ...]:
+def rate_of_tec(
+    samples: Sequence[TecSample], *, max_gap: float | None = None
+) -> tuple[TecRate, ...]:
     """Rate of TEC in TECU per minute from consecutive samples of one satellite."""
-    by_prn: dict[int, list[TecSample]] = {}
+    if max_gap is not None and (not math.isfinite(max_gap) or max_gap <= 0):
+        raise ValueError("maximum gap must be finite and positive")
+    by_prn: dict[tuple[int, int], list[TecSample]] = {}
     for sample in samples:
-        by_prn.setdefault(sample.prn, []).append(sample)
+        by_prn.setdefault((sample.prn, sample.arc), []).append(sample)
     rates = []
-    for prn, group in sorted(by_prn.items()):
+    for (prn, arc), group in sorted(by_prn.items()):
         ordered = sorted(group, key=lambda sample: sample.epoch)
         for previous, current in pairwise(ordered):
             minutes = (current.epoch - previous.epoch) / SECONDS_PER_MINUTE
-            if minutes > 0:
+            if minutes > 0 and (max_gap is None or minutes * 60 <= max_gap):
                 rate = (current.tec - previous.tec) / minutes
-                rates.append(TecRate(prn=prn, epoch=current.epoch, rate=rate))
+                rates.append(TecRate(prn=prn, epoch=current.epoch, rate=rate, arc=arc))
     return tuple(rates)
 
 
@@ -163,23 +174,41 @@ def roti(
     rates: Sequence[TecRate], *, window_minutes: float = ROTI_WINDOW_MINUTES
 ) -> tuple[TecIndex, ...]:
     """ROTI in TECU per minute: the standard deviation of ROT in five minutes."""
-    if window_minutes <= 0:
+    if not math.isfinite(window_minutes) or window_minutes <= 0:
         raise ValueError("window_minutes must be positive")
-    by_prn: dict[int, list[TecRate]] = {}
+    by_prn: dict[tuple[int, int], list[TecRate]] = {}
     for rate in rates:
-        by_prn.setdefault(rate.prn, []).append(rate)
+        by_prn.setdefault((rate.prn, rate.arc), []).append(rate)
     indexes = []
     window_seconds = window_minutes * SECONDS_PER_MINUTE
-    for prn, group in sorted(by_prn.items()):
+    for (prn, arc), group in sorted(by_prn.items()):
         ordered = sorted(group, key=lambda rate: rate.epoch)
+        intervals = [b.epoch - a.epoch for a, b in pairwise(ordered)]
+        positive = [interval for interval in intervals if interval > 0]
+        if not positive:
+            continue
+        cadence = median(positive)
+        cadence_tolerance = max(0.02, cadence * 0.05)
         for current in ordered:
             window = [
-                rate.rate
+                rate
                 for rate in ordered
                 if current.epoch - window_seconds <= rate.epoch <= current.epoch
             ]
-            if len(window) > 1:
+            if (
+                len(window) > 1
+                and current.epoch - window[0].epoch >= window_seconds - 1e-6
+                and all(
+                    abs(b.epoch - a.epoch - cadence) <= cadence_tolerance
+                    for a, b in pairwise(window)
+                )
+            ):
                 indexes.append(
-                    TecIndex(prn=prn, epoch=current.epoch, index=stddev(window))
+                    TecIndex(
+                        prn=prn,
+                        epoch=current.epoch,
+                        index=stddev([rate.rate for rate in window]),
+                        arc=arc,
+                    )
                 )
     return tuple(indexes)

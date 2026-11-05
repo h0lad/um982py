@@ -79,12 +79,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     timeline = epoch_timeline(epochs, truth)
     if args.timeline_csv is not None:
         args.timeline_csv.parent.mkdir(parents=True, exist_ok=True)
-        rows = ["gps_epoch,computed,fixed,correction_age_s,truth_error_m\n"]
+        rows = ["gps_epoch,computed,fixed,fresh_fixed,correction_age_s,truth_error_m\n"]
         for item in timeline:
             error = item.truth_error_m
             rows.append(
                 f"{item.gps_epoch:.3f},{int(item.computed)},"
-                f"{int(item.fixed)},{item.correction_age_s:.3f},"
+                f"{int(item.fixed)},{int(item.fresh_fixed)},"
+                f"{item.correction_age_s:.3f},"
                 + ("" if error is None else f"{error:.4f}")
                 + "\n"
             )

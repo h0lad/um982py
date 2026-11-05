@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
-from statistics import NormalDist
 
 from examples.wls_position import (
     PositionSolution,
@@ -48,14 +47,57 @@ class RaimResult:
 
 
 def chi_square_threshold(dof: int, probability: float) -> float:
-    """Chi-square quantile by the Wilson-Hilferty approximation."""
+    """Chi-square quantile by inversion of the regularized gamma survival function."""
     if dof < 1:
         raise ValueError("dof must be positive")
     if not 0.0 < probability < 1.0:
         raise ValueError("probability must be in 0..1")
-    z_score = NormalDist().inv_cdf(probability)
-    scaled = 2.0 / (9.0 * dof)
-    return dof * (1.0 - scaled + z_score * math.sqrt(scaled)) ** 3
+    shape = dof / 2.0
+    target = 1.0 - probability
+
+    def survival(x: float) -> float:
+        if x <= 0.0:
+            return 1.0
+        scale = math.exp(shape * math.log(x) - x - math.lgamma(shape))
+        if x < shape + 1.0:
+            term = total = 1.0 / shape
+            for n in range(1, 10000):
+                term *= x / (shape + n)
+                total += term
+                if abs(term) <= abs(total) * 1e-15:
+                    return max(0.0, 1.0 - total * scale)
+        else:
+            tiny = 1e-300
+            b = x + 1.0 - shape
+            c = 1.0 / tiny
+            d = 1.0 / b
+            h = d
+            for n in range(1, 10000):
+                a = -n * (n - shape)
+                b += 2.0
+                d = a * d + b
+                if abs(d) < tiny:
+                    d = tiny
+                c = b + a / c
+                if abs(c) < tiny:
+                    c = tiny
+                d = 1.0 / d
+                delta = d * c
+                h *= delta
+                if abs(delta - 1.0) <= 1e-15:
+                    return min(1.0, max(0.0, scale * h))
+        raise ArithmeticError("chi-square survival function did not converge")
+
+    lower, upper = 0.0, max(1.0, float(dof))
+    while survival(upper / 2.0) > target:
+        upper *= 2.0
+    for _ in range(100):
+        middle = (lower + upper) / 2.0
+        if survival(middle / 2.0) > target:
+            lower = middle
+        else:
+            upper = middle
+    return (lower + upper) / 2.0
 
 
 def raim_fde(
@@ -97,7 +139,9 @@ def raim_fde(
             active, solution, false_alarm_probability
         )
     hpl, vpl = _protection_levels(active, solution, final_threshold)
-    passed = final_statistic <= final_threshold
+    passed = (
+        final_statistic <= final_threshold and math.isfinite(hpl) and math.isfinite(vpl)
+    )
     return RaimResult(
         solution=solution,
         alarm=alarm,
@@ -252,7 +296,7 @@ def _protection_levels(
             design[column][row] * coefficients[row][column] for row in range(STATE_SIZE)
         )
         if leverage <= 1e-12:
-            continue
+            return math.inf, math.inf
         horizontal_slopes.append(
             math.hypot(east[column], north[column]) / math.sqrt(leverage)
         )

@@ -45,8 +45,8 @@ class TrackPoint:
     def from_record(cls, record: Record, timestamp: float | None = None) -> TrackPoint:
         height = record.real("hgt")
         undulation = _optional_real(record, "undulation")
-        lat_sigma = _optional_real(record, "lat_std")
-        lon_sigma = _optional_real(record, "lon_std")
+        lat_sigma = _optional_sigma(record, "lat_std")
+        lon_sigma = _optional_sigma(record, "lon_std")
         return cls(
             timestamp=record_epoch(record) if timestamp is None else timestamp,
             latitude=record.real("lat"),
@@ -61,12 +61,12 @@ class TrackPoint:
             height_ellipsoid_m=height + undulation if undulation is not None else None,
             latitude_sigma_m=lat_sigma,
             longitude_sigma_m=lon_sigma,
-            height_sigma_m=_optional_real(record, "hgt_std"),
+            height_sigma_m=_optional_sigma(record, "hgt_std"),
             horizontal_sigma_m=math.hypot(lat_sigma, lon_sigma)
             if lat_sigma is not None and lon_sigma is not None
             else None,
-            speed_sigma_m_s=_optional_real(record, "horspd_std"),
-            vertical_speed_sigma_m_s=_optional_real(record, "verspd_std"),
+            speed_sigma_m_s=_optional_sigma(record, "horspd_std"),
+            vertical_speed_sigma_m_s=_optional_sigma(record, "verspd_std"),
             solution_satellites=_optional_int(record, "count_solnsvs"),
             correction_age_s=_optional_real(record, "diff_age"),
             solution_age_s=_optional_real(record, "sol_age"),
@@ -226,6 +226,11 @@ def _optional_real(record: Record, key: str) -> float | None:
     if isinstance(value, (int, float)) and math.isfinite(value):
         return float(value)
     return None
+
+
+def _optional_sigma(record: Record, key: str) -> float | None:
+    value = _optional_real(record, key)
+    return value if value is not None and value >= 0 else None
 
 
 def _optional_int(record: Record, key: str) -> int | None:

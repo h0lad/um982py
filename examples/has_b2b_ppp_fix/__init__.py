@@ -39,6 +39,12 @@ _PPP_TYPES = frozenset(
 )
 
 _RAYLEIGH_P95_OVER_SCATTER = 1.7308
+_MINIMUM_P95_EPOCHS = 20
+
+
+def _sigma(value: float | None) -> float | None:
+    """Reject missing or physically invalid standard deviations."""
+    return value if value is not None and math.isfinite(value) and value >= 0 else None
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,9 +68,10 @@ class PppEpoch:
     @property
     def horizontal_sigma(self) -> float | None:
         """Combined horizontal uncertainty in metres, when reported."""
-        if self.latitude_sigma is None or self.longitude_sigma is None:
+        lat, lon = _sigma(self.latitude_sigma), _sigma(self.longitude_sigma)
+        if lat is None or lon is None:
             return None
-        return math.hypot(self.latitude_sigma, self.longitude_sigma)
+        return math.hypot(lat, lon)
 
     @property
     def is_ppp(self) -> bool:
@@ -99,8 +106,8 @@ class MeanFix:
     longitude: float
     height: float
     ecef: tuple[float, float, float]
-    horizontal_scatter: float
-    vertical_scatter: float
+    horizontal_scatter: float | None
+    vertical_scatter: float | None
     horizontal_sigma: float | None
     vertical_sigma: float | None
     epochs: int
@@ -126,16 +133,16 @@ class PrecisionStatistics:
 
     epochs: int
     span_seconds: float
-    east_std: float
-    north_std: float
-    up_std: float
-    horizontal_scatter: float
-    vertical_scatter: float
+    east_std: float | None
+    north_std: float | None
+    up_std: float | None
+    horizontal_scatter: float | None
+    vertical_scatter: float | None
     mean_horizontal_sigma: float | None
     min_horizontal_sigma: float | None
     max_horizontal_sigma: float | None
     mean_vertical_sigma: float | None
-    radius_p95: float
+    radius_p95: float | None
     improvement: float | None
 
 
@@ -163,10 +170,18 @@ def _optional_int(record: Record, key: str) -> int | None:
         return None
 
 
-def _std(values: Sequence[float]) -> float:
-    """Population standard deviation, zero for fewer than two samples."""
+def _unique_epochs(epochs: Sequence[PppEpoch]) -> tuple[PppEpoch, ...]:
+    """Keep the last fix per finite epoch and order the occupation in time."""
+    if any(not math.isfinite(item.epoch) for item in epochs):
+        raise ValueError("PPP epochs must be finite")
+    unique = {item.epoch: item for item in epochs}
+    return tuple(unique[epoch] for epoch in sorted(unique))
+
+
+def _std(values: Sequence[float]) -> float | None:
+    """Population standard deviation, unavailable for fewer than two samples."""
     if len(values) < 2:
-        return 0.0
+        return None
     mean = sum(values) / len(values)
     return math.sqrt(sum((value - mean) ** 2 for value in values) / len(values))
 
@@ -212,16 +227,16 @@ def ppp_epochs(records: Sequence[Record]) -> tuple[PppEpoch, ...]:
             record.real("hgt") + record.real("undulation"),
             record.integer("pos_type"),
             record.integer("sol_status"),
-            _optional_real(record, "lat_std"),
-            _optional_real(record, "lon_std"),
-            _optional_real(record, "hgt_std"),
+            _sigma(_optional_real(record, "lat_std")),
+            _sigma(_optional_real(record, "lon_std")),
+            _sigma(_optional_real(record, "hgt_std")),
             record.integer("count_svs"),
             _optional_int(record, "count_solnsvs"),
             _optional_real(record, "diff_age"),
         )
         for record in records
     ]
-    return tuple(sorted(epochs, key=lambda item: item.epoch))
+    return _unique_epochs(epochs)
 
 
 def convergence(
@@ -235,7 +250,7 @@ def convergence(
         raise ValueError("convergence targets must be finite")
     if target_horizontal <= 0 or target_vertical <= 0:
         raise ValueError("convergence targets must be positive")
-    items = tuple(epochs)
+    items = _unique_epochs(epochs)
     ppp = tuple(item for item in items if item.is_ppp)
     fixed = tuple(
         item
@@ -249,7 +264,7 @@ def convergence(
     improvement = (
         first / last if first is not None and last is not None and last > 0 else None
     )
-    vertical = items[-1].height_sigma if items else None
+    vertical = _sigma(items[-1].height_sigma) if items else None
     converged = (
         bool(fixed)
         and items[-1] in fixed
@@ -277,7 +292,7 @@ def mean_fix(epochs: Sequence[PppEpoch], *, ppp_only: bool = True) -> MeanFix:
     """Average PPP fixes into one ultra-precise position."""
     items = tuple(
         item
-        for item in epochs
+        for item in _unique_epochs(epochs)
         if item.solution_status == 0 and (item.is_ppp or not ppp_only)
     )
     if not items:
@@ -291,10 +306,16 @@ def mean_fix(epochs: Sequence[PppEpoch], *, ppp_only: bool = True) -> MeanFix:
     east = [item[0] for item in residuals]
     north = [item[1] for item in residuals]
     up = [item[2] for item in residuals]
-    horizontal_scatter = math.sqrt(
-        sum(value * value for value in east + north) / len(residuals)
+    horizontal_scatter = (
+        math.sqrt(sum(value * value for value in east + north) / len(residuals))
+        if len({item.epoch for item in items}) >= 2
+        else None
     )
-    vertical_scatter = math.sqrt(sum(value * value for value in up) / len(up))
+    vertical_scatter = (
+        math.sqrt(sum(value * value for value in up) / len(up))
+        if len({item.epoch for item in items}) >= 2
+        else None
+    )
     return MeanFix(
         latitude,
         longitude,
@@ -303,7 +324,7 @@ def mean_fix(epochs: Sequence[PppEpoch], *, ppp_only: bool = True) -> MeanFix:
         horizontal_scatter,
         vertical_scatter,
         items[-1].horizontal_sigma,
-        items[-1].height_sigma,
+        _sigma(items[-1].height_sigma),
         len(items),
         sum(item.is_ppp for item in items),
         "PPPNAV",
@@ -335,10 +356,18 @@ def xyz_fallback(records: Sequence[Record]) -> MeanFix:
     mean = _mean_ecef(positions)
     latitude, longitude, height = geodetic_from_ecef(*mean)
     residuals = _enu_residuals(positions, latitude, longitude)
-    horizontal = math.sqrt(
-        sum(item[0] ** 2 + item[1] ** 2 for item in residuals) / len(residuals)
+    horizontal = (
+        math.sqrt(
+            sum(item[0] ** 2 + item[1] ** 2 for item in residuals) / len(residuals)
+        )
+        if len(positions) >= 2
+        else None
     )
-    vertical = math.sqrt(sum(item[2] ** 2 for item in residuals) / len(residuals))
+    vertical = (
+        math.sqrt(sum(item[2] ** 2 for item in residuals) / len(residuals))
+        if len(positions) >= 2
+        else None
+    )
     return MeanFix(
         latitude,
         longitude,
@@ -357,10 +386,11 @@ def xyz_fallback(records: Sequence[Record]) -> MeanFix:
 def precision_statistics(epochs: Sequence[PppEpoch]) -> PrecisionStatistics:
     """Repeatability and receiver uncertainty of fixes about their mean.
 
-    The P95 radius is a Rayleigh screening estimate derived from the observed
-    horizontal scatter, not a calibrated confidence interval.
+    The P95 radius is a Rayleigh screening estimate requiring at least 20
+    distinct epochs, not a calibrated confidence interval. Epoch correlation
+    may make its effective sample size smaller.
     """
-    items = tuple(item for item in epochs if item.solution_status == 0)
+    items = tuple(item for item in _unique_epochs(epochs) if item.solution_status == 0)
     if not items:
         raise ValueError("no epochs for precision statistics")
     positions = [
@@ -372,33 +402,42 @@ def precision_statistics(epochs: Sequence[PppEpoch]) -> PrecisionStatistics:
     east = [item[0] for item in residuals]
     north = [item[1] for item in residuals]
     up = [item[2] for item in residuals]
-    horizontal_scatter = math.sqrt(
-        sum(value * value for value in east + north) / len(residuals)
+    distinct_epochs = len({item.epoch for item in items})
+    horizontal_scatter = (
+        math.sqrt(sum(value * value for value in east + north) / len(residuals))
+        if distinct_epochs >= 2
+        else None
     )
-    vertical_scatter = math.sqrt(sum(value * value for value in up) / len(up))
+    vertical_scatter = (
+        math.sqrt(sum(value * value for value in up) / len(up))
+        if distinct_epochs >= 2
+        else None
+    )
     horizontal_sigmas = [
-        item.horizontal_sigma for item in items if item.horizontal_sigma is not None
+        value for item in items if (value := item.horizontal_sigma) is not None
     ]
     vertical_sigmas = [
-        item.height_sigma
-        for item in items
-        if item.height_sigma is not None and math.isfinite(item.height_sigma)
+        value for item in items if (value := _sigma(item.height_sigma)) is not None
     ]
     first = items[0].horizontal_sigma
     last = items[-1].horizontal_sigma
     return PrecisionStatistics(
         len(items),
         max(item.epoch for item in items) - min(item.epoch for item in items),
-        _std(east),
-        _std(north),
-        _std(up),
+        _std(east) if distinct_epochs >= 2 else None,
+        _std(north) if distinct_epochs >= 2 else None,
+        _std(up) if distinct_epochs >= 2 else None,
         horizontal_scatter,
         vertical_scatter,
         sum(horizontal_sigmas) / len(horizontal_sigmas) if horizontal_sigmas else None,
         min(horizontal_sigmas) if horizontal_sigmas else None,
         max(horizontal_sigmas) if horizontal_sigmas else None,
         sum(vertical_sigmas) / len(vertical_sigmas) if vertical_sigmas else None,
-        _RAYLEIGH_P95_OVER_SCATTER * horizontal_scatter,
+        _RAYLEIGH_P95_OVER_SCATTER * horizontal_scatter
+        if distinct_epochs >= _MINIMUM_P95_EPOCHS
+        and len(set(positions)) >= 3
+        and horizontal_scatter is not None
+        else None,
         first / last if first is not None and last is not None and last > 0 else None,
     )
 
@@ -449,11 +488,12 @@ def format_precision(stats: PrecisionStatistics) -> tuple[str, ...]:
         _detail("epochs", f"{stats.epochs} ({stats.span_seconds:.1f} s span)"),
         _detail(
             "scatter H / V",
-            f"{stats.horizontal_scatter:.3f} m / {stats.vertical_scatter:.3f} m",
+            f"{_metres(stats.horizontal_scatter)} / {_metres(stats.vertical_scatter)}",
         ),
         _detail(
             "std E / N / U",
-            f"{stats.east_std:.3f} / {stats.north_std:.3f} / {stats.up_std:.3f} m",
+            f"{_metres(stats.east_std)} / {_metres(stats.north_std)} / "
+            f"{_metres(stats.up_std)}",
         ),
         _detail("receiver sigma H mean", _metres(stats.mean_horizontal_sigma)),
         _detail(
@@ -462,6 +502,6 @@ def format_precision(stats: PrecisionStatistics) -> tuple[str, ...]:
             f"{_metres(stats.max_horizontal_sigma)}",
         ),
         _detail("receiver sigma V mean", _metres(stats.mean_vertical_sigma)),
-        _detail("P95 radius (screening)", f"{stats.radius_p95:.3f} m"),
+        _detail("P95 radius (screening)", _metres(stats.radius_p95)),
         _detail("improvement first/last", gain),
     )

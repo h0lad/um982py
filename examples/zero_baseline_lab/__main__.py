@@ -40,15 +40,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--join-tolerance",
         type=float,
         default=0.0,
-        help="maximum GPS epoch mismatch in seconds",
+        help="epoch mismatch in seconds; only 0 is supported for noise estimation",
     )
     add_debug_argument(parser)
     args = parser.parse_args(argv)
     debug_header(args, "zero_baseline_lab")
     if not 1 <= args.reference_prn <= 32:
         parser.error("--reference-prn must be a GPS PRN in 1..32")
-    if args.join_tolerance >= 2:
-        parser.error("--join-tolerance must be below the 2-second arc gap")
+    if args.join_tolerance != 0:
+        parser.error("noise estimation requires exactly synchronized receiver epochs")
     data = capture_logs(
         args,
         [FirmwareLog.RANGE],

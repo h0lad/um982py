@@ -36,16 +36,37 @@ from um982py.stats import Vector, is_continuous, norm, rms, subtract
 def _observer(
     args: argparse.Namespace, positions: Sequence[Record], epoch: float
 ) -> Vector:
+    def plausible(xyz: Vector) -> bool:
+        # Surface and near-Earth receivers; reject unset coordinates and gross errors.
+        return all(math.isfinite(value) for value in xyz) and 6e6 <= norm(xyz) <= 1e8
+
     if args.observer is not None:
-        return args.observer[0], args.observer[1], args.observer[2]
-    near = min(
-        positions, key=lambda record: abs(record_epoch(record) - epoch), default=None
-    )
-    if near is None or abs(record_epoch(near) - epoch) > 2:
+        xyz = (args.observer[0], args.observer[1], args.observer[2])
+        if not plausible(xyz):
+            raise ValueError(
+                "observer must be a finite plausible near-Earth ECEF position"
+            )
+        return xyz
+    eligible: list[tuple[float, Vector]] = []
+    for record in positions:
+        if record.get("p_sol_status") not in (
+            SolutionStatus.SOL_COMPUTED,
+            "SOL_COMPUTED",
+        ):
+            continue
+        try:
+            timestamp = record_epoch(record)
+            xyz = (record.real("p_x"), record.real("p_y"), record.real("p_z"))
+        except (KeyError, TypeError, ValueError):
+            continue
+        if math.isfinite(timestamp) and plausible(xyz):
+            eligible.append((timestamp, xyz))
+    near = min(eligible, key=lambda item: abs(item[0] - epoch), default=None)
+    if near is None or abs(near[0] - epoch) > 2:
         raise ValueError(
-            "supply --observer X Y Z or co-timed BESTXYZ records within 2s"
+            "supply a valid --observer X Y Z or computed BESTXYZ within 2s"
         )
-    return near.real("p_x"), near.real("p_y"), near.real("p_z")
+    return near[1]
 
 
 def _receiver_comparison(

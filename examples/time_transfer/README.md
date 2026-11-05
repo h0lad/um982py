@@ -29,8 +29,10 @@ Live capture requests binary TIME by default. Use `--ascii` to request ASCII.
 
 GPS time (GPST) is a continuous GNSS time scale, while UTC is civil time and
 differs by leap seconds. The conversion uses the leap-second information in
-the receiver's TIME records, so its result depends on the validity of those
-fields and does not calibrate an external timing system.
+the bundled table and checks it against the receiver's TIME offset. A mismatch
+returns `offset_disagreement` with no GPST result; update or independently check
+the table and receiver. Python datetime cannot represent an inserted leap second,
+so these instants are rejected. This does not calibrate an external timing system.
 
 ## References
 

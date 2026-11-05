@@ -35,6 +35,12 @@ summarizes a code-minus-carrier statistic that includes site and measurement
 effects without directly mapping reflectors or providing a calibrated error
 budget.
 
+The receiver capture is split into carrier arcs using signal identity, lock
+time, cadence and Doppler-phase closure before detrending. Set `--interval` to
+the capture cadence when replaying data. Code-minus-carrier also contains
+ionospheric variation and receiver noise, so its residual is a proxy rather than
+a calibrated multipath measurement.
+
 ## References
 
 Braasch (1996), Multipath effects.

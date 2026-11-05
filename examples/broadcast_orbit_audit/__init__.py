@@ -98,13 +98,11 @@ def signal_in_space_range_error(
         raise ValueError("a reference clock is required for SISRE")
     if radial_weight < 0 or angular_weight < 0:
         raise ValueError("weights must be non-negative")
-    range_error = difference.radial_m - (
+    range_error = radial_weight * difference.radial_m - (
         difference.clock_difference_seconds * LIGHT_SPEED
     )
     angular = difference.along_m**2 + difference.cross_m**2
-    return math.sqrt(
-        radial_weight * range_error * range_error + angular_weight * angular
-    )
+    return math.sqrt(range_error * range_error + angular_weight * angular)
 
 
 def sisre_summary(differences: Sequence[OrbitDifference]) -> SisreSummary:

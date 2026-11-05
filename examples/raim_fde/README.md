@@ -26,6 +26,11 @@ python -m examples.raim_fde --replay tests/fixtures/captures-live/RANGEA.bin \
 Replay needs RANGE observations, GPS ephemeris and an initial position,
 supplied in the three files shown. The calculated fault checks and protection
 levels depend on the observations and model assumptions.
+The receiver position must be computed and within `--position-tolerance`
+(default one second) of the RANGE epoch. GPS ephemerides must be healthy,
+have matching issue numbers and have a reference time within two hours of
+transmission. The reported position difference uses the receiver fix as its
+reference and is not an independent accuracy measurement.
 
 ## Understanding the result
 

@@ -45,6 +45,12 @@ Outages with no observed recovery are censored rather than counted as successful
 recoveries. Supply a truth position from an independent survey if you want to
 compare positions against it.
 
+The timeline reports the raw fixed class and a fresh fixed state separately.
+The latter requires a computed fixed solution and a correction age from 0 to
+10 seconds. Recovery requires an observed loss followed by a sustained fresh
+fix. An uninterrupted fresh fix is reported as retained, not recovered. Gaps
+and missing pre-outage observations prevent establishing retention.
+
 ## References
 
 Unicore N4 R1.4; Kaplan & Hegarty (2017).

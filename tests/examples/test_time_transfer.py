@@ -86,6 +86,41 @@ def test_receiver_utc_offset_sign_matches_the_table() -> None:
     )
 
 
+def test_inserted_leap_second_is_rejected_instead_of_shifted() -> None:
+    with pytest.raises(ValueError, match="leap second"):
+        utc_from_gpst(datetime(2017, 1, 1, 0, 0, 17))
+    assert utc_from_gpst(datetime(2017, 1, 1, 0, 0, 18)) == datetime(2017, 1, 1)
+
+
+def test_disagreement_between_receiver_and_table_does_not_emit_gpst(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import json
+
+    from examples.time_transfer import __main__ as cli
+
+    record = Record(
+        "TIME",
+        tuple(
+            {
+                "year": 2026,
+                "month": 1,
+                "day": 1,
+                "hour": 0,
+                "minute": 0,
+                "millisecond": 0,
+                "utc_status": "VALID",
+                "utc_offset": -19.0,
+            }.items()
+        ),
+    )
+    monkeypatch.setattr(cli, "capture_records", lambda *a, **kw: {"TIME": [record]})
+    assert cli.main([]) == 1
+    data = json.loads(capsys.readouterr().out)
+    assert data["status"] == "offset_disagreement"
+    assert data["gpst"] is None
+
+
 def test_fixture_utc_offset_equals_the_tabulated_leap_seconds() -> None:
     record = time_record()
     gpst = datetime(

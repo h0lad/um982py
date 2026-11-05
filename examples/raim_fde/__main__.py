@@ -14,8 +14,12 @@ from examples.wls_position import (
     RangeMeasurement,
     geodetic_position_error,
 )
-from examples.wls_position.__main__ import _gps_l1
-from um982py.capture import capture_records, read_frames
+from examples.wls_position.__main__ import (
+    _gps_l1,
+    select_gps_ephemerides,
+    select_position,
+)
+from um982py.capture import capture_records, read_frames, record_epoch
 from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
@@ -43,13 +47,6 @@ from um982py.messages.enums import SatelliteSystem
 SATELLITE_SYSTEM_SHIFT = 16
 SATELLITE_SYSTEM_MASK = 0b111
 RESERVED_SYSTEM = 0b111
-
-_EPHEMERIS_LOGS: Mapping[SatelliteSystem, Log] = {
-    SatelliteSystem.GPS: Log.GPSEPH,
-    SatelliteSystem.GLONASS: Log.GLOEPH,
-    SatelliteSystem.GALILEO: Log.GALEPH,
-    SatelliteSystem.BEIDOU: Log.BDSEPH,
-}
 
 
 def epoch_seconds(message: Message) -> float:
@@ -156,7 +153,10 @@ def _payload(
             {"system": system.name, "prn": prn} for system, prn in result.excluded
         ],
         "protection_levels": {"hpl": result.hpl, "vpl": result.vpl},
-        "error": {"horizontal": error.horizontal, "vertical": error.vertical},
+        "difference_to_receiver_m": {
+            "horizontal": error.horizontal,
+            "vertical": error.vertical,
+        },
         "error_reference": "receiver position, not independent surveyed truth",
         "position_ecef_covariance_m2": result.solution.ecef_covariance_m2,
         "position_ecef_standard_deviation_m": result.solution.ecef_standard_deviation_m,
@@ -192,6 +192,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=Path,
         default=None,
         help="captured BESTPOS or BESTXYZ frame for replay",
+    )
+    parser.add_argument(
+        "--position-tolerance",
+        type=float,
+        default=1.0,
+        help="maximum receiver position epoch offset in seconds",
     )
     parser.add_argument(
         "--duration", type=float, default=5.0, help="live collection time in seconds"
@@ -245,24 +251,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if range_record.message is None:
         parser.error("RANGE frame carries no timestamp")
     epoch = epoch_seconds(range_record.message)
-    ephemerides = {
-        system: {
-            (
-                record.integer("satid")
-                if system is SatelliteSystem.GALILEO
-                else record.integer("sloto")
-                if system is SatelliteSystem.GLONASS
-                else record.integer("prn")
-            ): record
-            for record in _decode(ephemeris_frames, log)
-        }
-        for system, log in _EPHEMERIS_LOGS.items()
-    }
-    position = position_records[0]
-    truth = receiver_position(position)
-    observations = _gps_l1(
-        range_record, dict(ephemerides.get(SatelliteSystem.GPS, {})), epoch
+    absolute_epoch = record_epoch(range_record)
+    ephemerides = select_gps_ephemerides(
+        _decode(ephemeris_frames, Log.GPSEPH), absolute_epoch, ranges=range_record
     )
+    position = select_position(
+        position_records, absolute_epoch, args.position_tolerance
+    )
+    truth = receiver_position(position)
+    observations = _gps_l1(range_record, ephemerides, epoch)
     result = raim_fde(observations, (*truth, 0.0))
     latitude, longitude = (
         (position.real("lat"), position.real("lon"))
@@ -270,13 +267,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         else geodetic_from_ecef(*truth)[:2]
     )
     payload = _payload(result, truth, latitude, longitude, len(observations))
-    error = payload["error"]
+    error = payload["difference_to_receiver_m"]
     if isinstance(error, dict):
         print(
             f"RAIM: {len(observations)} GPS L1 observations; "
             f"alarm={payload['alarm']}; "
-            f"horizontal error {error['horizontal']:.3f} m, "
-            f"vertical error {error['vertical']:.3f} m",
+            f"horizontal receiver difference {error['horizontal']:.3f} m, "
+            f"vertical difference {error['vertical']:.3f} m",
             file=sys.stderr,
         )
     write_json(payload, args.json)

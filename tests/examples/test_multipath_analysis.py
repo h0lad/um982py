@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Callable
 
+from examples._observation_arcs import CarrierState
 from examples.multipath_analysis import (
     Observation,
     epoch_summaries,
@@ -42,6 +43,14 @@ def synthetic(
                 frequency_hz=L1_HZ,
                 pseudorange=geometry + multipath(epoch),
                 carrier_phase=-carrier_range / CARRIER,
+                carrier_state=CarrierState(
+                    epoch=epoch,
+                    frequency_hz=L1_HZ,
+                    signal=0,
+                    lock_seconds=epoch + 1,
+                    phase_cycles=-carrier_range / CARRIER,
+                    doppler_hz=-RANGE_RATE / CARRIER,
+                ),
             )
         )
     return tuple(observations)
@@ -76,3 +85,19 @@ def test_epoch_summary_covers_every_signal() -> None:
     assert first.signals == 2
     assert first.rms == approx(0.0, abs=1e-6)
     assert first.maximum == approx(0.0, abs=1e-6)
+
+
+def test_phase_slip_is_split_before_detrending() -> None:
+    observations = []
+    for epoch in range(6):
+        phase = 10.0 if epoch >= 3 else 0.0
+        state = CarrierState(float(epoch), L1_HZ, 0, epoch + 1.0, phase, 0.0)
+        observations.append(Observation(7, float(epoch), L1_HZ, 20e6, phase, state))
+    arcs = multipath_series(observations, max_gap=2.5)
+    assert [arc.arc for arc in arcs] == [1, 2]
+    assert [arc.rms for arc in arcs] == approx([0, 0], abs=1e-7)
+
+
+def test_missing_lock_metadata_does_not_imply_phase_continuity() -> None:
+    observations = [Observation(7, float(i), L1_HZ, 20e6, 0) for i in range(5)]
+    assert multipath_series(observations) == ()

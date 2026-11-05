@@ -40,6 +40,13 @@ def test_disjoint_receiver_times_are_not_joined() -> None:
     assert not double_differences(a, b, reference_prn=1)
 
 
+def test_asynchronous_receiver_epochs_cannot_be_used_as_noise() -> None:
+    a = [sample(0, prn=p) for p in (1, 2)]
+    b = [sample(0.1, prn=p) for p in (1, 2)]
+    with pytest.raises(ValueError, match="exactly synchronized"):
+        double_differences(a, b, reference_prn=1, tolerance=0.2)
+
+
 def test_reference_phase_reset_breaks_every_dependent_arc() -> None:
     a = [sample(t, prn=p) for t in (0.0, 1.0, 2.0) for p in (1, 2)]
     a[2] = replace(a[2], lock_seconds=0.1)

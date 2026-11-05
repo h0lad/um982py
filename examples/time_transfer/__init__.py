@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
 
@@ -63,6 +64,11 @@ def gpst_from_utc(utc: datetime) -> datetime:
 
 def utc_from_gpst(gpst: datetime) -> datetime:
     """Retreat a GPST epoch by the leap seconds in force."""
+    for current, previous in itertools.pairwise(LEAP_SECONDS):
+        start = current.effective + timedelta(seconds=previous.total_seconds)
+        end = current.effective + timedelta(seconds=current.total_seconds)
+        if start <= gpst < end:
+            raise ValueError("UTC leap second cannot be represented by datetime")
     for entry in LEAP_SECONDS:
         utc = gpst - timedelta(seconds=entry.total_seconds)
         if utc >= entry.effective:

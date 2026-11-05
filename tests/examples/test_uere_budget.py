@@ -47,6 +47,41 @@ def test_horizontal_sigma_combines_the_two_axis_sigmas() -> None:
     assert horizontal_sigma(3.0, 4.0) == pytest.approx(5.0, abs=1e-12)
 
 
+def test_negative_or_nonfinite_position_sigmas_are_rejected() -> None:
+    for value in (-1.0, float("nan")):
+        with pytest.raises(ValueError, match="standard deviations"):
+            horizontal_sigma(1.0, value)
+
+
+def test_uere_requires_valid_single_solution_and_geometry_assertion(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from examples.uere_budget import __main__ as cli
+
+    monkeypatch.setattr(cli, "record_epoch", lambda record: record.real("epoch"))
+    position = Record(
+        "PSRPOS",
+        (
+            ("epoch", 10.0),
+            ("p_sol_status", "SOL_COMPUTED"),
+            ("pos_type", "SINGLE"),
+            ("lat_std", 1.0),
+            ("lon_std", 1.0),
+            ("hgt_std", 2.0),
+        ),
+    )
+    dop = Record("PSRDOP", (("epoch", 10.0), ("hdop", 1.0), ("pdop", 2.0)))
+    assert cli._payload([position], [dop], [])["epochs"] == 0
+    assert (
+        cli._payload([position], [dop], [], assume_matched_geometry=True)["epochs"] == 1
+    )
+    fixed = Record(
+        "PSRPOS",
+        tuple((k, "NARROW_INT" if k == "pos_type" else v) for k, v in position.entries),
+    )
+    assert cli._payload([fixed], [dop], [], assume_matched_geometry=True)["epochs"] == 0
+
+
 def test_vertical_dilution_satisfies_the_pdop_identity() -> None:
     assert vertical_dilution(5.0, 3.0) == pytest.approx(4.0, abs=1e-12)
 

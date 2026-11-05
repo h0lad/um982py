@@ -43,6 +43,8 @@ def _payload(
     positions: Sequence[Record],
     dilutions: Sequence[Record],
     ranges: Sequence[Record],
+    *,
+    assume_matched_geometry: bool = False,
 ) -> dict[str, object]:
     """Build the UERE budget from the decoded logs."""
     by_epoch = {record_epoch(record): record for record in dilutions}
@@ -50,6 +52,10 @@ def _payload(
         (position, by_epoch[record_epoch(position)])
         for position in positions
         if record_epoch(position) in by_epoch
+        and position.get("sol_status", position.get("p_sol_status"))
+        in (0, "SOL_COMPUTED")
+        and position.get("pos_type") in (16, "SINGLE")
+        and assume_matched_geometry
     ]
     estimates = [
         estimate_epoch(record_epoch(position), position, dilution)
@@ -70,18 +76,27 @@ def _payload(
             "epochs": 0,
             "estimates": [],
             "uere": None,
-            "pseudorange_uere": pseudorange,
-            "agreement": None,
+            "median_reported_pseudorange_sigma_m": pseudorange,
+            "diagnostic_ratio_to_pseudorange_sigma": None,
+            "limitation": "matching satellite geometry is not independently verified",
         }
     horizontal, vertical = median_uere(estimates)
     return {
         "epochs": len(estimates),
         "estimates": [_estimate_payload(estimate) for estimate in estimates],
         "uere": {"horizontal": horizontal, "vertical": vertical},
-        "pseudorange_uere": pseudorange,
+        "median_reported_pseudorange_sigma_m": pseudorange,
+        "limitation": (
+            "Assumes matching unweighted satellite geometry and independent equal "
+            "range errors. RANGE sigmas are receiver diagnostics, not total UERE."
+        ),
         "pseudorange_comparison_epochs": len(matched_ranges),
-        "agreement": None
-        if pseudorange is None or not matched_ranges
+        "diagnostic_ratio_to_pseudorange_sigma": None
+        if pseudorange is None
+        or pseudorange <= 0
+        or not matched_ranges
+        or horizontal <= 0
+        or vertical <= 0
         else {
             "horizontal": agreement_ratio(horizontal, pseudorange),
             "vertical": agreement_ratio(vertical, pseudorange),
@@ -110,17 +125,27 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="print live capture updates to stderr",
     )
+    parser.add_argument(
+        "--assume-matched-geometry",
+        action="store_true",
+        help="assert that PSRPOS and PSRDOP use the same unweighted satellites",
+    )
     args = parser.parse_args(argv)
     debug_header(args, "uere_budget")
     captured = capture_records(
         args,
-        [FirmwareLog.BESTPOS, FirmwareLog.PSRDOP, FirmwareLog.RANGE],
+        [FirmwareLog.PSRPOS, FirmwareLog.PSRDOP, FirmwareLog.RANGE],
         duration=args.duration,
         interval=args.interval,
         on_progress=progress_printer("uere_budget") if args.debug else None,
     )
-    payload = _payload(captured["BESTPOS"], captured["PSRDOP"], captured["RANGE"])
-    if not payload["epochs"] and payload["pseudorange_uere"] is None:
+    payload = _payload(
+        captured["PSRPOS"],
+        captured["PSRDOP"],
+        captured["RANGE"],
+        assume_matched_geometry=args.assume_matched_geometry,
+    )
+    if not payload["epochs"]:
         write_json({"status": "insufficient_data", "payload": payload}, args.json)
         return 1
     uere = payload["uere"]

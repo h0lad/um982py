@@ -153,13 +153,42 @@ def test_xyz_fallback_requires_computed_position() -> None:
 
 
 def test_precision_statistics_reports_scatter_and_p95() -> None:
-    stats = precision_statistics([epoch(index) for index in range(10)])
-    assert stats.epochs == 10
-    assert stats.span_seconds == pytest.approx(9.0)
+    stats = precision_statistics([epoch(index) for index in range(30)])
+    assert stats.epochs == 30
+    assert stats.span_seconds == pytest.approx(29.0)
     assert stats.horizontal_scatter < 0.05
     assert stats.radius_p95 == pytest.approx(1.7308 * stats.horizontal_scatter)
     assert stats.mean_horizontal_sigma == pytest.approx(stats.min_horizontal_sigma)
     assert stats.improvement == pytest.approx(1.0)
+
+
+def test_single_epoch_has_no_repeatability_estimate() -> None:
+    stats = precision_statistics([epoch(0)])
+    fix = mean_fix([epoch(0)])
+    assert stats.horizontal_scatter is None and stats.vertical_scatter is None
+    assert stats.east_std is None and stats.radius_p95 is None
+    assert fix.horizontal_scatter is None and fix.vertical_scatter is None
+
+
+def test_duplicate_epochs_and_constant_positions_do_not_prove_precision() -> None:
+    single = precision_statistics([epoch(0)] * 30)
+    assert single.epochs == 1
+    assert single.horizontal_scatter is None and single.radius_p95 is None
+    constant = precision_statistics(
+        [
+            replace(epoch(i), latitude=48.0, longitude=11.0, height=500.0)
+            for i in range(30)
+        ]
+    )
+    assert constant.radius_p95 is None
+
+
+@pytest.mark.parametrize("bad", [-10.0, float("nan"), float("inf")])
+def test_invalid_standard_deviations_cannot_converge(bad: float) -> None:
+    invalid = replace(epoch(0), height_sigma=bad)
+    assert not convergence([invalid], target_horizontal=1, target_vertical=1).converged
+    invalid = replace(epoch(0), latitude_sigma=bad)
+    assert not convergence([invalid], target_horizontal=1, target_vertical=1).converged
 
 
 def test_precision_statistics_rejects_empty() -> None:

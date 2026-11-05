@@ -5,7 +5,10 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
+from itertools import pairwise
+from statistics import median
 
+from examples._observation_arcs import CarrierState, continuous
 from um982py.geodesy import wavelength
 from um982py.stats import detrend
 
@@ -22,6 +25,7 @@ class Observation:
     frequency_hz: float
     pseudorange: float
     carrier_phase: float
+    carrier_state: CarrierState | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,6 +37,7 @@ class MultipathSeries:
     epochs: tuple[float, ...]
     residuals: tuple[float, ...]
     rms: float
+    arc: int = 1
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,9 +58,14 @@ def code_minus_carrier(
 
 
 def multipath_series(
-    observations: Sequence[Observation], *, order: int = DETREND_ORDER
+    observations: Sequence[Observation],
+    *,
+    order: int = DETREND_ORDER,
+    max_gap: float | None = None,
 ) -> tuple[MultipathSeries, ...]:
-    """Residual of the detrended code-minus-carrier combination per signal."""
+    """Detrend verified continuous arcs; missing lock metadata breaks an arc."""
+    if max_gap is not None and (not math.isfinite(max_gap) or max_gap <= 0):
+        raise ValueError("maximum gap must be finite and positive")
     groups: dict[tuple[int, float], list[Observation]] = {}
     for observation in observations:
         groups.setdefault((observation.prn, observation.frequency_hz), []).append(
@@ -64,27 +74,55 @@ def multipath_series(
     series = []
     for (prn, frequency_hz), group in sorted(groups.items()):
         ordered = sorted(group, key=lambda observation: observation.epoch)
-        epochs = [observation.epoch for observation in ordered]
-        values = [
-            code_minus_carrier(
-                observation.pseudorange,
-                observation.carrier_phase,
-                observation.frequency_hz,
-            )
-            for observation in ordered
-        ]
-        if len(values) <= order + 1:
-            continue
-        residuals = detrend(epochs, values, order)
-        series.append(
-            MultipathSeries(
-                prn=prn,
-                frequency_hz=frequency_hz,
-                epochs=tuple(epochs),
-                residuals=tuple(residuals),
-                rms=rms(residuals),
-            )
+        intervals = [b.epoch - a.epoch for a, b in pairwise(ordered)]
+        positive = [interval for interval in intervals if interval > 0]
+        gap = (
+            max_gap
+            if max_gap is not None
+            else (2.5 * median(positive) if positive else 0)
         )
+        arcs: list[list[Observation]] = []
+        for observation in ordered:
+            previous = arcs[-1][-1] if arcs else None
+            joined = (
+                previous is not None and 0 < observation.epoch - previous.epoch <= gap
+            )
+            if joined and previous is not None:
+                if (
+                    previous.carrier_state is not None
+                    and observation.carrier_state is not None
+                ):
+                    joined = continuous(
+                        previous.carrier_state, observation.carrier_state, max_gap=gap
+                    )
+                else:
+                    joined = False
+            if not joined:
+                arcs.append([])
+            arcs[-1].append(observation)
+        for arc, group in enumerate(arcs, 1):
+            epochs = [observation.epoch for observation in group]
+            values = [
+                code_minus_carrier(
+                    observation.pseudorange,
+                    observation.carrier_phase,
+                    observation.frequency_hz,
+                )
+                for observation in group
+            ]
+            if len(values) <= order + 1:
+                continue
+            residuals = detrend(epochs, values, order)
+            series.append(
+                MultipathSeries(
+                    prn=prn,
+                    frequency_hz=frequency_hz,
+                    epochs=tuple(epochs),
+                    residuals=tuple(residuals),
+                    rms=rms(residuals),
+                    arc=arc,
+                )
+            )
     return tuple(series)
 
 

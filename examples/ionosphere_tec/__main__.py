@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import math
 import sys
 from collections.abc import Callable, Sequence
 
+from examples._observation_arcs import CarrierState, continuous
 from examples.ionosphere_tec import (
     GPS_L1_HZ,
     Observation,
@@ -32,6 +34,14 @@ def read_observations(
             frequency_hz=frequency,
             pseudorange=item.real("pseudorange"),
             carrier_phase=item.real("carrier_phase"),
+            carrier_state=CarrierState(
+                epoch=record_epoch(record),
+                frequency_hz=frequency,
+                signal=(item.integer("tracking_status") >> 21) & 31,
+                lock_seconds=item.real("lock_time"),
+                phase_cycles=item.real("carrier_phase"),
+                doppler_hz=item.real("doppler"),
+            ),
         )
         for item, frequency in gps_signals(
             record, [frequency_hz, secondary_frequency_hz]
@@ -44,43 +54,78 @@ def _levelled_series(
     phase_samples: Sequence[TecSample],
 ) -> tuple[TecSample, ...]:
     """Level carrier-phase TEC to code TEC independently for each satellite."""
-    code_by_prn: dict[int, list[TecSample]] = {}
-    phase_by_prn: dict[int, list[TecSample]] = {}
+    code_by_prn: dict[tuple[int, int], list[TecSample]] = {}
+    phase_by_prn: dict[tuple[int, int], list[TecSample]] = {}
     for sample in code_samples:
-        code_by_prn.setdefault(sample.prn, []).append(sample)
+        code_by_prn.setdefault((sample.prn, sample.arc), []).append(sample)
     for sample in phase_samples:
-        phase_by_prn.setdefault(sample.prn, []).append(sample)
+        phase_by_prn.setdefault((sample.prn, sample.arc), []).append(sample)
     levelled: list[TecSample] = []
-    for prn in sorted(code_by_prn.keys() & phase_by_prn.keys()):
-        codes = code_by_prn[prn]
-        phases = phase_by_prn[prn]
-        if len(codes) != len(phases):
+    for key in sorted(code_by_prn.keys() & phase_by_prn.keys()):
+        codes = sorted(code_by_prn[key], key=lambda sample: sample.epoch)
+        phases = sorted(phase_by_prn[key], key=lambda sample: sample.epoch)
+        if len(codes) != len(phases) or any(
+            code.epoch != phase.epoch for code, phase in zip(codes, phases, strict=True)
+        ):
             continue
         values = level_tec(
             [item.tec for item in codes],
             [item.tec for item in phases],
         )
         levelled.extend(
-            TecSample(prn=prn, epoch=item.epoch, tec=value)
+            TecSample(prn=item.prn, epoch=item.epoch, tec=value, arc=item.arc)
             for item, value in zip(codes, values, strict=True)
         )
     return tuple(sorted(levelled, key=lambda item: (item.epoch, item.prn)))
 
 
-def _phase_samples(
-    observations: Sequence[Observation], epoch: float
-) -> tuple[TecSample, ...]:
-    """Carrier-phase TEC of every paired satellite at one epoch."""
-    by_prn: dict[int, list[Observation]] = {}
-    for observation in observations:
-        by_prn.setdefault(observation.prn, []).append(observation)
-    samples = []
-    for prn, group in sorted(by_prn.items()):
-        code = slant_tec(group)
-        carrier = phase_tec(group)
-        if code is not None and carrier is not None:
-            samples.append(TecSample(prn=prn, epoch=epoch, tec=carrier))
-    return tuple(samples)
+def _continuous_samples(
+    epochs: Sequence[tuple[float, Sequence[Observation]]], *, max_gap: float
+) -> tuple[list[TecSample], list[TecSample]]:
+    """Split each frequency pair when lock, signal or Doppler closure changes."""
+    previous: dict[int, tuple[CarrierState, CarrierState]] = {}
+    arcs: dict[int, int] = {}
+    code_samples: list[TecSample] = []
+    phase_samples: list[TecSample] = []
+    for epoch, observations in epochs:
+        grouped: dict[int, list[Observation]] = {}
+        for observation in observations:
+            grouped.setdefault(observation.prn, []).append(observation)
+        for prn, group in sorted(grouped.items()):
+            if len(group) != 2 or group[0].frequency_hz == group[1].frequency_hz:
+                previous.pop(prn, None)
+                continue
+            pair = sorted(group, key=lambda item: item.frequency_hz)
+            first, second = pair[0].carrier_state, pair[1].carrier_state
+            if first is None or second is None:
+                previous.pop(prn, None)
+                continue
+            states = (first, second)
+            if any(
+                not math.isfinite(state.lock_seconds) or state.lock_seconds <= 0
+                for state in states
+            ):
+                previous.pop(prn, None)
+                continue
+            old = previous.get(prn)
+            if old is None or not all(
+                continuous(before, after, max_gap=max_gap)
+                for before, after in zip(old, states, strict=True)
+            ):
+                arcs[prn] = arcs.get(prn, 0) + 1
+            code, phase = slant_tec(pair), phase_tec(pair)
+            if (
+                code is not None
+                and phase is not None
+                and math.isfinite(code)
+                and math.isfinite(phase)
+            ):
+                previous[prn] = (states[0], states[1])
+                code_samples.append(TecSample(prn, epoch, code, arcs[prn]))
+                phase_samples.append(TecSample(prn, epoch, phase, arcs[prn]))
+            else:
+                previous.pop(prn, None)
+    return code_samples, phase_samples
 
 
 def build_payload(
@@ -89,38 +134,65 @@ def build_payload(
     frequency_hz: float,
     *,
     phase_samples: Sequence[TecSample] = (),
+    max_gap: float | None = None,
 ) -> dict[str, object]:
     """Collect the TEC, ROT and ROTI series into a JSON payload."""
-    rates = rate_of_tec(samples)
+    rates = rate_of_tec(samples, max_gap=max_gap)
     indexes = roti(rates)
     levelled = _levelled_series(samples, phase_samples) if phase_samples else ()
-    phase_rates = rate_of_tec(levelled)
+    phase_rates = rate_of_tec(levelled, max_gap=max_gap)
     phase_indexes = roti(phase_rates)
     return {
         "frequency_hz": frequency_hz,
         "prn_count": prn_count,
         "dual_frequency": bool(samples),
+        "limitation": (
+            "Code and levelled carrier are uncalibrated TEC proxies; receiver "
+            "and satellite differential code biases remain. ROTI requires a "
+            "complete continuous five-minute window."
+        ),
         "tec": [
-            {"prn": sample.prn, "epoch": sample.epoch, "tec": sample.tec}
+            {
+                "prn": sample.prn,
+                "epoch": sample.epoch,
+                "tec": sample.tec,
+                "arc": sample.arc,
+            }
             for sample in samples
         ],
         "levelled_tec": [
-            {"prn": sample.prn, "epoch": sample.epoch, "tec": sample.tec}
+            {
+                "prn": sample.prn,
+                "epoch": sample.epoch,
+                "tec": sample.tec,
+                "arc": sample.arc,
+            }
             for sample in levelled
         ],
         "rot": [
-            {"prn": rate.prn, "epoch": rate.epoch, "rate": rate.rate} for rate in rates
+            {"prn": rate.prn, "epoch": rate.epoch, "rate": rate.rate, "arc": rate.arc}
+            for rate in rates
         ],
         "phase_rot": [
-            {"prn": rate.prn, "epoch": rate.epoch, "rate": rate.rate}
+            {"prn": rate.prn, "epoch": rate.epoch, "rate": rate.rate, "arc": rate.arc}
             for rate in phase_rates
         ],
         "roti": [
-            {"prn": index.prn, "epoch": index.epoch, "index": index.index}
+            {
+                "prn": index.prn,
+                "epoch": index.epoch,
+                "index": index.index,
+                "arc": index.arc,
+            }
             for index in indexes
         ],
         "phase_roti": [
-            {"prn": index.prn, "epoch": index.epoch, "index": index.index}
+            {
+                "prn": index.prn,
+                "epoch": index.epoch,
+                "index": index.index,
+                "arc": index.arc,
+            }
             for index in phase_indexes
         ],
     }
@@ -215,10 +287,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         for record in records
     ]
     reports = [tec_report(obs, epoch) for epoch, obs in epochs]
-    phases = [sample for epoch, obs in epochs for sample in _phase_samples(obs, epoch)]
-    samples = [sample for report in reports for sample in report.samples]
+    samples, phases = _continuous_samples(epochs, max_gap=2.5 * args.interval)
     prn_count = max((report.prn_count for report in reports), default=0)
-    payload = build_payload(samples, prn_count, args.frequency, phase_samples=phases)
+    payload = build_payload(
+        samples,
+        prn_count,
+        args.frequency,
+        phase_samples=phases,
+        max_gap=2.5 * args.interval,
+    )
     print(
         f"Ionosphere: {len(samples)} dual-frequency samples from "
         f"{prn_count} PRNs in {len(records)} RANGE epochs",

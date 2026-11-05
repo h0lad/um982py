@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 import random
+from pathlib import Path
 
 import pytest
 from examples.base_station_survey import (
@@ -50,7 +51,7 @@ def alternating_samples(
         SurveySample(
             x=CENTRE[0] + (horizontal if index % 2 else -horizontal),
             y=CENTRE[1] + (horizontal if index % 2 else -horizontal),
-            z=CENTRE[2] + (vertical if index % 2 else -vertical),
+            z=CENTRE[2] + (vertical if index % 2 else -vertical) + 1e-6 * index,
         )
         for index in range(count)
     ]
@@ -74,7 +75,7 @@ def test_equatorial_radial_scatter_is_vertical_not_horizontal() -> None:
     )
     assert result.horizontal_standard_error == pytest.approx(0.0, abs=1e-12)
     assert result.up.standard_error == pytest.approx(1 / math.sqrt(3), abs=1e-12)
-    assert result.converged
+    assert not result.converged  # Only two distinct quantized positions.
 
 
 def test_recovered_sigma_matches_the_sample_sigma() -> None:
@@ -148,7 +149,63 @@ def test_a_single_sample_reports_no_spread() -> None:
     result = survey([SurveySample(x=1.0, y=2.0, z=3.0)])
     assert result.count == 1
     assert result.ecef == pytest.approx((1.0, 2.0, 3.0), abs=0.0)
-    assert (result.x.std, result.x.standard_error) == (0.0, 0.0)
+    assert result.x.std is None and result.x.standard_error is None
+
+
+def test_repeated_positions_never_prove_convergence() -> None:
+    result = survey([SurveySample(*CENTRE)] * 30)
+    assert result.distinct_positions == 1
+    assert not result.converged
+
+
+def test_positive_serial_correlation_increases_uncertainty() -> None:
+    samples = [
+        SurveySample(CENTRE[0] + i * 0.01, CENTRE[1], CENTRE[2]) for i in range(30)
+    ]
+    result = survey(samples)
+    assert result.adjusted_vertical_standard_error is not None
+    assert result.up.standard_error is not None
+    assert result.adjusted_vertical_standard_error > result.up.standard_error
+
+
+def test_cli_deduplicates_receiver_epochs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    from examples.base_station_survey import __main__ as cli
+
+    from um982py.messages import Record
+
+    record = Record(
+        "BESTXYZ",
+        tuple(
+            {
+                "p_sol_status": 0,
+                "pos_type": "SINGLE",
+                "p_x": CENTRE[0],
+                "p_y": CENTRE[1],
+                "p_z": CENTRE[2],
+                "p_x_std": 1.0,
+                "p_y_std": 1.0,
+                "p_z_std": 1.0,
+            }.items()
+        ),
+    )
+    monkeypatch.setattr(
+        cli,
+        "capture_records",
+        lambda *args, **kwargs: {
+            "BESTXYZ": (record,) * 30,
+            "BESTNAV": (),
+        },
+    )
+    monkeypatch.setattr(cli, "record_epoch", lambda row: 123.0)
+    destination = tmp_path / "survey.json"
+    assert cli.main(["--port", "test", "--json", str(destination)]) == 0
+    data = json.loads(destination.read_text())
+    assert data["count"] == 1
+    assert data["status"] == "not_converged"
 
 
 def test_equal_weights_reproduce_the_arithmetic_mean() -> None:

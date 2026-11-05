@@ -8,6 +8,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import cast
 
+from examples._observation_arcs import CarrierState
 from examples.multipath_analysis import (
     MultipathSeries,
     Observation,
@@ -125,6 +126,14 @@ def synthetic_observations(
             pseudorange=GEOMETRY_METRES
             + signal.amplitude * math.sin(2 * math.pi * index / SAMPLES_PER_PERIOD),
             carrier_phase=-GEOMETRY_METRES / carrier_wavelength,
+            carrier_state=CarrierState(
+                epoch=index * cadence,
+                frequency_hz=CARRIER_HZ,
+                signal=0,
+                lock_seconds=index * cadence + 1,
+                phase_cycles=-GEOMETRY_METRES / carrier_wavelength,
+                doppler_hz=0,
+            ),
         )
         for signal in signals
         for index in range(samples)

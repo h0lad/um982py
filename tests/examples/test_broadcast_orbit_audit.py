@@ -93,16 +93,18 @@ def difference(
 
 
 def test_radial_error_alone_is_weighted_by_the_documented_factor() -> None:
-    assert signal_in_space_range_error(difference(1.0)) == pytest.approx(
-        math.sqrt(RADIAL_WEIGHT)
-    )
+    assert signal_in_space_range_error(difference(1.0)) == pytest.approx(RADIAL_WEIGHT)
 
 
 def test_a_clock_offset_cancels_the_radial_orbit_error() -> None:
-    clock = 1.0 / LIGHT_SPEED
+    clock = RADIAL_WEIGHT / LIGHT_SPEED
     assert signal_in_space_range_error(difference(1.0, clock=clock)) == pytest.approx(
         0.0, abs=1e-12
     )
+
+
+def test_clock_only_error_is_not_radially_weighted() -> None:
+    assert signal_in_space_range_error(difference(0, clock=2 / LIGHT_SPEED)) == 2
 
 
 def test_seven_metres_along_track_scores_one_metre_of_variance() -> None:
@@ -123,9 +125,9 @@ def test_sisre_summary_reports_rms_and_skips_unscored_epochs() -> None:
     )
     assert summary.samples == 2
     assert summary.without_clock == 1
-    expected = math.sqrt((RADIAL_WEIGHT * 1.0 + RADIAL_WEIGHT * 9.0) / 2.0)
+    expected = RADIAL_WEIGHT * math.sqrt(5.0)
     assert summary.rms_m == pytest.approx(expected)
-    assert summary.maximum_m == pytest.approx(math.sqrt(RADIAL_WEIGHT * 9.0))
+    assert summary.maximum_m == pytest.approx(3 * RADIAL_WEIGHT)
 
 
 def test_sisre_summary_without_scored_epochs_is_not_a_number() -> None:

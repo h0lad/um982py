@@ -5,6 +5,7 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable, Sequence
 
+from examples._observation_arcs import CarrierState
 from examples.multipath_analysis import (
     GPS_L1_HZ,
     MultipathSeries,
@@ -32,6 +33,14 @@ def read_observations(
                 frequency_hz=frequency_hz,
                 pseudorange=item.real("pseudorange"),
                 carrier_phase=item.real("carrier_phase"),
+                carrier_state=CarrierState(
+                    epoch=epoch,
+                    frequency_hz=frequency_hz,
+                    signal=(item.integer("tracking_status") >> 21) & 31,
+                    lock_seconds=item.real("lock_time"),
+                    phase_cycles=item.real("carrier_phase"),
+                    doppler_hz=item.real("doppler"),
+                ),
             )
         )
     return tuple(observations)
@@ -47,12 +56,17 @@ def build_payload(
         "series": [
             {
                 "prn": item.prn,
+                "arc": item.arc,
                 "epochs": len(item.epochs),
                 "rms": item.rms,
                 "maximum": max((abs(value) for value in item.residuals), default=0.0),
             }
             for item in series
         ],
+        "limitation": (
+            "Detrended code-minus-carrier is a proxy containing ionosphere, "
+            "noise and other effects; it is not calibrated multipath alone."
+        ),
         "epochs": [
             {
                 "epoch": summary.epoch,
@@ -144,7 +158,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             record, record_epoch(record), args.frequency
         )
     ]
-    series = multipath_series(observations)
+    series = multipath_series(observations, max_gap=2.5 * args.interval)
     payload = build_payload(series, args.frequency)
     print(
         f"Multipath: {len(series)} signals with residuals in "

@@ -90,6 +90,24 @@ def test_cli_writes_plot_ready_timeline_without_absolute_position(
         == 0
     )
     rows = timeline.read_text().splitlines()
-    assert rows[0] == "gps_epoch,computed,fixed,correction_age_s,truth_error_m"
+    assert rows[0] == (
+        "gps_epoch,computed,fixed,fresh_fixed,correction_age_s,truth_error_m"
+    )
     assert len(rows) > 2
     assert rows[1].endswith(",")
+
+
+def test_retained_fix_is_not_counted_as_recovered() -> None:
+    data = [PositionEpoch(float(i), (1, 2, 3), True, True, 0) for i in range(12)]
+    result = analyse_outages(data, [Outage(2, 5)], sustained_seconds=3)[0]
+    assert result.recovery_status == "retained"
+    assert result.recovery_after_end_s is None
+    assert not result.recovery_censored
+
+
+def test_stale_fixed_class_is_not_fresh_recovery() -> None:
+    data = [PositionEpoch(float(i), (1, 2, 3), True, True, 100) for i in range(12)]
+    result = analyse_outages(data, [Outage(2, 5)], sustained_seconds=3)[0]
+    assert result.recovery_status == "censored"
+    assert result.recovery_after_end_s is None
+    assert result.recovery_censored

@@ -26,6 +26,11 @@ class PositionEpoch:
     fixed: bool
     correction_age: float
 
+    @property
+    def fresh_fixed(self) -> bool:
+        """A computed fixed solution with a finite correction age up to 10 s."""
+        return self.computed and self.fixed and 0 <= self.correction_age <= 10
+
 
 @dataclass(frozen=True, slots=True)
 class OutageResult:
@@ -41,6 +46,9 @@ class OutageResult:
     maximum_position_step_m: float | None
     maximum_truth_error_m: float | None
     maximum_correction_age_s: float | None
+    recovery_status: str
+    fresh_fixed_before: bool | None
+    first_nonfresh_fixed_after_start_s: float | None
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,6 +68,7 @@ class OutageTimelineEpoch:
     fixed: bool
     correction_age_s: float
     truth_error_m: float | None
+    fresh_fixed: bool
 
 
 def epoch_timeline(
@@ -74,6 +83,7 @@ def epoch_timeline(
             norm(subtract(item.position, truth))
             if truth is not None and item.computed
             else None,
+            item.fresh_fixed,
         )
         for item in epochs
     )
@@ -141,6 +151,10 @@ def analyse_outages(
         ]
         window = [item for item in epochs if outage.start <= item.epoch <= limit]
         loss = next(
+            (item.epoch - outage.start for item in window if not item.fresh_fixed),
+            None,
+        )
+        raw_loss = next(
             (
                 item.epoch - outage.start
                 for item in window
@@ -151,10 +165,15 @@ def analyse_outages(
         recovery: float | None = None
         run_start: float | None = None
         previous_epoch: float | None = None
+        loss_epoch = None if loss is None else outage.start + loss
         for item in window:
-            if item.epoch < outage.end:
+            if (
+                item.epoch < outage.end
+                or loss_epoch is None
+                or item.epoch <= loss_epoch
+            ):
                 continue
-            if not item.computed or not item.fixed:
+            if not item.fresh_fixed:
                 run_start = None
             else:
                 if (
@@ -167,6 +186,25 @@ def analyse_outages(
                     recovery = run_start - outage.end
                     break
             previous_epoch = item.epoch
+        through_end = [item for item in window if item.epoch <= outage.end]
+        retained = bool(
+            before
+            and before[-1].fresh_fixed
+            and through_end
+            and all(item.fresh_fixed for item in through_end)
+            and all(
+                b.epoch - a.epoch <= max_gap
+                for a, b in itertools.pairwise([before[-1], *through_end])
+            )
+            and outage.end - through_end[-1].epoch <= max_gap
+        )
+        if retained:
+            recovery = None
+            status = "retained"
+        elif recovery is not None:
+            status = "recovered"
+        else:
+            status = "censored"
         step_epochs = ([before[-1]] if before else []) + window
         steps = [
             norm(subtract(b.position, a.position))
@@ -179,15 +217,18 @@ def analyse_outages(
                 outage.start,
                 outage.end,
                 before[-1].computed and before[-1].fixed if before else None,
-                loss,
+                raw_loss,
                 recovery,
-                recovery is None,
+                status == "censored",
                 limit,
                 max(steps) if steps else None,
                 max(norm(subtract(item.position, truth)) for item in valid)
                 if truth is not None and valid
                 else None,
                 max(item.correction_age for item in valid) if valid else None,
+                status,
+                before[-1].fresh_fixed if before else None,
+                loss,
             )
         )
     return tuple(result)

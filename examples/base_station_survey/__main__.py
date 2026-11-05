@@ -13,7 +13,7 @@ from examples.base_station_survey import (
     SurveySample,
     survey,
 )
-from um982py.capture import capture_records
+from um982py.capture import capture_records, record_epoch
 from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
 from um982py.corrections import stale_correction
@@ -24,10 +24,10 @@ from um982py.messages.record import Record
 
 def sample_from_record(record: Record) -> SurveySample:
     """Turn one ``BESTXYZ`` record into a sample weighted by inverse variance."""
-    deviation = (
-        math.fsum(record.real(key) ** 2 for key in ("p_x_std", "p_y_std", "p_z_std"))
-        / 3.0
-    )
+    sigmas = [record.real(key) for key in ("p_x_std", "p_y_std", "p_z_std")]
+    if any(not math.isfinite(value) or value < 0 for value in sigmas):
+        raise ValueError("receiver standard deviations must be finite and nonnegative")
+    deviation = math.fsum(value**2 for value in sigmas) / 3.0
     weight = 1.0 / deviation if deviation > 0 else 1.0
     return SurveySample(
         x=record.real("p_x"),
@@ -37,7 +37,7 @@ def sample_from_record(record: Record) -> SurveySample:
     )
 
 
-def axis_payload(axis: AxisStatistics) -> dict[str, float]:
+def axis_payload(axis: AxisStatistics) -> dict[str, float | None]:
     """Serialisable view of one axis."""
     return {
         "mean": axis.mean,
@@ -60,6 +60,13 @@ def payload_of(
         "height": result.height,
         "horizontal_standard_error": result.horizontal_standard_error,
         "converged": result.converged,
+        "distinct_positions": result.distinct_positions,
+        "adjusted_horizontal_standard_error": result.adjusted_horizontal_standard_error,
+        "adjusted_vertical_standard_error": result.adjusted_vertical_standard_error,
+        "uncertainty_note": (
+            "Nominal errors assume independent epochs; adjusted errors use a clipped "
+            "lag-one correlation screening estimate. Neither includes systematic bias."
+        ),
         "x": axis_payload(result.x),
         "y": axis_payload(result.y),
         "z": axis_payload(result.z),
@@ -198,8 +205,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.json,
         )
         return 1
+    by_epoch = {record_epoch(record): record for record in fresh}
+    if len(by_epoch) != len(fresh):
+        print(
+            f"Skipped {len(fresh) - len(by_epoch)} duplicate position epochs",
+            file=sys.stderr,
+        )
     result = survey(
-        [sample_from_record(record) for record in fresh],
+        [sample_from_record(by_epoch[epoch]) for epoch in sorted(by_epoch)],
         SurveyCriteria(
             minimum_samples=args.minimum_samples,
             horizontal_tolerance=args.horizontal_tolerance,
@@ -220,20 +233,30 @@ def main(argv: Sequence[str] | None = None) -> int:
             "survey height",
             file=sys.stderr,
         )
+
+    def metres(value: float | None) -> str:
+        return f"{value:.4f} m" if value is not None else "unknown"
+
     print(
         f"Survey: {result.count} samples; converged {result.converged}; "
         f"ecef {x:.4f} {y:.4f} {z:.4f}; "
         f"geodetic {result.latitude:.9f} {result.longitude:.9f} "
         f"{result.height:.4f} m; "
-        f"standard error H {result.horizontal_standard_error:.4f} m, "
-        f"V {result.up.standard_error:.4f} m",
+        "adjusted standard error H "
+        f"{metres(result.adjusted_horizontal_standard_error)}, "
+        f"V {metres(result.adjusted_vertical_standard_error)}",
         file=sys.stderr,
     )
     print(f"samples {result.count} converged {result.converged}")
     print(f"ecef {x:.4f} {y:.4f} {z:.4f}")
     print(f"geodetic {result.latitude:.9f} {result.longitude:.9f} {result.height:.4f}")
-    print(f"horizontal standard error {result.horizontal_standard_error:.4f} m")
-    print(f"vertical standard error {result.up.standard_error:.4f} m")
+    print(f"horizontal standard error {metres(result.horizontal_standard_error)}")
+    print(f"vertical standard error {metres(result.up.standard_error)}")
+    print(
+        f"correlation-adjusted standard error H "
+        f"{metres(result.adjusted_horizontal_standard_error)} / "
+        f"V {metres(result.adjusted_vertical_standard_error)}"
+    )
     write_json(payload_of(result, crosscheck), args.json)
     return 0
 

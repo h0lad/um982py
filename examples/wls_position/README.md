@@ -27,6 +27,11 @@ python -m examples.wls_position \
 
 Replay needs RANGE, GPS ephemeris and an initial position, supplied in the
 three captures shown.
+The receiver position must be computed and within `--position-tolerance`
+(default one second) of the RANGE epoch. GPS ephemerides must be healthy,
+have matching issue numbers and have a reference time within two hours of
+transmission. The output compares against the receiver position, not surveyed
+truth; formal covariance excludes unmodelled errors.
 
 ## Understanding the result
 

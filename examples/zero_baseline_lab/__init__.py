@@ -55,6 +55,10 @@ def double_differences(
         raise ValueError(
             "join tolerance must be nonnegative and smaller than a positive gap"
         )
+    if tolerance != 0:
+        raise ValueError(
+            "noise estimation requires exactly synchronized receiver epochs"
+        )
     by_epoch: list[dict[float, dict[SignalKey, RangeSample]]] = []
     for source in (first, second):
         epochs: dict[float, dict[SignalKey, RangeSample]] = defaultdict(dict)

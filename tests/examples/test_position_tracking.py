@@ -138,6 +138,18 @@ def test_bestnava_fixture_reports_the_captured_position_type() -> None:
     assert fix.timestamp > 0
 
 
+def test_negative_or_nonfinite_receiver_sigmas_are_unavailable() -> None:
+    record = bestnav_record(FIXTURES / "bodies" / "BESTNAVA.bin")
+    fields = dict(record.entries)
+    fields.update(lat_std=-1.0, lon_std=2.0, hgt_std=float("nan"))
+    fix = TrackPoint.from_record(
+        Record(record.name, tuple(fields.items())), timestamp=0
+    )
+    assert fix.latitude_sigma_m is None
+    assert fix.horizontal_sigma_m is None
+    assert fix.height_sigma_m is None
+
+
 def test_geojson_coordinates_are_longitude_then_latitude() -> None:
     track = build_track([point(0.0, 10.0, 20.0), point(5.0, 11.0, 21.0)])
     document = json.loads(json.dumps(track.geojson()))

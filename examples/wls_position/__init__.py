@@ -120,9 +120,7 @@ def solve_position(
     covariance: tuple[tuple[float, ...], ...] | None = None
     if converged:
         normal, _ = _normal_equations(measurements, state)
-        columns = [
-            _solve(normal, [float(i == j) for i in range(4)]) for j in range(3)
-        ]
+        columns = [_solve(normal, [float(i == j) for i in range(4)]) for j in range(3)]
         covariance = tuple(tuple(columns[j][i] for j in range(3)) for i in range(3))
     return PositionSolution(
         x=state[0],

@@ -137,11 +137,12 @@ def _fix_line(fix: CyclicFix) -> str:
     sigma = epoch.horizontal_sigma
     sigma_text = f"{sigma:.3f} m" if sigma is not None else "unknown"
     run = fix.precision.horizontal_scatter
+    run_text = f"{run:.3f} m" if run is not None else "unknown"
     return (
         f"[{fix.index:>4}] {position_label(epoch.position_type):<14}"
         f"lat {epoch.latitude:.9f} lon {epoch.longitude:.9f} "
         f"h {epoch.height:.3f} m sigH {sigma_text} sats {epoch.satellites:>3} "
-        f"| run n={fix.precision.epochs} scatterH {run:.3f} m"
+        f"| run n={fix.precision.epochs} scatterH {run_text}"
     )
 
 
@@ -248,7 +249,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{_csv_optional(fix.epoch.horizontal_sigma)},"
             f"{_csv_optional(fix.epoch.height_sigma)},"
             f"{fix.running.latitude:.9f},{fix.running.longitude:.9f},"
-            f"{fix.running.height:.3f},{fix.precision.horizontal_scatter:.4f}"
+            f"{fix.running.height:.3f},{_csv_optional(fix.precision.horizontal_scatter)}"
             for fix in collected
         )
         args.csv.write_text("\n".join(rows) + "\n", encoding="ascii")

@@ -18,7 +18,9 @@ python -m examples.zero_baseline_lab --replay captures/receiver-a.bin \
 
 `--replay` and `--reference` are captures from two receivers observing the same
 zero-baseline setup. `--reference-prn` selects a common continuously locked GPS
-satellite, while `--join-tolerance` limits the epoch mismatch in seconds.
+satellite. Noise estimation requires exactly matching GPS epochs;
+`--join-tolerance` must remain zero. Asynchronous observations cannot be
+treated as simultaneous without correcting their time-dependent range changes.
 
 ## Understanding the result
 

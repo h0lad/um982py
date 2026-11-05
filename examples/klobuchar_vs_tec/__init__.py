@@ -127,7 +127,7 @@ def vertical_delay_seconds(
         latitude, longitude, elevation, azimuth
     )
     magnetic_latitude = geomagnetic_latitude + 0.064 * math.cos(
-        geomagnetic_longitude - 1.617
+        math.pi * (geomagnetic_longitude - 1.617)
     )
     local_seconds = (43_200.0 * geomagnetic_longitude + gps_seconds) % SECONDS_PER_DAY
     period = coefficients.period(magnetic_latitude)

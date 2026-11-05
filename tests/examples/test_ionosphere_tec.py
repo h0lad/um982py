@@ -120,7 +120,7 @@ def test_levelling_removes_the_ambiguity() -> None:
 def test_constant_tec_gives_zero_roti() -> None:
     rates = rate_of_tec(tec_samples([25.0] * 21))
     assert [rate.rate for rate in rates] == approx([0.0] * 20, abs=1e-12)
-    assert [index.index for index in roti(rates)] == approx([0.0] * 19, abs=1e-12)
+    assert [index.index for index in roti(rates)] == approx([0.0] * 10, abs=1e-12)
 
 
 def test_linear_ramp_reproduces_the_ramp_rate() -> None:
@@ -136,7 +136,54 @@ def test_roti_is_the_standard_deviation_of_rot() -> None:
         TecRate(prn=7, epoch=60.0, rate=0.2),
         TecRate(prn=7, epoch=90.0, rate=0.4),
     )
-    assert roti(rates)[-1].index == approx(stddev([0.0, 0.2, 0.4]), abs=1e-12)
+    assert not roti(rates)
+    assert roti(rates, window_minutes=1)[-1].index == approx(
+        stddev([0.0, 0.2, 0.4]), abs=1e-12
+    )
+
+
+def test_roti_does_not_report_a_window_with_missing_rates() -> None:
+    rates = tuple(
+        TecRate(7, float(epoch), 0.0) for epoch in range(0, 301, 30) if epoch != 150
+    )
+    assert not roti(rates)
+
+
+def test_slip_splits_carrier_levelling_and_rot() -> None:
+    from examples._observation_arcs import CarrierState
+    from examples.ionosphere_tec.__main__ import _continuous_samples, build_payload
+
+    epochs = []
+    for epoch in range(6):
+        pair = []
+        for frequency in (L1_HZ, L2_HZ):
+            phase = 10.0 if frequency == L1_HZ and epoch >= 3 else 0.0
+            state = CarrierState(float(epoch), frequency, 0, epoch + 1.0, phase, 0.0)
+            pair.append(Observation(7, frequency, GEOMETRY_METRES, phase, state))
+        epochs.append((float(epoch), pair))
+    code, phase = _continuous_samples(epochs, max_gap=2.5)
+    assert [item.arc for item in phase] == [1, 1, 1, 2, 2, 2]
+    payload = build_payload(code, 1, L1_HZ, phase_samples=phase, max_gap=2.5)
+    assert len(payload["phase_rot"]) == 4
+    assert all(abs(row["rate"]) < 1e-9 for row in payload["phase_rot"])
+    assert "uncalibrated" in payload["limitation"]
+
+
+def test_gap_signal_change_and_lock_reset_split_arcs() -> None:
+    from examples._observation_arcs import CarrierState
+    from examples.ionosphere_tec.__main__ import _continuous_samples
+
+    epochs = []
+    for index, epoch in enumerate((0, 1, 5, 6, 7)):
+        pair = []
+        for frequency in (L1_HZ, L2_HZ):
+            signal = int(index >= 3 and frequency == L1_HZ)
+            lock = 1.0 if index == 4 else epoch + 1.0
+            state = CarrierState(float(epoch), frequency, signal, lock, 0, 0)
+            pair.append(Observation(7, frequency, GEOMETRY_METRES, 0, state))
+        epochs.append((float(epoch), pair))
+    _, phase = _continuous_samples(epochs, max_gap=2.5)
+    assert [item.arc for item in phase] == [1, 1, 2, 3, 4]
 
 
 def test_payload_includes_carrier_levelled_tec_and_phase_roti() -> None:

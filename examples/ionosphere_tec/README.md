@@ -34,6 +34,12 @@ path, while ROT and ROTI summarize its change over time and therefore need
 sufficient continuous observations. The result depends on the selected
 frequencies and processing assumptions.
 
+The reported code and levelled-phase TEC values are uncalibrated proxies: they
+retain receiver and satellite differential code biases and are not absolute
+TEC. Carrier arcs are split on signal or lock changes, gaps and failed
+Doppler-phase closure. ROTI is emitted only for a complete, regularly sampled
+five-minute arc. Set `--interval` to the capture cadence when replaying data.
+
 ## References
 
 Misra & Enge (2011), Global Positioning System.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import sys
 from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
@@ -11,7 +12,6 @@ from examples.time_transfer import (
     day_of_year,
     gpst_from_utc,
     leap_seconds,
-    utc_offset_seconds,
 )
 from um982py.capture import capture_records
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
@@ -23,6 +23,8 @@ def epoch_from_fields(
     year: float, month: float, day: float, hour: float, minute: float, second: float
 ) -> datetime:
     """Rebuild a ``TIME`` epoch from its calendar fields, which are UTC."""
+    if not math.isfinite(second) or not 0 <= second < 60:
+        raise ValueError("UTC leap seconds cannot be represented by datetime")
     whole = datetime(int(year), int(month), int(day), int(hour), int(minute))
     return whole + timedelta(seconds=second)
 
@@ -99,9 +101,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         record.real("minute"),
         record.real("millisecond") / 1000.0,
     )
-    gpst = gpst_from_utc(utc)
     reported = record.real("utc_offset")
-    table_offset = utc_offset_seconds(gpst)
+    table_offset = float(-leap_seconds(utc))
+    if not math.isfinite(reported) or abs(reported - table_offset) > 0.5:
+        write_json(
+            {
+                "status": "offset_disagreement",
+                "utc": utc.isoformat(),
+                "gpst": None,
+                "receiver_utc_offset": reported if math.isfinite(reported) else None,
+                "table_utc_offset": table_offset,
+                "reason": "receiver offset differs from the leap-second table",
+            },
+            args.json,
+        )
+        return 1
+    gpst = gpst_from_utc(utc)
     print(f"gpst {gpst.isoformat()} utc {utc.isoformat()}")
     print(f"day of year {day_of_year(utc.date())} leap seconds {leap_seconds(utc)}")
     print(f"receiver utc_offset {reported:+.0f} s table {table_offset:+.0f} s")

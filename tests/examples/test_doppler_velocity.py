@@ -1,17 +1,47 @@
 """Checks Doppler velocity against a hand-computed observation table."""
 
 import math
+from argparse import Namespace
 from dataclasses import replace
 from pathlib import Path
 
 import pytest
-from examples._gps_motion import _receiver_comparison
+from examples._gps_motion import _observer, _receiver_comparison
 from examples.doppler_velocity import wave_parameters
 
 from tests.examples._specialist import TRUTH
 from um982py.capture import decode_records, read_frames, record_epoch
 from um982py.experimental import FirmwareLog
 from um982py.experimental.gps_motion import RateMeasurement, solve_velocity
+from um982py.messages import Record
+
+
+def test_observer_ignores_invalid_and_uncomputed_positions(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def position(epoch: float, status: str, x: float) -> Record:
+        return Record(
+            "BESTXYZ",
+            (
+                ("epoch", epoch),
+                ("p_sol_status", status),
+                ("p_x", x),
+                ("p_y", 0.0),
+                ("p_z", 0.0),
+            ),
+        )
+
+    monkeypatch.setattr("examples._gps_motion.record_epoch", lambda r: r.real("epoch"))
+    records = [
+        position(1, "INSUFFICIENT_OBS", 6378137),
+        position(1, "SOL_COMPUTED", 0),
+        position(1.5, "SOL_COMPUTED", 6378137),
+    ]
+    assert _observer(Namespace(observer=None), records, 1) == (6378137, 0, 0)
+    with pytest.raises(ValueError, match="computed BESTXYZ"):
+        _observer(Namespace(observer=None), records[:2], 1)
+    with pytest.raises(ValueError, match="finite plausible"):
+        _observer(Namespace(observer=[0.0, 0.0, 0.0]), [], 1)
 
 
 def measurements() -> list[RateMeasurement]:

@@ -145,8 +145,10 @@ def build_payload(
                 "azimuth": azimuth,
                 "measured_vertical_delay_metres": measured,
                 "model_vertical_delay_metres": modelled,
+                "difference_metres": modelled - measured,
+                "absolute_difference_metres": abs(modelled - measured),
                 "relative_difference": abs(modelled - measured) / measured
-                if measured
+                if measured > 0.01
                 else None,
             }
         )
@@ -280,7 +282,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     payload["status"] = (
         "comparison_available" if payload["delays"] else "no_synchronized_GPS_pairs"
     )
-    payload["measurement"] = "code TEC; receiver/satellite biases are uncalibrated"
+    payload["measurement"] = (
+        "code TEC proxy; receiver/satellite biases are uncalibrated; relative "
+        "difference is unavailable for measured delays at or below 0.01 m"
+    )
     delays = payload["delays"]
     n_delays = len(delays) if isinstance(delays, list) else 0
     sigma_text = ", ".join(

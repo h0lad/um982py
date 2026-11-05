@@ -68,7 +68,7 @@ def frequency_deviation(
 def phase_adev(
     samples: Sequence[float], tau0: float = 1.0
 ) -> list[tuple[float, float]]:
-    """Time error deviation in seconds, the fractional deviation times tau."""
+    """Return tau times frequency ADEV in seconds; this is not TDEV."""
     return [
         (tau, tau * deviation) for tau, deviation in frequency_deviation(samples, tau0)
     ]
@@ -77,7 +77,7 @@ def phase_adev(
 def frequency_adev(
     pairs: Sequence[tuple[float, float]],
 ) -> list[tuple[float, float]]:
-    """Fractional frequency deviation, the time error deviation divided by tau."""
+    """Recover frequency ADEV by dividing tau-scaled ADEV by tau."""
     return [(tau, deviation / tau) for tau, deviation in pairs]
 
 

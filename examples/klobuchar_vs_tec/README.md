@@ -38,6 +38,10 @@ observations. Match the position, visibility, model and observation epochs.
 Both estimates rely on assumptions, so agreement does not independently establish
 the true delay.
 
+The code-derived delay retains uncalibrated receiver and satellite biases.
+The report omits relative differences when that delay is at or below 0.01 m;
+the signed and absolute differences remain available in metres.
+
 ## References
 
 Klobuchar (1987), single-frequency ionosphere model.

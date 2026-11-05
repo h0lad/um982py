@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import itertools
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -36,12 +37,14 @@ class UereEstimate:
 
 def horizontal_sigma(lat_std: float, lon_std: float) -> float:
     """Combined horizontal position sigma in metres from two axis sigmas."""
+    if not all(math.isfinite(value) and value >= 0 for value in (lat_std, lon_std)):
+        raise ValueError("position standard deviations must be finite and nonnegative")
     return math.hypot(lat_std, lon_std)
 
 
 def vertical_dilution(pdop: float, hdop: float) -> float:
     """Vertical dilution of precision from PDOP and HDOP."""
-    if pdop <= 0 or hdop <= 0:
+    if not math.isfinite(pdop) or not math.isfinite(hdop) or pdop <= 0 or hdop <= 0:
         raise ValueError("dilution of precision values must be positive")
     if pdop <= hdop:
         raise ValueError("PDOP must be greater than HDOP to resolve vertical UERE")
@@ -51,12 +54,15 @@ def vertical_dilution(pdop: float, hdop: float) -> float:
 def estimate_epoch(epoch: float, position: Record, dilution: Record) -> UereEstimate:
     """Invert sigma_position = DOP * sigma_UERE for one epoch."""
     hdop = dilution.real("hdop")
+    vertical_sigma = position.real("hgt_std")
+    if not math.isfinite(vertical_sigma) or vertical_sigma < 0:
+        raise ValueError("position standard deviations must be finite and nonnegative")
     return UereEstimate(
         epoch=epoch,
         horizontal_sigma=horizontal_sigma(
             position.real("lat_std"), position.real("lon_std")
         ),
-        vertical_sigma=position.real("hgt_std"),
+        vertical_sigma=vertical_sigma,
         hdop=hdop,
         vdop=vertical_dilution(dilution.real("pdop"), hdop),
     )
@@ -68,11 +74,19 @@ def epoch_estimates(
     """One estimate per BESTPOS record, paired with the DOP record of its epoch."""
     if len(positions) != len(dilutions):
         raise ValueError("BESTPOS and DOP series must hold the same number of epochs")
+    from um982py.capture import record_epoch
+
+    epochs = [record_epoch(position) for position in positions]
+    if any(a >= b for a, b in itertools.pairwise(epochs)):
+        raise ValueError("position epochs must increase strictly")
+    if any(
+        epoch != record_epoch(dilution)
+        for epoch, dilution in zip(epochs, dilutions, strict=True)
+    ):
+        raise ValueError("position and DOP epochs must match")
     return tuple(
         estimate_epoch(epoch, position, dilution)
-        for epoch, (position, dilution) in enumerate(
-            zip(positions, dilutions, strict=True)
-        )
+        for epoch, position, dilution in zip(epochs, positions, dilutions, strict=True)
     )
 
 

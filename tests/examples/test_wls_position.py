@@ -12,6 +12,7 @@ from examples.wls_position import (
     solve_position,
 )
 
+from um982py.messages import Record
 from um982py.messages.enums import SatelliteSystem
 
 
@@ -63,6 +64,85 @@ def test_formal_covariance_for_symmetric_satellite_geometry() -> None:
     assert solution.ecef_standard_deviation_m == pytest.approx((math.sqrt(3),) * 3)
     assert solution.ecef_covariance_m2 is not None
     assert solution.ecef_covariance_m2[0] == pytest.approx((3, 0, 0))
+
+
+def test_reference_position_must_be_computed_and_matched(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from examples.wls_position import __main__ as cli
+
+    monkeypatch.setattr(cli, "record_epoch", lambda record: record.real("epoch"))
+
+    def fix(epoch: float, status: str) -> Record:
+        return Record(
+            "BESTXYZ",
+            (
+                ("epoch", epoch),
+                ("p_sol_status", status),
+                ("p_x", 6378137.0),
+                ("p_y", 0.0),
+                ("p_z", 0.0),
+            ),
+        )
+
+    bad, stale, valid = (
+        fix(100, "INSUFFICIENT_OBS"),
+        fix(90, "SOL_COMPUTED"),
+        fix(100.5, "SOL_COMPUTED"),
+    )
+    assert cli.select_position([bad, stale, valid], 100, 1) is valid
+    with pytest.raises(ValueError, match="no valid"):
+        cli.select_position([bad, stale], 100, 1)
+
+
+def test_ephemeris_selection_checks_health_issue_and_age() -> None:
+    from examples.wls_position.__main__ import select_gps_ephemerides
+
+    def eph(toe: float, health: int = 0, issue2: int = 1) -> Record:
+        return Record(
+            "GPSEPH",
+            (
+                ("week", 2000),
+                ("toe", toe),
+                ("prn", 1),
+                ("health", health),
+                ("iode1", 1),
+                ("iode2", issue2),
+            ),
+        )
+
+    epoch = 2000 * 604800 + 100000
+    nearest = eph(99900)
+    assert select_gps_ephemerides(
+        [eph(99999, 1), eph(99998, issue2=2), eph(1000), nearest, eph(99000)], epoch
+    ) == {1: nearest}
+
+
+def test_ephemeris_age_uses_signal_transmit_time(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from examples.wls_position import __main__ as cli
+
+    ephemeris = Record(
+        "GPSEPH",
+        (
+            ("week", 2000),
+            ("toe", 92799.95),
+            ("prn", 1),
+            ("health", 0),
+            ("iode1", 1),
+            ("iode2", 1),
+        ),
+    )
+    observation = Record("observation", (("prn", 1), ("pseudorange", 29979245.8)))
+    monkeypatch.setattr(
+        cli, "gps_signals", lambda *args, **kwargs: ((observation, 1.0),)
+    )
+    epoch = 2000 * 604800 + 100000
+    assert cli.select_gps_ephemerides([ephemeris], epoch) == {}
+    assert cli.select_gps_ephemerides(
+        [ephemeris], epoch, ranges=Record("RANGE", ())
+    ) == {1: ephemeris}
 
 
 @pytest.mark.parametrize(

@@ -112,6 +112,33 @@ def test_zero_amplitude_keeps_the_night_time_delay() -> None:
     assert metres == pytest.approx(SPEED_OF_LIGHT * NIGHT_TIME_DELAY_SECONDS, abs=1e-6)
 
 
+def test_geomagnetic_longitude_is_converted_from_semicircles() -> None:
+    coefficients = KlobucharCoefficients(0, 1e-7, 0, 0, 72000, 0, 0, 0)
+    delay = vertical_delay_metres(
+        coefficients,
+        latitude=0,
+        longitude=0,
+        elevation=90,
+        azimuth=0,
+        gps_seconds=50400,
+    )
+    assert delay == pytest.approx(2.202, abs=0.002)
+
+
+def test_negative_biased_code_delay_has_no_relative_difference() -> None:
+    from examples.klobuchar_vs_tec.__main__ import build_payload
+
+    coefficients = KlobucharCoefficients(0, 0, 0, 0, 72000, 0, 0, 0)
+    payload = build_payload(
+        coefficients, 50400, 0, 0, {7: injected_observations(-5)}, {7: (45, 0)}
+    )
+    delays = payload["delays"]
+    assert isinstance(delays, list)
+    assert delays[0]["measured_vertical_delay_metres"] < 0
+    assert delays[0]["relative_difference"] is None
+    assert delays[0]["absolute_difference_metres"] > 0
+
+
 def test_diurnal_delay_peaks_in_the_local_afternoon() -> None:
     profile = diurnal_profile(
         live_coefficients(),

@@ -6,6 +6,7 @@ import argparse
 import sys
 from collections.abc import Sequence
 
+from examples._observation_arcs import CarrierState
 from examples.multipath_analysis import Observation
 from examples.multipath_vs_mask import (
     CARRIER_HZ,
@@ -74,6 +75,7 @@ def observations_from(
     """First observation per satellite of every collected RANGE frame."""
     observations = []
     for record in records:
+        epoch = record_epoch(record)
         seen = set()
         for observation, _ in gps_signals(record, [frequency_hz]):
             prn = observation.integer("prn")
@@ -83,10 +85,18 @@ def observations_from(
             observations.append(
                 Observation(
                     prn=prn,
-                    epoch=record_epoch(record),
+                    epoch=epoch,
                     frequency_hz=frequency_hz,
                     pseudorange=observation.real("pseudorange"),
                     carrier_phase=observation.real("carrier_phase"),
+                    carrier_state=CarrierState(
+                        epoch=epoch,
+                        frequency_hz=frequency_hz,
+                        signal=(observation.integer("tracking_status") >> 21) & 31,
+                        lock_seconds=observation.real("lock_time"),
+                        phase_cycles=observation.real("carrier_phase"),
+                        doppler_hz=observation.real("doppler"),
+                    ),
                 )
             )
     return tuple(observations)

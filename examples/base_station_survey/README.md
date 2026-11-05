@@ -30,6 +30,11 @@ The survey uses BESTXYZ epochs. Use `--minimum-samples`,
 `--horizontal-tolerance` and `--vertical-tolerance` to set the convergence
 criteria, while `--frames` and `--duration` bound a live collection.
 The JSON `status` is `not_converged` until the criteria are met.
+Duplicate epochs are removed. Convergence requires at least three distinct
+positions and at least half of all positions to be distinct. It uses a clipped
+lag-one correlation adjustment to the standard
+error. This screening estimate does not fully model long-memory correlation,
+quantization or systematic errors.
 
 ## Understanding the result
 

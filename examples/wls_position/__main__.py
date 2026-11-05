@@ -15,7 +15,7 @@ from examples.wls_position import (
     geodetic_position_error,
     solve_position,
 )
-from um982py.capture import capture_records, gps_signals, read_frames
+from um982py.capture import capture_records, gps_signals, read_frames, record_epoch
 from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
@@ -45,6 +45,67 @@ SATELLITE_SYSTEM_SHIFT = 16
 SATELLITE_SYSTEM_MASK = 0b111
 SIGNAL_TYPE_SHIFT = 21
 SIGNAL_TYPE_MASK = 0b11111
+GPS_WEEK_SECONDS = 604800.0
+MAX_EPHEMERIS_AGE_SECONDS = 7200.0
+
+
+def select_position(
+    records: Sequence[Record], epoch: float, tolerance: float
+) -> Record:
+    """Find a computed, finite receiver position near the observation epoch."""
+    if not math.isfinite(tolerance) or tolerance < 0:
+        raise ValueError("position tolerance must be finite and non-negative")
+    eligible = []
+    for record in records:
+        if record.get("p_sol_status") not in (0, "SOL_COMPUTED"):
+            continue
+        try:
+            xyz = receiver_ecef(record)
+            age = abs(record_epoch(record) - epoch)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if (
+            all(math.isfinite(x) for x in xyz)
+            and math.dist(xyz, (0, 0, 0)) > 1e6
+            and age <= tolerance
+        ):
+            eligible.append((age, record))
+    if not eligible:
+        raise ValueError("no valid receiver position within the epoch tolerance")
+    return min(eligible, key=lambda item: item[0])[1]
+
+
+def select_gps_ephemerides(
+    records: Sequence[Record], epoch: float, *, ranges: Record | None = None
+) -> dict[int, Record]:
+    """Choose healthy GPS ephemerides within two hours of the observation."""
+    travel_by_prn = (
+        {
+            item.integer("prn"): item.real("pseudorange") / SPEED_OF_LIGHT
+            for item, _ in gps_signals(ranges, [1575.42e6], phase=False)
+        }
+        if ranges is not None
+        else {}
+    )
+    best: dict[int, tuple[float, Record]] = {}
+    for record in records:
+        try:
+            if record.integer("health") != 0 or record.integer(
+                "iode1"
+            ) != record.integer("iode2"):
+                continue
+            toe = record.integer("week") * GPS_WEEK_SECONDS + record.real("toe")
+            prn = record.integer("prn")
+            age = abs(epoch - travel_by_prn.get(prn, 0.0) - toe)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if (
+            math.isfinite(age)
+            and age <= MAX_EPHEMERIS_AGE_SECONDS
+            and (prn not in best or age < best[prn][0])
+        ):
+            best[prn] = (age, record)
+    return {prn: entry[1] for prn, entry in best.items()}
 
 
 def epoch_seconds(message: Message) -> float:
@@ -146,7 +207,10 @@ def _solution_payload(
             "z": solution.z,
             "clock_bias_seconds": solution.clock_bias,
         },
-        "error": {"horizontal": error.horizontal, "vertical": error.vertical},
+        "difference_to_receiver_m": {
+            "horizontal": error.horizontal,
+            "vertical": error.vertical,
+        },
         "error_reference": "receiver position, not independent surveyed truth",
         "position_ecef_covariance_m2": solution.ecef_covariance_m2,
         "position_ecef_standard_deviation_m": solution.ecef_standard_deviation_m,
@@ -178,6 +242,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=Path,
         default=None,
         help="captured BESTPOS or BESTXYZ frame for replay",
+    )
+    parser.add_argument(
+        "--position-tolerance",
+        type=float,
+        default=1.0,
+        help="maximum receiver position epoch offset in seconds",
     )
     parser.add_argument(
         "--duration", type=float, default=5.0, help="live collection time in seconds"
@@ -223,11 +293,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     if range_record.message is None:
         parser.error("RANGE frame carries no timestamp")
     epoch = epoch_seconds(range_record.message)
-    ephemerides = {record.integer("prn"): record for record in ephemeris_records}
+    absolute_epoch = record_epoch(range_record)
+    ephemerides = select_gps_ephemerides(
+        ephemeris_records, absolute_epoch, ranges=range_record
+    )
     measurements = _gps_l1(range_record, ephemerides, epoch)
     if not measurements:
         parser.error("no GPS L1 observations have a matching ephemeris")
-    position = position_records[0]
+    position = select_position(
+        position_records, absolute_epoch, args.position_tolerance
+    )
     truth = receiver_position(position)
     solution = solve_position(measurements, (*truth, 0.0))
     latitude, longitude = (
@@ -236,12 +311,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         else geodetic_from_ecef(*truth)[:2]
     )
     payload = _solution_payload(solution, truth, latitude, longitude, len(measurements))
-    error = payload["error"]
+    error = payload["difference_to_receiver_m"]
     if isinstance(error, dict):
         print(
             f"WLS position: {len(measurements)} GPS L1 ranges; "
-            f"horizontal error {error['horizontal']:.3f} m, "
-            f"vertical error {error['vertical']:.3f} m; "
+            f"horizontal receiver difference {error['horizontal']:.3f} m, "
+            f"vertical difference {error['vertical']:.3f} m; "
             f"converged={payload['converged']}",
             file=sys.stderr,
         )

@@ -22,9 +22,11 @@ python -m examples.uere_budget --replay /tmp/uere.bin
 
 ## Inputs and results
 
-The calculation combines position uncertainty with dilution of precision. It is
-an estimate based on receiver data, not an independent measurement of range
-error.
+The calculation pairs computed SINGLE PSRPOS fixes and PSRDOP at the same
+epoch. Because the logs do not establish that both used the same satellite set,
+the calculation requires `--assume-matched-geometry` after independent review.
+The inversion also assumes unweighted geometry and equal independent range
+errors. Without the assertion, the example reports insufficient data.
 
 ## Understanding the result
 
@@ -32,8 +34,8 @@ User equivalent range error (UERE) is a summary estimate of measurement error
 expressed as an equivalent range error. This example combines receiver
 position uncertainty and dilution of precision (DOP), a geometry factor.
 
-The calculation inherits assumptions and uncertainty from the receiver and
-geometry. It is not an independent measurement of the actual ranging error.
+The reported pseudorange sigma is a receiver measurement diagnostic, not total
+UERE or independent validation of the position-derived estimate.
 
 ## References
 

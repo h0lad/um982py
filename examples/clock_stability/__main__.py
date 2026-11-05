@@ -18,6 +18,7 @@ def payload_of(report: ClockStability) -> dict[str, object]:
         "sample_count": report.sample_count,
         "taus": list(report.taus),
         "phase_deviation": list(report.phase_deviation),
+        "phase_deviation_definition": "tau times frequency Allan deviation; not TDEV",
         "frequency_deviation": list(report.frequency_deviation),
         "phase_slope": report.phase_slope,
         "frequency_slope": report.frequency_slope,
@@ -105,7 +106,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     for tau, phase, frequency in zip(
         report.taus, report.phase_deviation, report.frequency_deviation, strict=True
     ):
-        print(f"  tau {tau:>8.1f} s  adev {phase:.3e} s  adev_y {frequency:.3e}")
+        print(f"  tau {tau:>8.1f} s  tau*adev_y {phase:.3e} s  adev_y {frequency:.3e}")
     write_json(payload_of(report), args.json)
     return 0
 
