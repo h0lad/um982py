@@ -51,9 +51,6 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
         sleep(1)
 ```
 
-The reported standard deviations are receiver estimates, not measured errors against
-an independent reference. Latitude and longitude standard deviations are in metres.
-
 ### Read vehicle heading from two antennas
 
 ```python
