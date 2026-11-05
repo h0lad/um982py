@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import math
+
 import pytest
 from examples.wls_position import (
     PositionSolution,
@@ -40,6 +42,27 @@ def test_fewer_than_four_measurements_are_rejected() -> None:
     )
     with pytest.raises(ValueError, match="four"):
         solve_position([measurement], (0.0, 0.0, 0.0, 0.0))
+
+
+def test_formal_covariance_for_symmetric_satellite_geometry() -> None:
+    radius = math.sqrt(3) * 20_000_000
+    directions = ((1, 1, 1), (1, -1, -1), (-1, 1, -1), (-1, -1, 1))
+    measurements = [
+        RangeMeasurement(
+            SatelliteSystem.GPS,
+            i,
+            x * 20_000_000,
+            y * 20_000_000,
+            z * 20_000_000,
+            radius,
+            2.0,
+        )
+        for i, (x, y, z) in enumerate(directions, 1)
+    ]
+    solution = solve_position(measurements, (0, 0, 0, 0))
+    assert solution.ecef_standard_deviation_m == pytest.approx((math.sqrt(3),) * 3)
+    assert solution.ecef_covariance_m2 is not None
+    assert solution.ecef_covariance_m2[0] == pytest.approx((3, 0, 0))
 
 
 @pytest.mark.parametrize(

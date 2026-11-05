@@ -206,6 +206,13 @@ def _report(stats: CorrectionStats, monitor: PrecisionMonitor, *, debug: bool) -
         f"{selected.altitude:.3f} m ellipsoidal; "
         f"{selected.solution_satellites}/{selected.satellites} satellites used/tracked"
     )
+    horizontal = selected.horizontal_sigma_m
+    height = selected.height_sigma_m
+    horizontal_text = f"{horizontal:.3f} m" if horizontal is not None else "unknown"
+    height_text = f"{height:.3f} m" if height is not None else "unknown"
+    detail += (
+        f"; receiver horizontal sigma {horizontal_text}; height sigma {height_text}"
+    )
     if selected.correction_age_s is not None:
         detail += f"; correction age {selected.correction_age_s:.1f} s"
     if stats.station is not None:

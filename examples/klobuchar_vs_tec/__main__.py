@@ -265,15 +265,31 @@ def main(argv: Sequence[str] | None = None) -> int:
         pairs,
         geometry,
     )
+    sigma_fields = (
+        ("lat_std", "lon_std", "hgt_std")
+        if "lat" in position
+        else ("p_x_std", "p_y_std", "p_z_std")
+    )
+    payload["position_precision"] = {
+        "source": position.name,
+        "receiver_standard_deviation_m": {
+            name: position.real(name) if name in position else None
+            for name in sigma_fields
+        },
+    }
     payload["status"] = (
         "comparison_available" if payload["delays"] else "no_synchronized_GPS_pairs"
     )
     payload["measurement"] = "code TEC; receiver/satellite biases are uncalibrated"
     delays = payload["delays"]
     n_delays = len(delays) if isinstance(delays, list) else 0
+    sigma_text = ", ".join(
+        f"{name}={position.real(name):.3f} m" if name in position else f"{name}=unknown"
+        for name in sigma_fields
+    )
     print(
         f"Klobuchar vs TEC: {n_delays} satellite comparisons at "
-        f"{latitude:.4f}, {longitude:.4f}",
+        f"{latitude:.4f}, {longitude:.4f}; receiver std {sigma_text}",
         file=sys.stderr,
     )
     write_json(payload, args.json)

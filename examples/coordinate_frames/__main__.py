@@ -69,6 +69,17 @@ def _baseline_payload(baseline: Baseline) -> dict[str, float]:
     }
 
 
+def _position_precision(record: Record) -> dict[str, object]:
+    """Report the receiver's ECEF standard deviations without inventing covariance."""
+    return {
+        "ecef_standard_deviation_m": [
+            record.real(name) if name in record else None
+            for name in ("p_x_std", "p_y_std", "p_z_std")
+        ],
+        "source": record.name,
+    }
+
+
 def _payload(position: Geodetic, reported: Baseline) -> dict[str, object]:
     recovered = round_trip_baseline(position, reported)
     antenna = antenna_position(position, reported)
@@ -133,6 +144,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         Geodetic.from_position_record(origin),
         Baseline.from_baseline_record(baseline_record),
     )
+    payload["origin_precision"] = _position_precision(origin)
+    payload["antenna_precision"] = None
+    payload["precision_note"] = (
+        "Receiver ECEF standard deviations describe the origin; derived antenna "
+        "uncertainty requires baseline and cross-covariance information."
+    )
     if secondary:
         selected = Geodetic.from_position_record(position_record)
         payload["selected_antenna"] = 2
@@ -141,6 +158,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "longitude": selected.longitude,
             "height": selected.height,
         }
+        payload["selected_position_precision"] = _position_precision(position_record)
     residual = payload["residual"]
     if isinstance(residual, dict):
         print(

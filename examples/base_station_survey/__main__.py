@@ -225,13 +225,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"ecef {x:.4f} {y:.4f} {z:.4f}; "
         f"geodetic {result.latitude:.9f} {result.longitude:.9f} "
         f"{result.height:.4f} m; "
-        f"horizontal standard error {result.horizontal_standard_error:.4f} m",
+        f"standard error H {result.horizontal_standard_error:.4f} m, "
+        f"V {result.up.standard_error:.4f} m",
         file=sys.stderr,
     )
     print(f"samples {result.count} converged {result.converged}")
     print(f"ecef {x:.4f} {y:.4f} {z:.4f}")
     print(f"geodetic {result.latitude:.9f} {result.longitude:.9f} {result.height:.4f}")
     print(f"horizontal standard error {result.horizontal_standard_error:.4f} m")
+    print(f"vertical standard error {result.up.standard_error:.4f} m")
     write_json(payload_of(result, crosscheck), args.json)
     return 0
 

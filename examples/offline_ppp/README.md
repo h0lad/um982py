@@ -164,6 +164,8 @@ GPS phase-alignment declaration. A declaration is not independently verified.
 The position uses geodetic latitude, longitude and ellipsoidal height. Interpret
 it with the product reference frame and the marker/ARP convention. Times in the
 report are GPS time.
+Position uncertainty is currently unavailable in the CSV and report because the
+export does not extract and validate solver covariance.
 
 The solver rejects orbit or clock products with missing epochs and skips
 observations outside their coverage, allowing a one-second margin at the start

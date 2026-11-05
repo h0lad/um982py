@@ -38,6 +38,9 @@ def test_replay_invalid_position_breaks_velocity(
                 ("p_x", 6378137.0),
                 ("p_y", east),
                 ("p_z", 0.0),
+                ("p_x_std", 0.1),
+                ("p_y_std", 0.2),
+                ("p_z_std", 0.3),
             ),
         )
 
@@ -84,6 +87,7 @@ def test_replay_invalid_position_breaks_velocity(
         "undefined_ecef_position",
     ]
     assert data["samples"][1]["velocity_ecef_mps"] is None
+    assert data["samples"][0]["ecef_standard_deviation_m"] == [0.1, 0.2, 0.3]
     assert data["samples"][1]["velocity_unavailable_reason"] == "invalid_position_epoch"
     assert data["samples"][2]["velocity_enu_mps"] == [2, 0, 0]
     assert data["samples"][3]["velocity_unavailable_reason"] == "invalid_position_epoch"

@@ -125,6 +125,10 @@ def analyze(
                 "latitude_deg": latitude,
                 "longitude_deg": longitude,
                 "ellipsoidal_height_m": height,
+                "position_ecef_standard_deviation_m": [
+                    row.real(name) if name in row else None
+                    for name in ("p_x_std", "p_y_std", "p_z_std")
+                ],
                 "position_type": row["pos_type"],
                 "velocity_status": row["v_sol_status"],
                 "velocity_type": row["vel_type"],
@@ -241,6 +245,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "automatically vehicle heading. Integration omits gaps and can "
                 "accumulate velocity error. This is an experimental log, not a "
                 "certified navigation or safety system."
+                " Position standard deviations are receiver estimates in ECEF; "
+                "they do not establish absolute accuracy."
             ),
         }
     )

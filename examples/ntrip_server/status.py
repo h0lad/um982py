@@ -165,6 +165,8 @@ def build_snapshot(
             "coordinate_epoch": station.coordinate_epoch,
             "reference_point": "ARP",
             "position_reviewed": station.position_verified,
+            "position_uncertainty_m": None,
+            "position_uncertainty_note": "not included in the station manifest",
         },
         "connection": {
             "url": settings.caster_url.rstrip("/") + "/" + station.mountpoint,

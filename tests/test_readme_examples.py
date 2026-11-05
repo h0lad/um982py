@@ -48,7 +48,8 @@ def _run_snippet(
     [
         (
             "bodies/BESTNAVB.bin",
-            "52.533696, 13.376336 | SINGLE | 31 satellites | fresh RTK: False\n",
+            "52.533696313, 13.376335582 | receiver std (N/E/up): "
+            "2.459/2.204/2.859 m | SINGLE | 31 satellites | fresh RTK: False\n",
         ),
         ("bestnavb.bin", "Waiting for a position: INSUFFICIENT_OBS\n"),
     ],

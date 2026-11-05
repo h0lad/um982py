@@ -339,7 +339,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         lines.extend(
             f"{item.epoch:.3f},{item.latitude:.9f},{item.longitude:.9f},"
             f"{item.height:.3f},{item.position_type},{item.satellites},"
-            f"{item.latitude_sigma if item.latitude_sigma is not None else ''},"
+            f"{item.horizontal_sigma if item.horizontal_sigma is not None else ''},"
             f"{item.height_sigma if item.height_sigma is not None else ''}"
             for item in epochs
         )

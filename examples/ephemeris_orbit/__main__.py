@@ -59,11 +59,16 @@ def report(records: dict[str, list[Record]], seconds: float) -> dict[str, object
                         round(state.y, 1),
                         round(state.z, 1),
                     ],
+                    "position_uncertainty_m": None,
                     "radius": round(state.radius, 1),
                     "clock_bias": state.clock_bias,
                 }
             )
-    return {"seconds": seconds, "satellites": satellites}
+    return {
+        "seconds": seconds,
+        "satellites": satellites,
+        "position_uncertainty_note": "Broadcast orbit uncertainty is not calculated",
+    }
 
 
 def main(argv: Sequence[str] | None = None) -> int:

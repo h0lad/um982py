@@ -158,6 +158,10 @@ def _summary(collected: Sequence[CyclicFix], *, service: str) -> str:
     return "\n".join(lines)
 
 
+def _csv_optional(value: float | None) -> str:
+    return "" if value is None else str(value)
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Watch PPPNAV fixes cyclically and report each through a callback."""
     parser = ExampleParser(prog="python -m examples.has_b2b_ppp_fix.cyclic")
@@ -233,7 +237,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.csv is not None:
         args.csv.parent.mkdir(parents=True, exist_ok=True)
         rows = [
-            "fix,epoch_gps,lat_deg,lon_deg,hgt_m,pos_type,sats,"
+            "fix,epoch_gps,lat_deg,lon_deg,hgt_m,pos_type,sats,h_sigma_m,v_sigma_m,"
             "run_lat_deg,run_lon_deg,run_hgt_m,run_scatter_h_m"
         ]
         rows.extend(
@@ -241,6 +245,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             f"{fix.epoch.latitude:.9f},{fix.epoch.longitude:.9f},"
             f"{fix.epoch.height:.3f},{fix.epoch.position_type},"
             f"{fix.epoch.satellites},"
+            f"{_csv_optional(fix.epoch.horizontal_sigma)},"
+            f"{_csv_optional(fix.epoch.height_sigma)},"
             f"{fix.running.latitude:.9f},{fix.running.longitude:.9f},"
             f"{fix.running.height:.3f},{fix.precision.horizontal_scatter:.4f}"
             for fix in collected

@@ -39,7 +39,9 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
         quality = solution_from_record(record_epoch(position), position)
         if quality.is_available:
             print(
-                f"{position.real('lat'):.6f}, {position.real('lon'):.6f} | "
+                f"{position.real('lat'):.9f}, {position.real('lon'):.9f} | "
+                f"receiver std (N/E/up): {position.real('lat_std'):.3f}/"
+                f"{position.real('lon_std'):.3f}/{position.real('hgt_std'):.3f} m | "
                 f"{quality.position_label} | {quality.satellites_used} satellites | "
                 f"fresh RTK: {quality.fresh_fixed}",
                 flush=True,
@@ -48,6 +50,9 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
             print(f"Waiting for a position: {quality.solution_label}", flush=True)
         sleep(1)
 ```
+
+The reported standard deviations are receiver estimates, not measured errors against
+an independent reference. Latitude and longitude standard deviations are in metres.
 
 ### Read vehicle heading from two antennas
 

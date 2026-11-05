@@ -52,6 +52,19 @@ class PositionSolution:
     iterations: int
     residual_norms: tuple[float, ...]
     converged: bool
+    ecef_covariance_m2: tuple[tuple[float, ...], ...] | None = None
+
+    @property
+    def ecef_standard_deviation_m(self) -> tuple[float, float, float] | None:
+        """Formal per-axis standard deviations, when the solver converged."""
+        if self.ecef_covariance_m2 is None:
+            return None
+        covariance = self.ecef_covariance_m2
+        return (
+            math.sqrt(max(0.0, covariance[0][0])),
+            math.sqrt(max(0.0, covariance[1][1])),
+            math.sqrt(max(0.0, covariance[2][2])),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,6 +117,13 @@ def solve_position(
         if math.sqrt(sum(delta * delta for delta in step)) < tolerance:
             converged = True
             break
+    covariance: tuple[tuple[float, ...], ...] | None = None
+    if converged:
+        normal, _ = _normal_equations(measurements, state)
+        columns = [
+            _solve(normal, [float(i == j) for i in range(4)]) for j in range(3)
+        ]
+        covariance = tuple(tuple(columns[j][i] for j in range(3)) for i in range(3))
     return PositionSolution(
         x=state[0],
         y=state[1],
@@ -112,6 +132,7 @@ def solve_position(
         iterations=iterations,
         residual_norms=tuple(residual_norms),
         converged=converged,
+        ecef_covariance_m2=covariance,
     )
 
 

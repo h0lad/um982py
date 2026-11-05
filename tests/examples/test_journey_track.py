@@ -19,6 +19,9 @@ def position(epoch: float, east_mps: float, status: str = "SOL_COMPUTED") -> Rec
                 "p_x": 6378137.0,
                 "p_y": 0.0,
                 "p_z": 0.0,
+                "p_x_std": 1.0,
+                "p_y_std": 2.0,
+                "p_z_std": 3.0,
                 "v_sol_status": "SOL_COMPUTED",
                 "vel_type": "DOPPLER_VELOCITY",
                 "v_x": 3.0,
@@ -56,6 +59,7 @@ def test_motion_and_gap(monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(samples, list)
     assert samples[0]["course_true_deg"] == 90
     assert samples[0]["vertical_speed_mps"] == 3
+    assert samples[0]["position_ecef_standard_deviation_m"] == [1.0, 2.0, 3.0]
 
 
 def test_manual_replay(tmp_path: Path) -> None:

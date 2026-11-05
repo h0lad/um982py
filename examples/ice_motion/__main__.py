@@ -37,6 +37,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if source_path.resolve() == args.output.resolve():
         parser.error("output must differ from input")
     rejected = []
+    precision_by_epoch: dict[float, list[float | None]] = {}
     observations: list[tuple[float, tuple[float, float, float] | None]] = []
     if args.replay:
         records = load_records(args.replay, Log.BESTNAVXYZ)
@@ -75,6 +76,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 observations.append((epoch, None))
                 continue
             observations.append((epoch, xyz))
+            precision_by_epoch[epoch] = [
+                row.real(name) if name in row else None
+                for name in ("p_x_std", "p_y_std", "p_z_std")
+            ]
         if any(not math.isfinite(epoch) for epoch, _ in observations) or any(
             b[0] <= a[0] for a, b in pairwise(observations)
         ):
@@ -118,6 +123,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             {
                 "gps_seconds": epoch,
                 "ecef_m": position,
+                "ecef_standard_deviation_m": precision_by_epoch.get(epoch),
                 "displacement_ecef_m": displacement,
                 "displacement_enu_m": enu,
                 "velocity_ecef_mps": velocity,
@@ -140,7 +146,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "limitations": (
             "First position is the local origin, not surveyed truth. Velocity is "
             "a two-epoch finite difference, and frame, antenna and covariance are "
-            "not independently validated."
+            "not independently validated. ECEF standard deviations, when present, "
+            "are receiver estimates; motion uncertainty requires covariance."
         ),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

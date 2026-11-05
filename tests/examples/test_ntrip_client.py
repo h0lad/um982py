@@ -440,6 +440,17 @@ def test_report_shows_each_solution_and_the_selected_source(
     assert "selected SPPNAV" in output
 
 
+def test_debug_position_includes_selected_uncertainty(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    fix = TrackPoint(
+        100, 48, 9, 260, None, 20, "SINGLE", horizontal_sigma_m=2, height_sigma_m=3
+    )
+    _report(CorrectionStats(), PrecisionMonitor(corrected=[fix]), debug=True)
+    output = capsys.readouterr().err
+    assert "receiver horizontal sigma 2.000 m; height sigma 3.000 m" in output
+
+
 def test_requested_command_feeds_corrections_to_receiver() -> None:
     class ReceiverStub:
         def __init__(self) -> None:

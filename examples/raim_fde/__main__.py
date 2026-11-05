@@ -157,6 +157,13 @@ def _payload(
         ],
         "protection_levels": {"hpl": result.hpl, "vpl": result.vpl},
         "error": {"horizontal": error.horizontal, "vertical": error.vertical},
+        "error_reference": "receiver position, not independent surveyed truth",
+        "position_ecef_covariance_m2": result.solution.ecef_covariance_m2,
+        "position_ecef_standard_deviation_m": result.solution.ecef_standard_deviation_m,
+        "position_uncertainty_note": (
+            "Formal covariance assumes independent pseudorange errors and excludes "
+            "systematic errors; protection levels are not standard deviations"
+        ),
         "position": {
             "x": result.solution.x,
             "y": result.solution.y,

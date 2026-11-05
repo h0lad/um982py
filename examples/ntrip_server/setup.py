@@ -154,6 +154,7 @@ def main() -> int:
             f"Calculated ARP: {latitude:.9f}, {longitude:.9f}, "
             f"{height:.4f} m ellipsoidal"
         )
+        print("ARP uncertainty is unavailable; review survey and offset uncertainties.")
     print("Copy the reference frame and coordinate epoch from the reviewed solution.")
     print("The epoch is a decimal year (for example 2026.8), not a date or GPS week.")
     frame = ask("Reference frame (for example ITRF2020)")

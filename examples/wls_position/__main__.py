@@ -147,6 +147,13 @@ def _solution_payload(
             "clock_bias_seconds": solution.clock_bias,
         },
         "error": {"horizontal": error.horizontal, "vertical": error.vertical},
+        "error_reference": "receiver position, not independent surveyed truth",
+        "position_ecef_covariance_m2": solution.ecef_covariance_m2,
+        "position_ecef_standard_deviation_m": solution.ecef_standard_deviation_m,
+        "position_uncertainty_note": (
+            "Formal covariance from independent pseudorange standard deviations; "
+            "excludes atmospheric and other systematic errors. Null if unconverged."
+        ),
         "iterations": solution.iterations,
         "converged": solution.converged,
         "residual_norms": list(solution.residual_norms),

@@ -169,6 +169,7 @@ from examples.coordinate_frames import Baseline, Geodetic, antenna_position
 marker = Geodetic(latitude=50.0, longitude=8.0, height=122.1655)
 arp = antenna_position(marker, Baseline(east=0.0, north=0.0, up=1.2345))
 print(arp.latitude, arp.longitude, arp.height)
+print("ARP uncertainty unavailable: include survey and offset uncertainties")
 ```
 
 Alternatively, the setup wizard in step 6 performs this conversion when you
@@ -181,6 +182,7 @@ from examples.coordinate_frames import Geodetic
 
 point = Geodetic.from_ecef(4060000.0, 571000.0, 4880000.0)  # example only
 print(point.latitude, point.longitude, point.height)
+print("Position uncertainty: use the source survey report")
 ```
 
 Enter the resulting values as `marker` or `arp` according to the report. These

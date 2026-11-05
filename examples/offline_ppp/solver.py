@@ -172,6 +172,7 @@ def process_observations(
                 "longitude_deg",
                 "ellipsoidal_height_m",
                 "satellites",
+                "position_uncertainty_m",
             ]
         )
         try:
@@ -214,6 +215,7 @@ def process_observations(
                     "longitude_deg": longitude,
                     "ellipsoidal_height_m": height,
                     "satellites": int(nav.nsat[2]),
+                    "position_uncertainty_m": None,
                 }
                 if first is None:
                     first = last
@@ -235,6 +237,7 @@ def process_observations(
                         longitude,
                         height,
                         last["satellites"],
+                        last["position_uncertainty_m"],
                     ]
                 )
                 count += 1
@@ -260,6 +263,9 @@ def process_observations(
         "epochs_outside_product_coverage": outside_coverage,
         "epochs_solver_rejected": solver_rejected,
         "ppp_epochs": count,
+        "position_uncertainty_note": (
+            "Unavailable: this export does not validate or extract solver covariance."
+        ),
         "satellites_used": {
             "minimum": satellite_min,
             "maximum": satellite_max if count else None,
