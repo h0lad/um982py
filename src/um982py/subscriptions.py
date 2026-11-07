@@ -2,6 +2,7 @@
 
 from collections.abc import Iterator
 from contextlib import contextmanager
+from sys import exception
 
 from um982py.commands import logging
 from um982py.commands.core import Command
@@ -40,4 +41,10 @@ def temporary_subscriptions(
                     except Exception as error:
                         errors.append(error)
         if errors:
+            original = exception()
+            if original is not None:
+                raise BaseExceptionGroup(
+                    "Capture failed and temporary subscriptions could not be restored",
+                    [original, *errors],
+                ) from None
             raise ExceptionGroup("Could not restore temporary subscriptions", errors)

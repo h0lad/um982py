@@ -81,3 +81,17 @@ def test_cleanup_failure_is_reported_and_other_logs_are_restored() -> None:
     assert isinstance(caught.value.exceptions[0], CommandRejected)
     assert transport.subscriptions["BESTNAVA", Port.COM1] == 10.0
     assert ("SATSINFOA", Port.COM1) in transport.subscriptions
+
+
+def test_body_and_cleanup_failures_are_both_reported() -> None:
+    transport = SubscriptionTransport()
+    transport.rejected.add("UNLOG SATSINFOA")
+    with (
+        Receiver(transport) as receiver,
+        pytest.raises(ExceptionGroup) as caught,
+        temporary_subscriptions(receiver, ("SATSINFOA", Log.SATSINFO.output(1))),
+    ):
+        raise RuntimeError("capture failed")
+    assert isinstance(caught.value.exceptions[0], RuntimeError)
+    assert str(caught.value.exceptions[0]) == "capture failed"
+    assert isinstance(caught.value.exceptions[1], CommandRejected)
