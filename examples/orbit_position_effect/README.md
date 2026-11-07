@@ -17,8 +17,6 @@ Supply your own satellite state differences with `--input` and add
 
 One row per satellite supplies unit line of sight `u_x,u_y,u_z` from receiver to satellite, ECEF satellite position difference `dx_m,dy_m,dz_m` (perturbed minus reference), satellite clock difference `clock_delta_s` in seconds with the same sign convention, and a positive weight. All rows must describe the same epoch and compatible frame, clock and signal conventions.
 
-The included state differences are synthetic.
-
 ## Explanation and interpretation
 
 For fixed observations, the induced residual is `-u·delta_sat + c × delta_clock`.

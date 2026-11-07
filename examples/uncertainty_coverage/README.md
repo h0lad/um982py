@@ -17,8 +17,6 @@ add `--json result.json` to save the report. No receiver connection is required.
 
 Each row contains east, north and up errors and the corresponding positive receiver-reported standard deviations, in metres. Compute errors against a surveyed point in a consistent coordinate frame and epoch. `--multiplier` sets the threshold in sigma units (default 1).
 
-The included errors and uncertainties are synthetic.
-
 ## Explanation and interpretation
 
 The report gives counts and fractions within the chosen per-axis threshold,
