@@ -55,14 +55,16 @@ class AugmentationState:
     """What one session applied, what the firmware refused and what was saved."""
 
     previous_group: SignalGroup
-    active_group: SignalGroup
+    active_group: SignalGroup | None
     applied: tuple[str, ...]
     rejected: tuple[tuple[str, str], ...]
     saved: bool
 
     @property
-    def changed(self) -> bool:
-        """True only when the active signal group differs from the previous one."""
+    def changed(self) -> bool | None:
+        """Whether the verified group changed, or None if it could not be read."""
+        if self.active_group is None:
+            return None
         return self.active_group != self.previous_group
 
     @property
@@ -103,15 +105,13 @@ def augmentation_plan(current: SignalGroup) -> tuple[AugmentationStep, ...]:
 
 
 def enable_augmentation(
-    receiver: CommandExecutor, *, persist: bool = True
+    receiver: CommandExecutor, *, persist: bool = False
 ) -> AugmentationState:
-    """Apply every augmentation feature and persist a signal-group change.
+    """Apply augmentation features, optionally saving a verified group change.
 
     A refused feature never aborts the session: it is reported in ``rejected``
     so a firmware without that option still yields a usable receiver.  The
-    configuration is saved only when the signal group changed, so the receiver
-    boots into the high-accuracy group from then on without a flash write per
-    session.
+    configuration is saved only when requested and the verified group changed.
     """
     previous = receiver.execute(current_signal_group())
     applied: list[str] = []
@@ -127,9 +127,9 @@ def enable_augmentation(
         active = receiver.execute(current_signal_group())
     except (UM982Error, OSError, ValueError) as error:
         rejected.append(("read_signal_group", str(error)))
-        active = HIGH_ACCURACY_SIGNAL_GROUP if "signal_group" in applied else previous
+        active = None
     saved = False
-    if active != previous and persist:
+    if active is not None and active != previous and persist:
         try:
             receiver.execute(save_configuration())
         except (UM982Error, OSError, ValueError) as error:

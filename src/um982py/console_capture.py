@@ -44,7 +44,7 @@ def open_receiver(
             except (UM982Error, OSError, ValueError) as error:
                 print(f"warning: augmentation not applied: {error}", file=sys.stderr)
             else:
-                if state.changed:
+                if state.changed and state.active_group is not None:
                     print(
                         "augmentation: signal group "
                         f"{state.previous_group.master} "

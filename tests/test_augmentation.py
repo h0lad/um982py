@@ -68,7 +68,7 @@ def test_plan_only_switches_a_group_that_cannot_see_e6_or_b2b() -> None:
 
 def test_a_group_change_is_applied_and_saved_once() -> None:
     receiver = Scripted(SignalGroup(4, 5))
-    result = enable_augmentation(receiver)
+    result = enable_augmentation(receiver, persist=True)
     assert result.previous_group == SignalGroup(4, 5)
     assert result.active_group == HIGH_ACCURACY_SIGNAL_GROUP
     assert result.applied == FEATURES
@@ -109,10 +109,37 @@ def test_a_refused_group_change_keeps_the_previous_group_unsaved() -> None:
 
 
 def test_a_failed_save_is_reported_while_the_features_stay_active() -> None:
-    result = enable_augmentation(Scripted(SignalGroup(4, 5), ("SAVECONFIG",)))
+    result = enable_augmentation(
+        Scripted(SignalGroup(4, 5), ("SAVECONFIG",)), persist=True
+    )
     assert result.changed and not result.saved
     assert ("save_configuration", "SAVECONFIG: ERROR") in result.rejected
     assert result.active_group == HIGH_ACCURACY_SIGNAL_GROUP
+
+
+def test_default_does_not_save() -> None:
+    receiver = Scripted(SignalGroup(4, 5))
+    result = enable_augmentation(receiver)
+    assert result.changed and not result.saved
+    assert not receiver.saved
+
+
+def test_failed_verification_does_not_invent_or_save_active_group() -> None:
+    class FailedVerification(Scripted):
+        queries = 0
+
+        def execute[T](self, command: Command[T], *, timeout: float | None = None) -> T:
+            if command.text == "CONFIG":
+                self.queries += 1
+                if self.queries == 2:
+                    raise CommandRejected("CONFIG", "unavailable")
+            return super().execute(command, timeout=timeout)
+
+    receiver = FailedVerification(SignalGroup(4, 5))
+    result = enable_augmentation(receiver, persist=True)
+    assert result.active_group is None
+    assert result.changed is None
+    assert not result.saved and not result.complete
 
 
 @pytest.mark.parametrize("group", [SignalGroup(4, 5), HIGH_ACCURACY_SIGNAL_GROUP])

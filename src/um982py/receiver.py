@@ -257,7 +257,7 @@ class Receiver:
         record = self.read_log(FirmwareLog.RANGE, binary=True, antenna=antenna)
         return gnss_range_samples(record, systems=systems, signals=signals)
 
-    def enable_augmentation(self, *, persist: bool = True) -> AugmentationState:
+    def enable_augmentation(self, *, persist: bool = False) -> AugmentationState:
         """Enable high-accuracy signal group, SBAS, E6-HAS, B2b-PPP and MMP."""
         return enable_augmentation(self, persist=persist)
 

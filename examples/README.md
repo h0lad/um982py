@@ -45,8 +45,8 @@ antenna activity, not correction tracking or PPP use.
 Orbit comparisons require a matching precise product, sidereal analysis requires
 a second day, and accuracy checks require independent reference data. Live
 examples leave the receiver configuration alone unless their documented options
-change it. For example, `--augment` enables augmentation and attempts to save the
-receiver configuration if it changes the signal group.
+change it. For example, `--augment` enables augmentation without saving the
+receiver configuration.
 
 ## Projects
 
@@ -82,7 +82,7 @@ receiver configuration if it changes the signal group.
 
 ### Signals, antennas and interference
 
-- [`antenna_gain_pattern`](antenna_gain_pattern/README.md): Fits an empirical received C/N0 elevation pattern without claiming calibrated antenna gain.
+- [`antenna_gain_pattern`](antenna_gain_pattern/README.md): Fits an empirical received C/N0 elevation pattern.
 - [`cw_jamming`](cw_jamming/README.md): Classifies continuous-wave jamming from JAMSTATUS and FREQJAMSTATUS.
 - [`dual_antenna_rf_audit`](dual_antenna_rf_audit/README.md): Pairs ANT1 and ANT2 C/N0 at shared epochs and summarizes differences by signal and elevation.
 - [`interference_monitor`](interference_monitor/README.md): Alerts on jamming, spoofing and C/N0 dropouts.
