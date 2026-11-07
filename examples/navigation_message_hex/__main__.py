@@ -16,7 +16,7 @@ from examples.navigation_message_hex import (
 )
 from um982py import Receiver
 from um982py.antenna import AntennaLog, antenna_log
-from um982py.capture import open_receiver, read_frames
+from um982py.capture import iter_frames, open_receiver
 from um982py.commands import Log, Trigger
 from um982py.console import (
     ExampleParser,
@@ -188,7 +188,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(str(error))
     if args.replay is not None:
         messages = replay(
-            read_frames(args.replay), args.family, args.extra, args.antenna
+            iter_frames(args.replay), args.family, args.extra, args.antenna
         )
     else:
         with open_receiver(args) as receiver:

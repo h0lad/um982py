@@ -19,7 +19,12 @@ from examples.ttff_profile import (
     repeatability,
 )
 from um982py.antenna import antenna_log
-from um982py.capture import DataLog, open_receiver, read_frames, record_epoch
+from um982py.capture import (
+    decode_records,
+    iter_frames,
+    open_receiver,
+    record_epoch,
+)
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -29,7 +34,6 @@ from um982py.console import (
 )
 from um982py.errors import ResponseTimeout, TransportError
 from um982py.experimental import FirmwareLog
-from um982py.messages import Message
 from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.messages.record import Record
 from um982py.subscriptions import temporary_subscriptions
@@ -77,17 +81,6 @@ def injected_runs() -> tuple[tuple[tuple[FixEpoch, ...], TtffMeasurement], ...]:
     )
 
 
-def frames_of(frames: Sequence[Message], log: DataLog) -> list[Record]:
-    """Decode every frame of a transcript that carries the given firmware log."""
-    records = []
-    for message in frames:
-        for binary in (False, True):
-            if log.request(binary=binary).matches(message):
-                records.append(log.decode(message))
-                break
-    return records
-
-
 def recorded_epochs(
     records: Sequence[Record], *, cadence: float
 ) -> tuple[FixEpoch, ...]:
@@ -112,9 +105,9 @@ def replay_run(
     args: argparse.Namespace,
 ) -> tuple[tuple[FixEpoch, ...], TtffMeasurement]:
     """Measure one run from a captured transcript, one epoch per cadence."""
-    frames = read_frames(args.replay)
+    frames = iter_frames(args.replay)
     timeline = recorded_epochs(
-        frames_of(
+        decode_records(
             frames,
             antenna_log(FirmwareLog.BESTPOS, getattr(args, "antenna", "primary")),
         ),

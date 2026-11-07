@@ -21,7 +21,12 @@ from examples.signal_group_study import (
     trade_study,
 )
 from um982py.antenna import antenna_log
-from um982py.capture import DataLog, open_receiver, read_frames, receive_records
+from um982py.capture import (
+    decode_records,
+    open_receiver,
+    read_frames,
+    receive_records,
+)
 from um982py.commands.configuration import (
     SignalGroup,
     current_signal_group,
@@ -37,7 +42,6 @@ from um982py.console import (
 from um982py.errors import UM982Error
 from um982py.experimental import FirmwareLog
 from um982py.geodesy import records_from
-from um982py.messages import Message
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 from um982py.state import restore_receiver_state, snapshot_receiver_state
@@ -100,31 +104,20 @@ def cn0_from(records: Sequence[Record]) -> tuple[float, ...]:
     )
 
 
-def frames_of(frames: Sequence[Message], log: DataLog) -> list[Record]:
-    """Decode every frame of a transcript that carries the given firmware log."""
-    records = []
-    for message in frames:
-        for binary in (False, True):
-            if log.request(binary=binary).matches(message):
-                records.append(log.decode(message))
-                break
-    return records
-
-
 def replay_samples(args: argparse.Namespace) -> tuple[SettingSample, ...]:
     """One setting per signal group named in a captured transcript."""
     frames = read_frames(args.replay)
-    sky = frames_of(frames, FirmwareLog.SATVIS2)
-    dop_records = frames_of(
+    sky = decode_records(frames, FirmwareLog.SATVIS2)
+    dop_records = decode_records(
         frames, antenna_log(FirmwareLog.PSRDOP, getattr(args, "antenna", "primary"))
     )
-    positions = frames_of(
+    positions = decode_records(
         frames, antenna_log(FirmwareLog.BESTPOS, getattr(args, "antenna", "primary"))
     )
     if not sky or not dop_records or not positions:
         raise ValueError("replay requires SATVIS2, PSRDOP and BESTPOS records")
     dilution = ReportedDilution.from_record(dop_records[0], "PSRDOP")
-    ranges = frames_of(
+    ranges = decode_records(
         frames, antenna_log(FirmwareLog.RANGE, getattr(args, "antenna", "primary"))
     )
     best = positions[0]

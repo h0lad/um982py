@@ -25,7 +25,7 @@ from examples.multipath_vs_mask import (
 from um982py.antenna import antenna_log
 from um982py.capture import (
     GPS_FREQUENCIES,
-    DataLog,
+    decode_records,
     gps_signals,
     open_receiver,
     read_frames,
@@ -42,7 +42,6 @@ from um982py.console import (
 )
 from um982py.experimental import FirmwareLog
 from um982py.experimental.capture import receiver_state
-from um982py.messages import Message
 from um982py.messages.record import Record
 from um982py.subscriptions import temporary_subscriptions
 
@@ -56,17 +55,6 @@ DEFAULT_ELEVATIONS = (
     (29, 68.0),
     (31, 82.0),
 )
-
-
-def frames_of(frames: Sequence[Message], log: DataLog) -> list[Record]:
-    """Decode every frame of a transcript that carries the given firmware log."""
-    records = []
-    for message in frames:
-        for binary in (False, True):
-            if log.request(binary=binary).matches(message):
-                records.append(log.decode(message))
-                break
-    return records
 
 
 def observations_from(
@@ -192,13 +180,13 @@ def replay_sweep(args: argparse.Namespace) -> dict[str, object]:
     """Replay one captured pass at every mask without re-measuring it."""
     frames = read_frames(args.replay)
     observations = observations_from(
-        frames_of(
+        decode_records(
             frames, antenna_log(FirmwareLog.RANGE, getattr(args, "antenna", "primary"))
         ),
         interval=args.interval,
         frequency_hz=args.frequency,
     )
-    elevations = gps_elevations(frames_of(frames, FirmwareLog.SATVIS2))
+    elevations = gps_elevations(decode_records(frames, FirmwareLog.SATVIS2))
     series = elevated_series(observations, elevations)
     return payload(mask_sweep(series, args.masks), restore=None)
 
