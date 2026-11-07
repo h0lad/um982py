@@ -95,6 +95,7 @@ receiver configuration.
 
 ### Observations and measurement quality
 
+- [`field_recording`](field_recording/README.md): Records and verifies segmented receiver byte streams.
 - [`unattended_station`](unattended_station/README.md): Records resumable research segments and a station journal.
 - [`polar_ionosphere`](polar_ionosphere/README.md): Compares code TEC proxies with signal tracking and receiver status.
 - [`ice_motion`](ice_motion/README.md): Computes position-derived ECEF and ENU motion from field data.

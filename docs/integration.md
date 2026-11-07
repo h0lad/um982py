@@ -59,7 +59,10 @@ additional receiver and reference-station diagnostics.
 entire session. Close the iterator when stopping early to restore temporary log
 subscriptions. Its caller processes records in the reader thread, so a slow
 sink can still cause upstream loss. `RecordingTransport` records received bytes
-for subsequent replay; record and protect the raw data alongside output files.
+for subsequent replay. `SessionRecorder` supplies a segmented sink with a
+hash journal and explicit incomplete-session handling; the
+[field recording example](../examples/field_recording/README.md) shows how to
+connect it to the transport and replay its bytes.
 `EpochTracker` checks gaps only in the series and cadence supplied by the user.
 For short diagnostic captures, `experimental.capture.BoundedRecordingTransport`
 retains bytes in memory up to a limit and exposes `limit_reached`.

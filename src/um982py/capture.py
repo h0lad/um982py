@@ -9,7 +9,7 @@ from contextlib import suppress
 from itertools import pairwise
 from pathlib import Path
 from time import monotonic
-from typing import TYPE_CHECKING, BinaryIO
+from typing import TYPE_CHECKING, Protocol
 
 from um982py._firmware_logs import FirmwareLog
 from um982py.antenna import AntennaLog
@@ -368,13 +368,22 @@ def open_receiver(args: argparse.Namespace) -> Receiver:
     return cli_open_receiver(args, augmentation=enable_augmentation)
 
 
+class RecordingSink(Protocol):
+    def write(self, data: bytes, /) -> int: ...
+
+    def flush(self) -> None: ...
+
+    def close(self) -> None: ...
+
+
 class RecordingTransport:
-    def __init__(self, transport: Transport, stream: BinaryIO) -> None:
+    def __init__(self, transport: Transport, stream: RecordingSink) -> None:
         self.transport, self.stream = transport, stream
 
     def read(self, size: int, timeout: float) -> bytes:
         data = self.transport.read(size, timeout)
-        self.stream.write(data)
+        if self.stream.write(data) != len(data):
+            raise OSError("short write to capture sink")
         self.stream.flush()
         return data
 

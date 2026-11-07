@@ -106,6 +106,7 @@ if TYPE_CHECKING:
         RtkHealth,
         RtkSession,
     )
+    from um982py.session import SessionRecorder, iter_session_bytes, iter_session_frames
     from um982py.signals import TrackingSignal, tracking_signal
     from um982py.slas import (
         SlasCorrection,
@@ -201,6 +202,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "RtkHealth": ("um982py.rtk_session", "RtkHealth"),
     "RtkSession": ("um982py.rtk_session", "RtkSession"),
     "SatelliteGeometry": ("um982py.geometry", "SatelliteGeometry"),
+    "SessionRecorder": ("um982py.session", "SessionRecorder"),
     "SignalKey": ("um982py.measurement", "SignalKey"),
     "Sp3Product": ("um982py.precise", "Sp3Product"),
     "StateRestoration": ("um982py.state", "StateRestoration"),
@@ -242,6 +244,8 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "interpolate_sp3": ("um982py.precise", "interpolate_sp3"),
     "is_continuous": ("um982py.stats", "is_continuous"),
     "iter_frames": ("um982py.capture", "iter_frames"),
+    "iter_session_bytes": ("um982py.session", "iter_session_bytes"),
+    "iter_session_frames": ("um982py.session", "iter_session_frames"),
     "iter_decoded_records": ("um982py.stream_capture", "iter_decoded_records"),
     "iter_live_records": ("um982py.stream_capture", "iter_live_records"),
     "latest_epoch": ("um982py.capture", "latest_epoch"),
@@ -334,6 +338,7 @@ __all__ = [
     "RtkHealth",
     "RtkSession",
     "SatelliteGeometry",
+    "SessionRecorder",
     "SignalKey",
     "SlasCorrection",
     "SlasTracker",
@@ -378,6 +383,8 @@ __all__ = [
     "iter_decoded_records",
     "iter_frames",
     "iter_live_records",
+    "iter_session_bytes",
+    "iter_session_frames",
     "latest_epoch",
     "least_squares",
     "load_records",
