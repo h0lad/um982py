@@ -130,8 +130,14 @@ def enable_augmentation(
     except (UM982Error, OSError, ValueError) as error:
         rejected.append(("read_signal_group", str(error)))
         active = None
+    if (
+        active is not None
+        and active != HIGH_ACCURACY_SIGNAL_GROUP
+        and "signal_group" in applied
+    ):
+        rejected.append(("verify_signal_group", "receiver reports a different group"))
     saved = False
-    if active is not None and active != previous and persist:
+    if active == HIGH_ACCURACY_SIGNAL_GROUP and active != previous and persist:
         try:
             receiver.execute(save_configuration())
         except (UM982Error, OSError, ValueError) as error:

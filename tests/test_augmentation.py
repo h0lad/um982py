@@ -158,6 +158,25 @@ def test_failed_verification_does_not_invent_or_save_active_group() -> None:
     assert not result.saved and not result.complete
 
 
+def test_unexpected_signal_group_is_not_reported_complete_or_saved() -> None:
+    class WrongReadback(Scripted):
+        queries = 0
+
+        def execute[T](self, command: Command[T], *, timeout: float | None = None) -> T:
+            if command.text == "CONFIG":
+                self.queries += 1
+                if self.queries == 2:
+                    return SignalGroup(4, 6)  # type: ignore[return-value]
+            return super().execute(command, timeout=timeout)
+
+    receiver = WrongReadback(SignalGroup(4, 5))
+    result = enable_augmentation(receiver, persist=True)
+    assert result.active_group == SignalGroup(4, 6)
+    assert not result.complete and not result.saved
+    assert any(name == "verify_signal_group" for name, _ in result.rejected)
+    assert not receiver.saved
+
+
 @pytest.mark.parametrize("group", [SignalGroup(4, 5), HIGH_ACCURACY_SIGNAL_GROUP])
 def test_every_step_names_a_documented_command(group: SignalGroup) -> None:
     for step in augmentation_plan(group):
