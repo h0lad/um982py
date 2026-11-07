@@ -8,6 +8,12 @@
 | RINEX and scientific processing | Fixture and independent-reference tests; some external tools are optional | Validate the generated products, antenna metadata, frame, time and analysis against independent references. |
 | Long-running recording | Segmentation, journaling, disk and restart tests | Soak-test power loss, storage exhaustion, link loss and recovery on the target system. |
 
+The navigation exporter is compared with selected DLR broadcast records for
+Galileo, BeiDou and GLONASS, and its output is read by RTKLIB. Those comparisons
+cover specific examples; they do not establish the time and signal conventions
+of every receiver firmware. The PPK adapter is exercised with RTKLIB sample
+observations, not an independently surveyed accuracy benchmark.
+
 The project targets UM982. UM960 and UM980 compatibility is untested. A
 firmware version is supported for a deployment only after testing it with the
 required messages and commands. Some tests require a receiver, external tools or

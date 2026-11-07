@@ -11,13 +11,17 @@ python -m examples.research_session --replay tests/fixtures/obsvm-example.txt --
 
 The supplied OBSVM sample produces `primary.obs` and `manifest.json`. To export
 `gps.nav` as well, replay a session containing both observations and GPSEPH.
+To export other captured constellations, replay `capture.bin` with
+[`rinex_navigation`](../rinex_navigation/README.md) after verifying the
+required signal-source and time-scale settings.
 
 Choose an empty destination directory. When available, supply surveyed
 coordinates and antenna information through `--metadata` and
 `--secondary-metadata`. Both accept the JSON fields documented for
 `RinexMetadata`. The manifest records the supplied antenna details and marks
-the receiver configuration as unknown. Navigation export currently covers GPS
-only. A replay without observations still writes the manifest but returns a
+the receiver configuration as unknown. This recorder exports GPS navigation;
+the separate navigation exporter handles the other captured constellations.
+A replay without observations still writes the manifest but returns a
 nonzero status. Before scientific analysis, independently validate the RINEX
 files and station metadata.
 
