@@ -99,11 +99,17 @@ def matcher(log: DataLog, binary: bool) -> Command[Message]:
     return log.request(binary=binary)
 
 
-def decode_records(frames: Iterable[Message], log: DataLog) -> tuple[Record, ...]:
-    """Decode every matching ASCII or binary frame, retaining malformed-body errors."""
+def _matching_requests(log: DataLog) -> tuple[Command[Message], ...]:
+    """Prepare matchers for the supported wire forms of a log."""
     requests = [matcher(log, False)]
     with suppress(ValueError):
         requests.append(matcher(log, True))
+    return tuple(requests)
+
+
+def decode_records(frames: Iterable[Message], log: DataLog) -> tuple[Record, ...]:
+    """Decode every matching ASCII or binary frame, retaining malformed-body errors."""
+    requests = _matching_requests(log)
     return tuple(
         log.decode(frame)
         for frame in frames
@@ -245,6 +251,7 @@ def receive_records(
     if not math.isfinite(duration) or duration <= 0:
         raise ValueError("duration must be finite and positive")
     collected: dict[str, list[Record]] = {log.value: [] for log in logs}
+    requests = [(log, _matching_requests(log)) for log in logs]
     trimmed: set[str] = set()
     deadline = monotonic() + duration
     next_progress = monotonic() + 5
@@ -269,8 +276,12 @@ def receive_records(
                 message = receiver.receive(timeout=min(remaining, receiver.timeout))
             except ResponseTimeout:
                 continue
-            for log in logs:
-                records = decode_records((message,), log)
+            for log, matchers in requests:
+                records = (
+                    (log.decode(message),)
+                    if any(request.matches(message) for request in matchers)
+                    else ()
+                )
                 values = collected[log.value]
                 values.extend(records)
                 if arrival_order is not None:

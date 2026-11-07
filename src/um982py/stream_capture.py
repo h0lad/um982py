@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from math import isfinite
 from time import monotonic
 
-from um982py.capture import DataLog, decode_records, subscription_plan
+from um982py.capture import DataLog, _matching_requests, subscription_plan
 from um982py.errors import ResponseTimeout
 from um982py.messages import Message, Record
 from um982py.receiver import Receiver
@@ -51,10 +51,11 @@ def iter_decoded_records(
     messages: Iterable[Message], logs: Sequence[DataLog]
 ) -> Iterator[tuple[str, Record]]:
     """Yield matching records in arrival order without retaining the input."""
+    requests = [(log, _matching_requests(log)) for log in logs]
     for message in messages:
-        for log in logs:
-            for record in decode_records((message,), log):
-                yield log.value, record
+        for log, matchers in requests:
+            if any(request.matches(message) for request in matchers):
+                yield log.value, log.decode(message)
 
 
 def iter_live_records(
@@ -78,9 +79,13 @@ def iter_live_records(
     planned = subscription_plan(logs, interval=interval, binary=binary)
     with temporary_subscriptions(receiver, *planned):
         deadline = monotonic() + duration
-        while (remaining := deadline - monotonic()) > 0:
-            try:
-                message = receiver.receive(timeout=min(remaining, receiver.timeout))
-            except ResponseTimeout:
-                continue
-            yield from iter_decoded_records((message,), logs)
+
+        def messages() -> Iterator[Message]:
+            while (remaining := deadline - monotonic()) > 0:
+                try:
+                    message = receiver.receive(timeout=min(remaining, receiver.timeout))
+                except ResponseTimeout:
+                    continue
+                yield message
+
+        yield from iter_decoded_records(messages(), logs)
