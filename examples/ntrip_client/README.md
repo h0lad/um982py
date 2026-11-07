@@ -1,5 +1,10 @@
 # NTRIP rover client
 
+For a minimal relay using the reusable `RtkSession` and `ReceiverStream` APIs,
+run `python -m examples.ntrip_client.managed --help`. Configure rover mode on
+the receiver first; this relay does not change or persist receiver settings.
+The longer walkthrough below includes additional receiver diagnostics.
+
 This example connects a UM982 **rover** receiver to an NTRIP caster and sends
 the received RTCM data to the receiver. The receiver combines that data with
 its own satellite observations and computes the position and RTK solution.

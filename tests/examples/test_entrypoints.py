@@ -24,3 +24,15 @@ def test_example_help(name: str) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert "usage:" in result.stdout.lower()
+
+
+def test_managed_ntrip_help() -> None:
+    result = subprocess.run(
+        [sys.executable, "-m", "examples.ntrip_client.managed", "--help"],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        timeout=15,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr

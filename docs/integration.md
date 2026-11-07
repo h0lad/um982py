@@ -41,7 +41,9 @@ available. `run(stop_event)` is blocking; run it on an application-owned
 thread and handle exceptions there. Call `health()` to inspect state, connection
 attempts, forwarded frames and monotonic arrival times.
 
-The session does not select rover mode or restore receiver settings. Configure
+The session does not select rover mode or restore receiver settings. The
+`examples.ntrip_client.managed` module demonstrates the library APIs in a source
+checkout. Configure
 the receiver explicitly before starting the stream. Authentication, TLS and
 receiver-write failures stop the session; a caller should surface those errors
 instead of retrying indefinitely. A failing GGA provider stops the session as
