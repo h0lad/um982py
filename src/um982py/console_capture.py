@@ -19,7 +19,6 @@ from um982py.capture import (
     replay_receiver,
 )
 from um982py.commands.configuration import ppp, ppp_datum
-from um982py.errors import UM982Error
 from um982py.messages import Record
 from um982py.receiver import Receiver
 
@@ -39,23 +38,19 @@ def open_receiver(
     with ExitStack() as cleanup:
         cleanup.callback(receiver.close)
         if getattr(args, "augment", False):
-            try:
-                state = augmentation(receiver)
-            except (UM982Error, OSError, ValueError) as error:
-                print(f"warning: augmentation not applied: {error}", file=sys.stderr)
-            else:
-                if state.changed and state.active_group is not None:
-                    print(
-                        "augmentation: signal group "
-                        f"{state.previous_group.master} "
-                        f"{state.previous_group.slave} -> "
-                        f"{state.active_group.master} {state.active_group.slave}; "
-                        "SBAS, E6-HAS, B2b-PPP and MMP asserted",
-                        file=sys.stderr,
-                    )
-                refused = ", ".join(name for name, _ in state.rejected)
-                if refused:
-                    print(f"augmentation refused: {refused}", file=sys.stderr)
+            state = augmentation(receiver)
+            if state.changed and state.active_group is not None:
+                print(
+                    "augmentation: signal group "
+                    f"{state.previous_group.master} "
+                    f"{state.previous_group.slave} -> "
+                    f"{state.active_group.master} {state.active_group.slave}; "
+                    "SBAS, E6-HAS, B2b-PPP and MMP asserted",
+                    file=sys.stderr,
+                )
+            refused = ", ".join(name for name, _ in state.rejected)
+            if refused:
+                print(f"augmentation refused: {refused}", file=sys.stderr)
         service = getattr(args, "ppp_service", None)
         if service in ("AUTO", "E6-HAS", "B2B-PPP"):
             receiver.execute(ppp(enabled=True, service=service))

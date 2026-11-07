@@ -62,6 +62,17 @@ def test_shared_receiver_augmentation_is_explicit() -> None:
     augmentation.assert_called_once_with(receiver)
 
 
+def test_shared_receiver_closes_after_augmentation_failure() -> None:
+    receiver = Mock()
+    with (
+        patch.object(Receiver, "connect", return_value=receiver),
+        patch("um982py.capture.enable_augmentation", side_effect=OSError("lost")),
+        pytest.raises(OSError, match="lost"),
+    ):
+        open_receiver(options(port="fake", baud=921600, record=None, augment=True))
+    receiver.close.assert_called_once()
+
+
 def test_old_rtcm_does_not_count_as_a_current_fixed_solution() -> None:
     assert stale_correction("NARROW_INT", 419.0)
     assert stale_correction(50, 11.0)

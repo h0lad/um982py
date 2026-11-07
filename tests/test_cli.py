@@ -74,3 +74,15 @@ def test_cli_recording_is_flushed_before_a_failed_action(tmp_path: Path) -> None
         assert main(["--record", str(path), "version"]) == 2
     assert path.read_bytes() == b"receiver data"
     assert transport.closed
+
+
+def test_cli_does_not_continue_after_augmentation_failure() -> None:
+    transport = ReplayTransport()
+    with (
+        patch.object(Receiver, "connect", return_value=Receiver(transport)),
+        patch("um982py.cli.enable_augmentation", side_effect=TransportError("lost")),
+        patch("um982py.cli._run_action") as action,
+    ):
+        assert main(["--augment", "version"]) == 2
+    action.assert_not_called()
+    assert transport.closed

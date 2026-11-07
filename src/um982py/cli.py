@@ -282,18 +282,10 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with Receiver.connect(args.port, args.baud, timeout=args.timeout) as receiver:
             if args.augment:
-                try:
-                    state = enable_augmentation(receiver)
-                except (UM982Error, ValueError, OSError) as error:
-                    print(
-                        f"warning: augmentation not applied: {error}", file=sys.stderr
-                    )
-                else:
-                    if state.rejected:
-                        refused = ", ".join(name for name, _ in state.rejected)
-                        print(
-                            f"warning: augmentation refused: {refused}", file=sys.stderr
-                        )
+                state = enable_augmentation(receiver)
+                if state.rejected:
+                    refused = ", ".join(name for name, _ in state.rejected)
+                    print(f"warning: augmentation refused: {refused}", file=sys.stderr)
             if args.record is not None:
                 args.record.parent.mkdir(parents=True, exist_ok=True)
                 stream = args.record.open("xb")
