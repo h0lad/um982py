@@ -57,6 +57,7 @@ receiver configuration.
 - [`has_b2b_ppp_fix`](has_b2b_ppp_fix/README.md): Averages Galileo E6-HAS and BeiDou B2b-PPP fixes with divergence telemetry.
 - [`live_position`](live_position/README.md): Streams GGA fixes and reconnects after receiver transport failures.
 - [`ntrip_client`](ntrip_client/README.md): Applies public NTRIP RTCM corrections to a UM982 rover.
+- [`ntrip_sources`](ntrip_sources/README.md): Lists caster mountpoints and their advertised locations.
 - [`ntrip_server`](ntrip_server/README.md): Serves reference-station RTCM over NTRIP with TLS and optional guest access.
 - [`offline_ppp`](offline_ppp/README.md): Records static observations and processes them later with CODE products and Python PPP.
 - [`position_tracking`](position_tracking/README.md): Tracks positions, prefers full PPP fixes, and reports precision and satellite signals.

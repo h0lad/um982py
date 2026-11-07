@@ -3,13 +3,18 @@
 from __future__ import annotations
 
 import base64
+import math
+import re
 import socket
 import ssl
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from threading import Lock
 from typing import TYPE_CHECKING, Literal, Self
 from urllib.parse import urlsplit
 
 from um982py.errors import ProtocolError
+from um982py.geodesy import haversine_distance
 from um982py.messages.navigation import Fix
 from um982py.protocol.ascii import parse_ascii
 
@@ -70,19 +75,21 @@ class NtripClient:
         initial_gga: bytes | None = None,
         timeout: float = 10.0,
         version: Literal[1, 2] = 2,
+        _sourcetable: bool = False,
     ) -> None:
         address = urlsplit(url)
         if (
             address.scheme not in ("http", "https")
             or not address.hostname
-            or not address.path.strip("/")
+            or (not _sourcetable and not address.path.strip("/"))
+            or (_sourcetable and address.path not in ("", "/"))
             or address.username is not None
             or address.password is not None
             or address.query
             or address.fragment
             or any(char in address.path for char in "\r\n ")
         ):
-            raise ValueError("NTRIP URL must be http(s)://host[:port]/mountpoint")
+            raise ValueError("Invalid NTRIP caster or mountpoint URL")
         if (username is None) != (password is None):
             raise ValueError("NTRIP username and password must be supplied together")
         if username is not None and any(
@@ -106,7 +113,8 @@ class NtripClient:
         self.url = url
         self.host = address.hostname
         self.port = port
-        self.mountpoint = address.path
+        self.mountpoint = address.path or "/"
+        self._sourcetable = _sourcetable
         self.secure = address.scheme == "https"
         self.username = username
         self.password = password
@@ -208,7 +216,10 @@ class NtripClient:
     def _read_response(self) -> None:
         status = self._line()
         parts = status.split(b" ", 2)
-        if len(parts) < 2 or not status.startswith((b"ICY ", b"HTTP/1.")):
+        valid_status = status.startswith((b"ICY ", b"HTTP/1.")) or (
+            self._sourcetable and status.startswith(b"SOURCETABLE ")
+        )
+        if len(parts) < 2 or not valid_status:
             raise NtripError("Invalid NTRIP status line")
         if parts[1] != b"200":
             reason = parts[2].decode("ascii", "replace") if len(parts) > 2 else ""
@@ -313,3 +324,124 @@ class NtripClient:
         self._remaining = 0
         self._need_chunk_terminator = False
         self._ended = False
+
+
+@dataclass(frozen=True, slots=True)
+class Mountpoint:
+    """Advertised source-table fields, without assuming the source is usable."""
+
+    name: str
+    identifier: str
+    format: str
+    systems: tuple[str, ...]
+    network: str
+    country: str
+    latitude: float | None
+    longitude: float | None
+    requires_gga: bool | None
+    authentication: str
+    fee: str
+    bitrate: int | None
+
+    def distance_to(self, latitude: float, longitude: float) -> float | None:
+        """Great-circle distance in metres, or None when location is absent."""
+        if self.latitude is None or self.longitude is None:
+            return None
+        return haversine_distance(latitude, longitude, self.latitude, self.longitude)
+
+
+def parse_sourcetable(data: str) -> tuple[Mountpoint, ...]:
+    """Parse STR records; other sourcetable record types are ignored."""
+    sources: list[Mountpoint] = []
+    for line in data.splitlines():
+        fields = line.split(";")
+        if fields[0] != "STR":
+            continue
+        if len(fields) < 18 or not fields[1]:
+            raise NtripError("Invalid NTRIP sourcetable STR record")
+        try:
+            latitude = float(fields[9]) if fields[9] else None
+            longitude = float(fields[10]) if fields[10] else None
+            if latitude is not None and (
+                not math.isfinite(latitude) or abs(latitude) > 90
+            ):
+                raise ValueError
+            if longitude is not None and (
+                not math.isfinite(longitude) or abs(longitude) > 180
+            ):
+                raise ValueError
+            if fields[11] not in ("", "0", "1"):
+                raise ValueError
+            bitrate = int(fields[17]) if fields[17] else None
+            if bitrate is not None and bitrate < 0:
+                raise ValueError
+        except ValueError as error:
+            raise NtripError("Invalid NTRIP sourcetable STR value") from error
+        sources.append(
+            Mountpoint(
+                fields[1],
+                fields[2],
+                fields[3],
+                tuple(filter(None, fields[6].split("+"))),
+                fields[7],
+                fields[8],
+                latitude,
+                longitude,
+                None if not fields[11] else fields[11] == "1",
+                fields[15],
+                fields[16],
+                bitrate,
+            )
+        )
+    return tuple(sources)
+
+
+def fetch_sourcetable(
+    url: str,
+    *,
+    username: str | None = None,
+    password: str | None = None,
+    timeout: float = 10.0,
+    version: Literal[1, 2] = 2,
+    max_bytes: int = 1_048_576,
+) -> tuple[Mountpoint, ...]:
+    """Fetch a bounded NTRIP v1 or v2 sourcetable from a caster root URL."""
+    if not isinstance(max_bytes, int) or isinstance(max_bytes, bool) or max_bytes < 1:
+        raise ValueError("max_bytes must be a positive integer")
+    data = bytearray()
+    with NtripClient(
+        url,
+        username=username,
+        password=password,
+        timeout=timeout,
+        version=version,
+        _sourcetable=True,
+    ) as client:
+        while not re.search(rb"(?:^|\n)ENDSOURCETABLE\r?\n", data):
+            chunk = client.read(min(4096, max_bytes + 1 - len(data)))
+            if not chunk:
+                raise NtripDisconnected("Incomplete NTRIP sourcetable")
+            data.extend(chunk)
+            if len(data) > max_bytes:
+                raise NtripError("NTRIP sourcetable exceeds size limit")
+    try:
+        return parse_sourcetable(data.decode("utf-8"))
+    except UnicodeDecodeError as error:
+        raise NtripError("Invalid NTRIP sourcetable encoding") from error
+
+
+class NtripClientPool:
+    """Rotate client factories on successive correction connection attempts."""
+
+    def __init__(self, factories: Sequence[Callable[[], NtripClient]]) -> None:
+        if not factories or not all(callable(factory) for factory in factories):
+            raise ValueError("at least one client factory is required")
+        self._factories = tuple(factories)
+        self._next = 0
+        self._lock = Lock()
+
+    def __call__(self) -> NtripClient:
+        with self._lock:
+            factory = self._factories[self._next]
+            self._next = (self._next + 1) % len(self._factories)
+        return factory()

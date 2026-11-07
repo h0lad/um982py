@@ -42,6 +42,12 @@ caster requires it. A GGA provider should return `None` when no current fix is
 available. `run(stop_event)` is blocking; run it on an application-owned
 thread and handle exceptions there. Call `health()` to inspect state, connection
 attempts, forwarded frames and monotonic arrival times.
+The health snapshot also exposes received RTCM message counts and correction
+age. Use `fetch_sourcetable()` to inspect the caster's advertised mountpoints;
+distance alone does not establish that a service is suitable.
+Pass an `NtripClientPool` as the client factory to rotate between explicitly
+configured sources on retryable connection failures. Authentication, TLS and
+receiver-write failures still stop the session.
 
 The session does not select rover mode or restore receiver settings. The
 `examples.ntrip_client.managed` module demonstrates the library APIs in a source

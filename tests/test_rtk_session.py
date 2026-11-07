@@ -67,6 +67,8 @@ def test_reconnect_after_eof_and_forward_complete_rtcm() -> None:
     )
     assert health.last_byte_monotonic is not None
     assert health.last_correction_monotonic is not None
+    assert health.message_counts == ((1005, 1),)
+    assert health.correction_age is not None and health.correction_age >= 0
     assert stream.forwarded == [frame]
 
 

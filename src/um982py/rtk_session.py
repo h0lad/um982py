@@ -35,6 +35,14 @@ class RtkHealth:
     last_byte_monotonic: float | None
     last_correction_monotonic: float | None
     last_error: str | None
+    message_counts: tuple[tuple[int, int], ...]
+    unidentified_frames: int
+
+    @property
+    def correction_age(self) -> float | None:
+        if self.last_correction_monotonic is None:
+            return None
+        return max(0.0, monotonic() - self.last_correction_monotonic)
 
 
 class RtkSession:
@@ -76,6 +84,8 @@ class RtkSession:
         self._last_byte: float | None = None
         self._last_correction: float | None = None
         self._error: str | None = None
+        self._message_counts: dict[int, int] = {}
+        self._unidentified = 0
 
     def health(self) -> RtkHealth:
         with self._lock:
@@ -87,6 +97,8 @@ class RtkSession:
                 self._last_byte,
                 self._last_correction,
                 self._error,
+                tuple(sorted(self._message_counts.items())),
+                self._unidentified,
             )
 
     def run(self, stop: Event) -> None:
@@ -177,5 +189,12 @@ class RtkSession:
                         with self._lock:
                             self._frames += 1
                             self._last_correction = last_frame
+                            if message.message_type is None:
+                                self._unidentified += 1
+                            else:
+                                kind = message.message_type
+                                self._message_counts[kind] = (
+                                    self._message_counts.get(kind, 0) + 1
+                                )
             if monotonic() - last_frame >= self.correction_timeout:
                 raise ConnectionError("no RTCM corrections before timeout")

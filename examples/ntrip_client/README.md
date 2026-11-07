@@ -1,5 +1,8 @@
 # NTRIP rover client
 
+Use the [sourcetable discovery example](../ntrip_sources/README.md) to inspect
+advertised mountpoints before selecting a caster URL.
+
 For a minimal relay using the reusable `RtkSession` and `ReceiverStream` APIs,
 run `python -m examples.ntrip_client.managed --help`. Configure rover mode on
 the receiver first; this relay does not change or persist receiver settings.
