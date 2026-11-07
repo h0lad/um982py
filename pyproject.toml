@@ -25,6 +25,7 @@ classifiers = [
 dependencies = ["pyserial>=3.5,<4"]
 
 [project.optional-dependencies]
+geodesy = ["pyproj>=3.7,<4"]
 dev = [
   "hatchling>=1.27",
   "mypy>=1.13",

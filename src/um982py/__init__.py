@@ -46,6 +46,7 @@ if TYPE_CHECKING:
         write_json,
     )
     from um982py.corrections import stale_correction
+    from um982py.crs import CoordinateTransform, transform_coordinate
     from um982py.geodesy import (
         SPEED_OF_LIGHT,
         WGS84_A,
@@ -168,6 +169,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "AsyncReceiver": ("um982py.async_receiver", "AsyncReceiver"),
     "AugmentationState": ("um982py.augmentation", "AugmentationState"),
     "CorrectionWriteError": ("um982py.rtk_session", "CorrectionWriteError"),
+    "CoordinateTransform": ("um982py.crs", "CoordinateTransform"),
     "DataLog": ("um982py.capture", "DataLog"),
     "DilutionOfPrecision": ("um982py.geometry", "DilutionOfPrecision"),
     "EpochSolution": ("um982py.quality", "EpochSolution"),
@@ -292,6 +294,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "subtract": ("um982py.stats", "subtract"),
     "swap_antenna": ("um982py.antenna", "swap_antenna"),
     "tracking_signal": ("um982py.signals", "tracking_signal"),
+    "transform_coordinate": ("um982py.crs", "transform_coordinate"),
     "uniform_interval": ("um982py.capture", "uniform_interval"),
     "unit": ("um982py.stats", "unit"),
     "wavelength": ("um982py.geodesy", "wavelength"),
@@ -307,6 +310,7 @@ __all__ = [
     "WGS84_F",
     "AsyncReceiver",
     "AugmentationState",
+    "CoordinateTransform",
     "CorrectionWriteError",
     "DataLog",
     "DilutionOfPrecision",
@@ -432,6 +436,7 @@ __all__ = [
     "subtract",
     "swap_antenna",
     "tracking_signal",
+    "transform_coordinate",
     "uniform_interval",
     "unit",
     "wavelength",

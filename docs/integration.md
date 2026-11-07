@@ -80,6 +80,14 @@ reference point, coordinate frame and epoch, receiver firmware, configuration,
 time scale, correction source and independent field notes. Unknown values in
 the manifest remain unknown; they are not inferred from a successful export.
 
+## Coordinate reference systems
+
+Install `um982py[geodesy]` for `transform_coordinate()`, which reports the
+selected PROJ operation and rejects unavailable best operations. Use explicit
+3D horizontal and vertical CRSs, coordinate epochs and transformation grids;
+see the [CRS example](../examples/crs_transform/README.md). The operation's
+reported accuracy is not an estimate of the receiver's position error.
+
 ## Configuration changes
 
 `augmentation_plan()` previews commands for a known signal group.

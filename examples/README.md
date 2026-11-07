@@ -75,6 +75,7 @@ receiver configuration.
 - [`azel_crosscheck`](azel_crosscheck/README.md): Checks broadcast-orbit azimuth and elevation against SATVIS2.
 - [`broadcast_orbit_audit`](broadcast_orbit_audit/README.md): Compares broadcast orbits with a precise SP3 product.
 - [`coordinate_frames`](coordinate_frames/README.md): Converts between ECEF, geodetic, ENU and baselines.
+- [`crs_transform`](crs_transform/README.md): Transforms 3D coordinates with optional PROJ integration.
 - [`dop_geometry`](dop_geometry/README.md): Computes DOP values from satellite geometry.
 - [`doppler_velocity`](doppler_velocity/README.md): Solves receiver velocity and clock drift from Doppler.
 - [`elevation_optimizer`](elevation_optimizer/README.md): Finds the elevation mask with the best satellite geometry.
