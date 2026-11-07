@@ -8,7 +8,7 @@ import pytest
 from examples.scintillation_monitor import (
     ScintillationEpoch,
     ScintillationSample,
-    attribute_lock_loss,
+    classify_tracking_occupancy,
     linear_power,
     roti_proxy,
     s4_index,
@@ -141,43 +141,45 @@ def test_window_below_two_samples_is_rejected() -> None:
         roti_proxy([0.1, 0.2], 0.0)
 
 
-def test_scintillation_without_written_slots_is_a_receiver_side_lock_loss() -> None:
-    result = attribute_lock_loss(
+def test_variability_and_slot_occupancy_are_reported_without_attribution() -> None:
+    result = classify_tracking_occupancy(
         [
             ScintillationEpoch(0.0, 0.2, 12),
             ScintillationEpoch(2.0, 0.7, 9),
             ScintillationEpoch(1.0, 0.8, 0),
         ]
     )
-    assert [(entry.epoch, entry.attribution) for entry in result] == [
-        (1.0, "no_tracking_while_scintillating"),
-        (2.0, "tracking_under_scintillation"),
+    assert [(entry.epoch, entry.occupancy) for entry in result] == [
+        (1.0, "slots_below_threshold"),
+        (2.0, "slots_present"),
     ]
     assert [entry.written_slots for entry in result] == [0, 9]
 
 
 def test_scintillation_threshold_and_slot_minimum_are_explicit() -> None:
     epochs = [ScintillationEpoch(0.0, 0.6, 3)]
-    assert not attribute_lock_loss(epochs, s4_threshold=0.61)
-    assert attribute_lock_loss(epochs)[0].attribution == "tracking_under_scintillation"
+    assert not classify_tracking_occupancy(epochs, s4_threshold=0.61)
+    assert classify_tracking_occupancy(epochs)[0].occupancy == "slots_present"
     assert (
-        attribute_lock_loss(epochs, minimum_slots=4)[0].attribution
-        == "no_tracking_while_scintillating"
+        classify_tracking_occupancy(epochs, minimum_slots=4)[0].occupancy
+        == "slots_below_threshold"
     )
 
 
 def test_invalid_scintillation_epochs_are_rejected() -> None:
     with pytest.raises(ValueError, match="non-negative"):
-        attribute_lock_loss([ScintillationEpoch(0.0, 0.9, 0)], s4_threshold=-1.0)
+        classify_tracking_occupancy(
+            [ScintillationEpoch(0.0, 0.9, 0)], s4_threshold=-1.0
+        )
     with pytest.raises(ValueError, match="non-negative"):
-        attribute_lock_loss([ScintillationEpoch(0.0, 0.9, 0)], minimum_slots=-1)
+        classify_tracking_occupancy([ScintillationEpoch(0.0, 0.9, 0)], minimum_slots=-1)
     invalid = (
         ScintillationEpoch(0.0, 0.9, -1),
         ScintillationEpoch(0.0, math.nan, 1),
     )
     for epoch in invalid:
         with pytest.raises(ValueError):
-            attribute_lock_loss([epoch])
+            classify_tracking_occupancy([epoch])
 
 
 @pytest.mark.parametrize("powers", [[-1.0, 3.0], [math.nan, 1.0], [math.inf, 1.0]])

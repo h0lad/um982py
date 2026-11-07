@@ -11,11 +11,11 @@ from itertools import pairwise
 from um982py.stats import mean, stddev
 
 __all__ = [
-    "LockLossEpoch",
     "ScintillationEpoch",
     "ScintillationSample",
     "ScintillationSummary",
-    "attribute_lock_loss",
+    "TrackingOccupancyEpoch",
+    "classify_tracking_occupancy",
     "linear_power",
     "roti_proxy",
     "s4_index",
@@ -56,26 +56,24 @@ class ScintillationEpoch:
 
 
 @dataclass(frozen=True, slots=True)
-class LockLossEpoch:
-    """One epoch whose scintillation and channel occupancy disagree."""
+class TrackingOccupancyEpoch:
+    """One high-variability epoch and its reported channel occupancy."""
 
     epoch: float
     s4: float
     written_slots: int
-    attribution: str
+    occupancy: str
 
 
-def attribute_lock_loss(
+def classify_tracking_occupancy(
     epochs: Sequence[ScintillationEpoch],
     *,
     s4_threshold: float = 0.6,
     minimum_slots: int = 1,
-) -> tuple[LockLossEpoch, ...]:
-    """Report coincident variability and tracking occupancy, without causality.
+) -> tuple[TrackingOccupancyEpoch, ...]:
+    """Report coincident variability and tracking occupancy.
 
-    Legacy attribution strings are retained for compatibility. Missing slots
-    cannot distinguish scintillation, obstruction, interference or diagnostics
-    loss, and C/N0 variability alone does not establish scintillation.
+    Missing slots can result from obstruction, interference or diagnostics loss.
     """
     if not math.isfinite(s4_threshold) or s4_threshold < 0:
         raise ValueError("s4_threshold must be finite and non-negative")
@@ -89,13 +87,13 @@ def attribute_lock_loss(
             raise ValueError("written slot count must be non-negative")
         if item.s4 < s4_threshold:
             continue
-        attribution = (
-            "tracking_under_scintillation"
+        occupancy = (
+            "slots_present"
             if item.written_slots >= minimum_slots
-            else "no_tracking_while_scintillating"
+            else "slots_below_threshold"
         )
         output.append(
-            LockLossEpoch(item.epoch, item.s4, item.written_slots, attribution)
+            TrackingOccupancyEpoch(item.epoch, item.s4, item.written_slots, occupancy)
         )
     return tuple(sorted(output, key=lambda entry: entry.epoch))
 
