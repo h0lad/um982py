@@ -44,7 +44,7 @@ _SIGNAL_STATUS = (
 
 @dataclass(frozen=True, slots=True)
 class GpsLnavHealth:
-    """Broadcast subframe-1 health, not a measurement of current satellite state."""
+    """Broadcast subframe-1 satellite health."""
 
     prn: int
     raw: int

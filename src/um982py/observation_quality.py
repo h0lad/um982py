@@ -35,9 +35,8 @@ def audit_observations(
 ) -> ObservationQuality:
     """Audit a log in GPST order, using the supplied cadence to identify gaps.
 
-    Resets report decreases in receiver lock time, not independently verified
-    cycle slips. Gaps are pairs of observed epoch times, not a count of missing
-    measurements. Invalid phases are excluded from lock-time comparisons.
+    Resets report decreases in receiver lock time. Gaps are pairs of observed
+    epoch times. Invalid phases are excluded from lock-time comparisons.
     """
     names = {record.name for record in records}
     if (

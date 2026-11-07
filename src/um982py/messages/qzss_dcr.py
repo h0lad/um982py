@@ -84,8 +84,7 @@ def decode_qzqsm(record: Record) -> DisasterReport:
 
     Unknown versions and categories are retained without interpreting their body.
     MT44 is retained without interpreting DCR-specific fields: current DCX
-    messages and older MT44 formats have different layouts, and the record
-    does not establish which format was transmitted.
+    messages and older MT44 formats have different layouts.
     This function validates the satellite CRC, while NMEA checksum validation is the
     responsibility of the stream decoder.
     """

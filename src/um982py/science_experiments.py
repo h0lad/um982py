@@ -75,8 +75,7 @@ def noise_multipath_summary(
     """Compare measured difference variances and held-out repeat-track correlation.
 
     Use the same differencing convention for shared and separate antenna
-    series. Their variance difference is descriptive and cannot uniquely
-    separate noise.
+    series. The variance difference is descriptive.
     """
     shared = sample_variance(shared_differences)
     separate = sample_variance(separate_differences)
