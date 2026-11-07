@@ -17,6 +17,9 @@ The CLI accepts a serial port or a transparent TCP-to-UART gateway:
 um982py --port /dev/ttyUSB0 --baud 921600 version
 um982py --port tcp://192.0.2.10:4001 doctor
 ```
+
+Queries leave augmentation settings unchanged. Use `--augment` to enable
+augmentation for the current receiver session without saving the configuration.
 ##  Development
 
 ```bash

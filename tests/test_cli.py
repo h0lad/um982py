@@ -1,4 +1,5 @@
 import runpy
+from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
@@ -32,9 +33,24 @@ def test_cli_accepts_tcp_target(capsys: pytest.CaptureFixture[str]) -> None:
         patch.object(
             Receiver, "connect", return_value=Receiver(ReplayTransport())
         ) as factory,
-        patch("um982py.cli.enable_augmentation"),
+        patch("um982py.cli.enable_augmentation") as augmentation,
         patch("um982py.cli._run_action", return_value={"connected": True}),
     ):
         assert main(["--port", "tcp://127.0.0.1:4001", "version"]) == 0
     factory.assert_called_once_with("tcp://127.0.0.1:4001", 115200, timeout=3.0)
+    augmentation.assert_not_called()
     assert '"connected": true' in capsys.readouterr().out
+
+
+def test_augmentation_is_explicit_and_reports_refusals(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    state = SimpleNamespace(rejected=(("sbas", "unsupported"),))
+    with (
+        patch.object(Receiver, "connect", return_value=Receiver(ReplayTransport())),
+        patch("um982py.cli.enable_augmentation", return_value=state) as augmentation,
+        patch("um982py.cli._run_action", return_value={}),
+    ):
+        assert main(["--augment", "version"]) == 0
+    augmentation.assert_called_once()
+    assert "augmentation refused: sbas" in capsys.readouterr().err

@@ -90,6 +90,11 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--timeout", type=float, default=3)
     parser.add_argument("--binary", action="store_true")
     parser.add_argument(
+        "--augment",
+        action="store_true",
+        help="enable augmentation for this receiver session without saving settings",
+    )
+    parser.add_argument(
         "--antenna",
         choices=("primary", "secondary", "1", "2"),
         default="primary",
@@ -277,10 +282,19 @@ def main(argv: list[str] | None = None) -> int:
     recording = None
     try:
         with Receiver.connect(args.port, args.baud, timeout=args.timeout) as receiver:
-            try:
-                enable_augmentation(receiver)
-            except (UM982Error, ValueError, OSError) as error:
-                print(f"warning: augmentation not applied: {error}", file=sys.stderr)
+            if args.augment:
+                try:
+                    state = enable_augmentation(receiver)
+                except (UM982Error, ValueError, OSError) as error:
+                    print(
+                        f"warning: augmentation not applied: {error}", file=sys.stderr
+                    )
+                else:
+                    if state.rejected:
+                        refused = ", ".join(name for name, _ in state.rejected)
+                        print(
+                            f"warning: augmentation refused: {refused}", file=sys.stderr
+                        )
             if args.record is not None:
                 recording = RecordingTransport(receiver.transport, 32 * 1024 * 1024)
                 receiver.transport = recording
