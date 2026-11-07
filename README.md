@@ -4,6 +4,10 @@ This is a Python (3.12+) library for the Unicore UM982 GNSS receiver.
 
 Most likely quite a few features will also work the the UM960 and UM980. This is untested.
 
+See the [integration guide](docs/integration.md) for streaming, mobile RTK,
+scientific sessions and configuration changes, and the
+[validation matrix](docs/validation.md) for available evidence.
+
 
 ## Usage
 
@@ -69,6 +73,9 @@ else:
 ```
 
 ### Feed NTRIP corrections to an RTK rover
+
+This short example demonstrates the protocol. For reconnection, monitoring and
+scheduled GGA updates in a longer-running application, see the integration guide.
 
 ```python
 import os
