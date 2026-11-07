@@ -1,15 +1,24 @@
-# What's this?
+# um982py
 
-This is a Python (3.12+) library for the Unicore UM982 GNSS receiver.
+Python 3.12+ library and command-line tools for the Unicore UM982 GNSS receiver.
+It reads and configures the receiver, handles NMEA, Unicore and RTCM streams,
+and provides tools for GNSS capture and analysis.
 
-Most likely quite a few features will also work the the UM960 and UM980. This is untested.
+Some features may also work with the UM960 and UM980; these receivers have not
+been tested.
 
 See the [integration guide](docs/integration.md) for streaming, mobile RTK,
 scientific sessions and configuration changes, and the
 [validation matrix](docs/validation.md) for available evidence.
 
 
-## Usage
+## Install and use
+
+From a source checkout:
+
+```bash
+python -m pip install .
+```
 
 The CLI accepts a serial port or a transparent TCP-to-UART gateway:
 
@@ -20,7 +29,7 @@ um982py --port tcp://192.0.2.10:4001 doctor
 
 Queries leave augmentation settings unchanged. Use `--augment` to enable
 augmentation for the current receiver session without saving the configuration.
-##  Development
+## Development
 
 ```bash
 python -m pip install -e '.[dev]'
