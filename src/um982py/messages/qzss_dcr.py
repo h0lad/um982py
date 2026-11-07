@@ -1,5 +1,5 @@
 """Decode the QZSS L1S disaster report carried in a QZQSM sentence."""
-#  Bit positions follow IS-QZSS-DCR-010, section 4.1.2, and IS-QZSS-L1S-008.
+# Bit positions follow IS-QZSS-DCR-010, section 4.1.2, and IS-QZSS-L1S-008.
 # The category-specific decoder currently supports version 1 weather reports.
 
 from dataclasses import dataclass
@@ -83,10 +83,9 @@ def decode_qzqsm(record: Record) -> DisasterReport:
     """Validate and decode a QZQSM record, rejecting corrupt or non-DCR frames.
 
     Unknown versions and categories are retained without interpreting their body.
-    MT44 is retained without interpreting DCR-specific fields: current DCX
-    messages and older MT44 formats have different layouts.
-    This function validates the satellite CRC, while NMEA checksum validation is the
-    responsibility of the stream decoder.
+    MT44 stays opaque because current DCX messages and older MT44 formats have
+    different layouts. The satellite CRC is checked here; the stream decoder
+    checks the NMEA checksum.
     """
     if record.name != "QZQSM":
         raise ValueError("expected a QZQSM record")

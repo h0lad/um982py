@@ -181,7 +181,7 @@ def solution_from_record(epoch: float, record: Record) -> EpochSolution:
 
 
 def timeline(records: Sequence[Record]) -> tuple[EpochSolution, ...]:
-    """Number a capture of position records in arrival order."""
+    """Build a solution timeline from position records in arrival order."""
     if (
         records
         and any(record.message is None for record in records)

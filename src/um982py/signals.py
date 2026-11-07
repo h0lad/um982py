@@ -67,7 +67,7 @@ def tracking_signal(
     glonass_channel: int | None = None,
     l2c_code: str | None = None,
 ) -> TrackingSignal | None:
-    """Identify a signal and leave unknown identifiers unknown."""
+    """Identify the signal in a tracking-status word, or return None."""
     if not 0 <= status <= 0xFFFFFFFF:
         raise ValueError("tracking status must be a u32")
     if l2c_code not in (None, "2S", "2L", "2X"):

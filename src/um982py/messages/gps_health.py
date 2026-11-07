@@ -81,8 +81,8 @@ class GpsLnavHealth:
 def gps_visible_health(record: Record) -> tuple[tuple[int, bool | None], ...]:
     """Return (PRN, health) for entries in a GPS SATELLITE record.
 
-    True means receiver-reported healthy, False means unhealthy, and None
-    represents an undocumented value, and missing satellites are not inferred.
+    True means healthy and False unhealthy, as reported by the receiver; None
+    denotes an undocumented value. Satellites missing from the log are omitted.
     """
     if record.name != "SATELLITE":
         raise ValueError("expected a SATELLITE record")

@@ -40,11 +40,11 @@ class RtkHealth:
 class RtkSession:
     """Relay RTCM until stopped, retrying transient caster failures.
 
-    ``client_factory`` creates a fresh NtripClient on every attempt. Set its
+    ``client_factory`` creates a fresh NtripClient for each attempt; set its
     initial GGA if the caster requires one during connection. ``gga_provider``
     returns a complete GPGGA sentence, or None while a fix is unavailable.
-    Run ``run`` in an application-owned thread. Receiver configuration is never
-    changed. Authentication and TLS failures stop the session instead of retrying.
+    Run the session in an application-owned thread. It leaves receiver settings
+    unchanged and stops on authentication or TLS failures.
     """
 
     def __init__(

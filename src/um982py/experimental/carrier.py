@@ -45,9 +45,7 @@ def smooth_code(
             if previous is None:
                 raise RuntimeError("missing previous sample in continuous arc")
             count = min(window, count + 1)
-            # Advance the previous smoothed range by the carrier-phase change,
-            # then blend it with the new code range. The capped count limits
-            # how slowly the filter responds, while a broken arc restarts above.
+            # Cap the count so the filter keeps responding to new measurements.
             smoothed = sample.code_m / count + (1 - 1 / count) * (
                 smoothed + sample.phase_m - previous.phase_m
             )

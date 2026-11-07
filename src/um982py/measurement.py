@@ -79,9 +79,9 @@ def gps_epoch(
     """Return absolute GPST seconds from a receiver data-frame header.
 
     N4 ASCII GPS headers and binary reference 0 have been observed as GPST.
-    R1.15 does not specify how non-GPS header weeks are numbered. For those
-    headers, supply an independently verified ``week_scale`` explicitly. BDT
-    means a continuous BDT week number and BDT seconds, not GPS-numbered weeks.
+    R1.15 does not specify how non-GPS header weeks are numbered, so those
+    headers require an independently verified ``week_scale``. BDT uses a
+    continuous BDT week number and BDT seconds, not GPS-numbered weeks.
     Legacy headers are assumed GPST unless the caller specifies otherwise.
     """
     if week_scale not in (None, "GPST", "BDT"):
@@ -205,7 +205,6 @@ def gnss_range_samples(
         ):
             continue
         previous = selected.get(key)
-        # Retain the strongest observation when a signal appears more than once.
         if previous is None or sample.cn0_db_hz > previous.cn0_db_hz:
             selected[key] = sample
     return tuple(selected[key] for key in sorted(selected))

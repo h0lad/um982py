@@ -136,7 +136,7 @@ def antenna_index(antenna: str) -> int:
 
 
 def other_antenna(antenna: str) -> str:
-    """Name the antenna input that is not the one named."""
+    """Return the other antenna input."""
     return "secondary" if antenna_index(antenna) == 1 else "primary"
 
 

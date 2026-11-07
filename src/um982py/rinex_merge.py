@@ -124,10 +124,10 @@ def _header_line(content: str, label: str) -> str:
 def merge_gps_observations(inputs: Sequence[Path], output: Path) -> MergeResult:
     """Merge um982py RANGE exports with unknown phase alignment into GPS RINEX.
 
-    The output is created only after validation. A loss-of-lock flag is set on
-    each carrier's first observation after a segment boundary because continuity
-    through the interruption has not been established. Other constellations are
-    deliberately omitted. Input files must be strictly time ordered.
+    Input files must be strictly time ordered; the output is created only after
+    validation. Each carrier's first observation after a segment boundary gets
+    a loss-of-lock flag because continuity through the interruption is unknown.
+    Other constellations are omitted.
     """
     if not inputs:
         raise ValueError("at least one segment is required")

@@ -1,8 +1,7 @@
 """RINEX 3.05 GPS LNAV export from documented UM982 GPSEPH records."""
-#  The receiver does not expose every LNAV field required by RINEX: L2 code,
-# L2 P-data and fit interval are left blank. Transmission time is marked
-# unknown using the RINEX-defined sentinel, since the receiver's `tow` is not
-# independently established as the transmitted message time.
+# The receiver does not expose the RINEX L2 code, L2 P-data or fit interval.
+# Leave those fields blank and use the transmission-time sentinel because the
+# receiver's `tow` has not been established as the transmitted message time.
 
 import math
 from collections.abc import Sequence

@@ -69,16 +69,16 @@ class AugmentationState:
 
     @property
     def complete(self) -> bool:
-        """True only when no feature was refused."""
+        """True when the plan, signal-group check and requested save succeeded."""
         return not self.rejected
 
 
 def augmentation_plan(current: SignalGroup) -> tuple[AugmentationStep, ...]:
     """Commands that enable SBAS, E6-HAS, B2b-PPP and the remaining refinements.
 
-    The signal group is only touched when it does not already track Galileo E6
-    and BDS B2b, because changing it restarts acquisition.  Every other step is
-    idempotent on the firmware, so it is always re-asserted.
+    Switching to signal group 3/6 restarts acquisition, so the plan changes
+    groups only when another group is active. The remaining settings are
+    idempotent and are reasserted on each run.
     """
     steps: list[AugmentationStep] = []
     if current != HIGH_ACCURACY_SIGNAL_GROUP:
@@ -109,11 +109,10 @@ def enable_augmentation(
 ) -> AugmentationState:
     """Apply augmentation features, optionally saving a verified group change.
 
-    A refused feature never aborts the session: it is reported in ``rejected``
-    so a firmware without that option still yields a usable receiver.  The
-    configuration is saved only when requested and the verified group changed.
-    Transport and response failures abort the plan; earlier commands may already
-    have changed receiver settings.
+    Rejected commands are recorded and the remaining features are attempted.
+    A transport or response failure stops the plan, but earlier changes may
+    already be active. The configuration is saved only when requested and the
+    signal-group readback confirms the change.
     """
     previous = receiver.execute(current_signal_group())
     applied: list[str] = []

@@ -59,8 +59,8 @@ def assess_position(
 ) -> PositionAssessment:
     """Apply user-selected limits; caller supplies age in a compatible time scale.
 
-    Standard deviations are receiver-reported estimates, not measured errors.
-    This result is not an integrity guarantee or a safety certification.
+    Standard deviations are receiver estimates; they do not establish measured
+    accuracy, navigation integrity or safety certification.
     """
     reasons: list[str] = []
     try:

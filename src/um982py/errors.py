@@ -2,7 +2,7 @@
 
 
 class UM982Error(Exception):
-    """Serves as the base exception for receiver and protocol errors."""
+    """Base class for receiver and protocol errors."""
 
 
 class ProtocolError(UM982Error):
