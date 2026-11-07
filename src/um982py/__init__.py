@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from um982py import commands
     from um982py._firmware_logs import FirmwareLog
+    from um982py.adapters import geojson_feature, navsatfix
     from um982py.antenna import swap_antenna
     from um982py.assessment import PositionAssessment, PositionLimits, assess_position
     from um982py.async_receiver import AsyncReceiver
@@ -251,6 +252,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "finite": ("um982py.stats", "finite"),
     "fractional_frequency": ("um982py.stats", "fractional_frequency"),
     "geodetic_from_ecef": ("um982py.geodesy", "geodetic_from_ecef"),
+    "geojson_feature": ("um982py.adapters", "geojson_feature"),
     "bdt_week_to_gps_seconds": ("um982py.measurement", "bdt_week_to_gps_seconds"),
     "gnss_range_samples": ("um982py.measurement", "gnss_range_samples"),
     "gps_epoch": ("um982py.measurement", "gps_epoch"),
@@ -269,6 +271,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "load_records": ("um982py.capture", "load_records"),
     "lomb_scargle": ("um982py.stats", "lomb_scargle"),
     "mean": ("um982py.stats", "mean"),
+    "navsatfix": ("um982py.adapters", "navsatfix"),
     "norm": ("um982py.stats", "norm"),
     "open_receiver": ("um982py.capture", "open_receiver"),
     "parse_configuration": ("um982py.receiver_models", "parse_configuration"),
@@ -402,6 +405,7 @@ __all__ = [
     "finite",
     "fractional_frequency",
     "geodetic_from_ecef",
+    "geojson_feature",
     "gnss_range_samples",
     "gps_epoch",
     "gps_signals",
@@ -419,6 +423,7 @@ __all__ = [
     "lomb_scargle",
     "mean",
     "merge_gps_observations",
+    "navsatfix",
     "norm",
     "open_receiver",
     "parse_configuration",

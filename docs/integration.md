@@ -37,6 +37,11 @@ age, satellite count, fix quality and straight-line displacement rate. A
 displacement rate is not measured velocity, and these checks do not establish
 position accuracy or navigation integrity.
 
+`geojson_feature()` exports positions after the application establishes the
+WGS 84 reference. `navsatfix()` creates an optional ROS 2 `sensor_msgs/NavSatFix`
+using an application-supplied ROS timestamp and antenna frame. It does not infer
+constellation usage or covariance, and requires an explicit augmented status.
+
 ## Mobile RTK
 
 `um982py.rtk_session.RtkSession` forwards validated RTCM frames through a

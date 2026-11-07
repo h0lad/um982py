@@ -1,11 +1,18 @@
 """Print GGA positions and reconnect when the receiver disconnects."""
 
 import argparse
+import json
 from collections.abc import Sequence
 from contextlib import closing
 from threading import Event
 
-from um982py import LiveLimits, PositionMonitor, PositionSession, Receiver
+from um982py import (
+    LiveLimits,
+    PositionMonitor,
+    PositionSession,
+    Receiver,
+    geojson_feature,
+)
 from um982py.commands import Log
 
 
@@ -14,6 +21,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("target", help="serial port or tcp://host:port")
     parser.add_argument("--baud", type=int, default=115200)
     parser.add_argument("--interval", type=float, default=1.0)
+    parser.add_argument(
+        "--geojson", action="store_true", help="output WGS84 fixes as GeoJSON lines"
+    )
     parser.add_argument(
         "--max-gap", type=float, help="maximum arrival interval in seconds"
     )
@@ -36,6 +46,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             for update in positions:
                 fix = update.fix
                 assessment = monitor.observe(update)
+                if args.geojson:
+                    feature = geojson_feature(update, reference_frame="WGS84")
+                    if feature is not None:
+                        feature["properties"]["assessment_reasons"] = assessment.reasons
+                        print(json.dumps(feature, allow_nan=False), flush=True)
+                    continue
                 print(
                     f"{update.received_at.isoformat()} quality={fix.quality} "
                     f"lat={fix.latitude} lon={fix.longitude} "
