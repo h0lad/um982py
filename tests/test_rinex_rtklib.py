@@ -149,7 +149,13 @@ def test_rtklib_reads_galileo_and_beidou_navigation(
 ) -> None:
     source, output = tmp_path / "multi.nav", tmp_path / "roundtrip.nav"
     records = [timed_sample("GALEPHA"), timed_sample("BDSEPHA")]
-    source.write_text(export_rinex_navigation(records, bdseph_time_scale="BDT").text)
+    source.write_text(
+        export_rinex_navigation(
+            records,
+            bdseph_time_scale="BDT",
+            galileo_inav_sources=frozenset({"E1B", "E5B"}),
+        ).text
+    )
     convert(convbin, source, output, nav=True)
     data = output.read_text().split("END OF HEADER", 1)[1]
     lines = [line for line in data.splitlines() if line.strip()]
@@ -162,3 +168,20 @@ def test_rtklib_reads_galileo_and_beidou_navigation(
     bds_toe = float(lines[19][4:23].replace("D", "E"))
     bds_week = float(lines[21][42:61].replace("D", "E"))
     assert (bds_toe, bds_week) == (360000, 834)
+
+
+def test_rtklib_reads_glonass_navigation(convbin: str, tmp_path: Path) -> None:
+    source, output = tmp_path / "glo.nav", tmp_path / "roundtrip.nav"
+    record = timed_sample("GLOEPHA")
+    source.write_text(
+        export_rinex_navigation([record], glonass_leap_seconds=18, version="3.04").text
+    )
+    convert(convbin, source, output, nav=True)
+    lines = [
+        line
+        for line in output.read_text().split("END OF HEADER", 1)[1].splitlines()
+        if line.strip()
+    ]
+    assert len(lines) == 4
+    assert lines[0][:23] == "R03 2024 03 11 07 45 00"
+    assert float(lines[2][61:80].replace("D", "E")) == 5

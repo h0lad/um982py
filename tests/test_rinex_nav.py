@@ -66,7 +66,7 @@ def test_week_boundary_and_reject_inconsistent_ephemeris() -> None:
     with pytest.raises(ValueError, match="issue"):
         export_rinex_navigation([replace(record, entries=tuple(data.items()))])
     with pytest.raises(ValueError, match="unsupported"):
-        export_rinex_navigation([replace(record, name="GLOEPH")])
+        export_rinex_navigation([replace(record, name="BD3EPH")])
 
 
 def test_galileo_and_beidou_against_dlr_broadcast_records() -> None:
@@ -74,7 +74,13 @@ def test_galileo_and_beidou_against_dlr_broadcast_records() -> None:
     beidou = timed_sample("BDSEPHA")
     with pytest.raises(ValueError, match="time scale"):
         export_rinex_navigation([beidou])
-    result = export_rinex_navigation([galileo, beidou], bdseph_time_scale="BDT")
+    with pytest.raises(ValueError, match="I/NAV source"):
+        export_rinex_navigation([galileo])
+    result = export_rinex_navigation(
+        [galileo, beidou],
+        bdseph_time_scale="BDT",
+        galileo_inav_sources=frozenset({"E1B", "E5B"}),
+    )
     actual = result.text.split("END OF HEADER\n", 1)[1].splitlines()
     reference = (
         (Path(__file__).parent / "fixtures/dlr_nav_2021364.txt")
@@ -82,7 +88,6 @@ def test_galileo_and_beidou_against_dlr_broadcast_records() -> None:
         .splitlines()
     )
     assert result.messages == 3 and len(actual) == len(reference) == 24
-    assert "galileo_inav_source_signals" in result.unknown_fields
     for block in range(3):
         start = block * 8
         assert actual[start][:23] == reference[start][:23]
@@ -95,9 +100,6 @@ def test_galileo_and_beidou_against_dlr_broadcast_records() -> None:
                 # The receiver does not identify the I/NAV source signals or
                 # establish the transmission time; blank fields stay unknown.
                 if value is None or (row == 7 and column == 0):
-                    continue
-                if block == 0 and row == 5 and column == 1:
-                    assert value == 512 and expected == 517
                     continue
                 assert expected is not None
                 assert value == pytest.approx(expected, rel=5e-4, abs=1e-15)
@@ -127,11 +129,60 @@ def test_galileo_rejects_missing_health_and_unavailable_sisa() -> None:
     values = dict(record.entries)
     values["inavreceived"] = "FALSE"
     with pytest.raises(ValueError, match="both F/NAV and I/NAV"):
-        export_rinex_navigation([replace(record, entries=tuple(values.items()))])
+        export_rinex_navigation(
+            [replace(record, entries=tuple(values.items()))],
+            galileo_inav_sources=frozenset({"E1B"}),
+        )
     values["inavreceived"] = "TRUE"
     values["sisa"] = 255
     with pytest.raises(ValueError, match="SISA"):
-        export_rinex_navigation([replace(record, entries=tuple(values.items()))])
+        export_rinex_navigation(
+            [replace(record, entries=tuple(values.items()))],
+            galileo_inav_sources=frozenset({"E1B"}),
+        )
+
+
+def test_galileo_health_fields_follow_navigation_source() -> None:
+    record = timed_sample("GALEPHA")
+    values = dict(record.entries)
+    values.update(e1bhealth=2, e1bdvs=1, e5ahealth=1, e5advs=1, e5bhealth=3, e5bdvs=0)
+    result = export_rinex_navigation(
+        [replace(record, entries=tuple(values.items()))],
+        galileo_inav_sources=frozenset({"E1B"}),
+    )
+    lines = result.text.split("END OF HEADER\n", 1)[1].splitlines()
+    assert fields(lines[5])[1] == 513
+    assert fields(lines[6])[1] == 389
+    assert fields(lines[14])[1] == 24
+
+
+def test_glonass_against_dlr_broadcast_state() -> None:
+    record = timed_sample("GLOEPHA")
+    with pytest.raises(ValueError, match="leap seconds"):
+        export_rinex_navigation([record])
+    result = export_rinex_navigation([record], glonass_leap_seconds=18)
+    actual = result.text.split("END OF HEADER\n", 1)[1].splitlines()
+    reference = (
+        (Path(__file__).parent / "fixtures/dlr_glonass_2024071.txt")
+        .read_text()
+        .splitlines()
+    )
+    assert actual[0][:23] == reference[0][:23] == "R03 2024 03 11 07 45 00"
+    assert fields(actual[0], 23)[:2] == pytest.approx(fields(reference[0], 23)[:2])
+    assert fields(actual[0], 23)[2] == 113640
+    for row in range(1, 4):
+        assert fields(actual[row]) == pytest.approx(fields(reference[row]))
+    assert fields(actual[4]) == [None, 999999999.999, 15, None]
+    assert "glonass_status_flags" in result.unknown_fields
+    old = export_rinex_navigation([record], glonass_leap_seconds=18, version="3.04")
+    assert len(old.text.split("END OF HEADER\n", 1)[1].splitlines()) == 4
+    entries = dict(record.entries)
+    entries["tk"] = 0
+    boundary = export_rinex_navigation(
+        [replace(record, entries=tuple(entries.items()))], glonass_leap_seconds=18
+    )
+    first = boundary.text.split("END OF HEADER\n", 1)[1].splitlines()[0]
+    assert fields(first, 23)[2] == 75600
 
 
 def test_navigation_cli_replays_capture(tmp_path: Path) -> None:

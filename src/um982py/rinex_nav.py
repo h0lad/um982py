@@ -119,7 +119,7 @@ def _galileo_sisa(index: int) -> float:
     raise ValueError("Galileo SISA index is unavailable or reserved")
 
 
-def _galileo(record: Record) -> list[list[str]]:
+def _galileo(record: Record, inav_sources: frozenset[str]) -> list[list[str]]:
     prn, iod = record.integer("satid"), record.integer("iodnav")
     if not 1 <= prn <= 36 or not 0 <= iod <= 1023:
         raise ValueError("invalid Galileo satellite or IODnav")
@@ -141,7 +141,10 @@ def _galileo(record: Record) -> list[list[str]]:
     if not math.isfinite(root_a) or root_a <= 0:
         raise ValueError("invalid Galileo semi-major axis")
     result = []
-    for kind, code in (("inav", 512), ("fnav", 258)):
+    inav_code = (
+        512 | (1 if "E1B" in inav_sources else 0) | (4 if "E5B" in inav_sources else 0)
+    )
+    for kind, code in (("inav", inav_code), ("fnav", 258)):
         toc = record.integer(kind + "t0c")
         if not 0 <= toc < _WEEK:
             raise ValueError("invalid Galileo clock time")
@@ -163,9 +166,9 @@ def _galileo(record: Record) -> list[list[str]]:
             (record.real("idot"), code, week, None),
             (
                 _galileo_sisa(record.integer("sisa")),
-                health,
+                health & (0b111000111 if kind == "inav" else 0b111000),
                 record.real("e1e5abgd"),
-                record.real("e1e5bbgd") if kind == "inav" else None,
+                record.real("e1e5bbgd") if kind == "inav" else 0,
             ),
             (999999999.999, None, None, None),
         )
@@ -234,46 +237,143 @@ def _beidou(record: Record, time_scale: Literal["BDT", "GPST"]) -> list[str]:
     return [line, *("    " + "".join(map(_number, row)) for row in rows)]
 
 
+def _glonass(record: Record, leap_seconds: int, version: str) -> list[str]:
+    slot = record.integer("sloto") - 37
+    frequency = record.integer("freqo") - 7
+    week, milliseconds = record.integer("e_week"), record.integer("e_time")
+    health, age, frame_time = (
+        record.integer("health"),
+        record.integer("age"),
+        record.integer("tk"),
+    )
+    if not 1 <= slot <= 24 or not -7 <= frequency <= 13:
+        raise ValueError("invalid GLONASS slot or frequency channel")
+    if not 0 <= week <= 65535 or not 0 <= milliseconds < _WEEK * 1000:
+        raise ValueError("invalid GLONASS reference epoch")
+    if milliseconds % 1000 or health not in (0, 1) or not 0 <= age <= 31:
+        raise ValueError("invalid GLONASS epoch, health or age")
+    if not 0 <= frame_time < 86400:
+        raise ValueError("invalid GLONASS frame time")
+    stamp = _GPS_EPOCH + timedelta(
+        weeks=week, milliseconds=milliseconds, seconds=-leap_seconds
+    )
+    midnight = stamp.replace(hour=0, minute=0, second=0, microsecond=0)
+    candidate = midnight + timedelta(seconds=frame_time - 10800)
+    candidates = (
+        candidate - timedelta(days=1),
+        candidate,
+        candidate + timedelta(days=1),
+    )
+    frame = min(candidates, key=lambda value: abs((value - stamp).total_seconds()))
+    frame_sow = (frame - _GPS_EPOCH).total_seconds() % _WEEK
+    line = f"R{slot:02d} {stamp:%Y %m %d %H %M %S}" + "".join(
+        map(_number, (-record.real("tau_n"), record.real("gamma"), frame_sow))
+    )
+    rows: list[tuple[float | int | None, ...]] = [
+        (
+            record.real("pos_x") / 1000,
+            record.real("vel_x") / 1000,
+            record.real("ls_acc_x") / 1000,
+            health,
+        ),
+        (
+            record.real("pos_y") / 1000,
+            record.real("vel_y") / 1000,
+            record.real("ls_acc_y") / 1000,
+            frequency,
+        ),
+        (
+            record.real("pos_z") / 1000,
+            record.real("vel_z") / 1000,
+            record.real("ls_acc_z") / 1000,
+            age,
+        ),
+    ]
+    if version == "3.05":
+        rows.append((None, 999999999.999, 15, None))
+    return [line, *("    " + "".join(map(_number, row)) for row in rows)]
+
+
 def export_rinex_navigation(
     records: Sequence[Record],
     *,
     bdseph_time_scale: Literal["BDT", "GPST"] | None = None,
+    galileo_inav_sources: frozenset[str] | None = None,
+    glonass_leap_seconds: int | None = None,
+    version: Literal["3.04", "3.05"] = "3.05",
 ) -> RinexNavigationExport:
-    """Export GPS, Galileo and BDS ephemerides with explicit time conventions."""
+    """Export broadcast ephemerides with explicit time and signal conventions."""
     if not records:
         raise ValueError("at least one ephemeris record is required")
     if bdseph_time_scale not in (None, "BDT", "GPST"):
         raise ValueError("bdseph_time_scale must be BDT or GPST")
+    if version not in ("3.04", "3.05"):
+        raise ValueError("version must be 3.04 or 3.05")
     systems = {record.name for record in records}
-    unsupported = systems - {"GPSEPH", "GALEPH", "BDSEPH"}
+    unsupported = systems - {"GPSEPH", "GALEPH", "BDSEPH", "GLOEPH"}
     if unsupported:
         raise ValueError(f"unsupported ephemeris records: {sorted(unsupported)}")
     if "BDSEPH" in systems and bdseph_time_scale is None:
         raise ValueError("BDSEPH time scale must be supplied after verification")
-    labels = {"GPSEPH": "G: GPS", "GALEPH": "E: Galileo", "BDSEPH": "C: BDS"}
+    if "GALEPH" in systems and (
+        not galileo_inav_sources or not galileo_inav_sources <= {"E1B", "E5B"}
+    ):
+        raise ValueError(
+            "Galileo I/NAV source signals must be supplied after verification"
+        )
+    if "GLOEPH" in systems and (
+        not isinstance(glonass_leap_seconds, int)
+        or isinstance(glonass_leap_seconds, bool)
+        or not 0 <= glonass_leap_seconds <= 99
+    ):
+        raise ValueError(
+            "GLONASS GPS-UTC leap seconds must be supplied after verification"
+        )
+    labels = {
+        "GPSEPH": "G: GPS",
+        "GALEPH": "E: Galileo",
+        "BDSEPH": "C: BDS",
+        "GLOEPH": "R: GLONASS",
+    }
     system_label = labels[next(iter(systems))] if len(systems) == 1 else "M: Mixed"
     lines = [
         _header(
-            f"{'3.05':>9}{'':11}{'N: GNSS NAV DATA':<20}{system_label}",
+            f"{version:>9}{'':11}{'N: GNSS NAV DATA':<20}{system_label}",
             "RINEX VERSION / TYPE",
         ),
         _header(
             f"{'um982py':<20}{'':20}{datetime.now(UTC):%Y%m%d %H%M%S UTC}",
             "PGM / RUN BY / DATE",
         ),
-        _header("Transmission time unknown; RINEX sentinel used", "COMMENT"),
     ]
+    if systems - {"GLOEPH"}:
+        lines.append(
+            _header("Transmission time unknown; RINEX sentinel used", "COMMENT")
+        )
     unknown: list[str] = []
     if "GPSEPH" in systems:
         lines.append(_header("L2 codes, L2 P flag and fit interval unknown", "COMMENT"))
         unknown.extend(("l2_codes", "l2_p_data_flag", "fit_interval"))
     if "GALEPH" in systems:
-        lines.append(_header("Galileo I/NAV source signals unknown", "COMMENT"))
-        unknown.append("galileo_inav_source_signals")
+        signals = ",".join(sorted(galileo_inav_sources or ()))
+        lines.append(_header(f"I/NAV source signals supplied: {signals}", "COMMENT"))
     if "BDSEPH" in systems:
         lines.append(
             _header(f"BDSEPH source time scale: {bdseph_time_scale}", "COMMENT")
         )
+    if "GLOEPH" in systems:
+        lines.append(
+            _header(f"GPS-UTC leap seconds supplied: {glonass_leap_seconds}", "COMMENT")
+        )
+        if version == "3.05":
+            unknown.extend(
+                (
+                    "glonass_status_flags",
+                    "glonass_l1_l2_delay",
+                    "glonass_accuracy_index",
+                    "glonass_health_flags",
+                )
+            )
     lines.append(_header("", "END OF HEADER"))
     messages = 0
     for record in records:
@@ -281,17 +381,25 @@ def export_rinex_navigation(
             lines.extend(_gps(record))
             messages += 1
         elif record.name == "GALEPH":
-            for navigation in _galileo(record):
+            if not galileo_inav_sources:
+                raise ValueError("Galileo I/NAV source signals must be supplied")
+            for navigation in _galileo(record, galileo_inav_sources):
                 lines.extend(navigation)
                 messages += 1
-        else:
+        elif record.name == "BDSEPH":
             if bdseph_time_scale is None:
                 raise ValueError(
                     "BDSEPH time scale must be supplied after verification"
                 )
             lines.extend(_beidou(record, bdseph_time_scale))
             messages += 1
-    unknown.append("transmission_time")
+        else:
+            if glonass_leap_seconds is None:
+                raise ValueError("GLONASS GPS-UTC leap seconds must be supplied")
+            lines.extend(_glonass(record, glonass_leap_seconds, version))
+            messages += 1
+    if systems - {"GLOEPH"}:
+        unknown.append("transmission_time")
     return RinexNavigationExport(
         "\n".join(lines) + "\n",
         messages,
