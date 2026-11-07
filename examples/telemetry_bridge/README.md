@@ -24,7 +24,9 @@ python -m examples.telemetry_bridge --replay tests/fixtures/versiona.bin
 
 `--seconds` sets the live streaming duration, and `--json` writes
 newline-delimited JSON to a file. Replay reads an existing wire capture instead
-of opening the receiver.
+of opening the receiver and decodes it incrementally. Live capture uses a bounded
+queue; if the output cannot keep up, the bridge reports dropped frames and exits
+with status 1. A receiver disconnect also stops the bridge with an error.
 
 ## Understanding the result
 

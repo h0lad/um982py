@@ -4,28 +4,37 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Iterable, Iterator, Sequence
+from math import isfinite
 from pathlib import Path
+from queue import Empty
 from time import monotonic
 
 from examples.telemetry_bridge import lines
-from um982py.capture import open_receiver, read_frames
+from um982py.capture import iter_frames, open_receiver
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
     debug_header,
     run,
 )
-from um982py.errors import ResponseTimeout
-from um982py.receiver import Receiver
+from um982py.errors import TransportError
+from um982py.streaming import ReceiverStream, Subscription
 
 
-def _receiver_lines(receiver: Receiver, seconds: float) -> Iterator[str]:
-    """Read frames from an open receiver for ``seconds`` and encode each one."""
+def _receiver_lines(
+    stream: ReceiverStream, subscription: Subscription, seconds: float
+) -> Iterator[str]:
+    """Read subscribed messages and encode each one until the deadline."""
     deadline = monotonic() + seconds
     while (remaining := deadline - monotonic()) > 0:
         try:
-            message = receiver.receive(timeout=min(remaining, 1.0))
-        except ResponseTimeout:
+            message = subscription.get(timeout=min(remaining, 0.2))
+        except Empty:
+            health = stream.health()
+            if not health.running:
+                raise TransportError(
+                    f"receiver stream stopped: {health.failure}"
+                ) from None
             continue
         yield from lines((message,))
 
@@ -62,15 +71,25 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="print live capture updates to stderr",
     )
     args = parser.parse_args(argv)
+    if not isfinite(args.seconds) or args.seconds <= 0:
+        parser.error("--seconds must be finite and positive")
     debug_header(args, "telemetry_bridge")
     if args.replay is None:
         receiver = open_receiver(args)
+        stream = ReceiverStream(receiver)
+        subscription = stream.subscribe()
+        stream.start()
         try:
-            count = _emit(_receiver_lines(receiver, args.seconds), args.json)
+            count = _emit(
+                _receiver_lines(stream, subscription, args.seconds), args.json
+            )
         finally:
-            receiver.close()
+            stream.close(close_receiver=True)
+        if subscription.dropped:
+            print(f"Telemetry: {subscription.dropped} frames dropped", file=sys.stderr)
+            return 1
     else:
-        count = _emit(lines(read_frames(Path(args.replay))), args.json)
+        count = _emit(lines(iter_frames(Path(args.replay))), args.json)
     print(f"Telemetry: {count} frames bridged", file=sys.stderr)
     return 0
 
