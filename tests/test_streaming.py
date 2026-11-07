@@ -55,6 +55,8 @@ def test_stream_dispatches_command_backlog_and_counts_slow_consumer() -> None:
         wait_for(lambda: stream.health().messages == 2)
         assert subscriber.dropped == stream.health().subscription_drops == 1
         assert subscriber.get(timeout=1).raw == sentence(b"GPGGA,1")
+        stream.unsubscribe(subscriber)
+        assert stream.health().subscription_drops == 1
     finally:
         stream.close(close_receiver=True)
     assert transport.closed
@@ -91,3 +93,10 @@ def test_closing_stream_wakes_an_idle_subscriber() -> None:
     consumer.join()
     with pytest.raises(RuntimeError):
         stream.subscribe()
+
+
+def test_stream_cannot_start_after_close() -> None:
+    stream = ReceiverStream(Receiver(QueueTransport()))
+    stream.close()
+    with pytest.raises(RuntimeError, match="stopped"):
+        stream.start()

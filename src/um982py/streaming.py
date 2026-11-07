@@ -105,6 +105,7 @@ class ReceiverStream:
         self.receiver = receiver
         self.poll_seconds = poll_seconds
         self._subscriptions: list[Subscription] = []
+        self._retired_drops = 0
         self._lock = Lock()
         self._stop = Event()
         self._operations: Queue[tuple[Callable[[], object], Future[object]]] = Queue(
@@ -130,11 +131,14 @@ class ReceiverStream:
         with self._lock:
             self._subscriptions.remove(subscription)
             subscription._finish()
+            self._retired_drops += subscription.dropped
 
     def start(self) -> None:
         with self._lock:
             if self._thread is not None:
                 raise RuntimeError("stream already started")
+            if self._stop.is_set():
+                raise RuntimeError("stream is stopped")
             self._thread = Thread(target=self._run, name="um982py-stream", daemon=True)
             self._thread.start()
 
@@ -162,7 +166,8 @@ class ReceiverStream:
                 messages=self._messages,
                 last_arrival_monotonic=self._last_arrival,
                 last_receiver_gps_seconds=self._last_epoch,
-                subscription_drops=sum(item.dropped for item in self._subscriptions),
+                subscription_drops=self._retired_drops
+                + sum(item.dropped for item in self._subscriptions),
                 discarded_bytes=self._discarded_bytes,
                 recent_decoder_errors=self._decoder_errors,
                 failure=None if self._failure is None else repr(self._failure),
