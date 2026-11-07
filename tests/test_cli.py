@@ -1,4 +1,5 @@
 import runpy
+from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import patch
 
@@ -54,3 +55,22 @@ def test_augmentation_is_explicit_and_reports_refusals(
         assert main(["--augment", "version"]) == 0
     augmentation.assert_called_once()
     assert "augmentation refused: sbas" in capsys.readouterr().err
+
+
+def test_cli_recording_is_flushed_before_a_failed_action(tmp_path: Path) -> None:
+    path = tmp_path / "capture.bin"
+    transport = ReplayTransport(chunk=100)
+    transport.pending.extend(b"receiver data")
+
+    def fail_after_read(receiver: Receiver, *args: object) -> None:
+        assert receiver.transport.read(100, 1) == b"receiver data"
+        assert path.read_bytes() == b"receiver data"
+        raise TransportError("receiver disconnected")
+
+    with (
+        patch.object(Receiver, "connect", return_value=Receiver(transport)),
+        patch("um982py.cli._run_action", side_effect=fail_after_read),
+    ):
+        assert main(["--record", str(path), "version"]) == 2
+    assert path.read_bytes() == b"receiver data"
+    assert transport.closed

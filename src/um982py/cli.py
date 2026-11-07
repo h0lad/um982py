@@ -9,6 +9,7 @@ from pathlib import Path
 
 from um982py.antenna import antenna_log
 from um982py.augmentation import enable_augmentation
+from um982py.capture import RecordingTransport
 from um982py.commands import queries
 from um982py.diagnostics import (
     DOCTOR_LOGS,
@@ -32,7 +33,6 @@ from um982py.experimental import (
     performance_status,
     receiver_system_status,
 )
-from um982py.experimental.capture import RecordingTransport
 from um982py.experimental.configuration import antenna_power_on
 from um982py.experimental.raw_data import capture_baseband
 from um982py.experimental.tracking import tracking_fields, tracking_slots
@@ -279,7 +279,6 @@ def main(argv: list[str] | None = None) -> int:
     for path in (args.record, args.output):
         if path is not None and path.exists():
             parser.error(f"output already exists: {path}")
-    recording = None
     try:
         with Receiver.connect(args.port, args.baud, timeout=args.timeout) as receiver:
             if args.augment:
@@ -296,8 +295,9 @@ def main(argv: list[str] | None = None) -> int:
                             f"warning: augmentation refused: {refused}", file=sys.stderr
                         )
             if args.record is not None:
-                recording = RecordingTransport(receiver.transport, 32 * 1024 * 1024)
-                receiver.transport = recording
+                args.record.parent.mkdir(parents=True, exist_ok=True)
+                stream = args.record.open("xb")
+                receiver.transport = RecordingTransport(receiver.transport, stream)
             if args.action == "monitor":
                 for _ in range(args.count):
                     print(json.dumps(receiver.receive(), default=_json))
@@ -308,9 +308,4 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     except KeyboardInterrupt:
         return 130
-    finally:
-        if recording is not None and args.record is not None:
-            args.record.parent.mkdir(parents=True, exist_ok=True)
-            with args.record.open("xb") as stream:
-                stream.write(recording.raw)
     return 0
