@@ -12,7 +12,7 @@ from um982py.augmentation import (
 )
 from um982py.commands.configuration import SignalGroup
 from um982py.commands.core import Command
-from um982py.errors import CommandRejected
+from um982py.errors import CommandRejected, ResponseTimeout
 from um982py.messages import CommandResponse
 
 FEATURES = (
@@ -122,6 +122,22 @@ def test_default_does_not_save() -> None:
     result = enable_augmentation(receiver)
     assert result.changed and not result.saved
     assert not receiver.saved
+
+
+def test_transport_failure_stops_the_remaining_plan() -> None:
+    class LostResponse(Scripted):
+        def execute[T](self, command: Command[T], *, timeout: float | None = None) -> T:
+            if command.text.startswith("CONFIG SBAS"):
+                self.commands.append(command.text)
+                raise ResponseTimeout("receiver did not acknowledge")
+            return super().execute(command, timeout=timeout)
+
+    receiver = LostResponse(SignalGroup(4, 5))
+    with pytest.raises(ResponseTimeout):
+        enable_augmentation(receiver, persist=True)
+    assert receiver.group == HIGH_ACCURACY_SIGNAL_GROUP
+    assert not receiver.saved
+    assert not any("CONFIG PPP" in command for command in receiver.commands)
 
 
 def test_failed_verification_does_not_invent_or_save_active_group() -> None:

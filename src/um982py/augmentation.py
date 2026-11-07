@@ -18,7 +18,7 @@ from um982py.commands.configuration import (
 )
 from um982py.commands.core import Command
 from um982py.commands.system import save_configuration
-from um982py.errors import UM982Error
+from um982py.errors import CommandRejected, UM982Error
 
 if TYPE_CHECKING:
     from um982py.messages import CommandResponse
@@ -112,6 +112,8 @@ def enable_augmentation(
     A refused feature never aborts the session: it is reported in ``rejected``
     so a firmware without that option still yields a usable receiver.  The
     configuration is saved only when requested and the verified group changed.
+    Transport and response failures abort the plan; earlier commands may already
+    have changed receiver settings.
     """
     previous = receiver.execute(current_signal_group())
     applied: list[str] = []
@@ -119,7 +121,7 @@ def enable_augmentation(
     for step in augmentation_plan(previous):
         try:
             receiver.execute(step.command)
-        except (UM982Error, OSError, ValueError) as error:
+        except CommandRejected as error:
             rejected.append((step.feature, str(error)))
         else:
             applied.append(step.feature)
