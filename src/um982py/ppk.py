@@ -1,7 +1,5 @@
 """Run RTKLIB post-processing with explicit inputs and a provenance record."""
 
-from __future__ import annotations
-
 import hashlib
 import json
 import math

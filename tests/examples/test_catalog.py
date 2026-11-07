@@ -29,8 +29,18 @@ CSV_EXPERIMENTS = frozenset(
         "orbit_position_effect",
     }
 )
+WORKFLOW_EXAMPLES = frozenset(
+    {
+        "crs_transform",
+        "field_recording",
+        "live_position",
+        "ntrip_sources",
+        "postprocessed_rtk",
+    }
+)
 SHARED_TESTS = {
     **dict.fromkeys(CSV_EXPERIMENTS, "test_scientific_cli.py"),
+    **dict.fromkeys(WORKFLOW_EXAMPLES, "examples/test_workflow_examples.py"),
     "offline_ppp": "test_offline_ppp.py",
     "rinex_navigation": "test_rinex_nav.py",
 }
@@ -64,7 +74,7 @@ def test_example_cli_responds_to_help(name: str) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert "usage:" in result.stdout
-    if name not in CSV_EXPERIMENTS | {"ice_motion", "offline_ppp"}:
+    if name not in CSV_EXPERIMENTS | WORKFLOW_EXAMPLES | {"ice_motion", "offline_ppp"}:
         assert "--antenna" in result.stdout
     if name == "gnss_reflectometry":
         assert "--spectra-csv" in result.stdout

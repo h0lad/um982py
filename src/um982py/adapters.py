@@ -1,7 +1,5 @@
 """Small adapters for field positions and optional ROS 2 messages."""
 
-from __future__ import annotations
-
 from importlib import import_module
 from math import isfinite
 from typing import Any, Literal, Protocol, cast

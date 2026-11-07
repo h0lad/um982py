@@ -3,7 +3,7 @@
 With RTKLIB's `rnx2rtkp` installed, process rover and base observations and a
 navigation file:
 
-```sh
+```bash
 python -m examples.postprocessed_rtk rover.obs base.obs navigation.nav \
   --base-ecef X Y Z --reference-frame YOUR_FRAME --reference-epoch 2020.0 \
   --mode kinematic --output ppk-result
@@ -19,3 +19,5 @@ antenna offsets, time systems, signal mappings and the base coordinates before
 interpreting the result. RTKLIB settings not exposed by this example use the
 installed executable's defaults, which are recorded in its solution header.
 The executable's quality codes and a successful run do not establish accuracy.
+
+See [RTKLIB](https://github.com/tomojitakasu/RTKLIB) for solver details.

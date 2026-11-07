@@ -1,7 +1,5 @@
 """Application-selected checks for live GGA position updates."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from math import isfinite
 from time import monotonic

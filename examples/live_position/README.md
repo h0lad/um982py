@@ -2,7 +2,7 @@
 
 Print GGA fixes from a receiver and reconnect after a transport failure:
 
-```sh
+```bash
 python -m examples.live_position /dev/ttyUSB0 --baud 921600 --interval 1
 ```
 
@@ -21,3 +21,5 @@ The optional `--max-gap` and `--max-correction-age` checks report assessment
 reasons with each fix. Arrival gaps are observed when the next fix arrives;
 use `PositionMonitor.age()` or the session health from another thread to detect
 an outage while no fixes are arriving.
+
+See the [Unicore receiver reference](https://en.unicore.com/uploads/file/20241219/Unicore_Reference_Commands_Manual_For_N4_High_Precision_Products_V2_EN_R1.4.pdf) for GGA output.

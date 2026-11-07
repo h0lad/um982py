@@ -1,7 +1,5 @@
 """Optional coordinate-reference transformations through pyproj and PROJ."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from importlib import import_module
 from math import isfinite

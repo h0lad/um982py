@@ -4,7 +4,7 @@ Enable the desired receiver logs before recording, and describe the antenna,
 reference point, receiver configuration, coordinate frame, time scale and
 correction source in a JSON metadata file. Then record and replay:
 
-```sh
+```bash
 python -m examples.field_recording record /dev/ttyUSB0 session \
   --baud 921600 --duration 3600 --metadata station.json
 python -m examples.field_recording replay session
@@ -22,3 +22,5 @@ occupation duration was reached.
 This example uses one receiver connection and does not measure bytes lost
 before they reach the process. Protect recordings and metadata as appropriate
 for their location and contents.
+
+See the [Unicore receiver reference](https://en.unicore.com/uploads/file/20241219/Unicore_Reference_Commands_Manual_For_N4_High_Precision_Products_V2_EN_R1.4.pdf) for available log formats.
