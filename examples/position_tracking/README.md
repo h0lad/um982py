@@ -26,8 +26,7 @@ geofence options.
 ## Understanding the result
 
 The example selects receiver solutions using their type and correction age.
-A track and estimated uncertainty do not prove absolute accuracy. Check the
-correction service, reference frame and age, and compare with surveyed
+Check the correction service, reference frame and age, and compare with surveyed
 positions when accuracy matters.
 
 ## References

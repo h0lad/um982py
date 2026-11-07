@@ -37,8 +37,8 @@ sentinels such as 9999 do not represent measured geometry.
 ## Understanding the result
 
 The reported solution types and correction ages depend on the observation
-window and receiver configuration. A fixed solution or recent correction age
-does not establish absolute accuracy, which also depends on the base coordinates.
+window and receiver configuration. Absolute accuracy also depends on the base
+coordinates.
 
 ## References
 
@@ -59,9 +59,8 @@ python -m examples.rtk_quality.matched_solution --replay /tmp/matched.bin \
 The report lists changes between successive observations within `--max-gap`.
 Codes and values are kept without assigning signal identities, physical units or
 phase conventions. Recognized receiver labels accompany their raw codes, while
-unknown codes remain unlabelled. A change is not proof of a cycle slip or ambiguity fix.
-Capture data alongside independent labels before drawing conclusions. Legacy
-message timestamps are interpreted as GPS time.
+unknown codes remain unlabelled. Capture data alongside independent labels
+before drawing conclusions. Legacy message timestamps are interpreted as GPS time.
 
 ## Inspect engine covariance and satellite states
 

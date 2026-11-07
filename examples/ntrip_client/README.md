@@ -82,9 +82,8 @@ The reported reconnect count does not measure the complete correction outage.
 Add `--reference-check` to query the documented `BASEINFO` log and compare its
 valid ECEF position with the most recently received RTCM 1005 or 1006 station
 coordinates. The distance is available only while the RTCM station and receiver
-query are recent. A change of RTCM station clears the previous result. A small
-difference does not prove that the base coordinates or reference frame are
-accurate, and the query does not establish when the receiver last updated them.
+query are recent. A change of RTCM station clears the previous result. The query
+does not establish when the receiver last updated its reference coordinates.
 
 ### Run directly
 
@@ -124,12 +123,12 @@ stream contains RTCM 1005 or 1006. Treat debug logs as location-sensitive.
 
 | Output | Meaning |
 | --- | --- |
-| `NTRIP: connected` | The caster accepted the connection without proving that corrections or an RTK fix are available. |
+| `NTRIP: connected` | The caster accepted the connection. |
 | `RTCM frames` | Number of checksum-valid RTCM messages forwarded to the receiver, not a count of fixes. |
 | `SPPNAV` | The receiver's code-based navigation solution. `SINGLE` is standalone, while `PSRDIFF` is a differential code solution. |
 | `ADRNAV` | The receiver's carrier-phase navigation solution. `NARROW_FLOAT` is a float solution and `NARROW_INT` is a fixed solution. |
 | `selected` | The example chooses between recent SPPNAV and ADRNAV using the receiver's reported horizontal sigma. It is a display selection, not a new position calculation. |
-| `sigma` | The receiver's estimated uncertainty, not a measurement of real-world accuracy. A low sigma or fixed solution does not prove that the base coordinates and reference frame are correct. |
+| `sigma` | The receiver's estimated uncertainty. |
 | `correction age` | Receiver-reported age in seconds when present. The example excludes ADRNAV differential/RTK results with a reported age over 10 seconds, negative or non-finite age, while an unavailable age is not independently verified. |
 | `Precision estimate` | Comparison of average **SPPNAV-reported** sigmas before and after connection. A pre-existing augmented baseline or changing conditions can affect it. |
 | `RTK: fixed solution observed` | At least one accepted ADRNAV sample was reported as a fixed type during this run. |

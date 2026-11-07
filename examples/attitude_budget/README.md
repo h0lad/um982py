@@ -29,8 +29,7 @@ and pitch uncertainty from the measured baseline variation.
 ## Understanding the result
 
 A baseline is the vector between the two antennas. Its geometry and measured
-variation determine the estimated uncertainty in heading and pitch. The
-estimate does not independently establish the true heading.
+variation determine the estimated uncertainty in heading and pitch.
 
 ## References
 

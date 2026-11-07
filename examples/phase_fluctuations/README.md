@@ -17,7 +17,7 @@ to save the report. No receiver connection is required.
 
 Each row has an `arc` identifier, strictly increasing time in seconds within the arc, and range-increasing `phase_m` in metres. Split arcs at every cycle slip, loss of lock, signal change and gap. `--max-gap-s` rejects gaps above the selected limit.
 
-The included arcs are synthetic and do not measure receiver performance.
+The included arcs are synthetic.
 
 ## Explanation and interpretation
 

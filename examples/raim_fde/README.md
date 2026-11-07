@@ -30,7 +30,7 @@ The receiver position must be computed and within `--position-tolerance`
 (default one second) of the RANGE epoch. GPS ephemerides must be healthy,
 have matching issue numbers and have a reference time within two hours of
 transmission. The reported position difference uses the receiver fix as its
-reference and is not an independent accuracy measurement.
+reference.
 
 ## Understanding the result
 

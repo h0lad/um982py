@@ -44,10 +44,6 @@ precise-point-positioning (PPP) correction services. This example reports
 observed correction messages, their ages and issue identifiers alongside PPP
 navigation records.
 
-A message being received is evidence of delivery, not proof that the receiver
-applied it or achieved a particular accuracy. A missing message in a short
-capture only means it was not observed during that capture.
-
 ## References
 
 China Satellite Navigation Office (2020), PPP-B2b ICD; Galileo HAS

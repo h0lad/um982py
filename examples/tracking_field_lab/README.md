@@ -40,7 +40,6 @@ This research tool compares receiver tracking fields whose meanings are not
 yet established with independently supplied labels. It helps identify
 candidate relationships in captured data.
 
-A statistical association is a hypothesis, not a verified field definition.
 Labels and epochs must align, and results should be checked on independent
 captures.
 

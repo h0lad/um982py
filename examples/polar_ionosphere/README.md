@@ -8,8 +8,7 @@ By default, it is reported only when continuous accepted rate intervals cover
 the entire `--roti-window-s` and at least five rates are available. Adjust these
 requirements explicitly with `--min-roti-coverage` and `--min-roti-samples`.
 Coverage is elapsed interval duration, not a count of expected samples. Each
-report includes both coverage and sample count. These checks do not establish
-that the measurements are free of cycle slips or code outliers.
+report includes both coverage and sample count.
 
 ```bash
 python -m examples.polar_ionosphere --port /dev/ttyUSB0 --duration 600 --json /tmp/polar.json
@@ -38,6 +37,5 @@ python -m examples.polar_ionosphere.campaign --report station-a polar-a.json \
 The event CSV has `start_gps_seconds,end_gps_seconds,event` columns. The report
 counts dual-frequency samples and summarizes code ROTI and C/N₀ within each
 window, retaining each input's tracking-quality report and signal frequencies.
-Empty windows remain visible. Matching an event in time does not establish its
-cause, and different station setups, frequency pairs and sample rates need
-independent review before comparison.
+Empty windows remain visible. Review station setups, frequency pairs and sample
+rates before comparison.

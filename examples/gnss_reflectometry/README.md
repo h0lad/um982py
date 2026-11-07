@@ -71,21 +71,18 @@ and a usable spectral peak. The two primary outputs are:
 | `day1-report.json` | Capture settings, counts, quality information and detailed arc results. Keep it with the raw capture and field notes. |
 
 An empty `rejection` field means the arc passed the configured checks. A
-rejected arc has a reason and should not be treated as a height estimate. A
-passing arc is still not independently validated. If no heights are accepted,
-the program writes its report and exits with a nonzero status.
+rejected arc has a reason and should not be treated as a height estimate. If no
+heights are accepted, the program writes its report and exits with a nonzero status.
 
 The report counts distinct combinations of constellation, satellite and pass
 direction in `automatic_height.distinct_tracks` and
-`observed_sectors[].accepted_distinct_tracks`. These counts do not establish
-statistical independence: different tracks can share environmental and model
-errors. Multiple frequencies of the same track count once, and passes with the
-same satellite and direction are grouped together.
+`observed_sectors[].accepted_distinct_tracks`. Different tracks can share
+environmental and model errors. Multiple frequencies of the same track count
+once, and passes with the same satellite and direction are grouped together.
 
 Repeat the recording at the same site as needed, using new filenames such as
 `captures/day2.bin`, `day2-arcs.csv` and `day2-report.json`. A longer capture
-may include more useful arcs, but there is no guarantee that every session will
-produce one.
+may include more useful arcs.
 
 To reprocess a recorded capture without connecting to the receiver, use:
 
@@ -178,12 +175,11 @@ for arc in report["antennas"]["ANT1"]["arcs"]:
 PY
 ```
 
-These footprints are geometric estimates, not proof of the actual reflection
-path. Mixed snow, water, land and structures within a footprint make attribution
-ambiguous. Shorelines and water levels can move, and slopes, waves, snow
-layering and changing antenna-to-surface height violate or complicate the simple
-model. Reject or investigate ambiguous arcs and compare the selected area with
-independent field measurements.
+These footprints are geometric estimates. Mixed snow, water, land and
+structures within a footprint make attribution ambiguous. Shorelines and water
+levels can move, and slopes, waves, snow layering and changing antenna-to-surface
+height violate or complicate the simple model. Reject or investigate ambiguous
+arcs and compare the selected area with independent field measurements.
 
 ## 2a. Estimate snow-depth change
 
@@ -285,8 +281,7 @@ requires a separate `matplotlib` installation.
 ## Try both workflows without hardware
 
 The files in `examples/gnss_reflectometry/data/` contain **synthetic values**
-for learning the output format. They are not measurements and do not validate
-the reflector-height algorithm. From the repository root, run:
+for learning the output format. From the repository root, run:
 
 ```bash
 python -m examples.gnss_reflectometry.snow_series \
@@ -321,8 +316,7 @@ a single site with both snow and water.
   site geometry, capture length, cadence and height search bounds. Do not lower
   thresholds just to obtain a result without documenting the reason.
 - `height_at_search_boundary` means the peak landed at a search limit. Review
-  the site's plausible reflector heights and the chosen bounds. A wider search
-  does not by itself establish that a peak is physical.
+  the site's plausible reflector heights and the chosen bounds.
 - The same antenna, surface area, geometry and processing choices matter when
   comparing sessions. Record site conditions and compare results with
   independent snow or water measurements. A reported RMS difference is not a

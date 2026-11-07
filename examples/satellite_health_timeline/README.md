@@ -11,8 +11,7 @@ python -m examples.satellite_health_timeline --port /dev/ttyUSB0 --duration 65 -
 python -m examples.satellite_health_timeline --replay tests/fixtures/captures/GPSEPHA.bin --json /tmp/health-replay.json
 ```
 
-The status of a missing satellite or absent log remains unknown. Reported health
-alone does not establish signal availability or use in a position solution.
+The status of a missing satellite or absent log remains unknown.
 
 ## References
 

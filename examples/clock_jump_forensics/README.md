@@ -26,7 +26,7 @@ python -m examples.clock_jump_forensics \
 
 `--threshold` sets the minimum common range jump in metres, and `--agreement`
 sets the consensus half-width in metres. A flag identifies a common
-discontinuity in the observations, but does not establish its cause.
+discontinuity in the observations.
 
 ## Understanding the result
 

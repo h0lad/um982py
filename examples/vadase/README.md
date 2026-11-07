@@ -34,8 +34,7 @@ observation epochs. Continuous signal tracking and satellite geometry are
 necessary to estimate displacement and velocity.
 
 A cycle slip or gap can invalidate an arc. An optional independently known
-ECEF velocity permits comparison, but the presence of an output alone does not
-establish accuracy.
+ECEF velocity permits comparison.
 
 ## References
 

@@ -29,9 +29,8 @@ curl -i http://127.0.0.1:2101/healthz
 This example uses the wizard's default loopback address and port. For private
 mode add `--user rover` and enter the password when prompted. A `200` and
 `ready` mean the caster recently received a matching base position and an
-observation message. `503` means the source is not ready, while `401` means credentials
-are missing or invalid. Readiness does not establish the absolute accuracy of
-the base or prove that a rover has a fixed RTK solution.
+observation message. `503` means the source is not ready, while `401` means
+credentials are missing or invalid.
 
 For an internet listener use its actual `https://hostname:port/healthz` and a
 client that verifies the certificate. The optional status website runs
@@ -46,7 +45,7 @@ on a separate port and is described in [STATUS.md](STATUS.md).
 | `401 Unauthorized` | Check the selected mode and account file, and enter the correct rover credentials. Upload sources use a separate source account. |
 | Source rejected or process exits | Check the mountpoint, station ID and ARP coordinates against the source. RTCM 1005 must match the manifest to within 2 cm in ECEF distance. |
 | Remote connection fails | Check the bind address, DNS, firewall and port forwarding. For TLS, use the hostname in the certificate and ensure the client trusts its issuer. |
-| Data arrives but the rover does not fix | Check rover configuration, common tracked signals, satellite visibility, base survey and correction age. A successful network connection alone cannot guarantee an RTK fix. |
+| Data arrives but the rover does not fix | Check rover configuration, common tracked signals, satellite visibility, base survey and correction age. |
 
 ## Budgets and deadlines
 

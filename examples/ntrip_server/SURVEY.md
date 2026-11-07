@@ -63,11 +63,10 @@ python -m examples.base_station_survey --port /dev/ttyUSB0 --baud 921600 --json 
 ```
 
 The command prints latitude, longitude, ellipsoidal height and ECEF X/Y/Z, and
-saves them in `rough-position.json`. This average does not establish absolute
-centimetre accuracy, even when it says `converged`. The next step uses ECEF as
-an approximate RINEX header position, not as the final base position. The
-`--approx-position` option expects approximate **marker** ECEF in metres. If
-the antenna-to-marker offset is large, account for it in the approximation.
+saves them in `rough-position.json`. The next step uses ECEF as an approximate
+RINEX header position. The `--approx-position` option expects approximate
+**marker** ECEF in metres. If the antenna-to-marker offset is large, account
+for it in the approximation.
 
 ## 3. Record and export 24 hours of observations
 

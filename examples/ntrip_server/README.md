@@ -7,9 +7,8 @@ is the network server, and a **mountpoint** is the stream name a rover selects.
 
 The antenna must stay in the same place, and the base position must be known.
 An error in that base position can propagate into rover positions, even when a
-rover reports an RTK fixed solution. A receiver's short-term average alone does
-not establish an accurate absolute position, so follow [SURVEY.md](SURVEY.md) to
-obtain and review one.
+rover reports an RTK fixed solution. Follow [SURVEY.md](SURVEY.md) to obtain and
+review a base position.
 
 ## Run
 

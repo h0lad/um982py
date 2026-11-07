@@ -17,7 +17,7 @@ to save the report. No receiver connection is required.
 
 `kind` is `shared`, `separate`, or `repeat`. The first two use `difference_m`, while `repeat` rows use paired `day1_m` and `day2_m` from the same signal and matched sky cell on independent days. Differences must use the same differencing convention and units. Blank cells are allowed only where unused.
 
-The included differences are synthetic and do not characterize a receiver or site.
+The included differences are synthetic.
 
 ## Explanation and interpretation
 

@@ -32,9 +32,7 @@ telemetry, and values with unknown units remain in their native form.
 ## Understanding the result
 
 The diagnostic summarizes available PPP filter fields and auxiliary telemetry,
-retaining fields with unverified units or meanings in their native form. The
-presence of a correction or debug field does not establish that the receiver
-applied a particular correction.
+retaining fields with unverified units or meanings in their native form.
 
 ## References
 

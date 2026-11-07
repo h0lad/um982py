@@ -41,11 +41,10 @@ These recording times are rough planning guidance for a stationary antenna:
 | 12–24 hours | Start a serious static survey with more satellite geometry. |
 | Multiple days | Compare independent occupations and investigate repeatability. |
 
-Longer recording does not guarantee accuracy. Antenna calibration, sky view,
-multipath, correction products and processing models all affect the result. The
-current exporter also has unverified inter-signal phase alignment, as described
-below. Compare results with an independently surveyed point before assigning an
-accuracy.
+Antenna calibration, sky view, multipath, correction products and processing
+models all affect the result. The current exporter also has unverified
+inter-signal phase alignment, as described below. Compare results with an
+independently surveyed point before assigning an accuracy.
 
 Create a metadata JSON file using your actual antenna and measured offset. The
 antenna type must match the 20-character model and radome field in the ANTEX
@@ -105,8 +104,7 @@ journal records incomplete segments and hashes completed ones. Restart the same
 command with `--resume` to continue without overwriting them. The recording
 options and metadata must match the original session. Free disk space is checked before
 each segment, with `--min-free-mib` controlling the threshold. Receiver
-reconnection and export between segments can leave observation gaps, so the sum
-of requested segment durations is not proof of continuous coverage.
+reconnection and export between segments can leave observation gaps.
 The recorder fingerprints the receiver identity and configuration before and
 after each segment and stops if either changes. Snapshots cannot rule out changes
 between those checks. Transient connection failures are retried up to three times
@@ -160,10 +158,9 @@ Each output directory must be empty. The solve checks product hashes and that
 the antenna type appears in ANTEX, then writes `solution.csv` and `report.json`.
 The report includes the first and last PPP epochs, selected signals, accepted and
 rejected epoch counts, satellites used, product provenance, input hashes and the
-GPS phase-alignment declaration. A declaration is not independently verified.
-The position uses geodetic latitude, longitude and ellipsoidal height. Interpret
-it with the product reference frame and the marker/ARP convention. Times in the
-report are GPS time.
+GPS phase-alignment declaration. The position uses geodetic latitude, longitude
+and ellipsoidal height. Interpret it with the product reference frame and the
+marker/ARP convention. Times in the report are GPS time.
 Position uncertainty is currently unavailable in the CSV and report because the
 export does not extract and validate solver covariance.
 
@@ -180,15 +177,14 @@ It does not model ocean loading or pole tides. RINEX event epochs and carrier
 phase LLI flags other than 0 or 1 are rejected because this CSSRlib revision does
 not fully handle them. Inspect the capture and repeat occupations against an
 independent surveyed point before assigning uncertainty or claiming accuracy.
-An output position is not proof of convergence or measured error. Multipath,
-phase slips, antenna calibration and atmospheric modelling can bias the result.
+Multipath, phase slips, antenna calibration and atmospheric modelling can bias
+the result.
 
 The UM982 exporter currently records inter-signal phase alignment as unknown.
 Establish that alignment independently before using the exported phases for
-precise work or publishing them as RINEX 3 observations. This example supports
-the workflow but cannot establish centimetre-level accuracy from the data alone.
+precise work or publishing them as RINEX 3 observations.
 
 In a hardware test, RANGE and OBSVM carrier phases matched for 153 valid GPS
 observations across ten shared epochs. The [hardware test](../../tests/hardware/test_extra_live.py) can repeat
 this comparison and verifies receiver-state restoration. Both logs came from the
-same receiver, so this result does not establish absolute phase alignment.
+same receiver.

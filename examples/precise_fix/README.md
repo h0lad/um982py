@@ -2,7 +2,7 @@
 
 Estimates a static position from BESTXYZ epochs, rejecting gross outliers.
 The estimate excludes differential and RTK positions with corrections older
-than 10 seconds. Receiver scatter alone cannot measure accuracy.
+than 10 seconds.
 
 ## Run
 

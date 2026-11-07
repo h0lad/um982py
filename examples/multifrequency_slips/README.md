@@ -17,7 +17,7 @@ Supply your own frequency combinations with `--input` and add
 
 One row supplies three distinct carrier frequencies in Hz. `--max-cycles` enumerates nonzero signed slip triples from minus to plus that value. `--gf-threshold-m` and `--closure-threshold-m` set explicit experimental thresholds in metres.
 
-The included frequencies are synthetic and do not establish detection performance.
+The included frequencies are synthetic.
 
 ## Explanation and interpretation
 

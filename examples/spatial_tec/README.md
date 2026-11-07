@@ -17,7 +17,7 @@ to save the report. No receiver connection is required.
 
 Each row is one matched satellite and epoch interval at both stations. Supply the same two carrier frequencies in Hz and range-increasing carrier phases in metres for both ends of the interval. Phases must remain on continuous, slip-free arcs at each station. Join records by constellation, satellite, signal and epoch before preparing the CSV because the program cannot verify that join.
 
-The included observations are synthetic and do not represent an ionospheric event.
+The included observations are synthetic.
 
 ## Explanation and interpretation
 

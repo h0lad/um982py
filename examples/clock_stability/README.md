@@ -30,9 +30,9 @@ produce an `insufficient_data` report and exit status 1.
 
 Allan deviation describes how clock frequency varies over different averaging
 times. The result characterizes the captured receiver clock under the analysis
-assumptions. It does not calibrate an external time standard.
-The seconds-valued `phase_deviation` is tau multiplied by frequency Allan
-deviation; it is not time deviation (TDEV), which requires modified Allan deviation.
+assumptions. The seconds-valued `phase_deviation` is tau multiplied by frequency
+Allan deviation; it is not time deviation (TDEV), which requires modified Allan
+deviation.
 
 ## References
 

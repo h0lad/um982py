@@ -35,8 +35,7 @@ the latest receiver epoch, and `--mask` applies an elevation cutoff in degrees.
 
 The JSON summarizes the satellites and directions at the latest captured epoch.
 The optional CSV supports a sky plot using azimuth (compass direction) and
-elevation (angle above the horizon). Visibility or a high satellite count
-alone does not establish position accuracy.
+elevation (angle above the horizon).
 
 ## References
 

@@ -36,8 +36,7 @@ report paths must be distinct.
 
 Only GPS navigation data is exported. The command preserves repeated messages;
 the message count is not a count of distinct satellites. The supplied recording
-demonstrates the export format and does not establish ephemeris coverage for
-your own observation session.
+demonstrates the export format.
 
 ## Understanding the result
 

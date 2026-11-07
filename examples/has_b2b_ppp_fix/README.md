@@ -31,7 +31,7 @@ python -m examples.has_b2b_ppp_fix.cyclic --port /dev/ttyUSB0 --cycles 12 \
 ```
 
 `--augment` requests signal group 3/6 and PPP `AUTO`, the receiver's automatic
-service selection. It may save a changed signal group. The `cyclic` example
+service selection. The `cyclic` example
 subscribes to PPPNAV once and passes each pushed fix and its running mean to a
 callback without polling the modem.
 
@@ -39,8 +39,7 @@ callback without polling the modem.
 
 `--duration` controls the occupation, and `--csv` saves per-epoch results.
 `--target-h-sigma`, `--target-v-sigma` and `--min-ppp` set precision and sample
-criteria. The reported scatter and receiver sigmas are not independent accuracy
-measurements.
+criteria.
 
 ## Understanding the result
 

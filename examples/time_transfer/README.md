@@ -32,7 +32,7 @@ differs by leap seconds. The conversion uses the leap-second information in
 the bundled table and checks it against the receiver's TIME offset. A mismatch
 returns `offset_disagreement` with no GPST result; update or independently check
 the table and receiver. Python datetime cannot represent an inserted leap second,
-so these instants are rejected. This does not calibrate an external timing system.
+so these instants are rejected.
 
 ## References
 
