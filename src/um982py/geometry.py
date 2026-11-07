@@ -20,6 +20,10 @@ class SatelliteGeometry:
     azimuth: float
     elevation: float
 
+    def __post_init__(self) -> None:
+        if not math.isfinite(self.azimuth) or not math.isfinite(self.elevation):
+            raise ValueError("satellite angles must be finite")
+
     def line_of_sight(self) -> tuple[float, float, float]:
         """Unit vector from the receiver to the satellite in local east, north, up."""
         elevation = math.radians(self.elevation)
@@ -128,6 +132,10 @@ def normal_matrix(rows: Sequence[Sequence[float]]) -> tuple[tuple[float, ...], .
     if not rows:
         raise ValueError("design matrix needs at least one row")
     columns = len(rows[0])
+    if not columns or any(len(row) != columns for row in rows):
+        raise ValueError("design matrix must be rectangular and nonempty")
+    if any(not math.isfinite(value) for row in rows for value in row):
+        raise ValueError("design matrix values must be finite")
     return tuple(
         tuple(sum(row[i] * row[j] for row in rows) for j in range(columns))
         for i in range(columns)
@@ -139,6 +147,8 @@ def invert(matrix: Sequence[Sequence[float]]) -> tuple[tuple[float, ...], ...]:
     size = len(matrix)
     if size == 0 or any(len(row) != size for row in matrix):
         raise ValueError("matrix must be square and nonempty")
+    if any(not math.isfinite(value) for row in matrix for value in row):
+        raise ValueError("matrix values must be finite")
     augmented = [
         [*map(float, row), *(1.0 if index == column else 0.0 for column in range(size))]
         for index, row in enumerate(matrix)

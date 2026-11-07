@@ -126,6 +126,17 @@ def test_inverse_rejects_a_singular_matrix() -> None:
         invert(((1.0, 2.0), (2.0, 4.0)))
 
 
+def test_geometry_rejects_invalid_angles_and_matrices() -> None:
+    with pytest.raises(ValueError, match="finite"):
+        SatelliteGeometry(math.nan, 30)
+    with pytest.raises(ValueError, match="rectangular"):
+        normal_matrix(((1.0, 2.0), (3.0,)))
+    with pytest.raises(ValueError, match="finite"):
+        normal_matrix(((1.0, math.inf),))
+    with pytest.raises(ValueError, match="finite"):
+        invert(((math.nan, 0.0), (0.0, 1.0)))
+
+
 def test_three_satellites_leave_the_geometry_singular() -> None:
     with pytest.raises(ValueError):
         DilutionOfPrecision.from_geometry(ZENITH_AND_HORIZON[:3])
