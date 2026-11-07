@@ -1,7 +1,4 @@
-"""Application-defined checks of reported position quality.
-
-These checks do not establish accuracy or navigation integrity.
-"""
+"""Application-defined checks of reported position quality."""
 
 from dataclasses import dataclass
 from math import isfinite

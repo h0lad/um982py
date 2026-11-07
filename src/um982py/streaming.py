@@ -1,9 +1,4 @@
-"""Single-owner receiver worker with bounded message subscriptions.
-
-All receiver operations must go through the worker while it is running. Command
-responses are consumed by the command; other messages are dispatched to every
-subscription. Slow subscriptions drop new messages and count each drop.
-"""
+"""Single-owner receiver worker with bounded message subscriptions."""
 
 from __future__ import annotations
 
