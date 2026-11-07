@@ -13,6 +13,9 @@ fixes with host arrival times; see the [live position example](../examples/live_
 For continuous messages and commands use
 `um982py.streaming.ReceiverStream`: subscribe before starting it and route
 all operations on that receiver through the stream while it is running.
+`PositionSubscription` consumes GGA fixes from that same stream, including
+while `RtkSession` forwards corrections. Its bounded queue counts dropped GGA
+messages and timestamps each message when the stream dispatches it.
 Each subscriber has a bounded queue. New messages are dropped when it is full;
 check `Subscription.dropped` and `ReceiverStream.health()` regularly.
 Command responses are returned to their caller, while unrelated messages are

@@ -16,6 +16,7 @@ from um982py.ntrip import ReconnectPolicy
 
 if TYPE_CHECKING:
     from um982py.receiver import Receiver
+    from um982py.streaming import ReceiverStream
 
 
 @dataclass(frozen=True, slots=True)
@@ -51,6 +52,42 @@ class LiveHealth:
     malformed_fixes: int
     last_fix_monotonic: float | None
     last_error: str | None
+
+
+class PositionSubscription:
+    """Consume GGA positions while a ReceiverStream handles other traffic."""
+
+    def __init__(self, stream: ReceiverStream, *, capacity: int = 1024) -> None:
+        self.stream = stream
+        self._subscription = stream.subscribe(
+            capacity=capacity, sentence_kinds=frozenset({"GGA"})
+        )
+        self._previous: int | None = None
+        self._closed = False
+
+    @property
+    def dropped(self) -> int:
+        return self._subscription.dropped
+
+    def get(self, timeout: float | None = None) -> PositionUpdate:
+        event = self._subscription.get_event(timeout)
+        fix = Fix.from_message(event.message)
+        update = PositionUpdate(
+            fix, event.received_at, event.received_monotonic, self._previous, 1
+        )
+        self._previous = fix.quality
+        return update
+
+    def close(self) -> None:
+        if not self._closed:
+            self._closed = True
+            self.stream.unsubscribe(self._subscription)
+
+    def __enter__(self) -> PositionSubscription:
+        return self
+
+    def __exit__(self, *args: object) -> None:
+        self.close()
 
 
 class PositionSession:

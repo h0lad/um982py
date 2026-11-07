@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import Future
 from contextlib import suppress
 from dataclasses import dataclass
+from datetime import UTC, datetime
 from math import isfinite
 from queue import Empty, Full, Queue
 from threading import Event, Lock, Thread
@@ -13,7 +14,7 @@ from typing import TYPE_CHECKING
 
 from um982py.errors import ResponseTimeout, TransportClosed
 from um982py.measurement import gps_epoch
-from um982py.messages import Message, RtcmMessage
+from um982py.messages import Message, RtcmMessage, Sentence
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -22,19 +23,35 @@ if TYPE_CHECKING:
     from um982py.receiver import Receiver
 
 
+@dataclass(frozen=True, slots=True)
+class StreamEvent:
+    message: Message
+    received_at: datetime
+    received_monotonic: float
+
+
 class Subscription:
     """A bounded FIFO. ``dropped`` counts messages discarded while full."""
 
-    def __init__(self, capacity: int) -> None:
+    def __init__(
+        self, capacity: int, sentence_kinds: frozenset[str] | None = None
+    ) -> None:
         if capacity < 1:
             raise ValueError("capacity must be positive")
-        self._queue: Queue[Message] = Queue(capacity)
+        if sentence_kinds is not None and not sentence_kinds:
+            raise ValueError("sentence_kinds must not be empty")
+        self._sentence_kinds = sentence_kinds
+        self._queue: Queue[StreamEvent] = Queue(capacity)
         self._lock = Lock()
         self._dropped = 0
         self._closed = Event()
 
     def get(self, timeout: float | None = None) -> Message:
         """Read a message, raising Empty on timeout or TransportClosed at end."""
+        return self.get_event(timeout).message
+
+    def get_event(self, timeout: float | None = None) -> StreamEvent:
+        """Read a message with its host dispatch time."""
         if timeout is not None and (not isfinite(timeout) or timeout < 0):
             raise ValueError("timeout must be finite and non-negative")
         deadline = None if timeout is None else monotonic() + timeout
@@ -59,9 +76,14 @@ class Subscription:
     def pending(self) -> int:
         return self._queue.qsize()
 
-    def _put(self, message: Message) -> None:
+    def _put(self, event: StreamEvent) -> None:
+        if self._sentence_kinds is not None and (
+            not isinstance(event.message, Sentence)
+            or event.message.kind not in self._sentence_kinds
+        ):
+            return
         try:
-            self._queue.put_nowait(message)
+            self._queue.put_nowait(event)
         except Full:
             with self._lock:
                 self._dropped += 1
@@ -119,8 +141,11 @@ class ReceiverStream:
         self._discarded_bytes = 0
         self._decoder_errors: tuple[str, ...] = ()
 
-    def subscribe(self, *, capacity: int = 1024) -> Subscription:
-        subscription = Subscription(capacity)
+    def subscribe(
+        self, *, capacity: int = 1024, sentence_kinds: frozenset[str] | None = None
+    ) -> Subscription:
+        """Subscribe to all messages or only the selected NMEA sentence kinds."""
+        subscription = Subscription(capacity, sentence_kinds)
         with self._lock:
             if self._stop.is_set():
                 raise RuntimeError("stream is stopped")
@@ -191,13 +216,15 @@ class ReceiverStream:
             epoch = gps_epoch(message)
         except (ValueError, TypeError, AttributeError):
             epoch = None
+        received = monotonic()
+        event = StreamEvent(message, datetime.now(UTC), received)
         with self._lock:
             self._messages += 1
-            self._last_arrival = monotonic()
+            self._last_arrival = received
             if epoch is not None:
                 self._last_epoch = epoch
             for subscription in self._subscriptions:
-                subscription._put(message)
+                subscription._put(event)
 
     def _run(self) -> None:
         try:

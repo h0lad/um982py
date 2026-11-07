@@ -68,7 +68,12 @@ if TYPE_CHECKING:
         ReportedDilution,
         SatelliteGeometry,
     )
-    from um982py.live import LiveHealth, PositionSession, PositionUpdate
+    from um982py.live import (
+        LiveHealth,
+        PositionSession,
+        PositionSubscription,
+        PositionUpdate,
+    )
     from um982py.live_quality import LiveAssessment, LiveLimits, PositionMonitor
     from um982py.measurement import (
         RangeSample,
@@ -157,7 +162,12 @@ if TYPE_CHECKING:
         iter_decoded_records,
         iter_live_records,
     )
-    from um982py.streaming import ReceiverStream, StreamHealth, Subscription
+    from um982py.streaming import (
+        ReceiverStream,
+        StreamEvent,
+        StreamHealth,
+        Subscription,
+    )
 
 _EXPORTS: dict[str, tuple[str, str | None]] = {
     "GPS_FREQUENCIES": ("um982py.capture", "GPS_FREQUENCIES"),
@@ -198,6 +208,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "PositionLimits": ("um982py.assessment", "PositionLimits"),
     "PositionMonitor": ("um982py.live_quality", "PositionMonitor"),
     "PositionSession": ("um982py.live", "PositionSession"),
+    "PositionSubscription": ("um982py.live", "PositionSubscription"),
     "PositionUpdate": ("um982py.live", "PositionUpdate"),
     "PostProcessingError": ("um982py.ppk", "PostProcessingError"),
     "PpkResult": ("um982py.ppk", "PpkResult"),
@@ -223,6 +234,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "Sp3Product": ("um982py.precise", "Sp3Product"),
     "StateRestoration": ("um982py.state", "StateRestoration"),
     "StreamHealth": ("um982py.streaming", "StreamHealth"),
+    "StreamEvent": ("um982py.streaming", "StreamEvent"),
     "Subscription": ("um982py.streaming", "Subscription"),
     "TaskPerformance": ("um982py.receiver_models", "TaskPerformance"),
     "TrackingSignal": ("um982py.signals", "TrackingSignal"),
@@ -348,6 +360,7 @@ __all__ = [
     "PositionLimits",
     "PositionMonitor",
     "PositionSession",
+    "PositionSubscription",
     "PositionUpdate",
     "PostProcessingError",
     "PpkResult",
@@ -374,6 +387,7 @@ __all__ = [
     "SlasTracker",
     "Sp3Product",
     "StateRestoration",
+    "StreamEvent",
     "StreamHealth",
     "Subscription",
     "TaskPerformance",
