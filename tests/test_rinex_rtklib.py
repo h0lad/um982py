@@ -9,9 +9,11 @@ import pytest
 from examples.rinex_navigation.__main__ import main as navigation_main
 
 from test_extra_captures import captured
+from test_rinex_nav import timed_sample
 from tests.examples._new_api import observation, record
 from um982py.rinex import export_rinex
 from um982py.rinex_merge import merge_gps_observations
+from um982py.rinex_nav import export_rinex_navigation
 
 
 @pytest.fixture
@@ -140,3 +142,23 @@ def test_rtklib_reads_known_gps_navigation_fields(convbin: str, tmp_path: Path) 
         for index, value in enumerate(fields):
             if value is not None and index != 27:
                 assert after[key][index] == pytest.approx(value, rel=1e-11, abs=1e-12)
+
+
+def test_rtklib_reads_galileo_and_beidou_navigation(
+    convbin: str, tmp_path: Path
+) -> None:
+    source, output = tmp_path / "multi.nav", tmp_path / "roundtrip.nav"
+    records = [timed_sample("GALEPHA"), timed_sample("BDSEPHA")]
+    source.write_text(export_rinex_navigation(records, bdseph_time_scale="BDT").text)
+    convert(convbin, source, output, nav=True)
+    data = output.read_text().split("END OF HEADER", 1)[1]
+    lines = [line for line in data.splitlines() if line.strip()]
+    assert len(lines) == 24
+    assert [lines[index][:23] for index in (0, 8, 16)] == [
+        "E36 2021 12 30 03 00 00",
+        "E36 2021 12 30 03 00 00",
+        "C60 2021 12 30 04 00 00",
+    ]
+    bds_toe = float(lines[19][4:23].replace("D", "E"))
+    bds_week = float(lines[21][42:61].replace("D", "E"))
+    assert (bds_toe, bds_week) == (360000, 834)

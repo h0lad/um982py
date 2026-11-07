@@ -7,11 +7,21 @@ import pytest
 
 from test_bodies import manual_message
 from um982py.messages import Record, decode_log
+from um982py.messages.frames import AsciiHeader, AsciiMessage
+from um982py.protocol import StreamDecoder
 from um982py.rinex_nav import export_rinex_navigation
 
 
 def sample() -> Record:
     return decode_log(manual_message("GPSEPHA"))
+
+
+def timed_sample(name: str) -> Record:
+    samples = json.loads(
+        (Path(__file__).parent / "fixtures/manual-examples-r1.4.json").read_text()
+    )
+    message = StreamDecoder(strict=True).feed((samples[name] + "\r\n").encode())[0]
+    return decode_log(message)
 
 
 def fields(line: str, start: int = 4) -> list[float | None]:
@@ -55,8 +65,73 @@ def test_week_boundary_and_reject_inconsistent_ephemeris() -> None:
     data["iode2"] = data["iode1"] + 1
     with pytest.raises(ValueError, match="issue"):
         export_rinex_navigation([replace(record, entries=tuple(data.items()))])
-    with pytest.raises(ValueError, match="GPSEPH"):
-        export_rinex_navigation([replace(record, name="BDSEPH")])
+    with pytest.raises(ValueError, match="unsupported"):
+        export_rinex_navigation([replace(record, name="GLOEPH")])
+
+
+def test_galileo_and_beidou_against_dlr_broadcast_records() -> None:
+    galileo = timed_sample("GALEPHA")
+    beidou = timed_sample("BDSEPHA")
+    with pytest.raises(ValueError, match="time scale"):
+        export_rinex_navigation([beidou])
+    result = export_rinex_navigation([galileo, beidou], bdseph_time_scale="BDT")
+    actual = result.text.split("END OF HEADER\n", 1)[1].splitlines()
+    reference = (
+        (Path(__file__).parent / "fixtures/dlr_nav_2021364.txt")
+        .read_text()
+        .splitlines()
+    )
+    assert result.messages == 3 and len(actual) == len(reference) == 24
+    assert "galileo_inav_source_signals" in result.unknown_fields
+    for block in range(3):
+        start = block * 8
+        assert actual[start][:23] == reference[start][:23]
+        for row in range(8):
+            ours = fields(actual[start + row], 23 if row == 0 else 4)
+            published = fields(reference[start + row], 23 if row == 0 else 4)
+            for column, (value, expected) in enumerate(
+                zip(ours, published, strict=True)
+            ):
+                # The receiver does not identify the I/NAV source signals or
+                # establish the transmission time; blank fields stay unknown.
+                if value is None or (row == 7 and column == 0):
+                    continue
+                if block == 0 and row == 5 and column == 1:
+                    assert value == 512 and expected == 517
+                    continue
+                assert expected is not None
+                assert value == pytest.approx(expected, rel=5e-4, abs=1e-15)
+
+
+def test_beidou_gpst_conversion_crosses_week_boundary() -> None:
+    record = timed_sample("BDSEPHA")
+    values = dict(record.entries)
+    values.update(toe=10.0, toc=10.0, week=2190)
+    assert isinstance(record.message, AsciiMessage)
+    assert isinstance(record.message.header, AsciiHeader)
+    message = replace(
+        record.message, header=replace(record.message.header, milliseconds=20000)
+    )
+    changed = replace(record, entries=tuple(values.items()), message=message)
+    lines = (
+        export_rinex_navigation([changed], bdseph_time_scale="GPST")
+        .text.split("END OF HEADER\n", 1)[1]
+        .splitlines()
+    )
+    assert fields(lines[3])[0] == 604796
+    assert fields(lines[5])[2] == 833
+
+
+def test_galileo_rejects_missing_health_and_unavailable_sisa() -> None:
+    record = timed_sample("GALEPHA")
+    values = dict(record.entries)
+    values["inavreceived"] = "FALSE"
+    with pytest.raises(ValueError, match="both F/NAV and I/NAV"):
+        export_rinex_navigation([replace(record, entries=tuple(values.items()))])
+    values["inavreceived"] = "TRUE"
+    values["sisa"] = 255
+    with pytest.raises(ValueError, match="SISA"):
+        export_rinex_navigation([replace(record, entries=tuple(values.items()))])
 
 
 def test_navigation_cli_replays_capture(tmp_path: Path) -> None:

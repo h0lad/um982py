@@ -135,7 +135,7 @@ receiver configuration.
 - [`navigation_message_hex`](navigation_message_hex/README.md): Dumps navigation messages as annotated hex.
 - [`navigation_messages`](navigation_messages/README.md): Builds navigation tables, sky views and orbit figures.
 - [`rinex_export`](rinex_export/README.md): Writes multi-GNSS RINEX 3.05 from RANGE logs with an omission report.
-- [`rinex_navigation`](rinex_navigation/README.md): Exports GPS broadcast ephemerides as RINEX 3.05 navigation data with an unknown-field report.
+- [`rinex_navigation`](rinex_navigation/README.md): Exports GPS, Galileo and BeiDou ephemerides as RINEX navigation data.
 - [`telemetry_bridge`](telemetry_bridge/README.md): Streams decoded frames as newline-delimited JSON.
 
 ### Receiver and baseband diagnostics
