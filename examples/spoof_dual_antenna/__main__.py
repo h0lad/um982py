@@ -22,7 +22,7 @@ from examples.spoof_dual_antenna import (
     sky_snapshots,
 )
 from um982py import Receiver
-from um982py.capture import open_receiver, read_frames
+from um982py.capture import iter_frames, open_receiver
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -51,7 +51,7 @@ def _records(paths: Sequence[Path], log: FirmwareLog) -> tuple[Record, ...]:
     """Decode one log from every captured transcript given."""
     decoded = []
     for path in paths:
-        for message in read_frames(path):
+        for message in iter_frames(path):
             for binary in (True, False):
                 if log.request(binary=binary).matches(message):
                     decoded.append(log.decode(message))

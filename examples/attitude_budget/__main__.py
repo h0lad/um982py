@@ -16,7 +16,7 @@ from examples.attitude_budget import (
 )
 from um982py import Receiver
 from um982py.antenna import antenna_log
-from um982py.capture import DataLog, open_receiver, read_frames
+from um982py.capture import DataLog, iter_frames, open_receiver
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -33,7 +33,7 @@ def _records(paths: Sequence[Path], log: DataLog) -> tuple[Record, ...]:
     """Decode one log from every captured transcript given."""
     decoded = []
     for path in paths:
-        for message in read_frames(path):
+        for message in iter_frames(path):
             for binary in (True, False):
                 if log.request(binary=binary).matches(message):
                     decoded.append(log.decode(message))

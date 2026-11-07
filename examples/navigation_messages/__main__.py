@@ -17,7 +17,7 @@ from examples.navigation_messages import (
 )
 from um982py import Receiver
 from um982py.antenna import antenna_log
-from um982py.capture import open_receiver, read_frames
+from um982py.capture import iter_frames, open_receiver
 from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
@@ -39,7 +39,7 @@ def _records(paths: Sequence[Path], name: str) -> tuple[Record, ...]:
     log = Log(name)
     decoded = []
     for path in paths:
-        for message in read_frames(path):
+        for message in iter_frames(path):
             for binary in (True, False):
                 if log.request(binary=binary).matches(message):
                     decoded.append(log.decode(message))
@@ -54,7 +54,7 @@ def _position(
     for source in POSITION_LOGS:
         log = antenna_log(source, antenna)
         for path in paths:
-            for message in read_frames(path):
+            for message in iter_frames(path):
                 for binary in (True, False):
                     if log.request(binary=binary).matches(message):
                         return receiver_ecef(log.decode(message))

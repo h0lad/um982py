@@ -23,7 +23,7 @@ from examples.ntrip_server.source import (
 from examples.ntrip_server.station import Station
 from examples.ntrip_server.status import StatusSettings, StatusSite, listen_status
 from examples.ntrip_server.survey import capture_survey
-from um982py.capture import read_frames
+from um982py.capture import iter_frames
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
 from um982py.messages import RtcmMessage
 
@@ -241,7 +241,7 @@ def main() -> int:
     if args.replay is not None:
         accepted = sum(
             station.validate_frame(message)
-            for message in read_frames(args.replay)
+            for message in iter_frames(args.replay)
             if isinstance(message, RtcmMessage)
         )
         if not accepted:

@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 
 from examples.ppp_filter_inspector import analyse_ppp_filter
-from um982py.capture import open_receiver, read_frames
+from um982py.capture import iter_frames, open_receiver
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -39,7 +39,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     config_summary: dict[str, object] | None = None
     if args.replay is not None:
         raw = args.replay.read_bytes()
-        for message in read_frames(args.replay):
+        for message in iter_frames(args.replay):
             if isinstance(message, AsciiMessage) and message.name == "PERFSTATA":
                 performance = PerformanceStatus.from_message(message)
             elif isinstance(message, AsciiMessage) and message.name == "RXSTATUSA":

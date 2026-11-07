@@ -10,7 +10,7 @@ from pathlib import Path
 from time import monotonic
 
 from examples.compressed_observation_audit import agree_epoch, summarise_epochs
-from um982py.capture import open_receiver, read_frames
+from um982py.capture import iter_frames, open_receiver
 from um982py.console import (
     ExampleParser,
     add_debug_argument,
@@ -84,7 +84,7 @@ def _split_replay(path: Path) -> tuple[list[BinaryMessage], list[BinaryMessage]]
     """Split replayed wire frames into RANGE and RANGECMP streams."""
     range_frames: list[BinaryMessage] = []
     compressed_frames: list[BinaryMessage] = []
-    for message in read_frames(path):
+    for message in iter_frames(path):
         if not isinstance(message, BinaryMessage):
             continue
         if message.header.message_id == _RANGE_ID:
