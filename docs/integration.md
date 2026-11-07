@@ -8,7 +8,9 @@ bandwidth and the needs of the application.
 ## Live position and telemetry
 
 For a synchronous one-shot query use `Receiver.best_navigation()` or
-`Receiver.read_log()`. For continuous messages and commands use
+`Receiver.read_log()`. `PositionSession` reconnects a receiver and yields GGA
+fixes with host arrival times; see the [live position example](../examples/live_position/README.md).
+For continuous messages and commands use
 `um982py.streaming.ReceiverStream`: subscribe before starting it and route
 all operations on that receiver through the stream while it is running.
 Each subscriber has a bounded queue. New messages are dropped when it is full;
@@ -18,9 +20,9 @@ delivered to subscribers. An in-flight command can delay message delivery and
 other commands until it completes; set appropriate command timeouts.
 
 The [telemetry bridge](../examples/telemetry_bridge/README.md) demonstrates a
-bounded consumer and reports dropped messages. A long-running service must
-also monitor the device connection, restart or reconnect according to its own
-policy, and account for data lost outside the Python process.
+bounded consumer and reports dropped messages. Applications using
+`ReceiverStream` must manage receiver reconnections and account for data lost
+outside the Python process.
 
 `um982py.assessment.assess_position` applies application-selected limits to
 reported solution status, ages and standard deviations. Provide epoch age in a
@@ -60,9 +62,7 @@ sink can still cause upstream loss. `RecordingTransport` records received bytes
 for subsequent replay; record and protect the raw data alongside output files.
 `EpochTracker` checks gaps only in the series and cadence supplied by the user.
 For short diagnostic captures, `experimental.capture.BoundedRecordingTransport`
-retains bytes in memory up to a limit and exposes `limit_reached`. Its previous
-name was `RecordingTransport`; use the new name to distinguish it from the
-file-backed recorder in `um982py.capture`.
+retains bytes in memory up to a limit and exposes `limit_reached`.
 
 The [research recorder](../examples/research_session/README.md) produces a
 manifest and RINEX artifacts; the [unattended recorder](../examples/unattended_station/README.md)

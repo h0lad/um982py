@@ -1,0 +1,166 @@
+"""Reconnect a receiver and deliver timestamped GGA position updates."""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Generator
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from threading import Event, Lock
+from time import monotonic
+from typing import TYPE_CHECKING
+
+from um982py.errors import ProtocolError, ResponseTimeout, TransportError
+from um982py.messages import Sentence
+from um982py.messages.navigation import Fix
+from um982py.ntrip import ReconnectPolicy
+
+if TYPE_CHECKING:
+    from um982py.receiver import Receiver
+
+
+@dataclass(frozen=True, slots=True)
+class PositionUpdate:
+    """One GGA fix and its host arrival time, with no cross-epoch fusion."""
+
+    fix: Fix
+    received_at: datetime
+    received_monotonic: float
+    previous_quality: int | None
+    connection: int
+
+    @property
+    def quality_changed(self) -> bool:
+        return (
+            self.previous_quality is not None
+            and self.fix.quality != self.previous_quality
+        )
+
+    @property
+    def ellipsoidal_height(self) -> float | None:
+        if self.fix.altitude_msl is None or self.fix.geoid_separation is None:
+            return None
+        return self.fix.altitude_msl + self.fix.geoid_separation
+
+
+@dataclass(frozen=True, slots=True)
+class LiveHealth:
+    state: str
+    attempts: int
+    connections: int
+    fixes: int
+    malformed_fixes: int
+    last_fix_monotonic: float | None
+    last_error: str | None
+
+
+class PositionSession:
+    """Read GGA fixes from successive receiver connections.
+
+    The factory owns connection setup and returns a fresh receiver on each call.
+    The optional configure callback runs after every connection; it can enable
+    GGA output, and is responsible for any receiver configuration it changes.
+    Only transport errors trigger reconnects. The stop event interrupts backoff
+    and is checked at most ``poll_seconds`` after an idle read.
+    """
+
+    def __init__(
+        self,
+        receiver_factory: Callable[[], Receiver],
+        *,
+        configure: Callable[[Receiver], None] | None = None,
+        poll_seconds: float = 1.0,
+        reconnect: ReconnectPolicy | None = None,
+    ) -> None:
+        if not 0 < poll_seconds <= 60:
+            raise ValueError("poll_seconds must be greater than zero and at most 60")
+        self.receiver_factory = receiver_factory
+        self.configure = configure
+        self.poll_seconds = poll_seconds
+        self.reconnect = reconnect or ReconnectPolicy()
+        self._lock = Lock()
+        self._state = "idle"
+        self._attempts = 0
+        self._connections = 0
+        self._fixes = 0
+        self._malformed = 0
+        self._last_fix: float | None = None
+        self._error: str | None = None
+
+    def health(self) -> LiveHealth:
+        with self._lock:
+            return LiveHealth(
+                self._state,
+                self._attempts,
+                self._connections,
+                self._fixes,
+                self._malformed,
+                self._last_fix,
+                self._error,
+            )
+
+    def positions(self, stop: Event) -> Generator[PositionUpdate, None, None]:
+        """Yield fixes until stopped; close the iterator when ending early."""
+        with self._lock:
+            if self._state != "idle":
+                raise RuntimeError("session can only be run once")
+            self._state = "connecting"
+        delay = self.reconnect.initial_seconds
+        previous: int | None = None
+        try:
+            while not stop.is_set():
+                with self._lock:
+                    self._state = "connecting"
+                    self._attempts += 1
+                try:
+                    with self.receiver_factory() as receiver:
+                        if self.configure is not None:
+                            self.configure(receiver)
+                        with self._lock:
+                            self._connections += 1
+                            connection = self._connections
+                            self._state = "connected"
+                        while not stop.is_set():
+                            try:
+                                message = receiver.receive(timeout=self.poll_seconds)
+                            except ResponseTimeout:
+                                continue
+                            if (
+                                not isinstance(message, Sentence)
+                                or message.kind != "GGA"
+                            ):
+                                continue
+                            try:
+                                fix = Fix.from_message(message)
+                            except ProtocolError:
+                                with self._lock:
+                                    self._malformed += 1
+                                continue
+                            now = monotonic()
+                            with self._lock:
+                                self._fixes += 1
+                                self._last_fix = now
+                            update = PositionUpdate(
+                                fix, datetime.now(UTC), now, previous, connection
+                            )
+                            previous = fix.quality
+                            delay = self.reconnect.initial_seconds
+                            yield update
+                except (TransportError, OSError) as error:
+                    with self._lock:
+                        self._error = str(error)
+                        self._state = "backoff"
+                    if stop.wait(delay):
+                        break
+                    delay = self.reconnect.next_delay(delay)
+        except Exception as error:
+            with self._lock:
+                self._error = str(error)
+                self._state = "failed"
+            raise
+        else:
+            with self._lock:
+                self._state = "stopped"
+        finally:
+            with self._lock:
+                if self._state != "failed":
+                    self._state = "stopped"
