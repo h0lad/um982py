@@ -5,6 +5,7 @@ from __future__ import annotations
 from concurrent.futures import Future
 from contextlib import suppress
 from dataclasses import dataclass
+from math import isfinite
 from queue import Empty, Full, Queue
 from threading import Event, Lock, Thread
 from time import monotonic
@@ -30,10 +31,24 @@ class Subscription:
         self._queue: Queue[Message] = Queue(capacity)
         self._lock = Lock()
         self._dropped = 0
+        self._closed = Event()
 
     def get(self, timeout: float | None = None) -> Message:
-        """Read one message, raising ``queue.Empty`` when the timeout expires."""
-        return self._queue.get(timeout=timeout)
+        """Read a message, raising Empty on timeout or TransportClosed at end."""
+        if timeout is not None and (not isfinite(timeout) or timeout < 0):
+            raise ValueError("timeout must be finite and non-negative")
+        deadline = None if timeout is None else monotonic() + timeout
+        while True:
+            if self._closed.is_set() and self._queue.empty():
+                raise TransportClosed("subscription closed")
+            remaining = None if deadline is None else max(0.0, deadline - monotonic())
+            try:
+                return self._queue.get(
+                    timeout=0.1 if remaining is None else min(remaining, 0.1)
+                )
+            except Empty:
+                if deadline is not None and monotonic() >= deadline:
+                    raise
 
     @property
     def dropped(self) -> int:
@@ -50,6 +65,9 @@ class Subscription:
         except Full:
             with self._lock:
                 self._dropped += 1
+
+    def _finish(self) -> None:
+        self._closed.set()
 
 
 @dataclass(frozen=True, slots=True)
@@ -103,12 +121,15 @@ class ReceiverStream:
     def subscribe(self, *, capacity: int = 1024) -> Subscription:
         subscription = Subscription(capacity)
         with self._lock:
+            if self._stop.is_set():
+                raise RuntimeError("stream is stopped")
             self._subscriptions.append(subscription)
         return subscription
 
     def unsubscribe(self, subscription: Subscription) -> None:
         with self._lock:
             self._subscriptions.remove(subscription)
+            subscription._finish()
 
     def start(self) -> None:
         with self._lock:
@@ -153,6 +174,10 @@ class ReceiverStream:
         thread = self._thread
         if thread is not None:
             thread.join()
+        else:
+            with self._lock:
+                for subscription in self._subscriptions:
+                    subscription._finish()
         if close_receiver:
             self.receiver.close()
 
@@ -194,6 +219,8 @@ class ReceiverStream:
         finally:
             with self._lock:
                 self._stop.set()
+                for subscription in self._subscriptions:
+                    subscription._finish()
             while True:
                 try:
                     _, future = self._operations.get_nowait()

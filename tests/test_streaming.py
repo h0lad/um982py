@@ -1,4 +1,5 @@
 from queue import Empty, Queue
+from threading import Event, Thread
 from time import monotonic, sleep
 
 import pytest
@@ -69,3 +70,24 @@ def test_stream_reports_disconnect_and_rejects_new_work() -> None:
     with pytest.raises(RuntimeError):
         stream.execute(action("RESET"))
     stream.close()
+
+
+def test_closing_stream_wakes_an_idle_subscriber() -> None:
+    stream = ReceiverStream(Receiver(QueueTransport()), poll_seconds=0.01)
+    subscriber = stream.subscribe()
+    finished = Event()
+
+    def consume() -> None:
+        try:
+            subscriber.get()
+        except TransportClosed:
+            finished.set()
+
+    stream.start()
+    consumer = Thread(target=consume)
+    consumer.start()
+    stream.close()
+    assert finished.wait(1)
+    consumer.join()
+    with pytest.raises(RuntimeError):
+        stream.subscribe()
