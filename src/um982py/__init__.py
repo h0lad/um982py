@@ -7,6 +7,7 @@ if TYPE_CHECKING:
     from um982py import commands
     from um982py._firmware_logs import FirmwareLog
     from um982py.antenna import swap_antenna
+    from um982py.assessment import PositionAssessment, PositionLimits, assess_position
     from um982py.async_receiver import AsyncReceiver
     from um982py.augmentation import (
         HIGH_ACCURACY_SIGNAL_GROUP,
@@ -93,6 +94,7 @@ if TYPE_CHECKING:
     from um982py.rinex import RinexExport, export_rinex
     from um982py.rinex_merge import MergeResult, merge_gps_observations
     from um982py.rinex_nav import RinexNavigationExport, export_rinex_navigation
+    from um982py.rtk_session import CorrectionWriteError, RtkHealth, RtkSession
     from um982py.signals import TrackingSignal, tracking_signal
     from um982py.slas import (
         SlasCorrection,
@@ -129,6 +131,13 @@ if TYPE_CHECKING:
         subtract,
         unit,
     )
+    from um982py.stream_capture import (
+        EpochEvent,
+        EpochTracker,
+        iter_decoded_records,
+        iter_live_records,
+    )
+    from um982py.streaming import ReceiverStream, StreamHealth, Subscription
 
 _EXPORTS: dict[str, tuple[str, str | None]] = {
     "GPS_FREQUENCIES": ("um982py.capture", "GPS_FREQUENCIES"),
@@ -142,9 +151,12 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "WGS84_F": ("um982py.geodesy", "WGS84_F"),
     "AsyncReceiver": ("um982py.async_receiver", "AsyncReceiver"),
     "AugmentationState": ("um982py.augmentation", "AugmentationState"),
+    "CorrectionWriteError": ("um982py.rtk_session", "CorrectionWriteError"),
     "DataLog": ("um982py.capture", "DataLog"),
     "DilutionOfPrecision": ("um982py.geometry", "DilutionOfPrecision"),
     "EpochSolution": ("um982py.quality", "EpochSolution"),
+    "EpochEvent": ("um982py.stream_capture", "EpochEvent"),
+    "EpochTracker": ("um982py.stream_capture", "EpochTracker"),
     "ExampleParser": ("um982py.console", "ExampleParser"),
     "FirmwareLog": ("um982py._firmware_logs", "FirmwareLog"),
     "FixClass": ("um982py.quality", "FixClass"),
@@ -155,9 +167,12 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "ReconnectPolicy": ("um982py.ntrip", "ReconnectPolicy"),
     "PerformanceStatus": ("um982py.receiver_models", "PerformanceStatus"),
     "PrecisePoint": ("um982py.precise", "PrecisePoint"),
+    "PositionAssessment": ("um982py.assessment", "PositionAssessment"),
+    "PositionLimits": ("um982py.assessment", "PositionLimits"),
     "QualitySummary": ("um982py.quality", "QualitySummary"),
     "RangeSample": ("um982py.measurement", "RangeSample"),
     "Receiver": ("um982py.receiver", "Receiver"),
+    "ReceiverStream": ("um982py.streaming", "ReceiverStream"),
     "ReceiverConfig": ("um982py.receiver_models", "ReceiverConfig"),
     "ReceiverState": ("um982py.state", "ReceiverState"),
     "ReceiverSystemStatus": ("um982py.receiver_models", "ReceiverSystemStatus"),
@@ -167,15 +182,20 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "MergeResult": ("um982py.rinex_merge", "MergeResult"),
     "RinexNavigationExport": ("um982py.rinex_nav", "RinexNavigationExport"),
     "RoverMode": ("um982py.state", "RoverMode"),
+    "RtkHealth": ("um982py.rtk_session", "RtkHealth"),
+    "RtkSession": ("um982py.rtk_session", "RtkSession"),
     "SatelliteGeometry": ("um982py.geometry", "SatelliteGeometry"),
     "SignalKey": ("um982py.measurement", "SignalKey"),
     "Sp3Product": ("um982py.precise", "Sp3Product"),
     "StateRestoration": ("um982py.state", "StateRestoration"),
+    "StreamHealth": ("um982py.streaming", "StreamHealth"),
+    "Subscription": ("um982py.streaming", "Subscription"),
     "TaskPerformance": ("um982py.receiver_models", "TaskPerformance"),
     "TrackingSignal": ("um982py.signals", "TrackingSignal"),
     "add_debug_argument": ("um982py.console", "add_debug_argument"),
     "add_receiver_arguments": ("um982py.console", "add_receiver_arguments"),
     "allan_deviation": ("um982py.stats", "allan_deviation"),
+    "assess_position": ("um982py.assessment", "assess_position"),
     "capture_live": ("um982py.capture", "capture_live"),
     "capture_logs": ("um982py.capture", "capture_logs"),
     "capture_records": ("um982py.capture", "capture_records"),
@@ -206,6 +226,8 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "interpolate_sp3": ("um982py.precise", "interpolate_sp3"),
     "is_continuous": ("um982py.stats", "is_continuous"),
     "iter_frames": ("um982py.capture", "iter_frames"),
+    "iter_decoded_records": ("um982py.stream_capture", "iter_decoded_records"),
+    "iter_live_records": ("um982py.stream_capture", "iter_live_records"),
     "latest_epoch": ("um982py.capture", "latest_epoch"),
     "least_squares": ("um982py.stats", "least_squares"),
     "load_records": ("um982py.capture", "load_records"),
@@ -257,9 +279,12 @@ __all__ = [
     "WGS84_F",
     "AsyncReceiver",
     "AugmentationState",
+    "CorrectionWriteError",
     "DataLog",
     "DilutionOfPrecision",
+    "EpochEvent",
     "EpochSolution",
+    "EpochTracker",
     "ExampleParser",
     "FirmwareLog",
     "FixClass",
@@ -269,12 +294,15 @@ __all__ = [
     "NtripClient",
     "NtripError",
     "PerformanceStatus",
+    "PositionAssessment",
+    "PositionLimits",
     "PrecisePoint",
     "QualitySummary",
     "RangeSample",
     "Receiver",
     "ReceiverConfig",
     "ReceiverState",
+    "ReceiverStream",
     "ReceiverSystemStatus",
     "ReconnectPolicy",
     "ReportedDilution",
@@ -282,17 +310,22 @@ __all__ = [
     "RinexExport",
     "RinexNavigationExport",
     "RoverMode",
+    "RtkHealth",
+    "RtkSession",
     "SatelliteGeometry",
     "SignalKey",
     "SlasCorrection",
     "SlasTracker",
     "Sp3Product",
     "StateRestoration",
+    "StreamHealth",
+    "Subscription",
     "TaskPerformance",
     "TrackingSignal",
     "add_debug_argument",
     "add_receiver_arguments",
     "allan_deviation",
+    "assess_position",
     "bdt_week_to_gps_seconds",
     "capture_live",
     "capture_logs",
@@ -321,7 +354,9 @@ __all__ = [
     "haversine_distance",
     "interpolate_sp3",
     "is_continuous",
+    "iter_decoded_records",
     "iter_frames",
+    "iter_live_records",
     "latest_epoch",
     "least_squares",
     "load_records",
