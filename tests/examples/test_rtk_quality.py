@@ -116,6 +116,13 @@ def test_empty_timeline_is_rejected() -> None:
         summarise([])
 
 
+@pytest.mark.parametrize("epochs", [(1, 0), (1, 1), (0, float("nan"))])
+def test_summary_rejects_invalid_epoch_order(epochs: tuple[float, float]) -> None:
+    solutions = [epoch(value, PositionType.NARROW_INT) for value in epochs]
+    with pytest.raises(ValueError, match="epochs"):
+        summarise(solutions)
+
+
 def test_ppp_solutions_keep_their_own_categories() -> None:
     solutions = [epoch(0, PositionType.PPP_CONVERGING), epoch(1, PositionType.PPP)]
     summary = summarise(solutions)

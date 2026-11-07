@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import IntEnum, StrEnum
+from itertools import pairwise
+from math import isfinite
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
@@ -180,6 +182,12 @@ def solution_from_record(epoch: float, record: Record) -> EpochSolution:
 
 def timeline(records: Sequence[Record]) -> tuple[EpochSolution, ...]:
     """Number a capture of position records in arrival order."""
+    if (
+        records
+        and any(record.message is None for record in records)
+        and any(record.message is not None for record in records)
+    ):
+        raise ValueError("position records must either all have timestamps or none")
     return tuple(
         solution_from_record(
             record_epoch(record) if record.message is not None else float(epoch), record
@@ -192,6 +200,10 @@ def summarise(solutions: Sequence[EpochSolution]) -> QualitySummary:
     """Summarise availability, time to first fix and per-class counts."""
     if not solutions:
         raise ValueError("at least one solution epoch is required")
+    if any(not isfinite(solution.epoch) for solution in solutions):
+        raise ValueError("solution epochs must be finite")
+    if any(b.epoch <= a.epoch for a, b in pairwise(solutions)):
+        raise ValueError("solution epochs must increase strictly")
     counts = dict.fromkeys(FixClass, 0)
     for solution in solutions:
         counts[solution.fix_class] += 1
