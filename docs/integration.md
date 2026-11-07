@@ -44,7 +44,8 @@ attempts, forwarded frames and monotonic arrival times.
 The session does not select rover mode or restore receiver settings. Configure
 the receiver explicitly before starting the stream. Authentication, TLS and
 receiver-write failures stop the session; a caller should surface those errors
-instead of retrying indefinitely. Stop the session before closing the stream.
+instead of retrying indefinitely. A failing GGA provider stops the session as
+well. Stop the session before closing the stream.
 The [NTRIP client example](../examples/ntrip_client/README.md) includes
 additional receiver and reference-station diagnostics.
 

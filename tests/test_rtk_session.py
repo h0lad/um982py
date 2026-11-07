@@ -7,7 +7,7 @@ import pytest
 from conftest import rtcm
 from um982py.messages import RtcmMessage
 from um982py.ntrip import NtripError, ReconnectPolicy
-from um982py.rtk_session import CorrectionWriteError, RtkSession
+from um982py.rtk_session import CorrectionWriteError, GgaProviderError, RtkSession
 
 
 class Caster:
@@ -108,3 +108,27 @@ def test_gga_is_sent_when_caster_times_out() -> None:
     )
     session.run(stop)
     assert caster.closed
+
+
+def test_gga_provider_failure_is_not_retried_as_a_caster_error() -> None:
+    stop = Event()
+
+    class IdleCaster(Caster):
+        def read(self) -> bytes:
+            sleep(0.015)
+            raise TimeoutError
+
+    def failed_gga() -> bytes | None:
+        raise OSError("receiver disconnected")
+
+    caster = IdleCaster([])
+    session = RtkSession(
+        Stream(stop),  # type: ignore[arg-type]
+        lambda: caster,  # type: ignore[arg-type]
+        gga_provider=failed_gga,
+        gga_interval=0.01,
+    )
+    with pytest.raises(GgaProviderError):
+        session.run(stop)
+    assert session.health().state == "failed"
+    assert session.health().connection_attempts == 1

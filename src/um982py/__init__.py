@@ -94,7 +94,12 @@ if TYPE_CHECKING:
     from um982py.rinex import RinexExport, export_rinex
     from um982py.rinex_merge import MergeResult, merge_gps_observations
     from um982py.rinex_nav import RinexNavigationExport, export_rinex_navigation
-    from um982py.rtk_session import CorrectionWriteError, RtkHealth, RtkSession
+    from um982py.rtk_session import (
+        CorrectionWriteError,
+        GgaProviderError,
+        RtkHealth,
+        RtkSession,
+    )
     from um982py.signals import TrackingSignal, tracking_signal
     from um982py.slas import (
         SlasCorrection,
@@ -160,6 +165,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "ExampleParser": ("um982py.console", "ExampleParser"),
     "FirmwareLog": ("um982py._firmware_logs", "FirmwareLog"),
     "FixClass": ("um982py.quality", "FixClass"),
+    "GgaProviderError": ("um982py.rtk_session", "GgaProviderError"),
     "InterruptedCapture": ("um982py.capture", "InterruptedCapture"),
     "LinearSolution": ("um982py.stats", "LinearSolution"),
     "NtripClient": ("um982py.ntrip", "NtripClient"),
@@ -288,6 +294,7 @@ __all__ = [
     "ExampleParser",
     "FirmwareLog",
     "FixClass",
+    "GgaProviderError",
     "InterruptedCapture",
     "LinearSolution",
     "MergeResult",

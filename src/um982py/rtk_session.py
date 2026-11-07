@@ -22,6 +22,10 @@ class CorrectionWriteError(RuntimeError):
     """A correction could not be delivered to the receiver."""
 
 
+class GgaProviderError(RuntimeError):
+    """The application could not obtain its rover position."""
+
+
 @dataclass(frozen=True, slots=True)
 class RtkHealth:
     state: str
@@ -143,10 +147,15 @@ class RtkSession:
         while not stop.is_set():
             now = monotonic()
             if self.gga_provider is not None and now >= next_gga:
-                sentence = self.gga_provider()
+                try:
+                    sentence = self.gga_provider()
+                except Exception as error:
+                    raise GgaProviderError("GGA provider failed") from error
                 if sentence is not None:
                     client.send_gga(sentence)
                 next_gga = monotonic() + self.gga_interval
+                if stop.is_set():
+                    return
             try:
                 data = client.read()
             except TimeoutError:
