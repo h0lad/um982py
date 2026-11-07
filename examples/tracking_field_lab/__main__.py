@@ -75,10 +75,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         {
             "status": "hypotheses_only" if usable else "needs_labels_or_variation",
             "ground_truth": str(args.labels) if args.labels else "not supplied",
-            "limitation": (
-                "correlation does not establish semantic identification, and no "
-                "correlator or ADC interpretation is assigned"
-            ),
+            "limitation": "No correlator or ADC interpretation is assigned.",
             "frames": [
                 {"epoch": epoch, "fields": [asdict(field) for field in fields]}
                 for epoch, fields in frames

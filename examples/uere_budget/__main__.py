@@ -78,7 +78,7 @@ def _payload(
             "uere": None,
             "median_reported_pseudorange_sigma_m": pseudorange,
             "diagnostic_ratio_to_pseudorange_sigma": None,
-            "limitation": "matching satellite geometry is not independently verified",
+            "limitation": "Satellite geometry match is unverified.",
         }
     horizontal, vertical = median_uere(estimates)
     return {

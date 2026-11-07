@@ -144,9 +144,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "rejected_position_epochs": rejected,
         "uncertainty": None,
         "limitations": (
-            "First position is the local origin, not surveyed truth. Velocity is "
-            "a two-epoch finite difference, and frame, antenna and covariance are "
-            "not independently validated. ECEF standard deviations, when present, "
+            "The first position is the local origin. Velocity is a two-epoch "
+            "finite difference. Frame, antenna and covariance are unverified. "
+            "ECEF standard deviations, when present, "
             "are receiver estimates; motion uncertainty requires covariance."
         ),
     }

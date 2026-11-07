@@ -243,10 +243,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "Ellipsoidal height is not pressure altitude or terrain clearance. "
                 "Baseline heading requires a known antenna orientation and is not "
                 "automatically vehicle heading. Integration omits gaps and can "
-                "accumulate velocity error. This is an experimental log, not a "
-                "certified navigation or safety system."
-                " Position standard deviations are receiver estimates in ECEF; "
-                "they do not establish absolute accuracy."
+                "accumulate velocity error. Position standard deviations are "
+                "receiver estimates in ECEF."
             ),
         }
     )

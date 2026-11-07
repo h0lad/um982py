@@ -183,8 +183,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             "tracking_quality": asdict(quality) if quality else None,
             "limitations": (
                 "Code TEC includes instrumental biases and multipath, while ROTI is "
-                "code-based and is not a calibrated scintillation index. Lock "
-                "continuity does not prove absence of slips. Signal selection "
+                "code-based and is not a calibrated scintillation index. Signal "
+                "selection "
                 "can change within a frequency. Coverage measures the duration "
                 "of accepted rate intervals, not the number of expected samples."
             ),

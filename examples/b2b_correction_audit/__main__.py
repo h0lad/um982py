@@ -170,8 +170,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             ),
             "limitation": (
                 "Native correction integers are not applied, and mask-based "
-                "clock satellite mapping remains unverified. Stream coherence "
-                "does not establish positioning accuracy"
+                "clock satellite mapping remains unverified."
             ),
             "counts": dict(Counter(check.kind for check in checks)),
             "services": [asdict(audit) for audit in service_census(checks, has_checks)],

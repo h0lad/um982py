@@ -72,8 +72,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ],
         "limitations": (
             "Native status and identifiers are retained without verifying signal "
-            "identity or phase alignment. Epoch matching does not prove simultaneous "
-            "measurements or correction use. Raw observables include invalid values "
+            "identity or phase alignment. Raw observables include invalid values "
             "when indicated by tracking flags; no double differences are calculated."
         ),
     }

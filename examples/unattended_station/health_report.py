@@ -193,9 +193,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "between_segments": gaps,
         "disk_low_events": disk_low_events,
         "limitations": (
-            "Host times are not an independent reference. Inter-segment "
-            "intervals do not measure actual observation gaps. Matching "
-            "snapshots do not prove settings remained unchanged between queries. "
+            "Inter-segment intervals use host times. Receiver snapshots record "
+            "settings at query times. "
             "Date filtering assigns each segment to its start date."
         ),
     }
@@ -229,8 +228,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             [
                 "",
                 "The JSON report includes receiver snapshots, observation quality, "
-                "hashes and inter-segment intervals. Host times do not establish "
-                "observation gaps.",
+                "hashes and inter-segment intervals.",
             ]
         )
         args.markdown.parent.mkdir(parents=True, exist_ok=True)

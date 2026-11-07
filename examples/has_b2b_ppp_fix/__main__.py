@@ -388,10 +388,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "has_blocks": has_blocks,
                 "delivery_is_not_application": True,
             },
-            "limitation": (
-                "delivery of E6-HAS or B2b blocks does not prove the receiver "
-                "applied them, and accuracy needs an independent reference"
-            ),
+            "limitation": "E6-HAS and B2b counts measure delivered blocks.",
         },
         args.json,
     )

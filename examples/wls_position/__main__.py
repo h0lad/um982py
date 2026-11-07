@@ -211,7 +211,7 @@ def _solution_payload(
             "horizontal": error.horizontal,
             "vertical": error.vertical,
         },
-        "error_reference": "receiver position, not independent surveyed truth",
+        "error_reference": "receiver-reported position",
         "position_ecef_covariance_m2": solution.ecef_covariance_m2,
         "position_ecef_standard_deviation_m": solution.ecef_standard_deviation_m,
         "position_uncertainty_note": (

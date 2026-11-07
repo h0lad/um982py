@@ -105,7 +105,7 @@ def carrier_main(name: str, argv: Sequence[str] | None) -> int:
             "status": "ok" if usable else "insufficient_data",
             "ground_truth": "user-supplied constant pseudorange"
             if args.truth_code is not None
-            else "not supplied, leaving filter accuracy unverified",
+            else "not supplied",
             "threshold_mps": args.threshold
             if name == "code_carrier_divergence"
             else None,

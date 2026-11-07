@@ -68,10 +68,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         {
             "status": "ok" if usable else "insufficient_data",
             "tested_intervals": usable,
-            "ground_truth": (
-                "Ground truth is not supplied. Attribution of common-mode "
-                "candidates requires independent timing evidence."
-            ),
+            "ground_truth": "not supplied",
             "events": [asdict(event) for event in events],
             "next_step": None
             if usable

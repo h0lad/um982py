@@ -59,10 +59,7 @@ def validate_archive(data: bytes) -> dict[str, object]:
         "accepted_dcr_by_type": dict(sorted(accepted.items())),
         "rejected_dcr": dict(sorted(rejected.items())),
         "mt43_categories": dict(sorted(categories.items())),
-        "limitation": (
-            "Archive input and CRC checks do not independently validate report "
-            "semantics. MT44 content is retained without interpretation."
-        ),
+        "limitation": "MT44 content is retained without interpretation.",
     }
 
 

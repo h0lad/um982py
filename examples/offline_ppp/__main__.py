@@ -524,7 +524,6 @@ def solve(observation: Path, products: Path, antex: Path, output: Path) -> int:
         "gps_phase_alignment": phase_alignment_status(observation),
         "products": manifest,
         "limitations": [
-            "A float PPP output does not prove convergence or accuracy",
             "Antenna calibration validity, phase alignment and reference point "
             "are not independently verified",
             "Product coverage and data quality must be independently inspected",

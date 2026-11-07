@@ -157,8 +157,8 @@ def analyze_capture(
             "dop": dop_report(captured),
             "satellites": satellite_report(captured.get("SATSINFO", ())),
             "quality_note": (
-                "Position standard deviations are receiver estimates. Accuracy "
-                "requires an independent reference. PPP_CONVERGING is not a full "
+                "Position standard deviations are receiver estimates. "
+                "PPP_CONVERGING is not a full "
                 "PPP fix, and a PPP fix does not identify which correction "
                 "service supplied it. Differential and RTK fixes need current "
                 "corrections, with ages above 10 seconds reported as stale."

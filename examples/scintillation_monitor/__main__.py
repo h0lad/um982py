@@ -51,8 +51,8 @@ def payload_of(summary: ScintillationSummary) -> dict[str, object]:
         "observable": "uncalibrated_cn0_variability_proxy",
         "limitation": (
             "RANGE C/N0 is receiver-filtered and not calibrated signal intensity, "
-            "and no detrending or thermal-noise correction is applied. This does not "
-            "establish ionospheric scintillation. S4-rate is not TEC ROTI."
+            "and no detrending or thermal-noise correction is applied. "
+            "S4-rate is not TEC ROTI."
         ),
         "s4_rate_std_per_second": summary.roti_proxy,
     }

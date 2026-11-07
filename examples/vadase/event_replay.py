@@ -137,9 +137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "interval-average ending at its recorded epoch. Nearest-epoch "
             "matching does not align their temporal response or establish a "
             "common physical reference point. No displacement is integrated "
-            "across gaps. Independent reference, common frame, sample rate and "
-            "timing are required to evaluate a real event. This is not an "
-            "earthquake warning system."
+            "across gaps."
         ),
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)

@@ -271,12 +271,11 @@ def motion_main(name: str, argv: Sequence[str] | None) -> int:
             ),
             "ground_truth": "user-supplied constant velocity"
             if truth is not None
-            else "not supplied, so no accuracy claim is made",
+            else "not supplied",
             "velocity_rmse_mps": rms(errors) if errors else None,
             "receiver_comparison_limitation": (
                 "The receiver and solver share observations. Header epochs are "
-                "matched without latency correction; receiver samples can be reused. "
-                "This is not an independent accuracy check."
+                "matched without latency correction; receiver samples can be reused."
                 if compare_receiver
                 else None
             ),

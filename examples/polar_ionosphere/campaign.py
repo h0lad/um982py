@@ -107,8 +107,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "stations": stations,
         "inputs": [{"path": str(p), "sha256": file_sha256(p)} for p in inputs],
         "limitations": (
-            "Event times and station labels are supplied independently. Temporal "
-            "overlap does not establish causation. Code TEC and code ROTI "
+            "Event times and station labels are supplied independently. "
+            "Code TEC and code ROTI "
             "contain biases, multipath and noise. Median C/N0 combines both "
             "frequencies and is not calibrated signal intensity. Different "
             "stations, frequency pairs and sampling cadences are not "
