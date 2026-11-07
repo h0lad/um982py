@@ -35,7 +35,7 @@ from um982py.experimental import (
     rf_spi_read,
     scan_notices,
 )
-from um982py.experimental.capture import RecordingTransport, ascii_fields
+from um982py.experimental.capture import BoundedRecordingTransport, ascii_fields
 from um982py.experimental.diagnostics import log_list
 from um982py.receiver import Receiver
 
@@ -123,7 +123,7 @@ def _probe(
     deadline: float,
 ) -> ConformanceRow:
     original = receiver.transport
-    recording = RecordingTransport(original, 1024 * 1024)
+    recording = BoundedRecordingTransport(original, 1024 * 1024)
     receiver.transport = recording
     accepted = False
     try:

@@ -15,8 +15,8 @@ from um982py.protocol import StreamDecoder
 from um982py.transports.base import Transport
 
 __all__ = [
+    "BoundedRecordingTransport",
     "CaptureAnalysis",
-    "RecordingTransport",
     "analyze_capture",
     "ascii_fields",
     "capture_wire",
@@ -25,8 +25,8 @@ __all__ = [
 ]
 
 
-class RecordingTransport:
-    """Wraps a transport and records every byte read."""
+class BoundedRecordingTransport:
+    """Retain up to ``limit`` received bytes in memory."""
 
     def __init__(self, transport: Transport, limit: int) -> None:
         if type(limit) is not int or limit < 1:

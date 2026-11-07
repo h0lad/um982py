@@ -59,6 +59,10 @@ subscriptions. Its caller processes records in the reader thread, so a slow
 sink can still cause upstream loss. `RecordingTransport` records received bytes
 for subsequent replay; record and protect the raw data alongside output files.
 `EpochTracker` checks gaps only in the series and cadence supplied by the user.
+For short diagnostic captures, `experimental.capture.BoundedRecordingTransport`
+retains bytes in memory up to a limit and exposes `limit_reached`. Its previous
+name was `RecordingTransport`; use the new name to distinguish it from the
+file-backed recorder in `um982py.capture`.
 
 The [research recorder](../examples/research_session/README.md) produces a
 manifest and RINEX artifacts; the [unattended recorder](../examples/unattended_station/README.md)

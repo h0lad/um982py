@@ -15,7 +15,7 @@ from um982py.experimental.baseband import BasebandStream, RawBasebandPacket
 from um982py.experimental.baseband_command import bb_message_to_ap
 from um982py.experimental.baseband_reply import BasebandNotice, scan_notices
 from um982py.experimental.capture import (
-    RecordingTransport,
+    BoundedRecordingTransport,
     analyze_capture,
     receiver_state,
 )
@@ -293,7 +293,7 @@ def _capture(
             entry.name == prerequisite for entry in existing.entries
         )
         original = receiver.transport
-        tap = RecordingTransport(original, max_bytes)
+        tap = BoundedRecordingTransport(original, max_bytes)
         gate_sent = False
         prerequisite_sent = False
         registered = False

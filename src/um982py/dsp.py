@@ -18,8 +18,8 @@ from um982py.errors import ProtocolError, UM982Error
 from um982py.experimental import DebugOutput, FirmwareLog, log_list
 from um982py.experimental.baseband import RawBasebandPacket, scan_packets
 from um982py.experimental.capture import (
+    BoundedRecordingTransport,
     CaptureAnalysis,
-    RecordingTransport,
     analyze_capture,
     receiver_state,
 )
@@ -255,7 +255,7 @@ def capture_dsp(
         if any(entry.name in targets for entry in existing.entries):
             raise ValueError("Capture target already subscribed")
         original = receiver.transport
-        tap = RecordingTransport(original, max_bytes)
+        tap = BoundedRecordingTransport(original, max_bytes)
         stops = []
         cleanup_errors = []
         failure: Exception | None = None
