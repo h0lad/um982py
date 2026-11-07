@@ -75,7 +75,12 @@ if TYPE_CHECKING:
         range_samples,
         sample_series,
     )
-    from um982py.ntrip import NtripClient, NtripError, ReconnectPolicy
+    from um982py.ntrip import (
+        NtripClient,
+        NtripDisconnected,
+        NtripError,
+        ReconnectPolicy,
+    )
     from um982py.precise import PrecisePoint, Sp3Product, interpolate_sp3, parse_sp3
     from um982py.quality import (
         EpochSolution,
@@ -169,6 +174,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "InterruptedCapture": ("um982py.capture", "InterruptedCapture"),
     "LinearSolution": ("um982py.stats", "LinearSolution"),
     "NtripClient": ("um982py.ntrip", "NtripClient"),
+    "NtripDisconnected": ("um982py.ntrip", "NtripDisconnected"),
     "NtripError": ("um982py.ntrip", "NtripError"),
     "ReconnectPolicy": ("um982py.ntrip", "ReconnectPolicy"),
     "PerformanceStatus": ("um982py.receiver_models", "PerformanceStatus"),
@@ -299,6 +305,7 @@ __all__ = [
     "LinearSolution",
     "MergeResult",
     "NtripClient",
+    "NtripDisconnected",
     "NtripError",
     "PerformanceStatus",
     "PositionAssessment",

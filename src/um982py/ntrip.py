@@ -23,6 +23,10 @@ class NtripError(ProtocolError):
         self.status_code = status_code
 
 
+class NtripDisconnected(NtripError):
+    """The caster disconnected before completing its response or chunk."""
+
+
 @dataclass(frozen=True, slots=True)
 class ReconnectPolicy:
     """Bounded exponential delays for recoverable NTRIP failures."""
@@ -45,6 +49,8 @@ def retryable_ntrip_error(error: BaseException) -> bool:
     """Recognize transient transport and caster errors, not TLS or auth failures."""
     if isinstance(error, ssl.SSLError):
         return False
+    if isinstance(error, NtripDisconnected):
+        return True
     if isinstance(error, NtripError):
         return error.status_code in (408, 429) or (
             error.status_code is not None and 500 <= error.status_code < 600
@@ -180,7 +186,7 @@ class NtripClient:
             if len(self._buffer) > 8192:
                 raise NtripError("NTRIP line exceeds 8 KiB")
             if not self._read_socket():
-                raise NtripError("Incomplete NTRIP response")
+                raise NtripDisconnected("Incomplete NTRIP response")
 
     def _read_socket(self) -> bytes:
         if self._socket is None:
@@ -192,7 +198,7 @@ class NtripClient:
     def _take(self, size: int) -> bytes:
         while len(self._buffer) < size:
             if not self._read_socket():
-                raise NtripError("NTRIP chunk ended early")
+                raise NtripDisconnected("NTRIP chunk ended early")
         data = bytes(self._buffer[:size])
         del self._buffer[:size]
         return data
@@ -286,7 +292,7 @@ class NtripClient:
         data = bytes(self._buffer[: min(size, self._remaining)])
         del self._buffer[: len(data)]
         if not data:
-            raise NtripError("NTRIP chunk ended early")
+            raise NtripDisconnected("NTRIP chunk ended early")
         self._remaining -= len(data)
         if self._remaining == 0:
             self._need_chunk_terminator = True
