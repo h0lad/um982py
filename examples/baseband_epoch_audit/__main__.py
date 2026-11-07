@@ -75,7 +75,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "No wrap modulus, counter frequency or notice-to-GNSS epoch "
                 "association is assumed. Slots are overwritten by channels, "
                 "not averaged; write counts reflect channel assignment. Native "
-                "units, signal identities and bank-to-antenna mapping remain unverified."
+                "units, signal identities and bank-to-antenna mapping remain "
+                "unverified."
             ),
             "analysis_scope": "entire recorded wire file"
             if args.record or args.replay
