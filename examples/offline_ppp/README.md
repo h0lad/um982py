@@ -1,5 +1,8 @@
 # Offline precise point positioning
 
+For relative post-processing with a base station, see the
+[post-processed RTK example](../postprocessed_rtk/README.md).
+
 Record raw UM982 observations at a stationary point, download precise IGS
 products later, and process the occupation with CSSRlib's Python static PPP
 solver. The result is an experimental float PPP estimate in the reference frame

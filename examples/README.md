@@ -61,6 +61,7 @@ receiver configuration.
 - [`ntrip_server`](ntrip_server/README.md): Serves reference-station RTCM over NTRIP with TLS and optional guest access.
 - [`offline_ppp`](offline_ppp/README.md): Records static observations and processes them later with CODE products and Python PPP.
 - [`position_tracking`](position_tracking/README.md): Tracks positions, prefers full PPP fixes, and reports precision and satellite signals.
+- [`postprocessed_rtk`](postprocessed_rtk/README.md): Runs RTKLIB with rover, base and navigation RINEX files.
 - [`ppp_filter_inspector`](ppp_filter_inspector/README.md): Inspects PPP residuals, SSR coverage, and RTOS CPU load.
 - [`precise_fix`](precise_fix/README.md): Averages a static occupation with outlier checks and a serial-correlation screening estimate.
 - [`raim_fde`](raim_fde/README.md): Runs RAIM fault detection, exclusion and protection levels.

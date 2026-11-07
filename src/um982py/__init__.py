@@ -87,6 +87,7 @@ if TYPE_CHECKING:
         fetch_sourcetable,
         parse_sourcetable,
     )
+    from um982py.ppk import PostProcessingError, PpkResult, run_ppk
     from um982py.precise import PrecisePoint, Sp3Product, interpolate_sp3, parse_sp3
     from um982py.quality import (
         EpochSolution,
@@ -193,6 +194,8 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "PositionLimits": ("um982py.assessment", "PositionLimits"),
     "PositionSession": ("um982py.live", "PositionSession"),
     "PositionUpdate": ("um982py.live", "PositionUpdate"),
+    "PostProcessingError": ("um982py.ppk", "PostProcessingError"),
+    "PpkResult": ("um982py.ppk", "PpkResult"),
     "QualitySummary": ("um982py.quality", "QualitySummary"),
     "RangeSample": ("um982py.measurement", "RangeSample"),
     "Receiver": ("um982py.receiver", "Receiver"),
@@ -281,6 +284,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "restore_receiver_state": ("um982py.state", "restore_receiver_state"),
     "rms": ("um982py.stats", "rms"),
     "run": ("um982py.console", "run"),
+    "run_ppk": ("um982py.ppk", "run_ppk"),
     "sample_series": ("um982py.measurement", "sample_series"),
     "snapshot_receiver_state": ("um982py.state", "snapshot_receiver_state"),
     "solution_from_record": ("um982py.quality", "solution_from_record"),
@@ -335,6 +339,8 @@ __all__ = [
     "PositionLimits",
     "PositionSession",
     "PositionUpdate",
+    "PostProcessingError",
+    "PpkResult",
     "PrecisePoint",
     "QualitySummary",
     "RangeSample",
@@ -425,6 +431,7 @@ __all__ = [
     "restore_receiver_state",
     "rms",
     "run",
+    "run_ppk",
     "sample_series",
     "slas_candidates",
     "slas_corrections",

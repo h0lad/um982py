@@ -88,6 +88,15 @@ selected PROJ operation and rejects unavailable best operations. Use explicit
 see the [CRS example](../examples/crs_transform/README.md). The operation's
 reported accuracy is not an estimate of the receiver's position error.
 
+## Post-processed RTK
+
+`run_ppk()` validates RINEX headers and runs an installed RTKLIB `rnx2rtkp`
+with an explicit base ECEF position. It records input and executable hashes,
+the command, logs and solution quality counts in a new directory. See the
+[post-processing example](../examples/postprocessed_rtk/README.md) for the
+required frame and antenna metadata. Validate the solution and input signal
+mapping against independent field data before assigning an accuracy.
+
 ## Configuration changes
 
 `augmentation_plan()` previews commands for a known signal group.
