@@ -29,7 +29,9 @@ def test_finite_helper_and_constant_are_shared() -> None:
         correction_finite(math.nan)
 
 
-@pytest.mark.parametrize("failure", [TypeError("unexpected"), KeyboardInterrupt()])
+@pytest.mark.parametrize(
+    "failure", [TypeError("unexpected"), ValueError("no PPP"), KeyboardInterrupt()]
+)
 def test_receiver_is_closed_if_setup_fails(failure: BaseException) -> None:
     from argparse import Namespace
     from unittest.mock import patch
@@ -44,18 +46,3 @@ def test_receiver_is_closed_if_setup_fails(failure: BaseException) -> None:
     ):
         open_receiver(args)
     connect.return_value.close.assert_called_once_with()
-
-
-def test_recoverable_augmentation_warning_keeps_receiver_open() -> None:
-    from argparse import Namespace
-    from unittest.mock import patch
-
-    from um982py.capture import open_receiver
-
-    args = Namespace(port="fake", baud=921600, augment=True, replay=None)
-    with (
-        patch("um982py.console_capture.Receiver.connect") as connect,
-        patch("um982py.capture.enable_augmentation", side_effect=ValueError("no PPP")),
-    ):
-        assert open_receiver(args) is connect.return_value
-    connect.return_value.close.assert_not_called()
