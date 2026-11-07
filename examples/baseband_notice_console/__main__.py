@@ -1,4 +1,4 @@
-"""Runs the baseband notice console example from the command line."""
+"""Track baseband configuration from diagnostic notices."""
 
 from __future__ import annotations
 

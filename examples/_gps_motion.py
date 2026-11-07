@@ -77,7 +77,7 @@ def _receiver_comparison(
     *,
     tolerance: float,
 ) -> dict[str, object] | None:
-    """Compare matched receiver speeds without claiming independent truth."""
+    """Compare velocity with the nearest receiver Doppler solution."""
     eligible = [
         row
         for row in records

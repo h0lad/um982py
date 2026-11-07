@@ -1,4 +1,4 @@
-"""Flags receiver clock discontinuities from the command line."""
+"""Find common code and carrier jumps across satellites."""
 
 import sys
 from collections.abc import Sequence

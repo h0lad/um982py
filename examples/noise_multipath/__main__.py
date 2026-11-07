@@ -1,4 +1,4 @@
-"""Run the noise_multipath experiment."""
+"""Compare antenna differences and repeat-track multipath."""
 
 from examples._scientific_cli import main
 

@@ -1,4 +1,4 @@
-"""Runs the UERE budget example from the command line."""
+"""Estimate user range error from position uncertainty and DOP."""
 
 from __future__ import annotations
 
@@ -27,7 +27,6 @@ from um982py.stats import percentile
 
 
 def _estimate_payload(estimate: UereEstimate) -> dict[str, object]:
-    """Serialise one epoch estimate."""
     return {
         "epoch": estimate.epoch,
         "horizontal_sigma": estimate.horizontal_sigma,

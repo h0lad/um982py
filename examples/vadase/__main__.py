@@ -1,4 +1,4 @@
-"""Solves continuous-arc variometric displacement from the command line."""
+"""Estimate displacement and velocity from carrier-phase differences."""
 
 from collections.abc import Sequence
 

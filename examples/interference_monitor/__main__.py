@@ -1,4 +1,4 @@
-"""Runs the interference monitor example from the command line."""
+"""Monitor receiver jamming, spoofing and signal indicators."""
 
 from __future__ import annotations
 
@@ -31,7 +31,6 @@ from um982py.messages import Record
 
 
 def _alert_payload(alert: Alert) -> dict[str, object]:
-    """Serialise one alert."""
     return {
         "epoch": alert.epoch,
         "kind": str(alert.kind),
@@ -49,7 +48,6 @@ def _finite(z_score: float | None) -> float | None:
 
 
 def _spoof_payload(report: SpoofReport | None) -> dict[str, object] | None:
-    """Serialise the SPOOFINFO report."""
     if report is None:
         return None
     return {
@@ -61,7 +59,6 @@ def _spoof_payload(report: SpoofReport | None) -> dict[str, object] | None:
 
 
 def _antenna_payload(report: AntennaReport | None) -> dict[str, object] | None:
-    """Serialise the ANTENNA report."""
     if report is None:
         return None
     return {

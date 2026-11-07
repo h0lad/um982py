@@ -1,4 +1,4 @@
-"""Runs the signal-group trade study from the command line."""
+"""Compare receiver signals and geometry across signal groups."""
 
 from __future__ import annotations
 

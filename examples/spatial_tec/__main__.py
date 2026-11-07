@@ -1,4 +1,4 @@
-"""Run the spatial_tec experiment."""
+"""Compare matched TEC changes from two stations."""
 
 from examples._scientific_cli import main
 

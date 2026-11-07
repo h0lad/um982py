@@ -70,7 +70,7 @@ def _baseline_payload(baseline: Baseline) -> dict[str, float]:
 
 
 def _position_precision(record: Record) -> dict[str, object]:
-    """Report the receiver's ECEF standard deviations without inventing covariance."""
+    """Report the receiver's ECEF component standard deviations."""
     return {
         "ecef_standard_deviation_m": [
             record.real(name) if name in record else None

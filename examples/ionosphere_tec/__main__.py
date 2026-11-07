@@ -1,4 +1,4 @@
-"""Runs the ionosphere TEC example from the command line."""
+"""Compute slant TEC, ROT and ROTI from dual-frequency ranges."""
 
 from __future__ import annotations
 

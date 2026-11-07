@@ -1,4 +1,4 @@
-"""Runs the continuous-wave jamming example from the command line."""
+"""Classify continuous-wave jamming from receiver diagnostics."""
 
 from __future__ import annotations
 
@@ -42,7 +42,6 @@ def _state_payload(state: CwState) -> dict[str, object]:
 
 
 def _timeline_payload(summary: JamTimeline) -> dict[str, object]:
-    """Serialise one aggregated series."""
     return {
         "epochs": summary.epochs,
         "jammed_epochs": summary.jammed_epochs,
@@ -53,7 +52,6 @@ def _timeline_payload(summary: JamTimeline) -> dict[str, object]:
 
 
 def _alert_payload(alert: JamAlert) -> dict[str, object]:
-    """Serialise one class change."""
     return {
         "epoch": alert.epoch,
         "band": str(alert.band),

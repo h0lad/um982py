@@ -1,4 +1,4 @@
-"""Run the multifrequency_slips experiment."""
+"""Enumerate ideal cycle-slip responses on three frequencies."""
 
 from examples._scientific_cli import main
 

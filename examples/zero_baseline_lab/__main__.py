@@ -1,4 +1,4 @@
-"""Runs synchronized receiver noise experiments from the command line."""
+"""Measure double-difference noise between two receivers."""
 
 import sys
 from collections.abc import Sequence

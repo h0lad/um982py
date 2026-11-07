@@ -1,4 +1,4 @@
-"""Runs the Klobuchar versus TEC example from the command line."""
+"""Compare Klobuchar delay with dual-frequency TEC."""
 
 from __future__ import annotations
 

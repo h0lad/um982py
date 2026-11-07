@@ -1,4 +1,4 @@
-"""Measures time to first fix from the command line."""
+"""Measure time to first fix after receiver starts."""
 
 from __future__ import annotations
 
@@ -84,7 +84,7 @@ def injected_runs() -> tuple[tuple[tuple[FixEpoch, ...], TtffMeasurement], ...]:
 def recorded_epochs(
     records: Sequence[Record], *, cadence: float
 ) -> tuple[FixEpoch, ...]:
-    """Number a captured BESTPOS stream at a fixed cadence from the reset."""
+    """Convert BESTPOS records to elapsed epochs, using cadence when unstamped."""
     origin = (
         record_epoch(records[0]) if records and records[0].message is not None else None
     )

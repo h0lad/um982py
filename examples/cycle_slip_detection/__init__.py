@@ -113,9 +113,8 @@ def detect_slips(
 
 def geometry_free(phase: DualFrequencyPhase) -> float:
     """Geometry-free carrier combination in metres."""
-    # Convert cycles on each signal to metres before differencing. The shared
-    # geometric range cancels in this combination, but atmospheric and phase
-    # ambiguity effects can remain, so a jump is a diagnostic rather than proof.
+    # Geometric range cancels after converting both phases to metres, but
+    # atmospheric and phase ambiguity effects can still produce a jump.
     low = wavelength(phase.low_hz) * phase.low_cycles
     high = wavelength(phase.high_hz) * phase.high_cycles
     return low - high

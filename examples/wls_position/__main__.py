@@ -1,4 +1,4 @@
-"""Runs the weighted least-squares positioning example from the command line."""
+"""Solve position from pseudoranges by weighted least squares."""
 
 from __future__ import annotations
 

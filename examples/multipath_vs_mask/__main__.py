@@ -1,4 +1,4 @@
-"""Sweeps elevation masks for multipath from the command line."""
+"""Compare multipath estimates across elevation masks."""
 
 from __future__ import annotations
 

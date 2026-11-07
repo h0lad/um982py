@@ -19,7 +19,6 @@ from um982py.messages import Record
 
 
 def _attitude_payload(attitude: Attitude) -> dict[str, object]:
-    """Serialise one attitude."""
     return {
         "heading": attitude.heading,
         "pitch": attitude.pitch,

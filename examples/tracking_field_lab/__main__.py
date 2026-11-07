@@ -1,4 +1,4 @@
-"""Explores tracking diagnostic fields from the command line."""
+"""Correlate tracking diagnostic fields with supplied labels."""
 
 import sys
 from collections.abc import Sequence

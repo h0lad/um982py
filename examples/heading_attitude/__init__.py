@@ -120,9 +120,8 @@ def torsion(
 def swapped_attitude(attitude: Attitude) -> Attitude:
     """Attitude of the same baseline measured from the other antenna.
 
-    The two antennas define one line, so reversing their roles adds half a turn
-    to the heading and mirrors the pitch while the baseline length is
-    unchanged.  Applying this twice returns the original attitude.
+    The antennas define one line, so reversing their roles adds half a turn to
+    the heading and mirrors the pitch without changing the baseline length.
     """
     return Attitude(
         heading=(attitude.heading + FULL_TURN_DEGREES / 2) % FULL_TURN_DEGREES,

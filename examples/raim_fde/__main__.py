@@ -1,4 +1,4 @@
-"""Runs the residual chi-square RAIM example from the command line."""
+"""Run residual chi-square fault detection and exclusion."""
 
 from __future__ import annotations
 

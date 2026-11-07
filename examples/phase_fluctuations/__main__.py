@@ -1,4 +1,4 @@
-"""Run the phase_fluctuations experiment."""
+"""Measure detrended phase variability on continuous arcs."""
 
 from examples._scientific_cli import main
 

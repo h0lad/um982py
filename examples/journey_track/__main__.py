@@ -96,7 +96,6 @@ def analyze(
             if dt <= max_gap:
                 covered += dt
                 distance += (previous[1] + speed) * dt / 2
-                # Classify each interval using its mean speed.
                 if (previous[1] + speed) / 2 >= moving_threshold:
                     moving += dt
             else:

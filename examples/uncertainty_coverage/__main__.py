@@ -1,4 +1,4 @@
-"""Run the uncertainty_coverage experiment."""
+"""Compare reported position uncertainty with reference errors."""
 
 from examples._scientific_cli import main
 

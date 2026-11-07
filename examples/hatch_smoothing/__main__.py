@@ -1,4 +1,4 @@
-"""Smooths pseudoranges with carrier phase from the command line."""
+"""Smooth pseudorange with carrier phase across continuous arcs."""
 
 from collections.abc import Sequence
 

@@ -1,4 +1,4 @@
-"""Runs the precipitable water vapour example from the command line."""
+"""Estimate precipitable water vapour from zenith wet delay."""
 
 from __future__ import annotations
 
@@ -37,7 +37,6 @@ def _wait_command() -> Command[Record]:
 def _payload(
     troposphere: Troposphere, mean_temperature: float, source: str
 ) -> dict[str, object]:
-    """Serialise one precipitable water vapour estimate."""
     water = WaterVapour(troposphere=troposphere, mean_temperature=mean_temperature)
     return {
         "source": source,

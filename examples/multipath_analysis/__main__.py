@@ -1,4 +1,4 @@
-"""Runs the multipath analysis example from the command line."""
+"""Measure code-minus-carrier multipath RMS."""
 
 from __future__ import annotations
 

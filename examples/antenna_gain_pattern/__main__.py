@@ -1,4 +1,4 @@
-"""Runs the empirical C/N0 elevation-pattern example."""
+"""Fit a C/N0 elevation pattern for a selected signal."""
 
 from __future__ import annotations
 

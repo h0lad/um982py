@@ -1,4 +1,4 @@
-"""Runs the dual-antenna spoofing checks from the command line."""
+"""Compare dual-antenna heading, sky view and spoof indicators."""
 
 from __future__ import annotations
 
@@ -191,7 +191,6 @@ def _alarms(
 
 
 def _heading_payload(agreement: HeadingAgreement | None) -> dict[str, object] | None:
-    """Serialise one heading agreement."""
     if agreement is None:
         return None
     return {
@@ -206,7 +205,6 @@ def _heading_payload(agreement: HeadingAgreement | None) -> dict[str, object] | 
 
 
 def _sky_payload(comparison: SkyComparison) -> dict[str, object]:
-    """Serialise one sky comparison."""
     return {
         "shared": len(comparison.shared),
         "absent": list(comparison.absent),
@@ -226,7 +224,6 @@ def _maximum(values: Sequence[float]) -> float | None:
 
 
 def _spoof_payload(spoof: SpoofStatus | None) -> dict[str, object] | None:
-    """Serialise the SPOOFINFO status."""
     if spoof is None:
         return None
     return {

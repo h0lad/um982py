@@ -1,4 +1,4 @@
-"""Simulates independently timed correction outages from the command line."""
+"""Measure RTK fix loss and recovery against correction outages."""
 
 import sys
 from collections.abc import Sequence

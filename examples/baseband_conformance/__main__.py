@@ -1,4 +1,4 @@
-"""Runs the baseband conformance matrix from the command line."""
+"""Record baseband command replies and receiver state changes."""
 
 from __future__ import annotations
 

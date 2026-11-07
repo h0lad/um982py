@@ -117,7 +117,10 @@ def double_differences(
 def estimate_noise(
     differences: Sequence[DoubleDifference],
 ) -> tuple[NoiseEstimate, ...]:
-    """Estimate DD noise and conditional equal-independent receiver noise."""
+    """Estimate double-difference noise and per-receiver noise.
+
+    The per-receiver estimate assumes four equal, independent observation noises.
+    """
     groups: dict[tuple[SignalKey, int], list[DoubleDifference]] = defaultdict(list)
     for sample in differences:
         groups[sample.key, sample.arc].append(sample)

@@ -66,8 +66,7 @@ def _matches(value: str, expression: str, *, numeric: bool, depth: int = 0) -> b
             "=<": actual <= expected,
             ">=": actual >= expected,
             "=>": actual >= expected,
-            # Approximate matching asks for the nearest numeric value. This
-            # caster has only one stream record, so it is the only candidate.
+            # With one stream record, it is also the nearest numeric match.
             "~": True,
         }[op]
     if not re.fullmatch(r"[A-Za-z0-9_.*+:/ -]+", expression):

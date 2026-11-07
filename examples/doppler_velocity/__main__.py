@@ -1,4 +1,4 @@
-"""Solves broadcast-corrected Doppler velocity from the command line."""
+"""Solve receiver velocity and clock drift from Doppler."""
 
 from collections.abc import Sequence
 

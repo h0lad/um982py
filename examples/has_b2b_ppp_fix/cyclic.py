@@ -132,7 +132,7 @@ def stream_fixes(
 
 
 def _fix_line(fix: CyclicFix) -> str:
-    """Beautified one-line fix with its running precision."""
+    """Format a fix and its running precision on one line."""
     epoch = fix.epoch
     sigma = epoch.horizontal_sigma
     sigma_text = f"{sigma:.3f} m" if sigma is not None else "unknown"
@@ -147,7 +147,7 @@ def _fix_line(fix: CyclicFix) -> str:
 
 
 def _summary(collected: Sequence[CyclicFix], *, service: str) -> str:
-    """Beautified running-mean position with precision statistics."""
+    """Format the running mean and precision statistics."""
     last = collected[-1]
     lines = [
         f" cyclic fixes: {len(collected)} delivered, service {service}",

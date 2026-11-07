@@ -1,4 +1,4 @@
-"""Runs the scintillation monitor example from the command line."""
+"""Summarize C/N0 variability over selected signal windows."""
 
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ def _progress_callback() -> Callable[[dict[str, tuple[Record, ...]]], None]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Report the S4 scintillation index of every signal in ``RANGE``."""
+    """Report S4-like C/N0 variability for tracked signals."""
     parser = _parser()
     args = parser.parse_args(argv)
     if args.debug:

@@ -1,4 +1,4 @@
-"""Runs repeat-day site multipath experiments from the command line."""
+"""Compare multipath across repeat tracks."""
 
 import sys
 from bisect import bisect_left

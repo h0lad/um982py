@@ -1,4 +1,4 @@
-"""Runs the elevation optimizer example from the command line."""
+"""Compare satellite geometry across elevation masks."""
 
 from __future__ import annotations
 

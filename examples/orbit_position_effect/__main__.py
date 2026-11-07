@@ -1,4 +1,4 @@
-"""Run the orbit_position_effect experiment."""
+"""Project satellite orbit and clock differences into position."""
 
 from examples._scientific_cli import main
 

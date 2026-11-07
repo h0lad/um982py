@@ -1,4 +1,4 @@
-"""Reports code-minus-carrier divergence from the command line."""
+"""Track code-carrier divergence across continuous arcs."""
 
 from collections.abc import Sequence
 

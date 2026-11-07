@@ -1,4 +1,4 @@
-"""Runs the heading accuracy budget example from the command line."""
+"""Estimate heading and pitch uncertainty from baseline noise."""
 
 from __future__ import annotations
 

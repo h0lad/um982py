@@ -1,4 +1,4 @@
-"""Runs the telemetry bridge example from the command line."""
+"""Stream decoded receiver frames as newline-delimited JSON."""
 
 from __future__ import annotations
 

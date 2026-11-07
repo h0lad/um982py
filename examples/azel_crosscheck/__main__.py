@@ -1,4 +1,4 @@
-"""Command line driver for the azimuth/elevation cross-check example."""
+"""Compare broadcast-orbit azimuth and elevation with SATVIS2."""
 
 from __future__ import annotations
 

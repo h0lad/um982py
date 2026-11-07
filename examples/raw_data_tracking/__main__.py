@@ -1,4 +1,4 @@
-"""Runs the raw data tracking example from the command line."""
+"""Inspect raw baseband containers, messages and tracking fields."""
 
 from __future__ import annotations
 

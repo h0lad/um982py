@@ -100,7 +100,7 @@ class Convergence:
 
 @dataclass(frozen=True, slots=True)
 class MeanFix:
-    """Averaged ultra-precise position with scatter and receiver uncertainty."""
+    """Mean position with scatter and receiver uncertainty."""
 
     latitude: float
     longitude: float
@@ -289,7 +289,7 @@ def convergence(
 
 
 def mean_fix(epochs: Sequence[PppEpoch], *, ppp_only: bool = True) -> MeanFix:
-    """Average PPP fixes into one ultra-precise position."""
+    """Average computed fixes, using PPP fixes by default."""
     items = tuple(
         item
         for item in _unique_epochs(epochs)

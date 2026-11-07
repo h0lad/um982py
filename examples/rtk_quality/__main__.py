@@ -1,4 +1,4 @@
-"""Runs the RTK quality example from the command line."""
+"""Summarize fix type, correction age and availability."""
 
 from __future__ import annotations
 
@@ -49,7 +49,6 @@ def _diagnostic_rows(captured: dict[str, tuple[Record, ...]]) -> dict[str, objec
 
 
 def _epoch_payload(solution: EpochSolution) -> dict[str, object]:
-    """Serialise one solution epoch."""
     return {
         "epoch": solution.epoch,
         "position_type": solution.position_type,
@@ -66,7 +65,6 @@ def _epoch_payload(solution: EpochSolution) -> dict[str, object]:
 
 
 def _summary_payload(summary: QualitySummary) -> dict[str, object]:
-    """Serialise the timeline summary."""
     return {
         "epochs": summary.epochs,
         "availability": summary.availability,

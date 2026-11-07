@@ -1,4 +1,4 @@
-"""Audits a PPP-B2b correction stream from the command line."""
+"""Audit PPP-B2b correction age and issue data alongside PPP epochs."""
 
 import csv
 import sys

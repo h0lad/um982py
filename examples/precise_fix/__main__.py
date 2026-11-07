@@ -1,4 +1,4 @@
-"""Collects a static occupation into one precise, checked position fix."""
+"""Estimate a static position from BESTXYZ epochs."""
 
 from __future__ import annotations
 
@@ -43,7 +43,6 @@ def _parse_ecef(text: str) -> tuple[float, float, float]:
 
 
 def _axis_payload(axis: Axis) -> dict[str, float]:
-    """Serialisable view of one local axis."""
     return {
         "mean": axis.mean,
         "std": axis.std,

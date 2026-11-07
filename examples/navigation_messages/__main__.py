@@ -1,4 +1,4 @@
-"""Runs the navigation message figures from the command line."""
+"""Build satellite tables, sky views and orbit figures."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Compares broadcast and SP3 states from the command line."""
+"""Compare GPS broadcast orbits with an SP3 product."""
 
 import csv
 import importlib

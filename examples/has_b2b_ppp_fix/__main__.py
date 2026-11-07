@@ -200,7 +200,7 @@ def _report(
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Occupy one point with E6-HAS plus B2b-PPP and average the PPP fixes."""
+    """Collect PPP navigation and correction telemetry during a static occupation."""
     parser = experiment_parser(
         "has_b2b_ppp_fix",
         "Ultra-precise PPP fix from Galileo E6-HAS and BeiDou B2b-PPP "
