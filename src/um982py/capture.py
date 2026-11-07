@@ -18,7 +18,7 @@ from um982py.commands import Log, Trigger, logging
 from um982py.commands.core import Command
 from um982py.errors import ResponseTimeout
 from um982py.measurement import gps_epoch
-from um982py.messages import Message, Record
+from um982py.messages import CommandResponse, Message, Record
 from um982py.protocol import StreamDecoder
 from um982py.receiver import Receiver
 from um982py.subscriptions import temporary_subscriptions
@@ -178,6 +178,25 @@ def capture_records(
     )
 
 
+def subscription_plan(
+    logs: Sequence[DataLog], *, interval: float, binary: bool
+) -> list[tuple[str, Command[CommandResponse]]]:
+    """Select supported wire forms and triggers for temporary capture."""
+    planned = []
+    for log in logs:
+        form = binary
+        try:
+            matcher(log, form)
+        except ValueError:
+            form = False
+        try:
+            start = log.output(interval, binary=form)
+        except ValueError:
+            start = log.output(Trigger.ON_CHANGED, binary=form)
+        planned.append((log.wire_name(binary=form), start))
+    return planned
+
+
 def capture_live(
     receiver: Receiver,
     logs: Sequence[DataLog],
@@ -197,18 +216,7 @@ def capture_live(
         raise ValueError("interval must be finite and positive")
     if frames is not None and frames < 1:
         raise ValueError("frames must be positive")
-    planned = []
-    for log in logs:
-        form = binary
-        try:
-            matcher(log, form)
-        except ValueError:
-            form = False
-        try:
-            start = log.output(interval, binary=form)
-        except ValueError:
-            start = log.output(Trigger.ON_CHANGED, binary=form)
-        planned.append((log.wire_name(binary=form), start))
+    planned = subscription_plan(logs, interval=interval, binary=binary)
     with temporary_subscriptions(receiver, *planned):
         return receive_records(
             receiver,
