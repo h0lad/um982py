@@ -1,5 +1,3 @@
-"""Tests the clock stability example against ground truth."""
-
 from __future__ import annotations
 
 import random

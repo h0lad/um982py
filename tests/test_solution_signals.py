@@ -28,7 +28,8 @@ def test_navigation_masks_match_ascii_and_binary() -> None:
         assert signals.galileo_bds3 & GalileoBds3Signals.BDS3_B1C
         assert signals.gps_glonass_bds2 & GpsGlonassBds2Signals.GPS_L1
         assert signals.gps_glonass_bds2 & GpsGlonassBds2Signals.GLONASS_L1
-        assert int(signals.galileo_bds3) == 0xCF  # bit 3 is reserved
+        # Reserved bit 3 is retained in the raw mask.
+        assert int(signals.galileo_bds3) == 0xCF
         assert int(signals.gps_glonass_bds2) == 0x91
 
 

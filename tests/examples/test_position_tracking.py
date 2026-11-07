@@ -1,5 +1,3 @@
-"""Tests the position tracking example."""
-
 from __future__ import annotations
 
 import json

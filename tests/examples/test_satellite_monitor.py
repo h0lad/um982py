@@ -1,5 +1,3 @@
-"""Tests the satellite monitor example."""
-
 from __future__ import annotations
 
 import csv

@@ -1,5 +1,3 @@
-"""Tests the antenna gain pattern example."""
-
 from __future__ import annotations
 
 import math

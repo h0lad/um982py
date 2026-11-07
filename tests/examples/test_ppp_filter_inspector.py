@@ -1,5 +1,3 @@
-"""Tests the PPP filter and RTOS performance inspector example."""
-
 import json
 from pathlib import Path
 

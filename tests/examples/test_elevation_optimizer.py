@@ -1,5 +1,3 @@
-"""Tests the elevation optimizer example."""
-
 from __future__ import annotations
 
 import math

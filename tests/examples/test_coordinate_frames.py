@@ -1,5 +1,3 @@
-"""Tests the coordinate frames example."""
-
 from __future__ import annotations
 
 import math

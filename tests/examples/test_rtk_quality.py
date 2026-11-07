@@ -1,5 +1,3 @@
-"""Tests the RTK quality example."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence

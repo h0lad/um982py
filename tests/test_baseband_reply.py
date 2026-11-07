@@ -113,7 +113,6 @@ def test_notice_decoding(raw: bytes, key: str, expected: object) -> None:
 def test_unknown_notice_raises_on_decode() -> None:
     notice = parse_baseband_notice(b"$Parse TimingMode: 1\r\n")
     assert notice is not None
-    # Build a notice directly to test an unknown name.
     from um982py.experimental.baseband_reply import BasebandNotice
 
     with pytest.raises(ProtocolError, match="Unknown baseband notice"):

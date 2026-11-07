@@ -1,4 +1,4 @@
-"""Regression checks for the shared correlation implementation."""
+"""Shared statistics and receiver setup failure handling."""
 
 import math
 

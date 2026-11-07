@@ -1,5 +1,3 @@
-"""Tests the weighted least-squares positioning example against ground truth."""
-
 from __future__ import annotations
 
 import math

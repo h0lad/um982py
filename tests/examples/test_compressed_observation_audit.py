@@ -1,5 +1,3 @@
-"""Tests the compressed observation audit example."""
-
 from __future__ import annotations
 
 import pytest

@@ -54,6 +54,6 @@ def test_g17_capture_disagrees_with_independent_broadcast_message() -> None:
     assert dt == 0
     assert _distance(elements, dt, 17) > 3_000_000
     # Two coefficients from IGS BRDC00IGS_R_20262950000_01D_MN.rnx.gz,
-    # G17 issue 129 at 16:00 GPST. This is a diagnostic copy only.
+    # G17 issue 129 at 16:00 GPST.
     reference = replace(elements, cic=6.70552253723e-08, right_ascension=-2.06668861845)
     assert _distance(reference, dt, 17) < 2.0

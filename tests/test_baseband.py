@@ -109,7 +109,6 @@ def test_checksum_does_not_cover_trailing_partial_word() -> None:
     assert len(raw.raw) == FIRST_MESSAGE_OFFSET + 5 + 4
     assert len(raw.checksum_coverage) == (len(raw.raw) - 4) & ~3
     assert raw.checksum_excluded == b"\x05"
-    # Changing the excluded byte must not affect the checksum.
     changed = bytearray(raw.raw)
     changed[-5] ^= 0xFF
     assert RawBasebandPacket.from_bytes(bytes(changed)).checksum == raw.checksum

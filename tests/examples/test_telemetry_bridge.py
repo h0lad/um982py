@@ -1,5 +1,3 @@
-"""Tests the telemetry bridge example."""
-
 from __future__ import annotations
 
 import json

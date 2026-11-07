@@ -1,5 +1,3 @@
-"""Tests the GNSS reflectometry example against ground truth."""
-
 from __future__ import annotations
 
 import math

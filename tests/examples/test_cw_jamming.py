@@ -1,5 +1,3 @@
-"""Tests the continuous-wave jamming example."""
-
 from __future__ import annotations
 
 import pytest

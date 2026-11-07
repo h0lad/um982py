@@ -1,5 +1,3 @@
-"""Tests the DOP geometry example."""
-
 from __future__ import annotations
 
 import math

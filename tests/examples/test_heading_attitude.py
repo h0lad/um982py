@@ -1,5 +1,3 @@
-"""Tests the heading and attitude example."""
-
 from __future__ import annotations
 
 import math

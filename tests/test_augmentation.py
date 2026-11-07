@@ -1,4 +1,4 @@
-"""Tests that every augmentation feature is asserted without failing the session."""
+"""Augmentation plans, receiver readback and failure handling."""
 
 from __future__ import annotations
 

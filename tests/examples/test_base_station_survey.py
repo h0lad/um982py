@@ -1,5 +1,3 @@
-"""Tests the base station survey example against ground truth."""
-
 from __future__ import annotations
 
 import math
@@ -75,7 +73,8 @@ def test_equatorial_radial_scatter_is_vertical_not_horizontal() -> None:
     )
     assert result.horizontal_standard_error == pytest.approx(0.0, abs=1e-12)
     assert result.up.standard_error == pytest.approx(1 / math.sqrt(3), abs=1e-12)
-    assert not result.converged  # Only two distinct quantized positions.
+    # Two distinct quantized positions are insufficient for convergence.
+    assert not result.converged
 
 
 def test_recovered_sigma_matches_the_sample_sigma() -> None:

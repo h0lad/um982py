@@ -35,7 +35,8 @@ def test_manual_gps_ephemeris_export() -> None:
     )
     assert fields(body[2])[3] == pytest.approx(math.sqrt(record.real("a")))
     assert fields(body[5]) == [record.real("idot"), None, 2190, None]
-    assert fields(body[6])[0] == pytest.approx(2.0)  # receiver URA is m²
+    # The receiver reports URA in square metres; RINEX uses metres.
+    assert fields(body[6])[0] == pytest.approx(2.0)
     assert fields(body[7]) == [999999999.999, None, None, None]
     assert all(len(line) == 80 for line in body)
 

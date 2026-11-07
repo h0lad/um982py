@@ -1,5 +1,3 @@
-"""Tests the ionosphere TEC example against ground truth."""
-
 from __future__ import annotations
 
 from collections.abc import Sequence
