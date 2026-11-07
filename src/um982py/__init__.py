@@ -68,6 +68,7 @@ if TYPE_CHECKING:
         SatelliteGeometry,
     )
     from um982py.live import LiveHealth, PositionSession, PositionUpdate
+    from um982py.live_quality import LiveAssessment, LiveLimits, PositionMonitor
     from um982py.measurement import (
         RangeSample,
         SignalKey,
@@ -183,6 +184,8 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "InterruptedCapture": ("um982py.capture", "InterruptedCapture"),
     "LinearSolution": ("um982py.stats", "LinearSolution"),
     "LiveHealth": ("um982py.live", "LiveHealth"),
+    "LiveAssessment": ("um982py.live_quality", "LiveAssessment"),
+    "LiveLimits": ("um982py.live_quality", "LiveLimits"),
     "NtripClient": ("um982py.ntrip", "NtripClient"),
     "NtripClientPool": ("um982py.ntrip", "NtripClientPool"),
     "NtripDisconnected": ("um982py.ntrip", "NtripDisconnected"),
@@ -192,6 +195,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "PrecisePoint": ("um982py.precise", "PrecisePoint"),
     "PositionAssessment": ("um982py.assessment", "PositionAssessment"),
     "PositionLimits": ("um982py.assessment", "PositionLimits"),
+    "PositionMonitor": ("um982py.live_quality", "PositionMonitor"),
     "PositionSession": ("um982py.live", "PositionSession"),
     "PositionUpdate": ("um982py.live", "PositionUpdate"),
     "PostProcessingError": ("um982py.ppk", "PostProcessingError"),
@@ -327,7 +331,9 @@ __all__ = [
     "GgaProviderError",
     "InterruptedCapture",
     "LinearSolution",
+    "LiveAssessment",
     "LiveHealth",
+    "LiveLimits",
     "MergeResult",
     "Mountpoint",
     "NtripClient",
@@ -337,6 +343,7 @@ __all__ = [
     "PerformanceStatus",
     "PositionAssessment",
     "PositionLimits",
+    "PositionMonitor",
     "PositionSession",
     "PositionUpdate",
     "PostProcessingError",

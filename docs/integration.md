@@ -32,6 +32,11 @@ The result does not establish absolute accuracy or navigation integrity.
 Air, marine and vehicle uses require system-level validation appropriate to
 their intended operation.
 
+For GGA streams, `PositionMonitor` checks configurable arrival gaps, correction
+age, satellite count, fix quality and straight-line displacement rate. A
+displacement rate is not measured velocity, and these checks do not establish
+position accuracy or navigation integrity.
+
 ## Mobile RTK
 
 `um982py.rtk_session.RtkSession` forwards validated RTCM frames through a

@@ -15,3 +15,7 @@ UTC time of day. Missing measurements remain `None`; it does not combine
 heading, speed or uncertainty from other messages. `health()` exposes the
 connection state and most recent fix time. Applications should set their own
 staleness limits and monitor the health state while consuming positions.
+The optional `--max-gap` and `--max-correction-age` checks report assessment
+reasons with each fix. Arrival gaps are observed when the next fix arrives;
+use `PositionMonitor.age()` or the session health from another thread to detect
+an outage while no fixes are arriving.
