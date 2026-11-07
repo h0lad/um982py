@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+from conftest import sentence
 from um982py.ntrip import NtripClient, NtripDisconnected, retryable_ntrip_error
 
 
@@ -34,3 +35,16 @@ def test_truncated_chunk_is_a_retryable_disconnect(body: bytes) -> None:
         with pytest.raises(NtripDisconnected) as caught:
             client.read()
     assert retryable_ntrip_error(caught.value)
+
+
+def test_gga_requires_valid_fields_and_checksum() -> None:
+    valid = sentence(b"GPGGA,1,4807.038,N,01131.000,E,1,12,1,1,M,1,M,,0")
+    NtripClient("http://caster.test/BASE", initial_gga=valid)
+    invalid = (
+        valid[:-4] + b"00\r\n",
+        sentence(b"GPGGA,1"),
+        b"$GPGGA,broken\r\n",
+    )
+    for value in invalid:
+        with pytest.raises(ValueError, match="GPGGA"):
+            NtripClient("http://caster.test/BASE", initial_gga=value)

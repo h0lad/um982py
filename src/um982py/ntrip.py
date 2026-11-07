@@ -10,6 +10,8 @@ from typing import TYPE_CHECKING, Literal, Self
 from urllib.parse import urlsplit
 
 from um982py.errors import ProtocolError
+from um982py.messages.navigation import Fix
+from um982py.protocol.ascii import parse_ascii
 
 if TYPE_CHECKING:
     from types import TracebackType
@@ -258,6 +260,10 @@ class NtripClient:
             or any(byte < 32 or byte > 126 for byte in sentence[:-2])
         ):
             raise ValueError("Expected a complete GPGGA sentence")
+        try:
+            Fix.from_message(parse_ascii(sentence))
+        except ProtocolError as error:
+            raise ValueError("Expected a valid checksummed GPGGA sentence") from error
 
     def read(self, size: int = 4096) -> bytes:
         if size <= 0:
