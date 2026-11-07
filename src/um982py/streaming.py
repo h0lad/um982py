@@ -77,7 +77,7 @@ class ReceiverStream:
         self,
         receiver: Receiver,
         *,
-        poll_seconds: float = 0.05,
+        poll_seconds: float = 0.01,
         operation_limit: int = 256,
     ) -> None:
         if not 0 < poll_seconds <= 1:
@@ -199,5 +199,5 @@ class ReceiverStream:
                     _, future = self._operations.get_nowait()
                 except Empty:
                     break
-                if not future.cancelled():
+                if future.set_running_or_notify_cancel():
                     future.set_exception(TransportClosed("receiver stream stopped"))
