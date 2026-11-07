@@ -36,11 +36,23 @@ def test_all_constellations_and_signed_glonass_channels(binary: bool) -> None:
     assert sum(r.integer("count") == 0 for r in records) == 3
 
 
-def test_collect_keeps_satvis2_constellations_and_interleaved_output() -> None:
+def test_collect_keeps_satvis2_constellations_and_interleaved_output(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    clock = [0.0]
+    monkeypatch.setattr("um982py.receiver.monotonic", lambda: clock[0])
+
+    class TimedReplayTransport(ReplayTransport):
+        def read(self, size: int, timeout: float) -> bytes:
+            data = super().read(size, timeout)
+            if not data:
+                clock[0] += timeout
+            return data
+
     frames = visibility_frames(False)
     other = captured(FirmwareLog.ANTENNA, False)
     raw = frames[0].raw + other.raw + b"".join(m.raw for m in frames[1:])
-    with Receiver(ReplayTransport({b"SATVIS2A\r\n": raw})) as receiver:
+    with Receiver(TimedReplayTransport({b"SATVIS2A\r\n": raw})) as receiver:
         records = receiver.collect(FirmwareLog.SATVIS2.read(), quiet=0.001)
         assert len(records) == 7
         assert receiver.receive() == other
