@@ -9,6 +9,7 @@ import math
 import sys
 from pathlib import Path
 
+from um982py.field_data import file_sha256
 from um982py.science_experiments import (
     noise_multipath_summary,
     orbit_position_effect,
@@ -135,6 +136,17 @@ def main(name: str) -> int:
                 {
                     "experiment": name,
                     "input": args.input,
+                    "input_sha256": file_sha256(Path(args.input)),
+                    "assumptions": {
+                        "phase_fluctuations": [
+                            "Phase is range-increasing metres on continuous arcs.",
+                            "Linear detrending is applied independently to each arc.",
+                        ],
+                        "orbit_position_effect": [
+                            "Rows share one epoch and compatible conventions.",
+                            "Satellite deltas are perturbed minus reference in ECEF.",
+                        ],
+                    }.get(name, []),
                     "parameters": {
                         k: v
                         for k, v in vars(args).items()

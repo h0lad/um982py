@@ -32,6 +32,9 @@ def test_replay_provenance_and_observations(tmp_path: Path) -> None:
         == hashlib.sha256(raw.read_bytes()).hexdigest()
     )
     assert manifest["receiver_firmware"] is None
+    assert manifest["provenance"]["schema"] == "um982py-provenance-1"
+    assert manifest["provenance"]["coordinate_frame"] is None
+    assert manifest["provenance"]["gap_detection_interval_seconds"] is None
     for name in ("OBSVM", "GPSEPH"):
         info = manifest["artifacts"][name]
         assert (

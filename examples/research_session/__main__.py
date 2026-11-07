@@ -3,6 +3,7 @@
 import json
 from collections.abc import Sequence
 from dataclasses import asdict
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
 from um982py.capture import capture_records
@@ -95,7 +96,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             "sha256": file_sha256(path),
             "epochs": result.epochs,
             "omitted": result.omitted,
-            "quality": asdict(audit_observations(records)),
+            "quality": asdict(
+                audit_observations(
+                    records,
+                    expected_interval=args.interval if args.replay is None else None,
+                )
+            ),
             "metadata_supplied_by_user": asdict(meta) if meta else None,
         }
     eph = captured["GPSEPH"]
@@ -115,6 +121,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "unknown_fields": nav.unknown_fields,
             }
     input_path = args.replay if args.replay is not None else args.record
+    try:
+        library_version = version("um982py")
+    except PackageNotFoundError:
+        library_version = None
     manifest = {
         "schema": "um982py-research-session-1",
         "input_mode": "replay" if args.replay else "live",
@@ -126,6 +136,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         "requested_duration_seconds": args.duration,
         "receiver_configuration": None,
         "receiver_firmware": None,
+        "provenance": {
+            "schema": "um982py-provenance-1",
+            "library_version": library_version,
+            "receiver_identity": None,
+            "coordinate_frame": None,
+            "coordinate_epoch": None,
+            "time_scale": None,
+            "metadata_inputs": [
+                {"path": str(path), "sha256": file_sha256(path)} if path else None
+                for path in paths
+            ],
+            "gap_detection_interval_seconds": args.interval
+            if args.replay is None
+            else None,
+        },
         "artifacts": generated,
         "limitations": [
             "Receiver configuration and firmware not queried",

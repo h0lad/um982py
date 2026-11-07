@@ -21,6 +21,11 @@ only. A replay without observations still writes the manifest but returns a
 nonzero status. Before scientific analysis, independently validate the RINEX
 files and station metadata.
 
+The versioned provenance section records the library version, hashes supplied
+metadata files, and leaves unknown receiver identity, frame, coordinate epoch and
+time scale explicit. Live observation quality checks use the requested interval
+to identify gaps; replay does not assume that interval describes the recording.
+
 ## Compare base and rover observations
 
 When the receiver is already receiving a correction stream on another input,

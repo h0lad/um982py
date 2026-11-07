@@ -43,6 +43,9 @@ def test_documented_sample(name: str, tmp_path: Path) -> None:
     result = json.loads(output.read_text())
     assert result["experiment"] == name
     assert result["result"]
+    assert len(result["input_sha256"]) == 64
+    if name in {"phase_fluctuations", "orbit_position_effect"}:
+        assert result["assumptions"]
 
 
 def test_invalid_input_reports_failure(tmp_path: Path) -> None:
