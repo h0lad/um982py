@@ -7,9 +7,8 @@ and provides tools for GNSS capture and analysis.
 Some features may also work with the UM960 and UM980; these receivers have not
 been tested.
 
-See the [integration guide](docs/integration.md) for streaming, mobile RTK,
-scientific sessions and configuration changes, and the
-[validation matrix](docs/validation.md) for available evidence.
+Validate the receiver firmware, positioning accuracy, timing and sustained
+operation on the target system before deployment.
 
 The [examples](examples/README.md) include reconnecting position streams,
 segmented field recording, NTRIP discovery, post-processed RTK and RINEX export.
@@ -34,6 +33,7 @@ um982py --port tcp://192.0.2.10:4001 doctor
 
 Queries leave augmentation settings unchanged. Use `--augment` to enable
 augmentation for the current receiver session without saving the configuration.
+
 ## Development
 
 ```bash
