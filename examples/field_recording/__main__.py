@@ -3,12 +3,12 @@
 import argparse
 import json
 from collections.abc import Sequence
+from contextlib import closing
 from pathlib import Path
-from time import monotonic
+from threading import Event, Timer
 
-from um982py import Receiver, SessionRecorder, iter_session_frames
+from um982py import PositionSession, Receiver, SessionRecorder, iter_session_events
 from um982py.capture import RecordingTransport
-from um982py.errors import ResponseTimeout
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -26,7 +26,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     replay.add_argument("--allow-incomplete", action="store_true")
     args = parser.parse_args(argv)
     if args.action == "replay":
-        for frame in iter_session_frames(
+        for frame in iter_session_events(
             args.directory, allow_incomplete=args.allow_incomplete
         ):
             print(frame)
@@ -39,19 +39,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     if not isinstance(metadata, dict):
         raise ValueError("metadata must be a JSON object")
-    with (
-        SessionRecorder(
-            args.directory, metadata=metadata, segment_bytes=args.segment_bytes
-        ) as recorder,
-        Receiver.connect(args.target, args.baud) as receiver,
-    ):
-        receiver.transport = RecordingTransport(receiver.transport, recorder)
-        deadline = monotonic() + args.duration
-        while (remaining := deadline - monotonic()) > 0:
-            try:
-                receiver.receive(timeout=min(remaining, 1))
-            except ResponseTimeout:
-                continue
+    with SessionRecorder(
+        args.directory, metadata=metadata, segment_bytes=args.segment_bytes
+    ) as recorder:
+
+        def connect() -> Receiver:
+            receiver = Receiver.connect(args.target, args.baud)
+            receiver.transport = RecordingTransport(
+                receiver.transport, recorder, close_stream=False
+            )
+            return receiver
+
+        def disconnected(error: Exception) -> None:
+            recorder.mark_gap(f"{type(error).__name__}: {error}")
+
+        session = PositionSession(connect, on_disconnect=disconnected)
+        stop = Event()
+        timer = Timer(args.duration, stop.set)
+        timer.start()
+        try:
+            with closing(session.positions(stop)) as positions:
+                for _ in positions:
+                    pass
+        finally:
+            timer.cancel()
+            timer.join()
     return 0
 
 

@@ -21,6 +21,10 @@ class TransportClosed(TransportError):
     pass
 
 
+class RecordingError(UM982Error):
+    """The capture sink could not preserve received bytes."""
+
+
 class ResponseTimeout(UM982Error, TimeoutError):
     pass
 

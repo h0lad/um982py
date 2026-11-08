@@ -11,15 +11,19 @@ python -m examples.field_recording replay session
 ```
 
 The destination must not already exist. The session contains bounded raw byte
-segments and a journal with their sizes, hashes and host timestamps. Segments
-may split a frame; replay decodes the concatenated stream. An interruption can
+segments and a journal with their sizes, hashes and host timestamps. The
+recorder reconnects after transport failures and records each interruption as a
+gap. Replay reports gaps and the number of bytes in any unfinished frame before
+the gap; it does not join frames across disconnected streams. Segments may
+split a frame. An interruption can
 leave a `.part` file or an unjournalled segment. `--allow-incomplete` replays
 only verified journalled segments, which may end in a partial frame and cause a
 decode error. Preserve the other files for recovery and inspection.
 The journal's close marker means the sink was closed, not that a requested
 occupation duration was reached.
 
-This example uses one receiver connection and does not measure bytes lost
+The receiver's enabled logs must be restored by the device after reconnecting;
+this example does not configure them. The recorder cannot measure bytes lost
 before they reach the process. Protect recordings and metadata as appropriate
 for their location and contents.
 

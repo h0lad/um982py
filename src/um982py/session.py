@@ -6,10 +6,12 @@ import hashlib
 import json
 import os
 from collections.abc import Iterator, Mapping
+from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from um982py.errors import ProtocolError
 from um982py.messages import Message
 from um982py.protocol import StreamDecoder
 
@@ -19,6 +21,15 @@ if TYPE_CHECKING:
 
 def _now() -> str:
     return datetime.now(UTC).isoformat()
+
+
+@dataclass(frozen=True, slots=True)
+class SessionGap:
+    """A recorded interruption and bytes of an unfinished frame before it."""
+
+    at: str
+    reason: str
+    pending_bytes: int
 
 
 class SessionRecorder:
@@ -45,7 +56,7 @@ class SessionRecorder:
             raise ValueError("segment_bytes must be a positive integer")
         manifest = json.dumps(
             {
-                "schema": "um982py-session-1",
+                "schema": "um982py-session-2",
                 "started_at": _now(),
                 "metadata": dict(metadata),
             },
@@ -123,6 +134,15 @@ class SessionRecorder:
         if self._file is not None:
             self._file.flush()
 
+    def mark_gap(self, reason: str) -> None:
+        """Finish the current segment and record a stream discontinuity."""
+        if self._closed:
+            raise ValueError("session is closed")
+        if not reason.strip() or len(reason) > 1024:
+            raise ValueError("gap reason must contain 1 to 1024 characters")
+        self._finish_segment()
+        self._event({"gap": {"at": _now(), "reason": reason}})
+
     def close(self) -> None:
         if self._closed:
             return
@@ -142,29 +162,44 @@ class SessionRecorder:
         self.close()
 
 
-def iter_session_bytes(
+def _iter_session_items(
     directory: Path, *, allow_incomplete: bool = False, chunk_size: int = 65536
-) -> Iterator[bytes]:
-    """Verify journalled segments and yield their bytes in capture order.
-
-    In incomplete sessions, opt in to replay only the journalled segments;
-    unfinished or unjournalled files are never silently included.
-    """
+) -> Iterator[bytes | SessionGap]:
     if chunk_size < 1:
         raise ValueError("chunk_size must be positive")
     directory = Path(directory)
     manifest = json.loads((directory / "session.json").read_text(encoding="utf-8"))
-    if not isinstance(manifest, dict) or manifest.get("schema") != "um982py-session-1":
+    if not isinstance(manifest, dict) or manifest.get("schema") != "um982py-session-2":
         raise ValueError("unsupported session manifest")
     journal = (directory / "segments.jsonl").read_text(encoding="utf-8")
+    if journal and not journal.endswith("\n"):
+        if not allow_incomplete:
+            raise ValueError("session journal ends with an incomplete entry")
+        journal = journal.rpartition("\n")[0]
     segments: list[tuple[Path, int, str]] = []
+    items: list[tuple[Path, int, str] | SessionGap] = []
     closed = False
     for line in journal.splitlines():
         event = json.loads(line)
         if not isinstance(event, dict) or closed:
             raise ValueError("invalid session journal")
         if "closed_at" in event:
+            if len(event) != 1 or not isinstance(event["closed_at"], str):
+                raise ValueError("invalid session close entry")
             closed = True
+            continue
+        if "gap" in event:
+            gap = event["gap"]
+            if (
+                len(event) != 1
+                or not isinstance(gap, dict)
+                or not isinstance(gap.get("at"), str)
+                or not isinstance(gap.get("reason"), str)
+                or not gap["reason"].strip()
+                or len(gap["reason"]) > 1024
+            ):
+                raise ValueError("invalid session gap entry")
+            items.append(SessionGap(gap["at"], gap["reason"], 0))
             continue
         name = f"segment-{len(segments) + 1:06d}.bin"
         size = event.get("bytes")
@@ -178,7 +213,9 @@ def iter_session_bytes(
             or len(digest) != 64
         ):
             raise ValueError("invalid session segment entry")
-        segments.append((directory / name, size, digest))
+        segment = (directory / name, size, digest)
+        segments.append(segment)
+        items.append(segment)
     if not allow_incomplete and (
         not closed
         or any(directory.glob("segment-*.part"))
@@ -186,7 +223,11 @@ def iter_session_bytes(
         != {path.name for path, _, _ in segments}
     ):
         raise ValueError("session is incomplete")
-    for path, expected_size, expected_hash in segments:
+    for item in items:
+        if isinstance(item, SessionGap):
+            yield item
+            continue
+        path, expected_size, expected_hash = item
         digest = hashlib.sha256()
         size = 0
         with path.open("rb") as source:
@@ -200,11 +241,36 @@ def iter_session_bytes(
                 yield chunk
 
 
+def iter_session_bytes(
+    directory: Path, *, allow_incomplete: bool = False, chunk_size: int = 65536
+) -> Iterator[bytes]:
+    """Verify and yield raw bytes; use ``iter_session_events`` to inspect gaps."""
+    for item in _iter_session_items(
+        directory, allow_incomplete=allow_incomplete, chunk_size=chunk_size
+    ):
+        if isinstance(item, bytes):
+            yield item
+
+
+def iter_session_events(
+    directory: Path, *, allow_incomplete: bool = False
+) -> Iterator[Message | SessionGap]:
+    """Decode segments and expose gaps without joining frames across them."""
+    decoder = StreamDecoder(strict=True)
+    for item in _iter_session_items(directory, allow_incomplete=allow_incomplete):
+        if isinstance(item, SessionGap):
+            yield SessionGap(item.at, item.reason, len(decoder.pending))
+            decoder.reset()
+        else:
+            yield from decoder.feed(item)
+    decoder.finish()
+
+
 def iter_session_frames(
     directory: Path, *, allow_incomplete: bool = False
 ) -> Iterator[Message]:
-    """Decode the complete byte stream, including frames split across segments."""
-    decoder = StreamDecoder(strict=True)
-    for chunk in iter_session_bytes(directory, allow_incomplete=allow_incomplete):
-        yield from decoder.feed(chunk)
-    decoder.finish()
+    """Decode frames, rejecting sessions with recorded discontinuities."""
+    for event in iter_session_events(directory, allow_incomplete=allow_incomplete):
+        if isinstance(event, SessionGap):
+            raise ProtocolError("session contains a gap; use iter_session_events")
+        yield event

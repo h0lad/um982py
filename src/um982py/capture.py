@@ -16,7 +16,7 @@ from um982py.antenna import AntennaLog
 from um982py.augmentation import enable_augmentation
 from um982py.commands import Log, Trigger, logging
 from um982py.commands.core import Command
-from um982py.errors import ResponseTimeout
+from um982py.errors import RecordingError, ResponseTimeout
 from um982py.measurement import gps_epoch
 from um982py.messages import CommandResponse, Message, Record
 from um982py.protocol import StreamDecoder
@@ -377,14 +377,20 @@ class RecordingSink(Protocol):
 
 
 class RecordingTransport:
-    def __init__(self, transport: Transport, stream: RecordingSink) -> None:
+    def __init__(
+        self, transport: Transport, stream: RecordingSink, *, close_stream: bool = True
+    ) -> None:
         self.transport, self.stream = transport, stream
+        self.close_stream = close_stream
 
     def read(self, size: int, timeout: float) -> bytes:
         data = self.transport.read(size, timeout)
-        if self.stream.write(data) != len(data):
-            raise OSError("short write to capture sink")
-        self.stream.flush()
+        try:
+            if self.stream.write(data) != len(data):
+                raise OSError("short write to capture sink")
+            self.stream.flush()
+        except OSError as error:
+            raise RecordingError(f"capture sink failed: {error}") from error
         return data
 
     def write(self, data: bytes, timeout: float) -> None:
@@ -394,7 +400,8 @@ class RecordingTransport:
         try:
             self.transport.close()
         finally:
-            self.stream.close()
+            if self.close_stream:
+                self.stream.close()
 
 
 def capture_logs(

@@ -81,7 +81,12 @@ sink can still cause upstream loss. `RecordingTransport` records received bytes
 for subsequent replay. `SessionRecorder` supplies a segmented sink with a
 hash journal and explicit incomplete-session handling; the
 [field recording example](../examples/field_recording/README.md) shows how to
-connect it to the transport and replay its bytes.
+connect it to the transport and replay its bytes. `SessionRecorder.mark_gap()`
+records disconnects, and `iter_session_events()` reports gaps and unfinished
+frame bytes instead of joining messages across interrupted connections.
+Pass `close_stream=False` to `RecordingTransport` when a recorder must outlive
+a receiver connection. Capture-sink failures raise `RecordingError` and stop
+the session instead of triggering a receiver reconnect.
 `EpochTracker` checks gaps only in the series and cadence supplied by the user.
 For short diagnostic captures, `experimental.capture.BoundedRecordingTransport`
 retains bytes in memory up to a limit and exposes `limit_reached`.

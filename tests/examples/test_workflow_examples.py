@@ -9,12 +9,14 @@ from examples.live_position import __main__ as position_cli
 from examples.ntrip_sources import __main__ as sources_cli
 from examples.postprocessed_rtk import __main__ as ppk_cli
 
-from conftest import sentence
-from um982py.live import PositionUpdate
+from conftest import ReplayTransport, sentence
+from um982py.errors import TransportClosed
+from um982py.live import PositionSession, PositionUpdate
 from um982py.messages.navigation import Fix
-from um982py.ntrip import parse_sourcetable
+from um982py.ntrip import ReconnectPolicy, parse_sourcetable
 from um982py.ppk import PpkResult
-from um982py.session import SessionRecorder
+from um982py.receiver import Receiver
+from um982py.session import SessionGap, SessionRecorder, iter_session_events
 
 
 def test_crs_example_transforms_coordinates(capsys: pytest.CaptureFixture[str]) -> None:
@@ -31,6 +33,62 @@ def test_field_recording_example_replays_session(
         recorder.write(sentence(b"GPGGA,1"))
     assert recording_cli.main(["replay", str(directory)]) == 0
     assert "GPGGA" in capsys.readouterr().out
+
+
+def test_field_recording_example_reconnects_and_records_gap(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    callbacks = []
+
+    class Timer:
+        def __init__(self, duration: float, callback: object) -> None:
+            callbacks.append(callback)
+
+        def start(self) -> None:
+            pass
+
+        def cancel(self) -> None:
+            pass
+
+        def join(self) -> None:
+            pass
+
+    class Source(ReplayTransport):
+        def __init__(self, *, final: bool) -> None:
+            super().__init__(chunk=65536)
+            self.final = final
+            self.pending.extend(
+                sentence(
+                    b"GPGGA,123519,4807.038,N,01131.000,E,4,08,0.9,545.4,M,46.9,M,1.2,0001"
+                )
+            )
+
+        def read(self, size: int, timeout: float) -> bytes:
+            if not self.pending:
+                raise TransportClosed("disconnected")
+            data = super().read(size, timeout)
+            if self.final:
+                callbacks[0]()
+            return data
+
+    connections = iter((Source(final=False), Source(final=True)))
+    monkeypatch.setattr(recording_cli, "Timer", Timer)
+    monkeypatch.setattr(
+        recording_cli.Receiver, "connect", lambda *args: Receiver(next(connections))
+    )
+    monkeypatch.setattr(
+        recording_cli,
+        "PositionSession",
+        lambda factory, on_disconnect: PositionSession(
+            factory,
+            on_disconnect=on_disconnect,
+            reconnect=ReconnectPolicy(0.001, 0.001),
+        ),
+    )
+    directory = tmp_path / "field"
+    assert recording_cli.main(["record", "/dev/test", str(directory)]) == 0
+    events = list(iter_session_events(directory))
+    assert len(events) == 3 and isinstance(events[1], SessionGap)
 
 
 def test_live_example_outputs_geojson(

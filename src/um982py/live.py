@@ -96,6 +96,7 @@ class PositionSession:
     The factory owns connection setup and returns a fresh receiver on each call.
     The optional configure callback runs after every connection; it can enable
     GGA output, and is responsible for any receiver configuration it changes.
+    ``on_disconnect`` runs before reconnecting and may record the interruption.
     Only transport errors trigger reconnects. The stop event interrupts backoff
     and is checked at most ``poll_seconds`` after an idle read.
     """
@@ -105,6 +106,7 @@ class PositionSession:
         receiver_factory: Callable[[], Receiver],
         *,
         configure: Callable[[Receiver], None] | None = None,
+        on_disconnect: Callable[[Exception], None] | None = None,
         poll_seconds: float = 1.0,
         reconnect: ReconnectPolicy | None = None,
     ) -> None:
@@ -112,6 +114,7 @@ class PositionSession:
             raise ValueError("poll_seconds must be greater than zero and at most 60")
         self.receiver_factory = receiver_factory
         self.configure = configure
+        self.on_disconnect = on_disconnect
         self.poll_seconds = poll_seconds
         self.reconnect = reconnect or ReconnectPolicy()
         self._lock = Lock()
@@ -183,6 +186,8 @@ class PositionSession:
                             delay = self.reconnect.initial_seconds
                             yield update
                 except (TransportError, OSError) as error:
+                    if self.on_disconnect is not None:
+                        self.on_disconnect(error)
                     with self._lock:
                         self._error = str(error)
                         self._state = "backoff"

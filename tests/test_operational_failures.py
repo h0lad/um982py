@@ -5,7 +5,7 @@ import pytest
 
 from conftest import ReplayTransport, sentence
 from um982py.capture import RecordingTransport, iter_frames
-from um982py.errors import ProtocolError
+from um982py.errors import ProtocolError, RecordingError
 
 
 def test_recording_surfaces_storage_failure() -> None:
@@ -16,7 +16,7 @@ def test_recording_surfaces_storage_failure() -> None:
     transport = ReplayTransport()
     transport.pending.extend(sentence(b"GPGGA,1"))
     recording = RecordingTransport(transport, FullDisk())
-    with pytest.raises(OSError, match="disk full"):
+    with pytest.raises(RecordingError, match="disk full"):
         recording.read(100, 1)
     recording.close()
     assert transport.closed
