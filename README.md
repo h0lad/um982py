@@ -4,9 +4,6 @@ Python 3.12+ library and command-line tools for the Unicore UM982 GNSS receiver.
 
 Some features may also work with the UM960 and UM980.
 
-Validate the receiver firmware, positioning accuracy, timing and sustained
-operation on the target system before deployment.
-
 ## Install and use
 
 From a source checkout:
