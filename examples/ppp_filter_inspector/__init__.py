@@ -5,11 +5,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from statistics import fmean
 
-from um982py.experimental import (
-    PerformanceStatus,
-    PosDebugData,
-    PppDebugData,
-)
+from um982py.experimental import PosDebugData, PppDebugData
+from um982py.receiver_models import PerformanceStatus
 from um982py.stats import norm, rms
 
 __all__ = [

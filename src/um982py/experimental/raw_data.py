@@ -74,7 +74,7 @@ def closest_access(stage: BasebandStage | str) -> tuple[str, ...]:
 
 
 class RawDataLog(StrEnum):
-    """Builds raw baseband dump and subscription commands."""
+    """Build raw baseband dump and subscription commands."""
 
     SAMPLE_DATA = "DATASAMPLE"
     BASEBAND_TRANSFER = "TRANSBBPKG"
@@ -104,7 +104,7 @@ class RawDataLog(StrEnum):
 
 @dataclass(frozen=True, slots=True)
 class BasebandCapture:
-    """Captured wire bytes and what they parse to."""
+    """Captured wire bytes and the packets and notices parsed from them."""
 
     raw: bytes
     packets: tuple[RawBasebandPacket, ...]

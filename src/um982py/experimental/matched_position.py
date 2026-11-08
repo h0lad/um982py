@@ -2,11 +2,11 @@
 
 from dataclasses import replace
 
-from um982py._firmware_layouts import LAYOUTS
 from um982py.commands import logging
 from um982py.commands.core import Command
 from um982py.commands.types import Port, Trigger
 from um982py.errors import ProtocolError
+from um982py.firmware_layouts import LAYOUTS
 from um982py.messages import AsciiMessage, BinaryMessage, CommandResponse, Message
 from um982py.messages.reader import BodyReader
 from um982py.messages.record import Record

@@ -1,4 +1,4 @@
-"""Inner-message catalogue data. Generated; do not edit by hand."""
+"""Generated inner-message catalogue data that should not be edited by hand."""
 
 # ruff: noqa: E501
 # fmt: off

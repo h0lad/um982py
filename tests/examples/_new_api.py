@@ -3,7 +3,7 @@
 import struct
 
 from tests.test_protocol import binary
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.protocol import StreamDecoder
 from um982py.protocol.checksums import unicore_crc32

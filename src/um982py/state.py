@@ -180,8 +180,9 @@ def restore_receiver_state(
 ) -> StateRestoration:
     """Restore supported settings and report any remaining differences.
 
-    The caller must restore any signal group and reconnect after a reboot first.
-    Other configuration and masks are verified but are not sent back as commands.
+    Restore any signal group and reconnect after a reboot before calling this
+    function. Other configuration and masks are checked, but are not sent back
+    to the receiver as commands.
     """
     current = snapshot_receiver_state(receiver)
     saved = expected.settings

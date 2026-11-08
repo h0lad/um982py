@@ -10,7 +10,8 @@ from math import isfinite
 from queue import Empty, Full, Queue
 from threading import Event, Lock, Thread
 from time import monotonic
-from typing import TYPE_CHECKING
+from types import TracebackType
+from typing import TYPE_CHECKING, Self
 
 from um982py.errors import ResponseTimeout, TransportClosed
 from um982py.measurement import gps_epoch
@@ -31,7 +32,7 @@ class StreamEvent:
 
 
 class Subscription:
-    """A bounded FIFO. ``dropped`` counts messages discarded while full."""
+    """A bounded message queue whose ``dropped`` count records discarded messages."""
 
     def __init__(
         self, capacity: int, sentence_kinds: frozenset[str] | None = None
@@ -107,10 +108,10 @@ class StreamHealth:
 class ReceiverStream:
     """Dispatch receiver data and serialize commands in one background thread.
 
-    Start with ``start()`` after adding subscriptions. Directly using the wrapped
-    receiver concurrently is unsupported. A command can delay stream delivery
-    until it completes; command timeouts should be kept short. Closing waits for
-    the current receiver operation, then optionally closes the receiver.
+    Add subscriptions before calling ``start()``. The worker owns the receiver
+    while it is running, so do not use the receiver directly at the same time.
+    A command delays delivery until it finishes, making short timeouts useful.
+    Closing waits for the current operation and can also close the receiver.
     """
 
     def __init__(
@@ -167,10 +168,23 @@ class ReceiverStream:
             self._thread = Thread(target=self._run, name="um982py-stream", daemon=True)
             self._thread.start()
 
+    def __enter__(self) -> Self:
+        """Start the worker while leaving receiver ownership with the caller."""
+        self.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        traceback: TracebackType | None,
+    ) -> None:
+        self.close()
+
     def execute[T](
         self, command: Command[T], *, timeout: float | None = None
     ) -> Future[T]:
-        """Queue a command; its future receives the result or command error."""
+        """Queue a command and return a future for its result or error."""
         return self._submit(lambda: self.receiver.execute(command, timeout=timeout))
 
     def send_correction(self, message: RtcmMessage) -> Future[None]:

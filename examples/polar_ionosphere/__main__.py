@@ -7,10 +7,11 @@ from dataclasses import asdict
 from statistics import stdev
 
 from examples.ionosphere_tec import Observation, slant_tec
-from um982py.capture import capture_records, gps_signals, record_epoch
+from um982py.capture import gps_signals, record_epoch
 from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.observation_quality import audit_observations
 

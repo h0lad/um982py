@@ -19,7 +19,6 @@ from examples.baseband_conformance import (
     probe_commands,
     state_check,
 )
-from um982py.capture import open_receiver
 from um982py.commands import queries
 from um982py.console import (
     ExampleParser,
@@ -28,6 +27,7 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import open_receiver
 from um982py.errors import CommandRejected, ResponseTimeout, UM982Error
 from um982py.experimental import (
     BasebandCommand,
@@ -36,8 +36,8 @@ from um982py.experimental import (
     scan_notices,
 )
 from um982py.experimental.capture import BoundedRecordingTransport, ascii_fields
-from um982py.experimental.diagnostics import log_list
 from um982py.receiver import Receiver
+from um982py.receiver_queries import log_list
 
 ACKNOWLEDGEMENT = scan_notices(b"$UartBinayCMDOK:\r\n")
 REJECTION = scan_notices(b"$UartBinayCMDFAIL:\r\n")

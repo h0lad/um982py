@@ -14,9 +14,10 @@ from um982py.commands import Log, configuration, logging, queries
 from um982py.commands.core import action
 from um982py.commands.types import NmeaVersion, Trigger
 from um982py.errors import CommandRejected, ResponseTimeout, UM982Error
-from um982py.experimental import FirmwareLog, firmware_info
 from um982py.experimental.capture import ordered_log_list
+from um982py.logs import FirmwareLog
 from um982py.messages import AsciiHeader, AsciiMessage, Fix, Sentence
+from um982py.receiver_queries import firmware_info
 
 pytestmark = pytest.mark.hardware
 

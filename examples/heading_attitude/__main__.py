@@ -12,9 +12,10 @@ from examples.heading_attitude import (
     attitude_from_record,
     swapped_attitude,
 )
-from um982py.capture import capture_records, record_epoch
+from um982py.capture import record_epoch
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 

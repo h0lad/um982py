@@ -6,9 +6,10 @@ import sys
 from collections.abc import Callable, Sequence
 
 from examples.clock_stability import SLOPE_BLOCKS, ClockStability, analyse
-from um982py.capture import capture_records, uniform_interval
+from um982py.capture import uniform_interval
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 

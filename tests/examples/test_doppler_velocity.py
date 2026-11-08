@@ -11,8 +11,8 @@ from examples.doppler_velocity import wave_parameters
 
 from tests.examples._specialist import TRUTH
 from um982py.capture import decode_records, read_frames, record_epoch
-from um982py.experimental import FirmwareLog
 from um982py.experimental.gps_motion import RateMeasurement, solve_velocity
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 

@@ -45,6 +45,21 @@ def wait_for(predicate: object) -> None:
         sleep(0.005)
 
 
+def test_stream_context_starts_and_stops_without_closing_receiver() -> None:
+    transport = QueueTransport()
+    receiver = Receiver(transport)
+    with (
+        pytest.raises(RuntimeError, match="application error"),
+        ReceiverStream(receiver) as stream,
+    ):
+        assert stream.health().running
+        raise RuntimeError("application error")
+    assert not stream.health().running
+    assert not transport.closed
+    receiver.close()
+    assert transport.closed
+
+
 def test_stream_dispatches_command_backlog_and_counts_slow_consumer() -> None:
     transport = QueueTransport()
     stream = ReceiverStream(Receiver(transport, timeout=1), poll_seconds=0.01)

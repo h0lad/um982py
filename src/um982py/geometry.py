@@ -93,7 +93,7 @@ class ReportedDilution:
 def geometry_from_record(
     record: Record, minimum_elevation: float = 0.0
 ) -> tuple[SatelliteGeometry, ...]:
-    """Ranging geometry of the satellites of a decoded SATVIS2 frame."""
+    """Build ranging geometry from the satellites in a decoded SATVIS2 frame."""
     kept = elevation_mask_filter(records_from(record, "satellites"), minimum_elevation)
     return tuple(
         SatelliteGeometry(
@@ -106,7 +106,7 @@ def geometry_from_record(
 def geometry_from_records(
     records: Sequence[Record], minimum_elevation: float = 0.0
 ) -> tuple[SatelliteGeometry, ...]:
-    """Ranging geometry across every constellation frame of one epoch."""
+    """Build ranging geometry from all constellation frames in one epoch."""
     return tuple(
         satellite
         for record in records
@@ -115,7 +115,7 @@ def geometry_from_records(
 
 
 def design_row(satellite: SatelliteGeometry) -> tuple[float, float, float, float]:
-    """One row of G: the negated unit line of sight and a unit clock coefficient."""
+    """Build a row of G from the negated line of sight and a unit clock coefficient."""
     east, north, up = satellite.line_of_sight()
     return (-east, -north, -up, 1.0)
 
@@ -123,12 +123,12 @@ def design_row(satellite: SatelliteGeometry) -> tuple[float, float, float, float
 def design_matrix(
     satellites: Sequence[SatelliteGeometry],
 ) -> tuple[tuple[float, float, float, float], ...]:
-    """Design matrix G with one row per satellite."""
+    """Build the design matrix G with one row per satellite."""
     return tuple(design_row(satellite) for satellite in satellites)
 
 
 def normal_matrix(rows: Sequence[Sequence[float]]) -> tuple[tuple[float, ...], ...]:
-    """Normal matrix ``G^T G`` of a design matrix given as rows."""
+    """Calculate the normal matrix ``G^T G`` from the rows of a design matrix."""
     if not rows:
         raise ValueError("design matrix needs at least one row")
     columns = len(rows[0])
@@ -143,7 +143,7 @@ def normal_matrix(rows: Sequence[Sequence[float]]) -> tuple[tuple[float, ...], .
 
 
 def invert(matrix: Sequence[Sequence[float]]) -> tuple[tuple[float, ...], ...]:
-    """Gauss-Jordan inverse with partial pivoting."""
+    """Invert a matrix using Gauss-Jordan elimination with partial pivoting."""
     size = len(matrix)
     if size == 0 or any(len(row) != size for row in matrix):
         raise ValueError("matrix must be square and nonempty")

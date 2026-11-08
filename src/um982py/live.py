@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class PositionUpdate:
-    """One GGA fix and its host arrival time, with no cross-epoch fusion."""
+    """A GGA fix and its arrival time on the host, without mixing epochs."""
 
     fix: Fix
     received_at: datetime
@@ -35,12 +35,6 @@ class PositionUpdate:
             self.previous_quality is not None
             and self.fix.quality != self.previous_quality
         )
-
-    @property
-    def ellipsoidal_height(self) -> float | None:
-        if self.fix.altitude_msl is None or self.fix.geoid_separation is None:
-            return None
-        return self.fix.altitude_msl + self.fix.geoid_separation
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,12 +87,13 @@ class PositionSubscription:
 class PositionSession:
     """Read GGA fixes from successive receiver connections.
 
-    The factory owns connection setup and returns a fresh receiver on each call.
-    The optional configure callback runs after every connection; it can enable
-    GGA output, and is responsible for any receiver configuration it changes.
-    ``on_disconnect`` runs before reconnecting and may record the interruption.
-    Only transport errors trigger reconnects. The stop event interrupts backoff
-    and is checked at most ``poll_seconds`` after an idle read.
+    The factory opens a fresh receiver for each connection. If supplied, the
+    configure callback runs after every connection and can enable GGA output.
+    It is responsible for any receiver settings it changes. The optional
+    ``on_disconnect`` callback runs before a reconnection attempt.
+
+    Only transport errors trigger a reconnect. The stop event interrupts the
+    backoff and is checked within ``poll_seconds`` when the receiver is idle.
     """
 
     def __init__(
@@ -139,7 +134,7 @@ class PositionSession:
             )
 
     def positions(self, stop: Event) -> Generator[PositionUpdate, None, None]:
-        """Yield fixes until stopped; close the iterator when ending early."""
+        """Yield fixes until stopped, and close the iterator if you stop early."""
         with self._lock:
             if self._state != "idle":
                 raise RuntimeError("session can only be run once")

@@ -3,8 +3,10 @@
 import hashlib
 import json
 import math
+import os
 import shutil
 import subprocess
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -76,10 +78,10 @@ def _solutions(path: Path) -> tuple[int, tuple[tuple[int, int], ...]]:
 
 
 def run_ppk(
-    rover: Path,
-    base: Path,
-    navigation: tuple[Path, ...],
-    output_dir: Path,
+    rover: str | os.PathLike[str],
+    base: str | os.PathLike[str],
+    navigation: Sequence[str | os.PathLike[str]],
+    output_dir: str | os.PathLike[str],
     *,
     base_ecef: tuple[float, float, float],
     reference_frame: str,
@@ -92,10 +94,10 @@ def run_ppk(
 ) -> PpkResult:
     """Run RTKLIB on RINEX observations with an explicit base ECEF position.
 
-    A new output directory receives the solver output, logs and a manifest of
-    input hashes and options. The solver's quality codes are reported verbatim;
-    they do not establish accuracy. Frame and epoch are recorded as supplied,
-    not transformed or verified against the observation metadata.
+    A new output directory receives the solver output, logs, and a manifest of
+    input hashes and options. The solver's quality codes are reported as given
+    and do not establish accuracy. The reference frame and epoch are recorded
+    as supplied, without transformation or comparison with observation metadata.
     """
     if len(base_ecef) != 3 or not all(math.isfinite(v) for v in base_ecef):
         raise ValueError("base_ecef must contain three finite coordinates")

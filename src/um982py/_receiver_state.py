@@ -22,7 +22,7 @@ def ascii_fields(message: Message) -> tuple[str, ...]:
 
 
 def ordered_log_list(receiver: Receiver) -> LogList:
-    """Read active subscriptions ordered by name because LOGLISTA order varies."""
+    """Sort active subscriptions by name because LOGLISTA order can vary."""
     entries = receiver.execute(log_list()).entries
     ordered = tuple(sorted(entries, key=lambda entry: entry.name))
     return LogList(ordered)

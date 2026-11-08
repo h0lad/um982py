@@ -21,12 +21,7 @@ from examples.signal_group_study import (
     trade_study,
 )
 from um982py.antenna import antenna_log
-from um982py.capture import (
-    decode_records,
-    open_receiver,
-    read_frames,
-    receive_records,
-)
+from um982py.capture import decode_records, read_frames, receive_records
 from um982py.commands.configuration import (
     SignalGroup,
     current_signal_group,
@@ -39,9 +34,10 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import open_receiver
 from um982py.errors import UM982Error
-from um982py.experimental import FirmwareLog
 from um982py.geodesy import records_from
+from um982py.logs import FirmwareLog
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 from um982py.state import restore_receiver_state, snapshot_receiver_state

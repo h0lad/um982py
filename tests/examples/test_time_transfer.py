@@ -14,7 +14,7 @@ from examples.time_transfer import (
     utc_offset_seconds,
 )
 
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder
 

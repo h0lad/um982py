@@ -13,7 +13,7 @@ from examples.rtk_outage_lab import (
     summarize_outages,
 )
 from examples.rtk_quality import FixClass, solution_from_record
-from um982py.capture import capture_logs, record_epoch
+from um982py.capture import record_epoch
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -23,7 +23,8 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_logs
+from um982py.logs import FirmwareLog
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -17,8 +17,8 @@ from examples.wls_position.__main__ import (
 from um982py.capture import read_frames
 from um982py.commands import Log
 from um982py.errors import ProtocolError
-from um982py.experimental import FirmwareLog
 from um982py.geodesy import geodetic_from_ecef
+from um982py.logs import FirmwareLog
 from um982py.messages import BinaryMessage, Sentence, decode_log
 from um982py.messages.record import Record
 

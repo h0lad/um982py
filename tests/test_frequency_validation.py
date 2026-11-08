@@ -55,6 +55,13 @@ def test_geodetic_from_ecef_rejects_nonfinite_coordinates() -> None:
         geodetic_from_ecef(float("nan"), 0, 0)
 
 
+def test_basic_geodesy_without_optional_dependencies() -> None:
+    assert ecef_from_geodetic(0, 0, 0) == pytest.approx((6378137, 0, 0))
+    xyz = ecef_from_geodetic(52, 13, 50)
+    assert geodetic_from_ecef(*xyz) == pytest.approx((52, 13, 50), abs=1e-6)
+    assert haversine_distance(0, 0, 0, 1) == pytest.approx(111195.08, abs=0.01)
+
+
 def test_dms_rejects_invalid_minutes_and_nonfinite_input() -> None:
     assert dms_to_degrees(-4807.038) == pytest.approx(-48.1173)
     for value in (4860.0, -1260.0, float("nan"), float("inf")):

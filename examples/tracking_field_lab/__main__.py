@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from examples.tracking_field_lab import correlate_fields, written_fields
-from um982py.capture import capture_logs, record_epoch
+from um982py.capture import record_epoch
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -16,7 +16,9 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog, tracking_slots
+from um982py.console_capture import capture_logs
+from um982py.experimental import tracking_slots
+from um982py.logs import FirmwareLog
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -58,8 +58,9 @@ def pair_base_rover_observations(
 ) -> tuple[ObservationEpochPair, ...]:
     """Pair unique epochs and native signal identities without interpolation.
 
-    Receiver epochs and signal identifiers need independent verification for
-    scientific use. Multiple candidate epochs are rejected rather than guessed.
+    Verify receiver epochs and signal identifiers independently before using
+    the pairs for scientific work. If an epoch has multiple candidates, the
+    function raises an error rather than choosing one.
     """
     if not math.isfinite(tolerance) or tolerance < 0:
         raise ValueError("epoch tolerance must be finite and nonnegative")

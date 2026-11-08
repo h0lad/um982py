@@ -50,7 +50,7 @@ def geojson_feature(
     ):
         raise ValueError("invalid WGS84 position")
     coordinates = [fix.longitude, fix.latitude]
-    height = update.ellipsoidal_height
+    height = fix.ellipsoidal_height
     if height is not None:
         if not isfinite(height):
             raise ValueError("invalid ellipsoidal height")
@@ -81,8 +81,8 @@ def navsatfix(
     """Build a ROS 2 NavSatFix using an application-supplied ROS timestamp.
 
     The caller must establish the coordinate frame and any augmentation
-    status. By default only GGA quality 1 is declared a valid unaugmented fix.
-    No constellation or covariance is inferred from GGA.
+    status. By default, only GGA quality 1 is treated as a valid unaugmented
+    fix. Constellation and covariance are not inferred from GGA.
     """
     if reference_frame != "WGS84":
         raise ValueError("NavSatFix coordinates must be WGS84")

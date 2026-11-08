@@ -79,20 +79,15 @@ def smooth_rtk_height(epochs: int) -> Command[CommandResponse]:
 
 
 def smooth_heading(
-    epochs: int, level_epochs: int | None = None, *, pitch_epochs: int | None = None
+    epochs: int, *, pitch_epochs: int | None = None
 ) -> Command[CommandResponse]:
     """Configure heading and optional pitch smoothing in epochs (0..100).
 
-    ``level_epochs`` is the historical name for the second argument, which
-    R1.15 describes as pitch, so use ``pitch_epochs`` in new code. Firmware
-    support for the optional argument can vary.
+    Firmware support for the optional pitch argument can vary.
     """
-    if level_epochs is not None and pitch_epochs is not None:
-        raise ValueError("Specify pitch_epochs or the legacy level_epochs, not both")
     parameters = [integer(epochs, 0, 100)]
-    pitch = pitch_epochs if pitch_epochs is not None else level_epochs
-    if pitch is not None:
-        parameters.append(integer(pitch, 0, 100))
+    if pitch_epochs is not None:
+        parameters.append(integer(pitch_epochs, 0, 100))
     return config("SMOOTH HEADING", *parameters)
 
 

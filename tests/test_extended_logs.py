@@ -4,8 +4,8 @@ import pytest
 
 from conftest import FIXTURES
 from um982py.errors import ProtocolError
-from um982py.experimental import FirmwareLog
 from um982py.experimental import configuration as config
+from um982py.logs import FirmwareLog
 from um982py.messages import AsciiMessage, BinaryMessage
 from um982py.protocol import StreamDecoder
 

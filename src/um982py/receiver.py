@@ -9,7 +9,6 @@ from types import TracebackType
 from typing import Self
 from urllib.parse import urlsplit
 
-from um982py._firmware_logs import FirmwareLog
 from um982py.antenna import AntennaLog, antenna_log
 from um982py.augmentation import AugmentationState, enable_augmentation
 from um982py.commands import Log, queries
@@ -24,6 +23,7 @@ from um982py.errors import (
     ResponseTimeout,
     TransportClosed,
 )
+from um982py.logs import FirmwareLog
 from um982py.measurement import RangeSample, gnss_range_samples
 from um982py.messages.frames import CommandResponse, Message, RtcmMessage
 from um982py.messages.navigation import BestNavigation, Fix, Heading
@@ -239,11 +239,21 @@ class Receiver:
         self,
         log: Log | FirmwareLog | AntennaLog,
         *,
-        binary: bool = True,
+        binary: bool | None = None,
         antenna: str = "primary",
     ) -> Record:
-        """Read and decode a single log frame from the selected antenna input."""
+        """Read one log, preferring binary when its format is supported.
+
+        Pass ``binary=True`` or ``False`` to require a particular wire format.
+        """
         selected = antenna_log(log, antenna)
+        if binary is None:
+            try:
+                selected.wire_name(binary=True)
+            except ValueError:
+                binary = False
+            else:
+                binary = True
         return self.execute(selected.read(binary=binary))
 
     def range_samples(
@@ -253,7 +263,7 @@ class Receiver:
         systems: tuple[int, ...] | None = None,
         signals: tuple[int, ...] | None = None,
     ) -> tuple[RangeSample, ...]:
-        """Read one RANGE or RANGEH epoch and return SI-converted observations."""
+        """Read one RANGE or RANGEH epoch and return observations in SI units."""
         record = self.read_log(FirmwareLog.RANGE, binary=True, antenna=antenna)
         return gnss_range_samples(record, systems=systems, signals=signals)
 

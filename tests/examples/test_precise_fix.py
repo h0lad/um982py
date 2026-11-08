@@ -19,8 +19,8 @@ from examples.precise_fix import (
 )
 
 from um982py.capture import decode_records, read_frames
-from um982py.experimental import FirmwareLog
 from um982py.geodesy import ecef_from_geodetic, geodetic_from_ecef
+from um982py.logs import FirmwareLog
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "captures" / "BESTXYZB.bin"
 CENTRE = (3_782_563.8151, 899_476.2810, 5_039_205.3876)

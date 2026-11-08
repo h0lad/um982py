@@ -3,10 +3,10 @@
 from collections import Counter
 from dataclasses import dataclass
 
-from um982py._firmware_logs import FirmwareLog
 from um982py.commands import Log
 from um982py.commands.core import Command
 from um982py.commands.types import Port, Trigger
+from um982py.logs import FirmwareLog
 from um982py.messages import CommandResponse, Message, Record
 
 _SECONDARY: dict[Log | FirmwareLog, Log | FirmwareLog] = {
@@ -143,8 +143,8 @@ def other_antenna(antenna: str) -> str:
 def mirror(log: Log | FirmwareLog) -> Log | FirmwareLog:
     """Return the wire log of the other antenna input, when one is documented.
 
-    Receiver-wide logs and baselines keep their scope, and a target shared by
-    several primary logs is left unchanged instead of being assigned to an
+    Receiver-wide logs and baselines keep their scope. If several primary logs
+    share a target, the target is left unchanged rather than assigning it an
     arbitrary partner.
     """
     return _MIRROR.get(log, log)

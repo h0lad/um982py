@@ -19,7 +19,7 @@ from examples.wls_position.__main__ import (
     select_gps_ephemerides,
     select_position,
 )
-from um982py.capture import capture_records, read_frames, record_epoch
+from um982py.capture import read_frames, record_epoch
 from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
@@ -29,9 +29,10 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import capture_records
 from um982py.errors import ProtocolError
-from um982py.experimental import FirmwareLog
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef, records_from
+from um982py.logs import FirmwareLog
 from um982py.messages import (
     AsciiHeader,
     AsciiMessage,

@@ -52,7 +52,7 @@ class AugmentationStep:
 
 @dataclass(frozen=True, slots=True)
 class AugmentationState:
-    """What one session applied, what the firmware refused and what was saved."""
+    """The settings applied, refused, and saved during one session."""
 
     previous_group: SignalGroup
     active_group: SignalGroup | None
@@ -74,7 +74,7 @@ class AugmentationState:
 
 
 def augmentation_plan(current: SignalGroup) -> tuple[AugmentationStep, ...]:
-    """Commands that enable SBAS, E6-HAS, B2b-PPP and the remaining refinements.
+    """Build the commands that enable SBAS, E6-HAS, B2b-PPP, and other refinements.
 
     Switching to signal group 3/6 restarts acquisition, so the plan changes
     groups only when another group is active. The remaining settings are

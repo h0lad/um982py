@@ -18,7 +18,7 @@ from examples.elevation_optimizer import (
     sky_from_satvis_log,
 )
 
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.protocol import StreamDecoder
 
 FIXTURES = Path(__file__).resolve().parents[2] / "tests" / "fixtures"

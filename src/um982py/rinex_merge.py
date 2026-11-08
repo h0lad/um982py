@@ -1,5 +1,6 @@
 """Merge GPS observations from bounded um982py RINEX recording segments."""
 
+import os
 import shutil
 import tempfile
 from collections.abc import Sequence
@@ -121,19 +122,23 @@ def _header_line(content: str, label: str) -> str:
     return f"{content:<60}{label}\n"
 
 
-def merge_gps_observations(inputs: Sequence[Path], output: Path) -> MergeResult:
+def merge_gps_observations(
+    inputs: Sequence[str | os.PathLike[str]], output: str | os.PathLike[str]
+) -> MergeResult:
     """Merge um982py RANGE exports with unknown phase alignment into GPS RINEX.
 
-    Input files must be strictly time ordered; the output is created only after
-    validation. Each carrier's first observation after a segment boundary gets
-    a loss-of-lock flag because continuity through the interruption is unknown.
-    Other constellations are omitted.
+    Input files must be in strict time order. The output is created only after
+    they have been validated. Each carrier's first observation after a segment
+    boundary gets a loss-of-lock flag because continuity through the
+    interruption is unknown. Other constellations are omitted.
     """
     if not inputs:
         raise ValueError("at least one segment is required")
+    paths = [Path(path) for path in inputs]
+    output = Path(output)
     if output.exists():
         raise FileExistsError(f"output already exists: {output}")
-    headers = [_read_header(path) for path in inputs]
+    headers = [_read_header(path) for path in paths]
     if any(
         header.identity != headers[0].identity
         or header.l2c_declaration != headers[0].l2c_declaration
@@ -148,7 +153,7 @@ def merge_gps_observations(inputs: Sequence[Path], output: Path) -> MergeResult:
     epochs = gps_count = other_count = resets = 0
     with tempfile.TemporaryFile(mode="w+t", encoding="ascii", newline="") as body:
         for segment_index, (path, header) in enumerate(
-            zip(inputs, headers, strict=True)
+            zip(paths, headers, strict=True)
         ):
             seen_phase: set[tuple[str, str]] = set()
             with path.open(encoding="ascii") as stream:

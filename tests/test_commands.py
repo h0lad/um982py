@@ -163,17 +163,13 @@ def test_mask_cn0_command() -> None:
     assert masking.cn0(30.0, signal="L5", rtcm=True).text == "MASK RTCMCN0 30 L5"
 
 
-def test_smooth_heading_with_level() -> None:
+def test_smooth_heading_with_pitch() -> None:
     assert configuration.smooth_heading(10).text == "CONFIG SMOOTH HEADING 10"
-    assert (
-        configuration.smooth_heading(10, level_epochs=5).text
-        == "CONFIG SMOOTH HEADING 10 5"
-    )
     assert configuration.smooth_heading(10, pitch_epochs=5).text == (
         "CONFIG SMOOTH HEADING 10 5"
     )
-    with pytest.raises(ValueError):
-        configuration.smooth_heading(10, level_epochs=5, pitch_epochs=6)
+    with pytest.raises(TypeError):
+        configuration.smooth_heading(10, level_epochs=5)  # type: ignore[call-arg]
     with pytest.raises(ValueError):
         configuration.smooth_heading(10, pitch_epochs=101)
 

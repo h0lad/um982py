@@ -22,21 +22,23 @@ from um982py.diagnostics import (
 )
 from um982py.errors import UM982Error
 from um982py.experimental import (
-    FirmwareLog,
     InternalDebugLog,
     capture_internal_debug,
-    firmware_info,
-    log_list,
     parse_mpt_debug,
     parse_pos_debug,
     parse_ppp_debug,
-    performance_status,
-    receiver_system_status,
 )
 from um982py.experimental.configuration import antenna_power_on
 from um982py.experimental.raw_data import capture_baseband
 from um982py.experimental.tracking import tracking_fields, tracking_slots
+from um982py.logs import FirmwareLog
 from um982py.receiver import Receiver
+from um982py.receiver_queries import (
+    firmware_info,
+    log_list,
+    performance_status,
+    receiver_system_status,
+)
 from um982py.rinex import export_rinex
 
 _EXTENDED_ACTIONS = {

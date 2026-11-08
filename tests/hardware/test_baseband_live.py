@@ -24,13 +24,13 @@ from um982py.experimental import (
     RawDataLog,
     capture_baseband,
     capture_baseband_notices,
-    log_list,
     rf_spi_read,
     solution_jump_m,
     spec,
 )
 from um982py.experimental.capture import ordered_log_list
 from um982py.messages import CommandResponse, Sentence
+from um982py.receiver_queries import log_list
 
 pytestmark = pytest.mark.hardware
 

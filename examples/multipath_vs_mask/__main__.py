@@ -27,7 +27,6 @@ from um982py.capture import (
     GPS_FREQUENCIES,
     decode_records,
     gps_signals,
-    open_receiver,
     read_frames,
     receive_records,
     record_epoch,
@@ -40,8 +39,9 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import open_receiver
 from um982py.experimental.capture import receiver_state
+from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 from um982py.subscriptions import temporary_subscriptions
 

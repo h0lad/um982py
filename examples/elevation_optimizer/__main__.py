@@ -11,7 +11,7 @@ from examples.elevation_optimizer import (
     highest_feasible_mask,
     sky_from_satvis_log,
 )
-from um982py.capture import capture_records, latest_epoch
+from um982py.capture import latest_epoch
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -20,7 +20,8 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 

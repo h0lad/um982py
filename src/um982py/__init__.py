@@ -1,11 +1,10 @@
-"""The typed UM982 command, protocol and receiver API."""
+"""Connect to a UM982 receiver, decode its messages, and work with GNSS data."""
 
 from importlib import import_module
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from um982py import commands
-    from um982py._firmware_logs import FirmwareLog
     from um982py.adapters import geojson_feature, navsatfix
     from um982py.antenna import swap_antenna
     from um982py.assessment import PositionAssessment, PositionLimits, assess_position
@@ -20,21 +19,19 @@ if TYPE_CHECKING:
         DataLog,
         InterruptedCapture,
         capture_live,
-        capture_logs,
-        capture_records,
         decode_records,
         epoch_seconds,
         gps_signals,
         iter_frames,
         latest_epoch,
         load_records,
-        open_receiver,
         read_frames,
         receive_records,
         record_epoch,
         replay_receiver,
         uniform_interval,
     )
+    from um982py.commands import Log
     from um982py.console import (
         ExampleParser,
         add_debug_argument,
@@ -75,6 +72,7 @@ if TYPE_CHECKING:
         PositionUpdate,
     )
     from um982py.live_quality import LiveAssessment, LiveLimits, PositionMonitor
+    from um982py.logs import FirmwareLog
     from um982py.measurement import (
         RangeSample,
         SignalKey,
@@ -84,6 +82,7 @@ if TYPE_CHECKING:
         range_samples,
         sample_series,
     )
+    from um982py.messages.navigation import BestNavigation, Fix, Heading
     from um982py.ntrip import (
         Mountpoint,
         NtripClient,
@@ -117,7 +116,7 @@ if TYPE_CHECKING:
         TaskPerformance,
         parse_configuration,
     )
-    from um982py.rinex import RinexExport, export_rinex
+    from um982py.rinex import RinexExport, RinexMetadata, export_rinex
     from um982py.rinex_merge import MergeResult, merge_gps_observations
     from um982py.rinex_nav import RinexNavigationExport, export_rinex_navigation
     from um982py.rtk_session import (
@@ -125,6 +124,7 @@ if TYPE_CHECKING:
         GgaProviderError,
         RtkHealth,
         RtkSession,
+        relay_ntrip,
     )
     from um982py.session import (
         SessionGap,
@@ -194,6 +194,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "WGS84_F": ("um982py.geodesy", "WGS84_F"),
     "AsyncReceiver": ("um982py.async_receiver", "AsyncReceiver"),
     "AugmentationState": ("um982py.augmentation", "AugmentationState"),
+    "BestNavigation": ("um982py.messages.navigation", "BestNavigation"),
     "CorrectionWriteError": ("um982py.rtk_session", "CorrectionWriteError"),
     "CoordinateTransform": ("um982py.crs", "CoordinateTransform"),
     "DataLog": ("um982py.capture", "DataLog"),
@@ -202,11 +203,14 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "EpochEvent": ("um982py.stream_capture", "EpochEvent"),
     "EpochTracker": ("um982py.stream_capture", "EpochTracker"),
     "ExampleParser": ("um982py.console", "ExampleParser"),
-    "FirmwareLog": ("um982py._firmware_logs", "FirmwareLog"),
+    "FirmwareLog": ("um982py.logs", "FirmwareLog"),
     "FixClass": ("um982py.quality", "FixClass"),
+    "Fix": ("um982py.messages.navigation", "Fix"),
+    "Heading": ("um982py.messages.navigation", "Heading"),
     "GgaProviderError": ("um982py.rtk_session", "GgaProviderError"),
     "InterruptedCapture": ("um982py.capture", "InterruptedCapture"),
     "LinearSolution": ("um982py.stats", "LinearSolution"),
+    "Log": ("um982py.commands", "Log"),
     "LiveHealth": ("um982py.live", "LiveHealth"),
     "LiveAssessment": ("um982py.live_quality", "LiveAssessment"),
     "LiveLimits": ("um982py.live_quality", "LiveLimits"),
@@ -240,12 +244,14 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "ReportedDilution": ("um982py.geometry", "ReportedDilution"),
     "RestorableSettings": ("um982py.state", "RestorableSettings"),
     "RinexExport": ("um982py.rinex", "RinexExport"),
+    "RinexMetadata": ("um982py.rinex", "RinexMetadata"),
     "MergeResult": ("um982py.rinex_merge", "MergeResult"),
     "Mountpoint": ("um982py.ntrip", "Mountpoint"),
     "RinexNavigationExport": ("um982py.rinex_nav", "RinexNavigationExport"),
     "RoverMode": ("um982py.state", "RoverMode"),
     "RtkHealth": ("um982py.rtk_session", "RtkHealth"),
     "RtkSession": ("um982py.rtk_session", "RtkSession"),
+    "relay_ntrip": ("um982py.rtk_session", "relay_ntrip"),
     "SatelliteGeometry": ("um982py.geometry", "SatelliteGeometry"),
     "SessionRecorder": ("um982py.session", "SessionRecorder"),
     "SessionGap": ("um982py.session", "SessionGap"),
@@ -262,8 +268,6 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "allan_deviation": ("um982py.stats", "allan_deviation"),
     "assess_position": ("um982py.assessment", "assess_position"),
     "capture_live": ("um982py.capture", "capture_live"),
-    "capture_logs": ("um982py.capture", "capture_logs"),
-    "capture_records": ("um982py.capture", "capture_records"),
     "commands": ("um982py.commands", None),
     "correlation": ("um982py.stats", "correlation"),
     "debug_header": ("um982py.console", "debug_header"),
@@ -305,7 +309,6 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "mean": ("um982py.stats", "mean"),
     "navsatfix": ("um982py.adapters", "navsatfix"),
     "norm": ("um982py.stats", "norm"),
-    "open_receiver": ("um982py.capture", "open_receiver"),
     "parse_configuration": ("um982py.receiver_models", "parse_configuration"),
     "parse_sourcetable": ("um982py.ntrip", "parse_sourcetable"),
     "parse_sp3": ("um982py.precise", "parse_sp3"),
@@ -353,6 +356,7 @@ __all__ = [
     "WGS84_F",
     "AsyncReceiver",
     "AugmentationState",
+    "BestNavigation",
     "CoordinateTransform",
     "CorrectionWriteError",
     "DataLog",
@@ -362,13 +366,16 @@ __all__ = [
     "EpochTracker",
     "ExampleParser",
     "FirmwareLog",
+    "Fix",
     "FixClass",
     "GgaProviderError",
+    "Heading",
     "InterruptedCapture",
     "LinearSolution",
     "LiveAssessment",
     "LiveHealth",
     "LiveLimits",
+    "Log",
     "MergeResult",
     "Mountpoint",
     "NtripClient",
@@ -399,6 +406,7 @@ __all__ = [
     "ReportedDilution",
     "RestorableSettings",
     "RinexExport",
+    "RinexMetadata",
     "RinexNavigationExport",
     "RoverMode",
     "RtkHealth",
@@ -422,8 +430,6 @@ __all__ = [
     "assess_position",
     "bdt_week_to_gps_seconds",
     "capture_live",
-    "capture_logs",
-    "capture_records",
     "commands",
     "correlation",
     "debug_header",
@@ -465,7 +471,6 @@ __all__ = [
     "missed_pps_edges",
     "navsatfix",
     "norm",
-    "open_receiver",
     "parse_configuration",
     "parse_sourcetable",
     "parse_sp3",
@@ -480,6 +485,7 @@ __all__ = [
     "receiver_ecef",
     "record_epoch",
     "records_from",
+    "relay_ntrip",
     "replay_receiver",
     "restore_receiver_state",
     "rms",

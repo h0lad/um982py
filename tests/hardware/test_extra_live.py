@@ -21,7 +21,6 @@ from um982py.diagnostics import (
     rtk_diagnostics,
 )
 from um982py.experimental import (
-    FirmwareLog,
     InternalDebugLog,
     capture_internal_debug,
     parse_mpt_debug,
@@ -30,6 +29,7 @@ from um982py.experimental import (
 )
 from um982py.experimental.capture import receiver_state
 from um982py.experimental.tracking import tracking_slots
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.rinex import _observation
 

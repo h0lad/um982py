@@ -28,7 +28,7 @@ from examples.spoof_dual_antenna import (
     sky_snapshots,
 )
 
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.protocol import StreamDecoder
 

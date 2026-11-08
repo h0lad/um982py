@@ -117,7 +117,7 @@ class DebugOutput(StrEnum):
 
 
 class InternalDebugLog(StrEnum):
-    """Selects registered internal filter and positioning debug streams."""
+    """Select registered internal filter and positioning debug streams."""
 
     FAST_DEBUG = "FASTDEBUGMSG"
     PVT_DEBUG = "PVTDEBUGMSG"

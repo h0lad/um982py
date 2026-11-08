@@ -7,10 +7,10 @@ from math import isfinite
 from statistics import median
 from time import monotonic
 
-from um982py._firmware_logs import FirmwareLog
 from um982py.commands import Log, Trigger, logging, queries
 from um982py.corrections import audit_corrections, audit_has, correction_events
 from um982py.errors import ResponseTimeout
+from um982py.logs import FirmwareLog
 from um982py.measurement import gps_epoch
 from um982py.messages import Record, Sentence
 from um982py.messages.enums import PositionType, SolutionStatus

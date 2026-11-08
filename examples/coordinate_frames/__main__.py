@@ -12,10 +12,10 @@ from examples.coordinate_frames import (
     round_trip_baseline,
 )
 from um982py.antenna import AntennaLog
-from um982py.capture import capture_records
 from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 _POSITION = FirmwareLog.BESTXYZ.read()

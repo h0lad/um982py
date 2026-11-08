@@ -15,9 +15,9 @@ from examples.multipath_analysis import (
     multipath_series,
     rms,
 )
-from um982py.experimental import LogList
 from um982py.geodesy import records_from, wavelength
 from um982py.messages.record import Record
+from um982py.receiver_models import LogList
 
 CARRIER_HZ = 1575.42e6
 ZENITH_MULTIPATH_METRES = 0.5

@@ -6,7 +6,7 @@ from dataclasses import asdict
 from pathlib import Path
 
 from examples.zero_baseline_lab import double_differences, estimate_noise
-from um982py.capture import capture_logs, load_records
+from um982py.capture import load_records
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -15,7 +15,8 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_logs
+from um982py.logs import FirmwareLog
 from um982py.measurement import sample_series
 
 

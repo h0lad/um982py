@@ -127,9 +127,10 @@ def test_type_two_reserved_byte_is_not_a_prn_mask_issue() -> None:
 
 
 def test_replay_retains_wire_order_across_correction_log_types(tmp_path: Path) -> None:
-    from um982py.capture import capture_records, read_frames
+    from um982py.capture import read_frames
     from um982py.commands import Log
     from um982py.console import experiment_parser
+    from um982py.console_capture import capture_records
     from um982py.messages import Record
 
     frames = read_frames(FIXTURES / "labelled-b2b.bin")

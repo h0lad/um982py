@@ -47,7 +47,7 @@ def test_position_session_reconnects_and_reports_quality_changes() -> None:
     updates = session.positions(Event())
     a = next(updates)
     b = next(updates)
-    assert a.fix.valid and a.ellipsoidal_height == pytest.approx(592.3)
+    assert a.fix.valid and a.fix.ellipsoidal_height == pytest.approx(592.3)
     assert a.previous_quality is None and not a.quality_changed
     assert b.previous_quality == 4 and b.quality_changed and b.connection == 2
     assert configured == [first, second]

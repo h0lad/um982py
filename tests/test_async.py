@@ -1,11 +1,12 @@
 import asyncio
+from pathlib import Path
 from threading import Event
 from unittest.mock import patch
 
 import pytest
 
 from conftest import ReplayTransport
-from um982py import AsyncReceiver, Receiver
+from um982py import AsyncReceiver, Log, Receiver
 from um982py.errors import ResponseTimeout
 
 
@@ -31,6 +32,31 @@ def test_async_target_selection() -> None:
             await receiver.close()
         factory.assert_called_once_with("tcp://127.0.0.1:4001", 921600, timeout=3)
         assert transport.closed
+
+    asyncio.run(run())
+
+
+def test_async_read_log_returns_decoded_record() -> None:
+    async def run() -> None:
+        raw = (Path(__file__).parent / "fixtures/bodies/BESTNAVB.bin").read_bytes()
+        transport = ReplayTransport({b"BESTNAVB\r\n": raw})
+        async with AsyncReceiver(Receiver(transport)) as receiver:
+            record = await receiver.read_log(Log.BESTNAV)
+            assert record.real("lat") == pytest.approx(52.533696313)
+        assert transport.closed
+
+    asyncio.run(run())
+
+
+def test_async_read_log_chooses_ascii_when_binary_is_unavailable() -> None:
+    from conftest import sentence
+
+    async def run() -> None:
+        raw = sentence(b"GNGGA,120000,5200,N,01300,E,1,10,1,2,M,3,M,,")
+        transport = ReplayTransport({b"GPGGA\r\n": raw})
+        async with AsyncReceiver(Receiver(transport)) as receiver:
+            assert (await receiver.read_log(Log.GPGGA)).integer("quality") == 1
+        assert transport.writes == [b"GPGGA\r\n"]
 
     asyncio.run(run())
 

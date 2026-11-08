@@ -55,7 +55,7 @@ class CompressedObservation:
     doppler_hz: float
     pseudorange_m: float
     carrier_phase_cycles: float | None
-    """Reconstructed absolute carrier phase; None when the signal is unknown."""
+    """Reconstructed absolute carrier phase, or None for an unknown signal."""
     pseudorange_std_m: float
     carrier_phase_std_cycles: float
     lock_time_s: float

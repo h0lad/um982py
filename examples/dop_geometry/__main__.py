@@ -10,9 +10,10 @@ from examples.dop_geometry import (
     ReportedDilution,
     geometry_from_records,
 )
-from um982py.capture import capture_records, latest_epoch, record_epoch
+from um982py.capture import latest_epoch, record_epoch
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 _REPORTED_TIMEOUT = 0.2

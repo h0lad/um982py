@@ -18,7 +18,7 @@ __all__ = [
 
 @dataclass(frozen=True, slots=True)
 class BasebandNotice:
-    """One framed diagnostic line."""
+    """A framed diagnostic line from the baseband."""
 
     name: str
     fields: tuple[str, ...]
@@ -590,7 +590,7 @@ def decode_baseband_notice(notice: BasebandNotice) -> Record:
 
 
 class BasebandNoticeStream:
-    """Scans diagnostic lines and resynchronises after malformed input."""
+    """Scan diagnostic lines and resynchronise after malformed input."""
 
     def __init__(self) -> None:
         self._buffer = bytearray()

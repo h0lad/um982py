@@ -5,7 +5,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from um982py._b2b import b2b_epoch
+from um982py.b2b import b2b_epoch
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.messages.enums import PositionType
@@ -28,7 +28,7 @@ _CORRECTION_TYPES = {
 def stale_correction(
     position_type: object, age_s: object, *, max_age_s: float = 10.0
 ) -> bool:
-    """Whether a differential or RTK fix relies on old corrections."""
+    """Check whether a differential or RTK fix relies on old corrections."""
     try:
         if isinstance(position_type, str):
             kind = PositionType[position_type]
@@ -47,7 +47,7 @@ def stale_correction(
 
 @dataclass(frozen=True, slots=True)
 class CorrectionEvent:
-    """One correction block with its native satellite slots and issue tags."""
+    """A correction block with its receiver-reported satellite slots and issue tags."""
 
     received: float
     transmitter: int
@@ -62,7 +62,7 @@ class CorrectionEvent:
 
 @dataclass(frozen=True, slots=True)
 class CorrectionCheck:
-    """Records correction latency and coherence faults against preceding blocks."""
+    """Latency and coherence faults found when comparing correction blocks."""
 
     received: float
     transmitter: int

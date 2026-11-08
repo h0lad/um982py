@@ -16,9 +16,9 @@ from um982py import (
 from um982py.commands import Log
 from um982py.corrections import audit_has
 from um982py.diagnostics import DiagnosticCapture, ppp_diagnostics
-from um982py.experimental import FirmwareLog
 from um982py.experimental.capture import receiver_state
 from um982py.experimental.tracking import tracking_slots
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.protocol import StreamDecoder
 from um982py.protocol.checksums import nmea_checksum

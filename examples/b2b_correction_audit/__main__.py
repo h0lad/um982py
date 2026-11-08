@@ -13,7 +13,6 @@ from examples.b2b_correction_audit import (
     chronological,
     service_census,
 )
-from um982py.capture import capture_logs
 from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
@@ -24,6 +23,7 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import capture_logs
 from um982py.corrections import audit_has, correction_events
 from um982py.field_data import file_sha256
 from um982py.messages import Record

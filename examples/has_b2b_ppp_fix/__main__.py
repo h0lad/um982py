@@ -23,7 +23,7 @@ from examples.has_b2b_ppp_fix import (
     precision_statistics,
     xyz_fallback,
 )
-from um982py.capture import capture_logs, record_epoch
+from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
@@ -32,8 +32,9 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_logs
 from um982py.experimental.carrier import monitor_divergence
+from um982py.logs import FirmwareLog
 from um982py.measurement import RangeSample, SignalKey, gnss_range_samples
 from um982py.messages import Record
 

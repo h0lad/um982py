@@ -1,31 +1,26 @@
 """Capture bounded live logs and replay wire transcripts."""
 
-from __future__ import annotations
-
 import math
+import os
 import sys
 from collections.abc import Callable, Iterable, Iterator, Sequence
 from contextlib import suppress
 from itertools import pairwise
 from pathlib import Path
 from time import monotonic
-from typing import TYPE_CHECKING, Protocol
+from typing import Protocol, overload
 
-from um982py._firmware_logs import FirmwareLog
 from um982py.antenna import AntennaLog
-from um982py.augmentation import enable_augmentation
 from um982py.commands import Log, Trigger, logging
 from um982py.commands.core import Command
 from um982py.errors import RecordingError, ResponseTimeout
+from um982py.logs import FirmwareLog
 from um982py.measurement import gps_epoch
 from um982py.messages import CommandResponse, Message, Record
 from um982py.protocol import StreamDecoder
 from um982py.receiver import Receiver
 from um982py.subscriptions import temporary_subscriptions
 from um982py.transports.base import Transport
-
-if TYPE_CHECKING:
-    import argparse
 
 __all__ = [
     "GPS_FREQUENCIES",
@@ -34,8 +29,6 @@ __all__ = [
     "InterruptedCapture",
     "RecordingTransport",
     "capture_live",
-    "capture_logs",
-    "capture_records",
     "decode_records",
     "epoch_seconds",
     "gps_signals",
@@ -43,7 +36,6 @@ __all__ = [
     "latest_epoch",
     "load_records",
     "matcher",
-    "open_receiver",
     "read_frames",
     "receive_records",
     "record_epoch",
@@ -65,19 +57,19 @@ class InterruptedCapture(KeyboardInterrupt):
 
 
 def epoch_seconds(message: Message) -> float:
-    """Absolute GPS seconds from either supported data-frame header."""
+    """Return absolute GPS seconds from a supported data-frame header."""
     return gps_epoch(message)
 
 
 def record_epoch(record: Record) -> float:
-    """Return the receiver epoch of a decoded record, requiring a timestamp."""
+    """Return the receiver epoch from a decoded record's timestamp."""
     if record.message is None:
         raise ValueError(f"{record.name} record carries no receiver timestamp")
     return epoch_seconds(record.message)
 
 
 def latest_epoch(records: Sequence[Record]) -> tuple[Record, ...]:
-    """All constellation frames at the newest epoch, without mixing skies."""
+    """Return the constellation frames from the newest epoch only."""
     if not records:
         return ()
     newest = max(record_epoch(record) for record in records)
@@ -108,7 +100,7 @@ def _matching_requests(log: DataLog) -> tuple[Command[Message], ...]:
 
 
 def decode_records(frames: Iterable[Message], log: DataLog) -> tuple[Record, ...]:
-    """Decode every matching ASCII or binary frame, retaining malformed-body errors."""
+    """Decode matching ASCII and binary frames, raising on malformed bodies."""
     requests = _matching_requests(log)
     return tuple(
         log.decode(frame)
@@ -157,33 +149,6 @@ def uniform_interval(records: Sequence[Record], fallback: float) -> float:
     return interval
 
 
-def capture_records(
-    args: argparse.Namespace,
-    logs: Sequence[DataLog],
-    *,
-    frames: int | None = None,
-    interval: float = 1.0,
-    duration: float | None = None,
-    binary: bool = True,
-    arrival_order: list[Record] | None = None,
-    on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
-) -> dict[str, tuple[Record, ...]]:
-    """Collect logs using the command-line capture options."""
-    from um982py.console_capture import capture_records as cli_capture_records
-
-    return cli_capture_records(
-        args,
-        logs,
-        frames=frames,
-        interval=interval,
-        duration=duration,
-        binary=binary,
-        arrival_order=arrival_order,
-        on_progress=on_progress,
-        open_receiver_fn=open_receiver,
-    )
-
-
 def subscription_plan(
     logs: Sequence[DataLog], *, interval: float, binary: bool
 ) -> list[tuple[str, Command[CommandResponse]]]:
@@ -203,6 +168,24 @@ def subscription_plan(
     return planned
 
 
+# Log enums inherit from str, but a log passed here represents one log rather
+# than a sequence of characters.
+@overload
+def capture_live(  # type: ignore[overload-overlap]
+    receiver: Receiver,
+    logs: DataLog,
+    *,
+    duration: float,
+    interval: float = 1.0,
+    frames: int | None = None,
+    binary: bool = True,
+    arrival_order: list[Record] | None = None,
+    on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
+    show_progress: bool = False,
+) -> tuple[Record, ...]: ...
+
+
+@overload
 def capture_live(
     receiver: Receiver,
     logs: Sequence[DataLog],
@@ -214,19 +197,43 @@ def capture_live(
     arrival_order: list[Record] | None = None,
     on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
     show_progress: bool = False,
-) -> dict[str, tuple[Record, ...]]:
-    """Collect logs on an open receiver and restore its subscriptions afterward."""
+) -> dict[str, tuple[Record, ...]]: ...
+
+
+def capture_live(
+    receiver: Receiver,
+    logs: DataLog | Sequence[DataLog],
+    *,
+    duration: float,
+    interval: float = 1.0,
+    frames: int | None = None,
+    binary: bool = True,
+    arrival_order: list[Record] | None = None,
+    on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
+    show_progress: bool = False,
+) -> tuple[Record, ...] | dict[str, tuple[Record, ...]]:
+    """Capture one log or multiple logs and restore previous subscriptions.
+
+    Pass one log to receive its records as a tuple, or pass a sequence of logs
+    to receive a dictionary keyed by log name. Progress callbacks and
+    interrupted captures always use the dictionary form.
+    """
     if not math.isfinite(duration) or duration <= 0:
         raise ValueError("duration must be finite and positive")
     if not math.isfinite(interval) or interval <= 0:
         raise ValueError("interval must be finite and positive")
     if frames is not None and frames < 1:
         raise ValueError("frames must be positive")
-    planned = subscription_plan(logs, interval=interval, binary=binary)
+    selected: Sequence[DataLog] = (
+        (logs,) if isinstance(logs, (Log, FirmwareLog, AntennaLog)) else logs
+    )
+    if not selected:
+        raise ValueError("at least one log is required")
+    planned = subscription_plan(selected, interval=interval, binary=binary)
     with temporary_subscriptions(receiver, *planned):
-        return receive_records(
+        records = receive_records(
             receiver,
-            logs,
+            selected,
             duration=duration,
             frames=frames,
             interval=interval,
@@ -234,6 +241,11 @@ def capture_live(
             on_progress=on_progress,
             show_progress=show_progress,
         )
+    return (
+        records[logs.value]
+        if isinstance(logs, (Log, FirmwareLog, AntennaLog))
+        else records
+    )
 
 
 def receive_records(
@@ -247,7 +259,7 @@ def receive_records(
     on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
     show_progress: bool = False,
 ) -> dict[str, tuple[Record, ...]]:
-    """Read already subscribed logs together while preserving their actual epochs."""
+    """Read logs that are already subscribed, preserving their receiver epochs."""
     if not math.isfinite(duration) or duration <= 0:
         raise ValueError("duration must be finite and positive")
     collected: dict[str, list[Record]] = {log.value: [] for log in logs}
@@ -321,18 +333,20 @@ def receive_records(
     return {name: tuple(values) for name, values in collected.items()}
 
 
-def iter_frames(path: Path, *, chunk_size: int = 65536) -> Iterator[Message]:
+def iter_frames(
+    path: str | os.PathLike[str], *, chunk_size: int = 65536
+) -> Iterator[Message]:
     """Decode a transcript incrementally, rejecting damaged or incomplete frames."""
     if chunk_size < 1:
         raise ValueError("chunk_size must be positive")
     decoder = StreamDecoder(strict=True)
-    with path.open("rb") as stream:
+    with Path(path).open("rb") as stream:
         while chunk := stream.read(chunk_size):
             yield from decoder.feed(chunk)
     decoder.finish()
 
 
-def read_frames(path: Path) -> tuple[Message, ...]:
+def read_frames(path: str | os.PathLike[str]) -> tuple[Message, ...]:
     """Decode every frame in a captured transcript into memory."""
     return tuple(iter_frames(path))
 
@@ -359,13 +373,6 @@ def replay_receiver(raw: bytes) -> Receiver:
             self.closed = True
 
     return Receiver(_Replay(raw), timeout=1)
-
-
-def open_receiver(args: argparse.Namespace) -> Receiver:
-    """Open a receiver using the command-line connection options."""
-    from um982py.console_capture import open_receiver as cli_open_receiver
-
-    return cli_open_receiver(args, augmentation=enable_augmentation)
 
 
 class RecordingSink(Protocol):
@@ -404,24 +411,6 @@ class RecordingTransport:
                 self.stream.close()
 
 
-def capture_logs(
-    args: argparse.Namespace,
-    logs: Sequence[DataLog],
-    *,
-    arrival_order: list[Record] | None = None,
-    on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
-) -> dict[str, tuple[Record, ...]]:
-    """Capture or replay all requested logs together."""
-    return capture_records(
-        args,
-        logs,
-        duration=args.duration,
-        interval=args.interval,
-        arrival_order=arrival_order,
-        on_progress=on_progress,
-    )
-
-
-def load_records(path: Path, log: DataLog) -> tuple[Record, ...]:
+def load_records(path: str | os.PathLike[str], log: DataLog) -> tuple[Record, ...]:
     """Decode a log from a checksummed wire capture."""
-    return decode_records(read_frames(path), log)
+    return decode_records(iter_frames(path), log)

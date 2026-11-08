@@ -4,8 +4,8 @@ import argparse
 import math
 from collections.abc import Sequence
 
-from um982py.capture import capture_records
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.rinex import export_rinex
 from um982py.signals import tracking_signal

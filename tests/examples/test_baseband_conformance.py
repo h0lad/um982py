@@ -21,8 +21,8 @@ from examples.baseband_conformance.__main__ import main
 
 from conftest import ReplayTransport, acknowledgement
 from um982py.experimental import BasebandCommand, SideEffect, scan_notices
-from um982py.experimental.models import LogList
 from um982py.receiver import Receiver
+from um982py.receiver_models import LogList
 
 EXTENDED_COMMANDS = 41
 PROBE_SAFE_COMMANDS = 26

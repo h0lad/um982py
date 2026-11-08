@@ -1,4 +1,4 @@
-"""Asynchronous adapter for the blocking receiver."""
+"""Use the receiver from asyncio without blocking the event loop."""
 
 import asyncio
 from collections.abc import AsyncIterator, Callable
@@ -6,11 +6,15 @@ from contextlib import suppress
 from types import TracebackType
 from typing import Self
 
+from um982py.antenna import AntennaLog
+from um982py.commands import Log
 from um982py.commands.configuration.receiver import SignalGroup
 from um982py.commands.core import Command
+from um982py.logs import FirmwareLog
 from um982py.measurement import RangeSample
 from um982py.messages.frames import Message
 from um982py.messages.navigation import BestNavigation, Fix, Heading
+from um982py.messages.record import Record
 from um982py.messages.version import Version
 from um982py.receiver import Receiver
 from um982py.receiver_models import (
@@ -112,44 +116,56 @@ class AsyncReceiver:
         return await self._run(lambda: self.receiver.version(binary=binary))
 
     async def configuration(self) -> ReceiverConfig:
-        """Query and parse the current receiver configuration asynchronously."""
+        """Query and parse the current receiver configuration."""
         return await self._run(self.receiver.configuration)
 
     async def signal_group(self) -> SignalGroup:
-        """Query the active master and slave signal group asynchronously."""
+        """Query the active master and slave signal group."""
         return await self._run(self.receiver.signal_group)
 
     async def log_list(self) -> LogList:
-        """Query the active log subscriptions asynchronously."""
+        """Query the active log subscriptions."""
         return await self._run(self.receiver.log_list)
 
     async def firmware_info(self, *, binary: bool = False) -> FirmwareInfo:
-        """Query extended firmware metadata asynchronously."""
+        """Query extended firmware metadata."""
         return await self._run(lambda: self.receiver.firmware_info(binary=binary))
 
     async def performance_status(self) -> PerformanceStatus:
-        """Query RTOS task CPU utilization asynchronously."""
+        """Query RTOS task CPU utilization."""
         return await self._run(self.receiver.performance_status)
 
     async def system_status(self) -> ReceiverSystemStatus:
-        """Query hardware clock frequencies and component builds asynchronously."""
+        """Query hardware clock frequencies and component builds."""
         return await self._run(self.receiver.system_status)
 
     async def fix(self, *, antenna: int = 1) -> Fix:
-        """Query a one-shot GGA position fix asynchronously."""
+        """Query a one-shot GGA position fix for the selected antenna."""
         return await self._run(lambda: self.receiver.fix(antenna=antenna))
 
     async def best_navigation(
         self, *, binary: bool = False, antenna: int = 1
     ) -> BestNavigation:
-        """Query the best position and velocity solution asynchronously."""
+        """Query the best position and velocity solution for the selected antenna."""
         return await self._run(
             lambda: self.receiver.best_navigation(binary=binary, antenna=antenna)
         )
 
     async def heading(self) -> Heading:
-        """Query a one-shot dual-antenna THS heading solution asynchronously."""
+        """Query a one-shot dual-antenna THS heading solution."""
         return await self._run(self.receiver.heading)
+
+    async def read_log(
+        self,
+        log: Log | FirmwareLog | AntennaLog,
+        *,
+        binary: bool | None = None,
+        antenna: str = "primary",
+    ) -> Record:
+        """Read and decode a single log from the selected antenna."""
+        return await self._run(
+            lambda: self.receiver.read_log(log, binary=binary, antenna=antenna)
+        )
 
     async def range_samples(
         self,
@@ -158,7 +174,7 @@ class AsyncReceiver:
         systems: tuple[int, ...] | None = None,
         signals: tuple[int, ...] | None = None,
     ) -> tuple[RangeSample, ...]:
-        """Read one RANGE or RANGEH epoch and return SI observations asynchronously."""
+        """Read one RANGE or RANGEH epoch and return observations in SI units."""
         return await self._run(
             lambda: self.receiver.range_samples(
                 antenna=antenna, systems=systems, signals=signals

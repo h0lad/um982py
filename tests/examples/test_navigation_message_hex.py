@@ -136,7 +136,7 @@ def test_unknown_log_marks_every_field_neutral() -> None:
     raw = (FIXTURES.parent / "captures" / "ENVINFOB.bin").read_bytes()
     log = Log.ENVINFO if "ENVINFO" in Log.__members__ else None
     assert log is None
-    from um982py.experimental import FirmwareLog
+    from um982py.logs import FirmwareLog
 
     request = FirmwareLog.ENVINFO.request(binary=True)
     message = next(

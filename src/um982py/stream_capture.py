@@ -68,9 +68,10 @@ def iter_live_records(
 ) -> Iterator[tuple[str, Record]]:
     """Temporarily subscribe and yield records until the duration elapses.
 
-    Close the iterator when stopping early so subscriptions can be restored.
-    Processing happens in the reader thread; slow consumers can cause data loss
-    at the transport. Use RecordingTransport separately to preserve raw bytes.
+    Close the iterator if you stop early, so the receiver's subscriptions can
+    be restored. Processing happens in the reader thread, so a slow consumer
+    can cause data loss at the transport. Use RecordingTransport separately if
+    you need to preserve the raw bytes.
     """
     if not isfinite(duration) or duration <= 0:
         raise ValueError("duration must be finite and positive")

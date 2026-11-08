@@ -6,7 +6,6 @@ from dataclasses import asdict
 from itertools import pairwise
 
 from examples.clock_jump_forensics import clock_residuals, detect_clock_jumps
-from um982py.capture import capture_logs
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -15,7 +14,8 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_logs
+from um982py.logs import FirmwareLog
 from um982py.measurement import range_samples
 
 

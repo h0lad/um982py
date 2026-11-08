@@ -35,16 +35,17 @@ class SessionGap:
 class SessionRecorder:
     """Write bounded raw segments through ``capture.RecordingTransport``.
 
-    A new directory is required. Complete segments are journalled with hashes;
-    an interrupted write leaves a ``.part`` file for inspection. Metadata is
-    supplied by the caller and is not inferred from receiver messages.
+    The directory must not already exist. Completed segments are recorded in a
+    journal with their hashes, while an interrupted write leaves a ``.part``
+    file for inspection. Metadata is optional and comes from the caller, not
+    from the receiver messages.
     """
 
     def __init__(
         self,
-        directory: Path,
+        directory: str | os.PathLike[str],
         *,
-        metadata: Mapping[str, object],
+        metadata: Mapping[str, object] | None = None,
         segment_bytes: int = 64 * 1024 * 1024,
         fsync: bool = False,
     ) -> None:
@@ -58,7 +59,7 @@ class SessionRecorder:
             {
                 "schema": "um982py-session-2",
                 "started_at": _now(),
-                "metadata": dict(metadata),
+                "metadata": dict(metadata) if metadata is not None else {},
             },
             allow_nan=False,
             indent=2,
@@ -163,7 +164,10 @@ class SessionRecorder:
 
 
 def _iter_session_items(
-    directory: Path, *, allow_incomplete: bool = False, chunk_size: int = 65536
+    directory: str | os.PathLike[str],
+    *,
+    allow_incomplete: bool = False,
+    chunk_size: int = 65536,
 ) -> Iterator[bytes | SessionGap]:
     if chunk_size < 1:
         raise ValueError("chunk_size must be positive")
@@ -242,9 +246,15 @@ def _iter_session_items(
 
 
 def iter_session_bytes(
-    directory: Path, *, allow_incomplete: bool = False, chunk_size: int = 65536
+    directory: str | os.PathLike[str],
+    *,
+    allow_incomplete: bool = False,
+    chunk_size: int = 65536,
 ) -> Iterator[bytes]:
-    """Verify and yield raw bytes; use ``iter_session_events`` to inspect gaps."""
+    """Verify and yield raw bytes from a session.
+
+    Use ``iter_session_events`` if you also need to inspect recorded gaps.
+    """
     for item in _iter_session_items(
         directory, allow_incomplete=allow_incomplete, chunk_size=chunk_size
     ):
@@ -253,7 +263,7 @@ def iter_session_bytes(
 
 
 def iter_session_events(
-    directory: Path, *, allow_incomplete: bool = False
+    directory: str | os.PathLike[str], *, allow_incomplete: bool = False
 ) -> Iterator[Message | SessionGap]:
     """Decode segments and expose gaps without joining frames across them."""
     decoder = StreamDecoder(strict=True)
@@ -267,7 +277,7 @@ def iter_session_events(
 
 
 def iter_session_frames(
-    directory: Path, *, allow_incomplete: bool = False
+    directory: str | os.PathLike[str], *, allow_incomplete: bool = False
 ) -> Iterator[Message]:
     """Decode frames, rejecting sessions with recorded discontinuities."""
     for event in iter_session_events(directory, allow_incomplete=allow_incomplete):

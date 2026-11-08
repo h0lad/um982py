@@ -104,7 +104,7 @@ class SatelliteState:
 
 
 def _first(record: Record, *names: str, default: float = 0.0) -> float:
-    """First present field among ``names``, or ``default``."""
+    """Return the first field present in ``names``, or ``default`` if none exist."""
     for name in names:
         if name in record:
             return record.real(name)
@@ -114,7 +114,7 @@ def _first(record: Record, *names: str, default: float = 0.0) -> float:
 def solve_kepler(
     mean_anomaly: float, eccentricity: float, tolerance: float = 1e-13
 ) -> float:
-    """Eccentric anomaly from Kepler's equation by fixed-point iteration."""
+    """Solve Kepler's equation for eccentric anomaly using Newton's method."""
     if not 0 <= eccentricity < 1:
         raise ValueError("eccentricity must be in 0..1")
     anomaly = mean_anomaly
@@ -189,7 +189,7 @@ def orbit_state(
 def clock_correction(
     elements: KeplerElements, time_of_flight: float, eccentric_anomaly: float
 ) -> float:
-    """Satellite clock bias in seconds including the relativistic term."""
+    """Calculate satellite clock bias in seconds, including the relativistic term."""
     relativistic = -2 * math.sqrt(MU * elements.semi_major_axis) / SPEED_OF_LIGHT**2
     clock_time = (
         time_of_flight
@@ -209,7 +209,7 @@ def clock_correction(
 def azimuth_elevation(
     state: SatelliteState, observer: tuple[float, float, float]
 ) -> tuple[float, float, float]:
-    """Azimuth, elevation in degrees and slant range in metres."""
+    """Calculate azimuth and elevation in degrees and slant range in metres."""
     delta = (
         state.x - observer[0],
         state.y - observer[1],
@@ -355,5 +355,5 @@ def state_from_record(
 def az_elevation_from_record(
     record: Record, observer: tuple[float, float, float], time_of_flight: float
 ) -> tuple[float, float, float]:
-    """Azimuth, elevation and range of an ephemeris record from an observer."""
+    """Calculate azimuth, elevation, and range from an observer to the satellite."""
     return azimuth_elevation(state_from_record(record, time_of_flight), observer)

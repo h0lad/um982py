@@ -22,8 +22,9 @@ def tec_phase_change(
 ) -> float:
     """Return ambiguity-free slant TEC change in TECU along one continuous arc.
 
-    Phases are range-increasing metres. The same frequency pair and unbroken
-    carrier arcs are required at both epochs because cycle slips invalidate the result.
+    Phases are measured in range-increasing metres. Both epochs must use the
+    same frequency pair and continuous carrier arcs, since a cycle slip
+    invalidates the result.
     """
     _finite(high_before_m, low_before_m, high_after_m, low_after_m, high_hz, low_hz)
     if not high_hz > low_hz > 0:
@@ -42,9 +43,9 @@ def sample_variance(values: Sequence[float]) -> float:
 
 
 def correlation(a: Sequence[float], b: Sequence[float]) -> float | None:
-    """Return Pearson correlation, or None for zero variance.
+    """Return Pearson correlation, or None if either series has zero variance.
 
-    Raise ``ValueError`` for fewer than two paired samples.
+    At least two paired samples are required.
     """
     if len(a) != len(b) or len(a) < 2:
         raise ValueError("at least two paired samples required")
@@ -74,8 +75,8 @@ def noise_multipath_summary(
 ) -> dict[str, float | int | None]:
     """Compare measured difference variances and held-out repeat-track correlation.
 
-    Use the same differencing convention for shared and separate antenna
-    series. The variance difference is descriptive.
+    Use the same differencing convention for the shared- and separate-antenna
+    series. The difference in variance is a descriptive statistic.
     """
     shared = sample_variance(shared_differences)
     separate = sample_variance(separate_differences)
@@ -93,10 +94,11 @@ def noise_multipath_summary(
 def slip_response(
     frequencies_hz: Sequence[float], slips_cycles: Sequence[int]
 ) -> dict[str, float]:
-    """Ideal phase-jump responses in metres for three ordered frequency channels.
+    """Calculate ideal phase-jump responses for three ordered frequency channels.
 
-    GF12 is L1-L2. Closure cancels geometry and first-order ionosphere, while its
-    response to a slip is a weighted sum of wavelength times slip count.
+    The responses are in metres. GF12 is L1-L2. Closure cancels geometry and
+    first-order ionosphere, and its response to a slip is a weighted sum of
+    wavelength times slip count.
     """
     if len(frequencies_hz) != 3 or len(slips_cycles) != 3:
         raise ValueError("three frequencies and three slip counts required")
@@ -146,7 +148,7 @@ def slip_detection_matrix(
 def uncertainty_coverage(
     errors_m: Sequence[float], sigmas_m: Sequence[float], multiplier: float = 1.0
 ) -> dict[str, float | int]:
-    """Empirical per-axis absolute error coverage at multiplier times reported sigma."""
+    """Measure per-axis error coverage at a multiple of the reported sigma."""
     if len(errors_m) != len(sigmas_m) or not errors_m:
         raise ValueError("at least one paired error and sigma required")
     _finite(*errors_m, *sigmas_m, multiplier)
@@ -167,7 +169,10 @@ def uncertainty_coverage(
 def phase_detrended(
     times_s: Sequence[float], phases_m: Sequence[float], max_gap_s: float
 ) -> dict[str, float | int]:
-    """Linear-detrended phase RMS for one gap-free, prevalidated carrier arc."""
+    """Calculate linearly detrended phase RMS for one gap-free carrier arc.
+
+    The caller must validate the carrier arc before using it here.
+    """
     if len(times_s) != len(phases_m) or len(times_s) < 3:
         raise ValueError("at least three paired samples required")
     _finite(*times_s, *phases_m, max_gap_s)
@@ -198,12 +203,13 @@ def orbit_position_effect(
     clock_delta_s: Sequence[float],
     weights: Sequence[float],
 ) -> dict[str, object]:
-    """Linearized receiver ECEF and clock change caused by satellite state changes.
+    """Estimate how satellite state changes affect receiver position and clock.
 
-    LOS points from receiver to satellite, and delta means perturbed minus
-    reference. Satellite clock changes are in seconds and receiver clock changes
-    are in range metres. For fixed observations, the residual is
-    -u.dot(delta_sat)+c*delta_clock, and the solution uses H=[-u,1].
+    The calculation is linearized in ECEF. LOS points from the receiver to the
+    satellite, and delta means perturbed minus reference. Satellite clock
+    changes are in seconds, while receiver clock changes are in range metres.
+    For fixed observations, the residual is -u.dot(delta_sat)+c*delta_clock,
+    and the solution uses H=[-u,1].
     """
     n = len(los)
     if n < 4 or not (len(satellite_delta_m) == len(clock_delta_s) == len(weights) == n):

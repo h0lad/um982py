@@ -19,7 +19,6 @@ from examples.cw_jamming import (
     timeline,
     worst_flag,
 )
-from um982py.capture import capture_records
 from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
@@ -29,6 +28,7 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import capture_records
 from um982py.messages import Record
 
 

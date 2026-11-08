@@ -8,7 +8,8 @@ import pytest
 
 from um982py import PrecisePoint, gps_epoch, interpolate_sp3, parse_sp3, range_samples
 from um982py.capture import decode_records, read_frames
-from um982py.experimental import FirmwareLog, tracking_fields
+from um982py.experimental import tracking_fields
+from um982py.logs import FirmwareLog
 from um982py.messages import BinaryMessage, Record
 
 FIXTURES = Path(__file__).parent / "fixtures"

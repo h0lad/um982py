@@ -4,9 +4,13 @@ from time import sleep
 
 import pytest
 
-from conftest import rtcm
+from conftest import ReplayTransport, acknowledgement, rtcm, sentence
+from um982py import Receiver, relay_ntrip
+from um982py.commands.core import action
+from um982py.errors import ResponseTimeout
 from um982py.messages import RtcmMessage
 from um982py.ntrip import NtripError, ReconnectPolicy
+from um982py.protocol.ascii import parse_ascii
 from um982py.rtk_session import CorrectionWriteError, GgaProviderError, RtkSession
 
 
@@ -45,6 +49,59 @@ class Stream:
             self.stop.set()
             future.set_result(None)
         return future
+
+
+def test_simple_relay_cleans_up_worker_if_configuration_is_invalid() -> None:
+    transport = ReplayTransport({b"RESET\r\n": acknowledgement("RESET")})
+    with Receiver(transport) as receiver:
+        with pytest.raises(ValueError, match="URL"):
+            relay_ntrip(receiver, "invalid")
+        assert not transport.closed
+        assert receiver.execute(action("RESET")).accepted
+
+
+def test_from_url_queries_current_fix_for_each_connection_and_update() -> None:
+    class GgaStream:
+        def __init__(self) -> None:
+            self.responses = [
+                parse_ascii(sentence(b"GNGGA,120000,5200,N,01300,E,1,10,1,2,M,3,M,,")),
+                parse_ascii(sentence(b"GNGGA,120001,,,,,0,00,,,,,,,")),
+                ResponseTimeout("no fix"),
+            ]
+
+        def execute(self, command: object, *, timeout: float) -> Future[object]:
+            assert timeout == 2
+            future: Future[object] = Future()
+            response = self.responses.pop(0)
+            if isinstance(response, Exception):
+                future.set_exception(response)
+            else:
+                future.set_result(response)
+            return future
+
+    session = RtkSession.from_url(
+        GgaStream(),
+        "http://caster.example/MOUNT",  # type: ignore[arg-type]
+    )
+    client = session.client_factory()
+    assert client.initial_gga == sentence(
+        b"GPGGA,120000,5200,N,01300,E,1,10,1,2,M,3,M,,"
+    )
+    assert session.gga_provider is not None
+    assert session.gga_provider() is None
+    assert session.client_factory().initial_gga is None
+
+
+def test_from_url_validates_options_and_reports_gga_failures() -> None:
+    stream = Stream(Event())
+    with pytest.raises(ValueError, match="username and password"):
+        RtkSession.from_url(stream, "http://caster.example/MOUNT", username="user")  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="GGA timeout"):
+        RtkSession.from_url(stream, "http://caster.example/MOUNT", gga_timeout=0)  # type: ignore[arg-type]
+    session = RtkSession.from_url(stream, "http://caster.example/MOUNT")  # type: ignore[arg-type]
+    with pytest.raises(GgaProviderError, match="GGA provider failed"):
+        session.run(Event())
+    assert session.health().state == "failed"
 
 
 def test_reconnect_after_eof_and_forward_complete_rtcm() -> None:

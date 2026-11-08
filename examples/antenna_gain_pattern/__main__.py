@@ -15,9 +15,9 @@ from examples.antenna_gain_pattern import (
     fit_gain_pattern,
     gain_curve,
 )
-from um982py.capture import capture_records
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 from um982py.signals import tracking_signal
 

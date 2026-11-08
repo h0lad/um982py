@@ -5,9 +5,10 @@ from typing import Literal
 
 from um982py.messages import Record
 
-# (system, SLAS slot prefix, mask width in bits). QZSS SLAS slots J01..J09 are
-# mask indices distinct from navigation PRNs (193+), and the mapping to live PRNs
-# is revision-dependent and not verified, so results are never marked usable.
+# Each entry gives a system, SLAS slot prefix, and mask width in bits. QZSS
+# slots J01..J09 are mask indices, not navigation PRNs (193+). Their mapping to
+# live PRNs depends on the revision and has not been verified, so results are
+# never marked usable.
 _SLOT_WIDTHS: tuple[tuple[str, str, int], ...] = (
     ("GPS", "G", 64),
     ("QZSS", "J", 9),
@@ -72,8 +73,9 @@ class SlasCandidate:
 class SlasCorrection:
     """One MT50 pseudorange correction for a selected slot.
 
-    ``usable`` is always False: the slot-to-PRN mapping and bit packing are
-    not verified against receiver data, so this must never correct a fix.
+    ``usable`` is always False because the slot-to-PRN mapping and bit packing
+    have not been verified against receiver data. Do not use this correction
+    to calculate a fix.
     """
 
     satellite: str
@@ -176,10 +178,10 @@ def slas_corrections(
 class SlasTracker:
     """Sequential L1SMT48/49/50 mapping with cross-message consistency checks.
 
-    Mirrors the conservative reference mapper: MT49 needs a preceding MT48 and
-    MT50 needs matching IODI/IODP from the MT49 block. Everything is reported
-    as unusable until the slot-to-PRN mapping is validated against receiver
-    data.
+    The tracker follows the conservative reference mapper. MT49 needs a
+    preceding MT48, and MT50 needs matching IODI/IODP from the MT49 block.
+    Results remain unusable until the slot-to-PRN mapping is validated against
+    receiver data.
     """
 
     def __init__(self, *, mask_msb: bool = True, sv_msb: bool = True) -> None:

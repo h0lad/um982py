@@ -5,17 +5,21 @@ from __future__ import annotations
 from dataclasses import dataclass
 from threading import Event, Lock
 from time import monotonic
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal, Self
 
-from um982py.messages import RtcmMessage
-from um982py.ntrip import ReconnectPolicy, retryable_ntrip_error
+from um982py.commands import logging
+from um982py.errors import ResponseTimeout
+from um982py.messages import RtcmMessage, Sentence
+from um982py.messages.navigation import Fix
+from um982py.ntrip import NtripClient, ReconnectPolicy, retryable_ntrip_error
 from um982py.protocol import StreamDecoder
+from um982py.protocol.checksums import nmea_checksum
+from um982py.streaming import ReceiverStream
 
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from um982py.ntrip import NtripClient
-    from um982py.streaming import ReceiverStream
+    from um982py.receiver import Receiver
 
 
 class CorrectionWriteError(RuntimeError):
@@ -48,11 +52,11 @@ class RtkHealth:
 class RtkSession:
     """Relay RTCM until stopped, retrying transient caster failures.
 
-    ``client_factory`` creates a fresh NtripClient for each attempt; set its
-    initial GGA if the caster requires one during connection. ``gga_provider``
-    returns a complete GPGGA sentence, or None while a fix is unavailable.
-    Run the session in an application-owned thread. It leaves receiver settings
-    unchanged and stops on authentication or TLS failures.
+    ``client_factory`` creates a fresh NtripClient for each connection attempt.
+    Set its initial GGA if the caster requires a position during connection.
+    ``gga_provider`` returns a complete GPGGA sentence, or None until a fix is
+    available. Run the session in an application-owned thread. It leaves the
+    receiver settings unchanged and stops on authentication or TLS failures.
     """
 
     def __init__(
@@ -86,6 +90,68 @@ class RtkSession:
         self._error: str | None = None
         self._message_counts: dict[int, int] = {}
         self._unidentified = 0
+
+    @classmethod
+    def from_url(
+        cls,
+        stream: ReceiverStream,
+        url: str,
+        *,
+        username: str | None = None,
+        password: str | None = None,
+        version: Literal[1, 2] = 2,
+        gga_timeout: float = 2.0,
+        gga_interval: float = 10.0,
+        read_interval: float = 1.0,
+        correction_timeout: float = 60.0,
+        reconnect: ReconnectPolicy | None = None,
+    ) -> Self:
+        """Create a relay that queries the rover for initial and periodic GGA.
+
+        Start the stream before running the session. If the receiver times out
+        or has no valid fix, the connection is attempted without GGA. A caster
+        that requires a fix may reject it. The caller owns the stream and must
+        configure the receiver as a rover.
+        """
+        if not 0 < gga_timeout < float("inf"):
+            raise ValueError("GGA timeout must be finite and positive")
+        # Validate connection settings before starting any receiver operations.
+        NtripClient(url, username=username, password=password, version=version)
+
+        def gga() -> bytes | None:
+            try:
+                message = stream.execute(
+                    logging.request("GPGGA"), timeout=gga_timeout
+                ).result()
+            except ResponseTimeout:
+                return None
+            if not isinstance(message, Sentence) or not Fix.from_message(message).valid:
+                return None
+            body = ("GPGGA," + ",".join(message.fields)).encode("ascii")
+            return b"$" + body + f"*{nmea_checksum(body):02X}\r\n".encode("ascii")
+
+        def client() -> NtripClient:
+            try:
+                initial_gga = gga()
+            except Exception as error:
+                raise GgaProviderError("GGA provider failed") from error
+            return NtripClient(
+                url,
+                username=username,
+                password=password,
+                version=version,
+                initial_gga=initial_gga,
+            )
+
+        return cls(
+            stream,
+            client,
+            gga_provider=gga,
+            gga_interval=gga_interval,
+            read_interval=read_interval,
+            correction_timeout=correction_timeout,
+            reconnect=reconnect,
+        )
 
     def health(self) -> RtkHealth:
         with self._lock:
@@ -198,3 +264,40 @@ class RtkSession:
                                 )
             if monotonic() - last_frame >= self.correction_timeout:
                 raise ConnectionError("no RTCM corrections before timeout")
+
+
+def relay_ntrip(
+    receiver: Receiver,
+    url: str,
+    *,
+    username: str | None = None,
+    password: str | None = None,
+    stop: Event | None = None,
+    version: Literal[1, 2] = 2,
+    gga_timeout: float = 2.0,
+    gga_interval: float = 10.0,
+    read_interval: float = 1.0,
+    correction_timeout: float = 60.0,
+    reconnect: ReconnectPolicy | None = None,
+) -> RtkHealth:
+    """Relay corrections until stopped, leaving receiver ownership to the caller.
+
+    This blocking operation owns a receiver stream while running. Configure the
+    receiver as a rover first and do not use it concurrently. Pass a stop event
+    to stop from another thread, or interrupt the call in the main thread.
+    """
+    with ReceiverStream(receiver) as stream:
+        session = RtkSession.from_url(
+            stream,
+            url,
+            username=username,
+            password=password,
+            version=version,
+            gga_timeout=gga_timeout,
+            gga_interval=gga_interval,
+            read_interval=read_interval,
+            correction_timeout=correction_timeout,
+            reconnect=reconnect,
+        )
+        session.run(stop if stop is not None else Event())
+        return session.health()

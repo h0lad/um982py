@@ -25,7 +25,7 @@ from examples.signal_group_study.__main__ import main
 
 from conftest import FIXTURES
 from um982py.commands.configuration import SignalGroup
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder

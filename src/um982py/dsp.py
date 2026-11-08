@@ -15,7 +15,7 @@ from um982py.commands import Log
 from um982py.commands.catalog import LOGS, RTCM_LOGS
 from um982py.commands.core import Command
 from um982py.errors import ProtocolError, UM982Error
-from um982py.experimental import DebugOutput, FirmwareLog, log_list
+from um982py.experimental import DebugOutput
 from um982py.experimental.baseband import RawBasebandPacket, scan_packets
 from um982py.experimental.capture import (
     BoundedRecordingTransport,
@@ -23,6 +23,7 @@ from um982py.experimental.capture import (
     analyze_capture,
     receiver_state,
 )
+from um982py.logs import FirmwareLog
 from um982py.messages import (
     BinaryMessage,
     CommandResponse,
@@ -30,6 +31,7 @@ from um982py.messages import (
 )
 from um982py.messages.decode import decode_log
 from um982py.messages.record import Record, Value
+from um982py.receiver_queries import log_list
 
 if TYPE_CHECKING:
     from um982py.receiver import Receiver

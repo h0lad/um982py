@@ -6,6 +6,7 @@ from struct import unpack_from
 from typing import Self
 
 from um982py.errors import ProtocolError
+from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.messages.frames import AsciiMessage, BinaryMessage, Message, Sentence
 
 
@@ -53,6 +54,18 @@ class Fix:
             and self.latitude is not None
             and self.longitude is not None
         )
+
+    @property
+    def rtk_fixed(self) -> bool:
+        """Whether GGA reports an RTK fixed fix, without assessing correction age."""
+        return self.valid and self.quality == 4
+
+    @property
+    def ellipsoidal_height(self) -> float | None:
+        """Height above the ellipsoid in metres when both GGA heights are present."""
+        if self.altitude_msl is None or self.geoid_separation is None:
+            return None
+        return self.altitude_msl + self.geoid_separation
 
     @classmethod
     def from_message(cls, message: Message) -> Self:
@@ -111,6 +124,24 @@ class BestNavigation:
     horizontal_speed: float
     track: float
     vertical_speed: float
+    velocity_solution_status: str | int
+    velocity_type: str | int
+    datum: str | int
+
+    @property
+    def valid(self) -> bool:
+        """Whether the receiver reports a computed position of a known type."""
+        return _computed(self.solution_status, self.position_type, position=True)
+
+    @property
+    def velocity_valid(self) -> bool:
+        """Whether the receiver reports a computed velocity of a known type."""
+        return _computed(self.velocity_solution_status, self.velocity_type)
+
+    @property
+    def ellipsoidal_height(self) -> float:
+        """Return ellipsoidal height in metres. Check ``valid`` before using it."""
+        return self.altitude_msl + self.geoid_separation
 
     def __post_init__(self) -> None:
         values = (
@@ -138,6 +169,8 @@ class BestNavigation:
                 raise ProtocolError("Expected 120-byte BESTNAV payload")
             status, kind, lat, lon, height, undulation = unpack_from("<IIdddf", payload)
             speed, track, vertical = unpack_from("<ddd", payload, 88)
+            velocity_status, velocity_type = unpack_from("<II", payload, 72)
+            datum = unpack_from("<I", payload, 36)[0]
             return cls(
                 status,
                 kind,
@@ -150,6 +183,9 @@ class BestNavigation:
                 speed,
                 track,
                 vertical,
+                velocity_status,
+                velocity_type,
+                datum,
             )
         if isinstance(message, AsciiMessage) and message.name in (
             "BESTNAVA",
@@ -171,7 +207,24 @@ class BestNavigation:
                     float(fields[25]),
                     float(fields[26]),
                     float(fields[27]),
+                    fields[21],
+                    fields[22],
+                    fields[6],
                 )
             except ValueError as error:
                 raise ProtocolError("Invalid BESTNAV value") from error
         raise ProtocolError("Not a BESTNAV message")
+
+
+def _computed(status: str | int, kind: str | int, *, position: bool = False) -> bool:
+    if status not in (SolutionStatus.SOL_COMPUTED, "SOL_COMPUTED"):
+        return False
+    try:
+        position_type = (
+            PositionType[kind] if isinstance(kind, str) else PositionType(kind)
+        )
+    except (KeyError, ValueError):
+        return False
+    if position and position_type == PositionType.DOPPLER_VELOCITY:
+        return False
+    return position_type != PositionType.NONE

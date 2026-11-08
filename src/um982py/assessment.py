@@ -10,8 +10,8 @@ from um982py.quality import EpochSolution, FixClass
 class PositionLimits:
     """Limits selected by the application, in seconds and metres.
 
-    A configured limit requires a finite, non-negative measurement.  An omitted
-    limit leaves that measurement unchecked.
+    Each configured limit requires a finite, non-negative measurement. If a
+    limit is omitted, its measurement is left unchecked.
     """
 
     max_epoch_age_s: float | None = None
@@ -57,10 +57,11 @@ def assess_position(
     horizontal_std_m: float | None = None,
     vertical_std_m: float | None = None,
 ) -> PositionAssessment:
-    """Apply user-selected limits; caller supplies age in a compatible time scale.
+    """Check a solution against the application's limits.
 
-    Standard deviations are receiver estimates; they do not establish measured
-    accuracy, navigation integrity or safety certification.
+    Supply the epoch age in a compatible time scale. The standard deviations
+    are receiver estimates and do not establish measured accuracy, navigation
+    integrity, or safety certification.
     """
     reasons: list[str] = []
     try:

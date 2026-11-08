@@ -32,7 +32,7 @@ _HEADER = Struct("<IIIIBBH")
 
 @dataclass(frozen=True, slots=True)
 class BasebandHeader:
-    """The fields parsed from a container header."""
+    """The fields read from a baseband container header."""
 
     sequence: int
     major_version: int
@@ -51,7 +51,7 @@ class BasebandHeader:
 
 @dataclass(frozen=True, slots=True)
 class BasebandMessage:
-    """One framed message inside a container."""
+    """A framed message inside a baseband container."""
 
     message_id: int
     declared_length: int
@@ -85,7 +85,7 @@ def _message_layout(message_id: int) -> tuple[int, int]:
 
 
 def parse_messages(data: bytes, *, offset: int = 0) -> tuple[BasebandMessage, ...]:
-    """Frame a message region, rejecting truncated entries."""
+    """Split a message region into frames and reject truncated entries."""
     if offset < 0:
         raise ValueError("offset must be non-negative")
     messages = []
@@ -150,7 +150,7 @@ class RawBasebandPacket:
 
     @property
     def measurement_sync_tag(self) -> int:
-        """Return the native measurement tag, whose time scale is not established."""
+        """Return the receiver's measurement tag, whose time scale is unknown."""
         return self.header.measurement_sync_tag
 
     @property
@@ -159,7 +159,7 @@ class RawBasebandPacket:
 
     @property
     def frequency_code(self) -> int:
-        """Return the native code without assuming a carrier-frequency mapping."""
+        """Return the receiver's code without assigning it a carrier frequency."""
         return self.header.frequency_code
 
     @property
@@ -169,7 +169,7 @@ class RawBasebandPacket:
 
     @property
     def prologue(self) -> bytes:
-        """Return the bytes ``0x14..0x2f``, whose meaning is not established."""
+        """Return bytes ``0x14..0x2f``, whose meaning is still unknown."""
         return self.raw[HEADER_SIZE:FIRST_MESSAGE_OFFSET]
 
     @property
@@ -286,7 +286,7 @@ class RawBasebandPacket:
 def build_message(
     message_id: int, payload: bytes = b"", *, header_size: int | None = None
 ) -> bytes:
-    """Frame one inner message with the message length convention."""
+    """Frame one inner message using its message-specific length convention."""
     if not 0 <= message_id <= 0xFF:
         raise ValueError("message_id must be a byte")
     layout, length_offset = _message_layout(message_id)
@@ -304,7 +304,7 @@ def build_message(
 
 
 class BasebandStream:
-    """Parses containers from a byte stream and resynchronises after errors."""
+    """Parse containers from a byte stream and resynchronise after errors."""
 
     def __init__(
         self,

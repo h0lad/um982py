@@ -23,7 +23,7 @@ from examples.navigation_messages import (
 
 from um982py.capture import read_frames
 from um982py.commands import Log
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "captures-live"

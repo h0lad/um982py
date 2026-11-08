@@ -15,9 +15,10 @@ from examples.satellite_monitor import (
     sky_plot_csv,
     visibility_summary,
 )
-from um982py.capture import capture_records, latest_epoch
+from um982py.capture import latest_epoch
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 

@@ -2,9 +2,9 @@
 
 from dataclasses import replace
 
-from um982py._firmware_navigation import LAYOUTS as NAVIGATION
 from um982py.messages.layouts import LAYOUTS as DOCUMENTED
 from um982py.messages.schema import Field, Group, Kind, Layout
+from um982py.navigation_layouts import LAYOUTS as NAVIGATION
 
 POSITION = Layout("BESTPOS", "extended", DOCUMENTED["BESTNAV"].fields[:21], 72)
 VELOCITY = Layout(

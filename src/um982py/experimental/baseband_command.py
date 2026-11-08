@@ -9,7 +9,7 @@ from um982py.messages import CommandResponse
 
 
 class SideEffect(StrEnum):
-    """What executing a baseband command does to receiver state."""
+    """How a baseband command affects the receiver's state."""
 
     QUERY = "QUERY"
     """Inspect without changing receiver state."""
@@ -398,7 +398,7 @@ def dangerous_force_reset(value: int = 0) -> Command[CommandResponse]:
 
 
 def dangerous_hot_start() -> Command[CommandResponse]:
-    """Forces ``HOTSTART`` on the baseband, resetting the PVT state."""
+    """Force ``HOTSTART`` on the baseband, resetting the PVT state."""
     return baseband_command(BasebandCommand.HOTSTART)
 
 

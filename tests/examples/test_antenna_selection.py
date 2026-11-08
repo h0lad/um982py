@@ -13,10 +13,11 @@ from um982py.antenna import (
     other_antenna,
     swap_antenna,
 )
-from um982py.capture import capture_records, decode_records
+from um982py.capture import decode_records
 from um982py.commands import Log, queries
 from um982py.console import add_receiver_arguments
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages.navigation import BestNavigation
 from um982py.protocol import StreamDecoder
 

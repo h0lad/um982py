@@ -23,7 +23,7 @@ __all__ = [
 
 
 class BasebandMessageFamily(StrEnum):
-    """How the receiver processes one inner message."""
+    """The way the receiver processes an inner message."""
 
     PAYLOAD = "payload"
     """Reads a fixed set of payload fields."""
@@ -61,7 +61,7 @@ BYTES = "bytes"
 
 @dataclass(frozen=True, slots=True)
 class BasebandField:
-    """One field read from a message payload."""
+    """A field read from a message payload."""
 
     offset: int
     size: int

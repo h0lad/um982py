@@ -14,7 +14,7 @@ from examples.klobuchar_vs_tec import (
     measured_vertical_delay,
     vertical_delay_metres,
 )
-from um982py.capture import capture_records, gps_signals, read_frames, record_epoch
+from um982py.capture import gps_signals, read_frames, record_epoch
 from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
@@ -24,9 +24,10 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import capture_records
 from um982py.errors import ProtocolError
-from um982py.experimental import FirmwareLog
 from um982py.geodesy import geodetic_from_ecef
+from um982py.logs import FirmwareLog
 from um982py.messages import (
     AsciiHeader,
     AsciiMessage,

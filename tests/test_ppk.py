@@ -43,10 +43,10 @@ def test_ppk_records_inputs_solver_and_results(tmp_path: Path) -> None:
         "% test\n2020/01/01 00:00:00.000 50.0 8.0 100.0 1 12\n",
     )
     result = run_ppk(
-        rover,
-        base,
-        (nav,),
-        tmp_path / "result",
+        str(rover),
+        str(base),
+        [str(nav)],
+        str(tmp_path / "result"),
         executable=str(executable),
         base_ecef=(6378137, 0, 0),
         reference_frame="test frame",

@@ -10,13 +10,14 @@ from queue import Empty
 from time import monotonic
 
 from examples.telemetry_bridge import lines
-from um982py.capture import iter_frames, open_receiver
+from um982py.capture import iter_frames
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
     debug_header,
     run,
 )
+from um982py.console_capture import open_receiver
 from um982py.errors import TransportError
 from um982py.streaming import ReceiverStream, Subscription
 

@@ -40,6 +40,16 @@ def test_recording_transport_preserves_frames_across_segments(tmp_path: Path) ->
     assert len(list(directory.glob("segment-*.bin"))) > 1
 
 
+def test_session_accepts_string_path_and_optional_metadata(tmp_path: Path) -> None:
+    directory = str(tmp_path / "session")
+    raw = sentence(b"GPGGA,1")
+    with SessionRecorder(directory) as recorder:
+        recorder.write(raw)
+    assert b"".join(iter_session_bytes(directory)) == raw
+    assert [frame.raw for frame in iter_session_frames(directory)] == [raw]
+    assert json.loads((Path(directory) / "session.json").read_text())["metadata"] == {}
+
+
 def test_incomplete_session_requires_explicit_opt_in(tmp_path: Path) -> None:
     directory = tmp_path / "session"
     recorder = SessionRecorder(directory, metadata={}, segment_bytes=3)

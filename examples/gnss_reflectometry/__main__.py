@@ -37,11 +37,12 @@ from examples.gnss_reflectometry.report import (
 from examples.satellite_monitor import Constellation
 from um982py import export_rinex
 from um982py.antenna import AntennaLog, antenna_index, antenna_log
-from um982py.capture import DataLog, capture_records, record_epoch
+from um982py.capture import DataLog, record_epoch
 from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
+from um982py.console_capture import capture_records
 from um982py.diagnostics import signal_inventory
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 

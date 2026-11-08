@@ -17,7 +17,7 @@ from examples.navigation_messages import (
 )
 from um982py import Receiver
 from um982py.antenna import antenna_log
-from um982py.capture import iter_frames, open_receiver
+from um982py.capture import iter_frames
 from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
@@ -26,9 +26,10 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout
-from um982py.experimental import FirmwareLog
 from um982py.geodesy import ecef_from_geodetic
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 POSITION_LOGS: tuple[FirmwareLog, ...] = (FirmwareLog.BESTPOS, FirmwareLog.BESTXYZ)

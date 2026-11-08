@@ -10,8 +10,9 @@ from test_extended_logs import captured
 from um982py import Receiver
 from um982py.commands.core import Command, action
 from um982py.errors import CommandRejected, ProtocolError
-from um982py.experimental import FirmwareLog, FirmwareSwitch
+from um982py.experimental import FirmwareSwitch
 from um982py.experimental import configuration as config
+from um982py.logs import FirmwareLog
 from um982py.messages import AsciiMessage, BinaryMessage, CommandResponse
 
 

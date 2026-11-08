@@ -13,7 +13,10 @@ GPS_ORIGIN = datetime(1980, 1, 6, tzinfo=UTC)
 
 @dataclass(frozen=True, slots=True)
 class PrecisePoint:
-    """Pairs satellite ECEF metres and clock seconds at absolute GPS seconds."""
+    """A satellite's ECEF position in metres and clock offset in seconds.
+
+    The epoch is expressed in absolute GPS seconds.
+    """
 
     satellite: str
     epoch: float

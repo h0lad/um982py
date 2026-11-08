@@ -56,7 +56,7 @@ class BoundedRecordingTransport:
 
 @dataclass(frozen=True, slots=True)
 class CaptureAnalysis:
-    """Classification of a raw capture, with its bytes unchanged."""
+    """A classification of a raw capture that leaves its bytes unchanged."""
 
     messages: tuple[Message, ...]
     binary_ids: tuple[tuple[int, int], ...]

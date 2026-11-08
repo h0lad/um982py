@@ -1,14 +1,15 @@
 """Utilities for indexing field samples and hashing recorded files."""
 
 import hashlib
+import os
 from bisect import bisect_left
 from collections.abc import Sequence
 from pathlib import Path
 
 
-def file_sha256(path: Path) -> str:
+def file_sha256(path: str | os.PathLike[str]) -> str:
     """Hash a file without loading the entire recording into memory."""
-    with path.open("rb") as stream:
+    with Path(path).open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 
 

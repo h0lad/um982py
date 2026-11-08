@@ -3,8 +3,8 @@
 from unittest.mock import MagicMock, patch
 
 from um982py.commands.types import Port, Trigger
-from um982py.experimental.models import LogEntry
 from um982py.protocol.checksums import nmea_checksum
+from um982py.receiver_models import LogEntry
 from um982py.state import ReceiverState, restore_receiver_state
 
 

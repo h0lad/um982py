@@ -63,7 +63,7 @@ def test_fetch_reads_snapshots_and_closes(
         request.info.current_mode = 3
 
     monkeypatch.setattr(module, "import_module", lambda _: SimpleNamespace(ioctl=ioctl))
-    with PpsDevice(path) as device:
+    with PpsDevice(str(path)) as device:
         snapshot = device.fetch(timeout=1.25)
         assert snapshot.assert_edge == PpsEdge("assert", 42, 1704067200, 123456789)
         assert snapshot.clear_edge is None

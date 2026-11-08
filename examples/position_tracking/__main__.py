@@ -15,9 +15,9 @@ from examples.position_tracking import (
     select_track,
     write_positions_csv,
 )
-from um982py.capture import capture_records
 from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
+from um982py.console_capture import capture_records
 from um982py.messages.record import Record
 
 

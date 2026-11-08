@@ -18,7 +18,7 @@ from examples.interference_monitor import (
     status_alerts,
 )
 
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.messages.enums import PositionType
 from um982py.protocol import StreamDecoder

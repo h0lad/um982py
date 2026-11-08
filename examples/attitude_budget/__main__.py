@@ -16,7 +16,7 @@ from examples.attitude_budget import (
 )
 from um982py import Receiver
 from um982py.antenna import antenna_log
-from um982py.capture import DataLog, iter_frames, open_receiver
+from um982py.capture import DataLog, iter_frames
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -24,8 +24,9 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 

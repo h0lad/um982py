@@ -9,7 +9,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from um982py.capture import capture_logs, load_records, record_epoch
+from um982py.capture import load_records, record_epoch
 from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
@@ -18,7 +18,7 @@ from um982py.console import (
     progress_printer,
     write_json,
 )
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_logs
 from um982py.experimental.gps_motion import (
     choose_ephemeris,
     doppler_measurement,
@@ -27,6 +27,7 @@ from um982py.experimental.gps_motion import (
     solve_velocity,
 )
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
+from um982py.logs import FirmwareLog
 from um982py.measurement import RangeSample, range_samples
 from um982py.messages import Record
 from um982py.messages.enums import PositionType, SolutionStatus

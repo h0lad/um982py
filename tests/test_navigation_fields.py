@@ -6,7 +6,7 @@ from conftest import FIXTURES, ReplayTransport
 from test_extended_logs import captured
 from um982py import Receiver
 from um982py.errors import ProtocolError
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages import AsciiMessage, BinaryMessage
 from um982py.protocol import StreamDecoder
 

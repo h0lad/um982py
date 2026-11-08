@@ -2,8 +2,8 @@ from math import nan
 
 import pytest
 
-from conftest import ReplayTransport, acknowledgement, rtcm, sentence
-from um982py import Receiver
+from conftest import FIXTURES, ReplayTransport, acknowledgement, rtcm, sentence
+from um982py import Log, Receiver, commands
 from um982py.commands import queries
 from um982py.commands.core import action
 from um982py.errors import (
@@ -13,6 +13,40 @@ from um982py.errors import (
 )
 from um982py.protocol import StreamDecoder
 from um982py.protocol.binary import parse_rtcm
+
+
+def test_read_log_chooses_supported_format_and_respects_explicit_choice() -> None:
+    gga = sentence(b"GNGGA,120000,5200,N,01300,E,1,10,1,2,M,3,M,,")
+    transport = ReplayTransport({b"GPGGA\r\n": gga})
+    with Receiver(transport) as receiver:
+        record = receiver.read_log(Log.GPGGA)
+        assert record.integer("quality") == 1
+        assert transport.writes == [b"GPGGA\r\n"]
+        with pytest.raises(ValueError, match="binary"):
+            receiver.read_log(Log.GPGGA, binary=True)
+        assert transport.writes == [b"GPGGA\r\n"]
+
+
+def test_identify_receiver_and_inspect_satellites() -> None:
+    transport = ReplayTransport(
+        {
+            b"VERSIONA\r\n": (FIXTURES / "versiona.bin").read_bytes(),
+            b"SATSINFOB\r\n": (FIXTURES / "bodies/SATSINFOB.bin").read_bytes(),
+        }
+    )
+    with Receiver(transport) as receiver:
+        assert receiver.version().model == "UM982"
+        information = receiver.read_log(Log.SATSINFO)
+        satellites = information.records("satellites")
+        assert len(satellites) == information.integer("satellite_count") > 0
+        assert satellites[0].integer("prn") > 0
+
+
+def test_select_default_rover_mode() -> None:
+    transport = ReplayTransport({b"MODE ROVER\r\n": acknowledgement("MODE ROVER")})
+    with Receiver(transport) as receiver:
+        assert receiver.execute(commands.modes.rover_default()).accepted
+    assert transport.writes == [b"MODE ROVER\r\n"]
 
 
 def test_reply_available_at_deadline(monkeypatch: pytest.MonkeyPatch) -> None:

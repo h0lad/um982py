@@ -39,7 +39,7 @@ def test_merge_preserves_values_and_resets_phase_at_segment_boundaries(
             record(3, [observation()]),
         ),
     )
-    result = merge_gps_observations((first, second), output)
+    result = merge_gps_observations((str(first), second), str(output))
     assert result.epochs == 4 and result.gps_satellite_records == 5
     assert result.non_gps_satellite_records == 1 and result.boundary_phase_resets == 2
     expected = {

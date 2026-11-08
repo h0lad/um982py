@@ -10,7 +10,6 @@ from examples.pwv_meteorology import (
     WaterVapour,
     manual_troposphere,
 )
-from um982py.capture import capture_records
 from um982py.commands import Command, Log, Trigger, logging
 from um982py.console import (
     ExampleParser,
@@ -19,6 +18,7 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import capture_records
 from um982py.messages import Record
 
 _QUERY_TIMEOUT = 2.0

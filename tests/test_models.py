@@ -2,7 +2,6 @@ import pytest
 
 from conftest import ascii_message, sentence
 from um982py.errors import ProtocolError
-from um982py.experimental import FirmwareInfo, LogList
 from um982py.messages import (
     BestNavigation,
     Fix,
@@ -11,6 +10,7 @@ from um982py.messages import (
     Version,
 )
 from um982py.protocol.ascii import parse_ascii
+from um982py.receiver_models import FirmwareInfo, LogList
 
 
 @pytest.mark.parametrize(
@@ -36,6 +36,7 @@ def test_valid_and_missing_gga() -> None:
     )
     fix = Fix.from_message(frame)
     assert fix.valid and fix.quality == 4 and fix.satellites == 12
+    assert fix.rtk_fixed and fix.ellipsoidal_height == pytest.approx(592.3)
     assert fix.latitude == pytest.approx(48.1173)
     assert fix.longitude == pytest.approx(11.5166666667)
     assert fix.altitude_msl == 545.4 and fix.geoid_separation == 46.9
@@ -43,6 +44,7 @@ def test_valid_and_missing_gga() -> None:
     assert (
         not invalid.valid and invalid.latitude is None and invalid.altitude_msl is None
     )
+    assert not invalid.rtk_fixed and invalid.ellipsoidal_height is None
     south = Fix.from_message(
         parse_ascii(sentence(b"GPGGA,1,4807.038,S,01131.000,W,1,12,1,1,M,1,M,,0"))
     )

@@ -5,7 +5,7 @@ import pytest
 from conftest import SubscriptionTransport
 from um982py.capture import iter_frames
 from um982py.commands.types import Port
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.receiver import Receiver
 from um982py.stream_capture import EpochTracker, iter_decoded_records, iter_live_records
 

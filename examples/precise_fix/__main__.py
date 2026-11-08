@@ -17,7 +17,6 @@ from examples.precise_fix import (
     marker_position,
     reference_error,
 )
-from um982py.capture import capture_records
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -26,9 +25,10 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import capture_records
 from um982py.corrections import stale_correction
-from um982py.experimental import FirmwareLog
 from um982py.geodesy import geodetic_from_ecef
+from um982py.logs import FirmwareLog
 
 
 def _parse_ecef(text: str) -> tuple[float, float, float]:

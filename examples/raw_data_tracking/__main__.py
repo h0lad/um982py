@@ -12,7 +12,6 @@ from examples.raw_data_tracking import (
     field_coverage,
     report,
 )
-from um982py.capture import open_receiver
 from um982py.commands.types import Port, Trigger
 from um982py.console import (
     ExampleParser,
@@ -21,6 +20,7 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import open_receiver
 from um982py.experimental import BasebandCapture, RawDataLog, capture_baseband
 
 

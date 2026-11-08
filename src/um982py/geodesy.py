@@ -52,7 +52,11 @@ def dms_to_degrees(value: float) -> float:
 def haversine_distance(
     latitude_a: float, longitude_a: float, latitude_b: float, longitude_b: float
 ) -> float:
-    """Great-circle distance in metres between two WGS84 positions."""
+    """Measure the great-circle distance between two WGS 84 positions in metres.
+
+    The calculation uses the mean Earth radius, so it is a spherical
+    approximation rather than an ellipsoidal geodesic.
+    """
     coordinates = (latitude_a, longitude_a, latitude_b, longitude_b)
     if not all(math.isfinite(value) for value in coordinates):
         raise ValueError("coordinates must be finite")
@@ -135,7 +139,7 @@ def enu_from_ecef(
 
 
 def wavelength(frequency_hz: float) -> float:
-    """Carrier wavelength in metres for a finite, positive frequency."""
+    """Calculate carrier wavelength in metres from a finite, positive frequency."""
     if (
         isinstance(frequency_hz, bool)
         or not math.isfinite(frequency_hz)
@@ -157,7 +161,7 @@ def elevation_mask_filter(
 
 
 def receiver_ecef(record: Record) -> tuple[float, float, float]:
-    """Observer ECEF from a BESTPOS or BESTXYZ record."""
+    """Return the observer's ECEF coordinates from a BESTPOS or BESTXYZ record."""
     if "p_x" in record:
         return record.real("p_x"), record.real("p_y"), record.real("p_z")
     height = record.real("hgt") + record.real("undulation")

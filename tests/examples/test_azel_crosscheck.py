@@ -16,7 +16,7 @@ from examples.azel_crosscheck import (
 from examples.azel_crosscheck.__main__ import epoch_seconds
 
 from um982py.commands import Log
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.messages.enums import SatelliteSystem
 from um982py.protocol import StreamDecoder

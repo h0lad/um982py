@@ -64,9 +64,9 @@ class EpochSolution:
     epoch: float
     """Absolute GPS seconds, or sample index for unstamped synthetic records."""
     position_type: int
-    """Position type code of the Unicore manual position type table."""
+    """Position type code from the Unicore manual."""
     solution_status: int
-    """Solution status code of the Unicore manual solution status table."""
+    """Solution status code from the Unicore manual."""
     differential_age: float
     """Age of the differential corrections in seconds."""
     solution_age: float
@@ -81,17 +81,17 @@ class EpochSolution:
 
     @property
     def position_label(self) -> str:
-        """Documented name of the reported position type."""
+        """Return the documented name of the reported position type."""
         return position_label(self.position_type)
 
     @property
     def solution_label(self) -> str:
-        """Documented name of the reported solution status."""
+        """Return the documented name of the reported solution status."""
         return solution_label(self.solution_status)
 
     @property
     def is_available(self) -> bool:
-        """True when the epoch carries a computed position solution."""
+        """Return whether the epoch carries a computed position solution."""
         return (
             self.solution_status == SolutionStatus.SOL_COMPUTED
             and self.fix_class is not FixClass.NONE
@@ -137,22 +137,22 @@ def classify(position_type: int) -> FixClass:
 
 
 def position_label(position_type: int) -> str:
-    """Documented name of a position type code."""
+    """Return the documented name of a position type code."""
     return PositionType(position_type).name
 
 
 def solution_label(solution_status: int) -> str:
-    """Documented name of a solution status code."""
+    """Return the documented name of a solution status code."""
     return SolutionStatus(solution_status).name
 
 
 def position_type_code(record: Record) -> int:
-    """Numeric position type of a record, accepting the ASCII label."""
+    """Return a record's numeric position type, accepting an ASCII label."""
     return _code(record["pos_type"], PositionType, "pos_type")
 
 
 def solution_status_code(record: Record) -> int:
-    """Numeric solution status of a record, accepting the ASCII label."""
+    """Return a record's numeric solution status, accepting an ASCII label."""
     return _code(record["p_sol_status"], SolutionStatus, "p_sol_status")
 
 

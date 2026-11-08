@@ -8,7 +8,7 @@ from pathlib import Path
 
 from examples.sidereal_multipath import SkyResidual, evaluate_repeatability
 from um982py.antenna import antenna_log
-from um982py.capture import capture_logs, load_records, record_epoch
+from um982py.capture import load_records, record_epoch
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -17,7 +17,8 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_logs
+from um982py.logs import FirmwareLog
 from um982py.measurement import RangeSample, sample_series
 from um982py.messages import Record
 from um982py.stats import detrend, is_continuous

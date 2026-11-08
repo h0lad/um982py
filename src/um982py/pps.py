@@ -1,4 +1,4 @@
-"""Read Linux PPS edge timestamps and compare explicitly associated UTC times."""
+"""Read Linux PPS timestamps and compare them with their associated UTC times."""
 
 import ctypes
 import math
@@ -8,7 +8,6 @@ import sys
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from importlib import import_module
-from pathlib import Path
 from types import TracebackType
 from typing import Literal, Self
 
@@ -35,14 +34,15 @@ class _KernelFetch(ctypes.Structure):
     _fields_ = [("info", _KernelInfo), ("timeout", _KernelTime)]
 
 
-# Linux defines PPS_FETCH with the size of a pointer, not the structure size.
+# The Linux PPS_FETCH ioctl encodes the pointer size, rather than the size of
+# the structure passed through that pointer.
 _PPS_FETCH = (3 << 30) | (ctypes.sizeof(ctypes.c_void_p) << 16) | (ord("p") << 8) | 0xA4
 _UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
 
 @dataclass(frozen=True, slots=True)
 class PpsEdge:
-    """A kernel edge sequence and timestamp in host CLOCK_REALTIME."""
+    """An edge sequence number and its timestamp on the host's CLOCK_REALTIME."""
 
     edge: Literal["assert", "clear"]
     sequence: int
@@ -70,9 +70,10 @@ class PpsSnapshot:
 
 
 def missed_pps_edges(previous: PpsEdge, current: PpsEdge) -> int:
-    """Count gaps assuming the same device instance and fewer than 2**31 edges.
+    """Count missed edges between two samples from the same device instance.
 
-    A reset near sequence wrap cannot be distinguished from a wrap.
+    The count assumes fewer than 2**31 edges elapsed. A reset near sequence
+    wrap looks the same as a wrap and cannot be detected here.
     """
     if previous.edge != current.edge:
         raise ValueError("PPS edges must have the same polarity")
@@ -83,10 +84,11 @@ def missed_pps_edges(previous: PpsEdge, current: PpsEdge) -> int:
 
 
 def pps_clock_offset_ns(edge: PpsEdge, receiver_utc: datetime) -> int:
-    """Compare host time with UTC explicitly associated with this same pulse.
+    """Compare the host timestamp with the receiver time for the same pulse.
 
-    The caller must establish the pulse-to-receiver-time association and any
-    configured pulse delay. The result is host CLOCK_REALTIME minus UTC.
+    The caller must associate the pulse with a receiver UTC time and account
+    for any configured pulse delay. The result is host CLOCK_REALTIME minus UTC,
+    in nanoseconds.
     """
     if receiver_utc.utcoffset() is None:
         raise ValueError("receiver UTC time must be timezone-aware")
@@ -98,15 +100,15 @@ def pps_clock_offset_ns(edge: PpsEdge, receiver_utc: datetime) -> int:
 
 
 class PpsDevice:
-    """Read an already configured Linux PPS device on x86-64 or AArch64.
+    """Read timestamps from a configured Linux PPS device on x86-64 or AArch64.
 
-    No receiver, kernel PPS configuration or system clock is changed. Kernel
-    timestamps use host CLOCK_REALTIME, not receiver UTC; sequence numbers
-    identify missed or repeated edge samples. Fetching is not thread-safe with
-    concurrent fetch or close operations.
+    Timestamps use the host's CLOCK_REALTIME, and sequence numbers help identify
+    missed or repeated edges. Reading does not change the receiver, kernel PPS
+    settings, or system clock. Do not call ``fetch`` concurrently with another
+    fetch or with ``close``.
     """
 
-    def __init__(self, path: Path) -> None:
+    def __init__(self, path: str | os.PathLike[str]) -> None:
         if (
             sys.platform != "linux"
             or platform.machine().lower() not in ("x86_64", "aarch64")

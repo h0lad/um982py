@@ -4,6 +4,7 @@ import argparse
 import csv
 import json
 import math
+import os
 import sys
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
@@ -220,7 +221,9 @@ def add_receiver_arguments(
     )
 
 
-def write_json(payload: object, destination: Path | None) -> None:
+def write_json(
+    payload: object, destination: str | os.PathLike[str] | None = None
+) -> None:
     """Serialise to a file, or to stdout when no destination is given."""
 
     def finite(value: object) -> object:
@@ -236,8 +239,9 @@ def write_json(payload: object, destination: Path | None) -> None:
     if destination is None:
         sys.stdout.write(text + "\n")
     else:
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_text(text + "\n", encoding="utf-8")
+        path = Path(destination)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(text + "\n", encoding="utf-8")
 
 
 def add_debug_argument(parser: ExampleParser) -> None:
@@ -291,10 +295,10 @@ def experiment_parser(name: str, description: str) -> ExampleParser:
 
 
 def read_numeric_csv(
-    path: Path, columns: Sequence[str]
+    path: str | os.PathLike[str], columns: Sequence[str]
 ) -> tuple[dict[str, float], ...]:
     """Read named finite numeric columns from an experiment reference file."""
-    with path.open(encoding="utf-8", newline="") as stream:
+    with Path(path).open(encoding="utf-8", newline="") as stream:
         reader = csv.DictReader(stream)
         if reader.fieldnames is None or not set(columns) <= set(reader.fieldnames):
             raise ValueError(f"{path} needs CSV columns {', '.join(columns)}")

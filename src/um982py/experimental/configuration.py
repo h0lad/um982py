@@ -19,7 +19,7 @@ from um982py.messages import CommandResponse
 
 
 class FirmwareSwitch(StrEnum):
-    """Exposes boolean switches through ``.configure(enabled=...)``."""
+    """Configure a boolean firmware switch with ``.configure(enabled=...)``."""
 
     BD3 = "BD3"
     DUALBEST = "DUALBEST"
@@ -74,7 +74,7 @@ def msm(value: Literal[32, 64]) -> Command[CommandResponse]:
 
 
 def tracking_mode(value: Literal[0, 1]) -> Command[CommandResponse]:
-    """Select TRACKMODE 0 or 1, whose meanings remain unverified."""
+    """Select TRACKMODE 0 or 1, whose meanings have not been verified."""
     return config("TRACKMODE", integer(value, 0, 1))
 
 
@@ -155,7 +155,7 @@ def rtk_elevation_mask(
     secondary: float | None = None,
     third: float | None = None,
 ) -> Command[CommandResponse]:
-    """Set AUTO or one and three elevation thresholds in 0..90."""
+    """Select AUTO or set one or three elevation thresholds from 0 to 90 degrees."""
     if degrees is None:
         if secondary is not None or third is not None:
             raise ValueError("AUTO takes no thresholds")

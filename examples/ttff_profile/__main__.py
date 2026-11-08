@@ -19,12 +19,7 @@ from examples.ttff_profile import (
     repeatability,
 )
 from um982py.antenna import antenna_log
-from um982py.capture import (
-    decode_records,
-    iter_frames,
-    open_receiver,
-    record_epoch,
-)
+from um982py.capture import decode_records, iter_frames, record_epoch
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -32,8 +27,9 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout, TransportError
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.messages.record import Record
 from um982py.subscriptions import temporary_subscriptions

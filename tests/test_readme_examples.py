@@ -1,11 +1,12 @@
 """Run the README snippets unchanged against recorded receiver responses."""
 
+import json
 import re
 from pathlib import Path
 
 import pytest
 
-from conftest import ReplayTransport, SubscriptionTransport, rtcm
+from conftest import ReplayTransport, SubscriptionTransport, rtcm, sentence
 from um982py import Receiver, ReceiverStream, RtkSession
 from um982py.commands.types import Port
 from um982py.messages import RtcmMessage
@@ -20,18 +21,23 @@ SNIPPETS = re.findall(
 
 def _run_snippet(
     index: int,
-    capture: str,
+    capture: str | bytes,
     command: bytes,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     *,
     queries: int = 1,
 ) -> dict[str, object]:
-    raw = (ROOT / "tests" / "fixtures" / capture).read_bytes()
+    raw = (
+        capture
+        if isinstance(capture, bytes)
+        else (ROOT / "tests" / "fixtures" / capture).read_bytes()
+    )
     transport = ReplayTransport({command: raw}, chunk=7)
 
-    def serial(port: str, baudrate: int) -> Receiver:
+    def serial(port: str, baudrate: int, *, timeout: float = 3) -> Receiver:
         assert (port, baudrate) == ("/dev/ttyUSB0", 921600)
+        assert timeout > 0
         return Receiver(transport, timeout=0.1)
 
     monkeypatch.setattr(Receiver, "serial", staticmethod(serial))
@@ -47,22 +53,24 @@ def _run_snippet(
     ("capture", "expected"),
     [
         (
-            "bodies/BESTNAVB.bin",
-            "52.533696313, 13.376335582 | receiver std (N/E/up): "
-            "2.459/2.204/2.859 m | SINGLE | 31 satellites | fresh RTK: False\n",
+            sentence(
+                b"GNGGA,145842.00,5232.0000,N,01322.0000,E,1,17,1.3,38.0,M,36.0,M,,"
+            ),
+            "52.53333333333333, 13.366666666666667 | quality: 1 | 17 satellites | "
+            "RTK fixed: False\n",
         ),
-        ("bestnavb.bin", "Waiting for a position: INSUFFICIENT_OBS\n"),
+        (sentence(b"GNGGA,145842.00,,,,,0,00,,,,,,,"), "Waiting for a position\n"),
     ],
 )
 def test_readme_position(
-    capture: str,
+    capture: bytes,
     expected: str,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     monkeypatch.setattr("time.sleep", lambda seconds: None)
-    _run_snippet(0, capture, b"BESTNAVB\r\n", monkeypatch, tmp_path, queries=60)
+    _run_snippet(0, capture, b"GPGGA\r\n", monkeypatch, tmp_path, queries=60)
     assert capsys.readouterr().out == expected * 60
 
 
@@ -180,3 +188,56 @@ def test_readme_rinex(
     assert text.startswith("     3.05")
     assert "FIELD01" in text
     assert text.count("\n> ") == 26
+
+
+def test_readme_speed_and_coordinate_conversion(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    samples = json.loads(
+        (ROOT / "tests/fixtures/manual-examples-r1.4.json").read_text(encoding="utf-8")
+    )
+    namespace = _run_snippet(
+        4,
+        (samples["BESTNAVA"] + "\r\n").encode("ascii"),
+        b"BESTNAVA\r\n",
+        monkeypatch,
+        tmp_path,
+    )
+    from um982py import BestNavigation, geodetic_from_ecef
+
+    navigation = namespace["navigation"]
+    assert isinstance(navigation, BestNavigation)
+    assert navigation.valid and navigation.velocity_valid
+    assert "Horizontal speed in m/s: 0.0046" in capsys.readouterr().out
+    xyz = namespace["xyz"]
+    assert isinstance(xyz, tuple)
+    assert geodetic_from_ecef(*xyz) == pytest.approx(
+        (navigation.latitude, navigation.longitude, navigation.ellipsoidal_height),
+        abs=1e-5,
+    )
+
+
+def test_readme_pps_edge(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import um982py
+    from um982py import PpsEdge, PpsSnapshot
+
+    class Device:
+        def __init__(self, path: str) -> None:
+            assert path == "/dev/pps0"
+
+        def __enter__(self) -> "Device":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+        def fetch(self) -> PpsSnapshot:
+            return PpsSnapshot(PpsEdge("assert", 1, 1, 123), None, 0)
+
+    monkeypatch.setattr(um982py, "PpsDevice", Device)
+    exec(compile(SNIPPETS[5], "README.md", "exec"), {})  # noqa: S102
+    assert capsys.readouterr().out == "Host CLOCK_REALTIME in nanoseconds: 1000000123\n"

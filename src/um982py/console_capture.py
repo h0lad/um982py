@@ -8,7 +8,7 @@ from contextlib import ExitStack
 from pathlib import Path
 
 from um982py.antenna import antenna_log, swap_antenna
-from um982py.augmentation import AugmentationState, enable_augmentation
+from um982py.augmentation import enable_augmentation
 from um982py.capture import (
     DataLog,
     InterruptedCapture,
@@ -23,11 +23,7 @@ from um982py.messages import Record
 from um982py.receiver import Receiver
 
 
-def open_receiver(
-    args: argparse.Namespace,
-    *,
-    augmentation: Callable[[Receiver], AugmentationState] = enable_augmentation,
-) -> Receiver:
+def open_receiver(args: argparse.Namespace) -> Receiver:
     """Open the device, or replay a captured transcript."""
     replay = getattr(args, "replay", None)
     if replay is not None:
@@ -38,7 +34,7 @@ def open_receiver(
     with ExitStack() as cleanup:
         cleanup.callback(receiver.close)
         if getattr(args, "augment", False):
-            state = augmentation(receiver)
+            state = enable_augmentation(receiver)
             if state.changed and state.active_group is not None:
                 print(
                     "augmentation: signal group "
@@ -78,7 +74,6 @@ def capture_records(
     binary: bool = True,
     arrival_order: list[Record] | None = None,
     on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
-    open_receiver_fn: Callable[[argparse.Namespace], Receiver] | None = None,
 ) -> dict[str, tuple[Record, ...]]:
     """Replay a file directly or temporarily stream all requested logs together."""
     antenna = getattr(args, "antenna", "primary")
@@ -120,8 +115,7 @@ def capture_records(
         file=sys.stderr,
         flush=True,
     )
-    opener = open_receiver if open_receiver_fn is None else open_receiver_fn
-    with opener(args) as receiver:
+    with open_receiver(args) as receiver:
         try:
             result = capture_live(
                 receiver,
@@ -145,3 +139,21 @@ def capture_records(
         flush=True,
     )
     return result
+
+
+def capture_logs(
+    args: argparse.Namespace,
+    logs: Sequence[DataLog],
+    *,
+    arrival_order: list[Record] | None = None,
+    on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
+) -> dict[str, tuple[Record, ...]]:
+    """Capture or replay all requested logs using command-line options."""
+    return capture_records(
+        args,
+        logs,
+        duration=args.duration,
+        interval=args.interval,
+        arrival_order=arrival_order,
+        on_progress=on_progress,
+    )

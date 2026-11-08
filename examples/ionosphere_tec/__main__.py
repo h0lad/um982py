@@ -18,9 +18,10 @@ from examples.ionosphere_tec import (
     slant_tec,
     tec_report,
 )
-from um982py.capture import GPS_FREQUENCIES, capture_records, gps_signals, record_epoch
+from um982py.capture import GPS_FREQUENCIES, gps_signals, record_epoch
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 

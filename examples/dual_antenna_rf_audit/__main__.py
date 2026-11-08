@@ -14,7 +14,6 @@ from examples.dual_antenna_rf_audit import (
     summarize_by_signal,
 )
 from um982py.antenna import AntennaLog
-from um982py.capture import capture_logs
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -23,8 +22,9 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import capture_logs
 from um982py.diagnostics import signal_inventory
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 
 
 def main(argv: Sequence[str] | None = None) -> int:

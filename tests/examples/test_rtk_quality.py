@@ -15,7 +15,7 @@ from examples.rtk_quality import (
 from examples.rtk_quality.__main__ import _diagnostic_rows
 
 from um982py.capture import decode_records, read_frames
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages.enums import PositionType, SolutionStatus
 
 

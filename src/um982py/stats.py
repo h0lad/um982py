@@ -125,7 +125,7 @@ def lomb_scargle(
     values: Sequence[float],
     frequencies: Sequence[float],
 ) -> list[float]:
-    """Classic Lomb-Scargle periodogram with unnormalised power."""
+    """Calculate a classic Lomb-Scargle periodogram with unnormalised power."""
     if len(samples) != len(values):
         raise ValueError("samples and values must have equal length")
     if len(samples) < 3:
@@ -161,7 +161,7 @@ def lomb_scargle(
 def peaks(
     powers: Sequence[float], frequencies: Sequence[float]
 ) -> list[tuple[float, float]]:
-    """Local maxima as ``(frequency, power)`` sorted by descending power."""
+    """Return local maxima as ``(frequency, power)``, strongest first."""
     found = [
         (frequencies[index], powers[index])
         for index in range(1, len(powers) - 1)
@@ -184,7 +184,10 @@ def fractional_frequency(phase: Sequence[float], tau0: float = 1.0) -> list[floa
 def allan_deviation(
     samples: Sequence[float], tau0: float = 1.0
 ) -> list[tuple[float, float]]:
-    """Allan deviation of fractional-frequency samples at ``tau0`` seconds."""
+    """Calculate Allan deviation from fractional-frequency samples.
+
+    The samples are spaced ``tau0`` seconds apart.
+    """
     if not math.isfinite(tau0) or tau0 <= 0:
         raise ValueError("tau0 must be finite and positive")
     if not all(math.isfinite(value) for value in samples):
@@ -214,17 +217,17 @@ def finite(*values: float) -> None:
 
 
 def dot(a: Sequence[float], b: Sequence[float]) -> float:
-    """Euclidean inner product of equal-length vectors."""
+    """Calculate the Euclidean inner product of two equal-length vectors."""
     return math.fsum(x * y for x, y in zip(a, b, strict=True))
 
 
 def norm(a: Sequence[float]) -> float:
-    """Euclidean norm."""
+    """Calculate the Euclidean norm of a vector."""
     return math.sqrt(dot(a, a))
 
 
 def subtract(a: Vector, b: Vector) -> Vector:
-    """Component differences of two vectors."""
+    """Subtract the components of one vector from another."""
     return a[0] - b[0], a[1] - b[1], a[2] - b[2]
 
 
@@ -237,7 +240,7 @@ def unit(a: Vector) -> Vector:
 
 
 def rms(values: Sequence[float]) -> float:
-    """Root mean square of a nonempty finite series."""
+    """Calculate the root mean square of a nonempty, finite series."""
     if not values:
         raise ValueError("at least one sample is required")
     finite(*values)
@@ -247,10 +250,10 @@ def rms(values: Sequence[float]) -> float:
 def correlation(
     a: Sequence[float], b: Sequence[float], *, minimum_samples: int = 3
 ) -> float | None:
-    """Pearson correlation, or no estimate for a constant or short series.
+    """Calculate Pearson correlation, returning None for a constant or short series.
 
-    ``minimum_samples`` defaults to three because two paired samples are sufficient
-    for the arithmetic but do not establish a robust statistical relationship.
+    ``minimum_samples`` defaults to three. Two paired samples are enough for
+    the arithmetic, but they do not establish a robust statistical relationship.
     """
     if minimum_samples < 2:
         raise ValueError("minimum_samples must be at least two")

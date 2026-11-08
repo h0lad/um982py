@@ -6,7 +6,7 @@ from dataclasses import asdict
 
 from examples.baseband_epoch_audit import audit_baseband
 from um982py.antenna import antenna_log
-from um982py.capture import decode_records, open_receiver
+from um982py.capture import decode_records
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -14,7 +14,9 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog, capture_baseband_notices, scan_notices
+from um982py.console_capture import open_receiver
+from um982py.experimental import capture_baseband_notices, scan_notices
+from um982py.logs import FirmwareLog
 from um982py.protocol import StreamDecoder
 from um982py.subscriptions import temporary_subscriptions
 

@@ -17,7 +17,6 @@ from examples.interference_monitor import (
     spoof_report,
     status_alerts,
 )
-from um982py.capture import capture_records
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -26,7 +25,8 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.experimental import FirmwareLog
+from um982py.console_capture import capture_records
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 

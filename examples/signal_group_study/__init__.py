@@ -14,8 +14,8 @@ from examples.dop_geometry import (
 )
 from examples.rtk_quality import FixClass, classify
 from um982py.commands.configuration import SignalGroup
-from um982py.experimental import LogList
 from um982py.messages.record import Record
+from um982py.receiver_models import LogList
 from um982py.stats import mean
 
 DOP_TOLERANCE = 0.05

@@ -11,11 +11,10 @@ from conftest import SubscriptionTransport, ascii_message
 from test_protocol import binary
 from um982py import Receiver
 from um982py import capture as _capture
+from um982py import console_capture as _console_capture
 from um982py.capture import (
     InterruptedCapture,
-    capture_records,
     gps_signals,
-    open_receiver,
     read_frames,
     receive_records,
     record_epoch,
@@ -23,9 +22,10 @@ from um982py.capture import (
 )
 from um982py.commands.types import Port
 from um982py.console import ExampleParser, add_receiver_arguments, write_json
+from um982py.console_capture import capture_records, open_receiver
 from um982py.corrections import stale_correction
 from um982py.errors import ProtocolError
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 
@@ -37,7 +37,7 @@ def test_shared_receiver_accepts_tcp_target() -> None:
     transport = SubscriptionTransport()
     with (
         patch.object(Receiver, "connect", return_value=Receiver(transport)) as factory,
-        patch("um982py.capture.enable_augmentation") as augmentation,
+        patch("um982py.console_capture.enable_augmentation") as augmentation,
     ):
         augmentation.return_value.changed = False
         augmentation.return_value.rejected = ()
@@ -54,7 +54,7 @@ def test_shared_receiver_augmentation_is_explicit() -> None:
     receiver = Mock()
     with (
         patch.object(Receiver, "connect", return_value=receiver),
-        patch("um982py.capture.enable_augmentation") as augmentation,
+        patch("um982py.console_capture.enable_augmentation") as augmentation,
     ):
         augmentation.return_value.changed = False
         augmentation.return_value.rejected = ()
@@ -66,7 +66,9 @@ def test_shared_receiver_closes_after_augmentation_failure() -> None:
     receiver = Mock()
     with (
         patch.object(Receiver, "connect", return_value=receiver),
-        patch("um982py.capture.enable_augmentation", side_effect=OSError("lost")),
+        patch(
+            "um982py.console_capture.enable_augmentation", side_effect=OSError("lost")
+        ),
         pytest.raises(OSError, match="lost"),
     ):
         open_receiver(options(port="fake", baud=921600, record=None, augment=True))
@@ -86,7 +88,7 @@ def test_live_receiver_configures_requested_ppp_service(service: str) -> None:
     receiver = Mock()
     with (
         patch.object(Receiver, "connect", return_value=receiver),
-        patch("um982py.capture.enable_augmentation") as augmentation,
+        patch("um982py.console_capture.enable_augmentation") as augmentation,
     ):
         augmentation.return_value.changed = False
         augmentation.return_value.rejected = ()
@@ -126,7 +128,7 @@ def test_live_collection_waits_for_multiple_epochs_and_restores_logs(
     monkeypatch.setattr(_capture, "monotonic", lambda: clock[0])
     monkeypatch.setattr("um982py.receiver.monotonic", lambda: clock[0])
     monkeypatch.setattr(
-        _capture, "open_receiver", lambda args: Receiver(transport, timeout=1.0)
+        _console_capture, "open_receiver", lambda args: Receiver(transport, timeout=1.0)
     )
     snapshots: list[dict[str, tuple[Record, ...]]] = []
     records = capture_records(
@@ -151,7 +153,7 @@ def test_replay_decodes_ascii_and_binary_without_opening_a_receiver(
     def unexpected_open(args: argparse.Namespace) -> Receiver:
         pytest.fail("replay must not open a live receiver")
 
-    monkeypatch.setattr(_capture, "open_receiver", unexpected_open)
+    monkeypatch.setattr(_console_capture, "open_receiver", unexpected_open)
     snapshots: list[dict[str, tuple[Record, ...]]] = []
     result = capture_records(
         argparse.Namespace(replay=path),
@@ -177,7 +179,9 @@ def test_cancelled_capture_restores_logs_and_preserves_received_data(
 
     transport = InterruptedTransport()
     transport.after_write["RANGEB 1"] = binary((0).to_bytes(4, "little"), 43)
-    monkeypatch.setattr(_capture, "open_receiver", lambda args: Receiver(transport))
+    monkeypatch.setattr(
+        _console_capture, "open_receiver", lambda args: Receiver(transport)
+    )
     result = capture_records(options(), [FirmwareLog.RANGE], frames=3)
     assert len(result["RANGE"]) == 1
     assert not transport.subscriptions
@@ -345,6 +349,37 @@ def test_library_capture_uses_open_receiver_without_cli_or_output(
     records = _capture.capture_live(receiver, [FirmwareLog.RANGE], duration=8, frames=3)
     assert len(records["RANGE"]) == 3
     assert transport.subscriptions == {}
+    single = _capture.capture_live(receiver, FirmwareLog.RANGE, duration=8, frames=2)
+    assert isinstance(single, tuple) and len(single) == 2
+    assert transport.subscriptions == {}
+    with pytest.raises(ValueError, match="at least one log"):
+        _capture.capture_live(receiver, [], duration=8)
     assert not transport.closed
     assert capsys.readouterr().err == ""
     receiver.close()
+
+
+def test_load_records_accepts_string_paths() -> None:
+    path = Path(__file__).parents[1] / "fixtures/captures-live/RANGEA.bin"
+    records = _capture.load_records(str(path), FirmwareLog.RANGE)
+    assert records == _capture.decode_records(
+        _capture.read_frames(path), FirmwareLog.RANGE
+    )
+    assert records
+
+
+def test_output_helpers_accept_string_paths(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from um982py import read_numeric_csv, write_json
+
+    path = tmp_path / "reference.csv"
+    path.write_text("time,value\n1,2\n", encoding="utf-8")
+    assert read_numeric_csv(str(path), ["time", "value"]) == (
+        {"time": 1.0, "value": 2.0},
+    )
+    write_json({"value": 2})
+    assert '"value": 2' in capsys.readouterr().out
+    output = tmp_path / "data" / "result.json"
+    write_json({"value": 2}, str(output))
+    assert '"value": 2' in output.read_text(encoding="utf-8")

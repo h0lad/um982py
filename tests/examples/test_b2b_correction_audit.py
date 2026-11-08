@@ -15,8 +15,8 @@ from examples.b2b_correction_audit import (
 )
 
 from tests.examples._new_api import record as range_record
+from um982py.b2b import b2b_epoch
 from um982py.capture import record_epoch
-from um982py.experimental import b2b_epoch
 from um982py.messages import Record
 
 MASK = CorrectionEvent(100, 219, "mask", 99, 1, 2, mask=b"\x01" * 32)

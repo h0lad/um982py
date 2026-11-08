@@ -3,15 +3,15 @@
 from dataclasses import replace
 from enum import StrEnum
 
-from um982py._firmware_layouts import LAYOUTS
-from um982py._firmware_navigation import visibility_fields
 from um982py.commands import logging
 from um982py.commands.core import Command
 from um982py.commands.types import Port, Trigger
 from um982py.errors import ProtocolError
+from um982py.firmware_layouts import LAYOUTS
 from um982py.messages import AsciiMessage, BinaryMessage, CommandResponse, Message
 from um982py.messages.reader import BodyReader
 from um982py.messages.record import Record
+from um982py.navigation_layouts import visibility_fields
 
 _BINARY_IDS = {
     "RTKSTATUS2": 691,
@@ -128,7 +128,10 @@ class FirmwareLog(StrEnum):
     def read(
         self, *, binary: bool = False, port: Port | None = None
     ) -> Command[Record]:
-        """Decode one reply frame, or use Receiver.collect() for all SATVIS2 systems."""
+        """Build a command that decodes one reply frame.
+
+        Use Receiver.collect() to read every constellation in a SATVIS2 reply.
+        """
         command = self.request(binary=binary, port=port)
         return Command(command.text, command.matches, self.decode)
 

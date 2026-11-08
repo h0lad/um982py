@@ -33,9 +33,9 @@ def transform_coordinate(
 ) -> CoordinateTransform:
     """Transform x/y/z, with longitude before latitude for geographic CRSs.
 
-    The epoch is a decimal year in the source coordinate reference frame, not
-    the receiver's time of day. Missing grids and ballpark operations are not
-    silently substituted. A 2D CRS requires explicit promotion to 3D.
+    Give the epoch as a decimal year in the source coordinate reference frame,
+    not as the receiver's time of day. Missing grids and ballpark operations
+    are not silently substituted, and a 2D CRS must be explicitly promoted to 3D.
     """
     if len(coordinates) != 3 or not all(isfinite(value) for value in coordinates):
         raise ValueError("coordinates must contain three finite numbers")

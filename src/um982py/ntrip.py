@@ -328,7 +328,7 @@ class NtripClient:
 
 @dataclass(frozen=True, slots=True)
 class Mountpoint:
-    """Advertised source-table fields, without assuming the source is usable."""
+    """A caster's advertised mountpoint, which may not be usable or available."""
 
     name: str
     identifier: str
@@ -344,14 +344,14 @@ class Mountpoint:
     bitrate: int | None
 
     def distance_to(self, latitude: float, longitude: float) -> float | None:
-        """Great-circle distance in metres, or None when location is absent."""
+        """Return the great-circle distance in metres, or None without a location."""
         if self.latitude is None or self.longitude is None:
             return None
         return haversine_distance(latitude, longitude, self.latitude, self.longitude)
 
 
 def parse_sourcetable(data: str) -> tuple[Mountpoint, ...]:
-    """Parse STR records; other sourcetable record types are ignored."""
+    """Parse the STR records in a sourcetable, ignoring other record types."""
     sources: list[Mountpoint] = []
     for line in data.splitlines():
         fields = line.split(";")

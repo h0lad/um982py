@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from um982py.experimental import FirmwareLog
+from um982py.logs import FirmwareLog
 from um982py.messages import AsciiMessage, BinaryMessage
 from um982py.protocol import StreamDecoder
 

@@ -82,10 +82,10 @@ class DisasterReport:
 def decode_qzqsm(record: Record) -> DisasterReport:
     """Validate and decode a QZQSM record, rejecting corrupt or non-DCR frames.
 
-    Unknown versions and categories are retained without interpreting their body.
-    MT44 stays opaque because current DCX messages and older MT44 formats have
-    different layouts. The satellite CRC is checked here; the stream decoder
-    checks the NMEA checksum.
+    Unknown versions and categories are retained without interpreting their
+    body. MT44 stays opaque because current DCX messages and older MT44 formats
+    have different layouts. This function checks the satellite CRC, while the
+    stream decoder checks the NMEA checksum.
     """
     if record.name != "QZQSM":
         raise ValueError("expected a QZQSM record")

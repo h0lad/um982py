@@ -7,7 +7,7 @@ from collections.abc import Sequence
 
 from examples.ephemeris_orbit import state_from_record
 from um982py import Receiver
-from um982py.capture import decode_records, open_receiver, read_frames
+from um982py.capture import decode_records, read_frames
 from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
@@ -16,6 +16,7 @@ from um982py.console import (
     run,
     write_json,
 )
+from um982py.console_capture import open_receiver
 from um982py.errors import ProtocolError, ResponseTimeout
 from um982py.messages import Record
 

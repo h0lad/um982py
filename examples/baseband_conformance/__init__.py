@@ -11,11 +11,11 @@ from um982py.commands.core import Command
 from um982py.experimental import (
     BasebandCommand,
     BasebandNotice,
-    LogList,
     SideEffect,
     baseband_command,
 )
 from um982py.messages import CommandResponse
+from um982py.receiver_models import LogList
 
 ACKNOWLEDGEMENTS = frozenset({"UART_CMD_OK", "SPI_CMD_OK"})
 """Notices the baseband prints when it accepts a forwarded command."""
