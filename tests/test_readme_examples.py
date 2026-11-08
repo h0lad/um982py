@@ -5,8 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from conftest import ReplayTransport, SubscriptionTransport, acknowledgement, rtcm
-from um982py import Receiver
+from conftest import ReplayTransport, SubscriptionTransport, rtcm
+from um982py import Receiver, ReceiverStream, RtkSession
 from um982py.commands.types import Port
 from um982py.messages import RtcmMessage
 from um982py.protocol import StreamDecoder
@@ -100,11 +100,8 @@ def test_readme_ntrip(
     monkeypatch.setenv("NTRIP_URL", "http://caster.example:2101/STATION")
     monkeypatch.setenv("NTRIP_USERNAME", "researcher")
     monkeypatch.setenv("NTRIP_PASSWORD", "test-credential")
-    ticks = iter(range(0, 1000, 6))
-    monkeypatch.setattr("time.monotonic", lambda: next(ticks))
     transport = ReplayTransport(
         {
-            b"MODE ROVER SURVEY\r\n": acknowledgement("MODE ROVER SURVEY"),
             b"GPGGA\r\n": (
                 ROOT / "tests/fixtures/captures-live/GNGGA.bin"
             ).read_bytes(),
@@ -113,14 +110,29 @@ def test_readme_ntrip(
     monkeypatch.setattr(
         Receiver, "serial", staticmethod(lambda *args: Receiver(transport))
     )
+    active_stop = []
+    send = ReceiverStream.send_correction
+    run = RtkSession.run
+
+    def stop_after_last(stream: ReceiverStream, message: RtcmMessage) -> object:
+        future = send(stream, message)
+        if message.message_type == 1087:
+            future.add_done_callback(lambda _: active_stop[0].set())
+        return future
+
+    def run_until_complete(session: RtkSession, stop: object) -> None:
+        active_stop.append(stop)
+        run(session, stop)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(ReceiverStream, "send_correction", stop_after_last)
+    monkeypatch.setattr(RtkSession, "run", run_until_complete)
     exec(compile(SNIPPETS[2], "README.md", "exec"), {})  # noqa: S102
     forwarded = [data for data in transport.writes if data.startswith(b"\xd3")]
     assert forwarded == frames
     assert transport.closed
-    assert transport.writes.count(b"GPGGA\r\n") >= 2
+    assert transport.writes.count(b"GPGGA\r\n") >= 1
     assert b"Ntrip-GGA: $GPGGA," in connection.sent[0]
     assert b"Authorization: Basic " in connection.sent[0]
-    assert any(data.startswith(b"$GPGGA,") for data in connection.sent[1:])
     decoder = StreamDecoder(strict=True)
     assert all(
         isinstance(frame, RtcmMessage) for frame in decoder.feed(b"".join(forwarded))

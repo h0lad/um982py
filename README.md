@@ -11,6 +11,9 @@ See the [integration guide](docs/integration.md) for streaming, mobile RTK,
 scientific sessions and configuration changes, and the
 [validation matrix](docs/validation.md) for available evidence.
 
+The [examples](examples/README.md) include reconnecting position streams,
+segmented field recording, NTRIP discovery, post-processed RTK and RINEX export.
+Coordinate transformations are available with `pip install 'um982py[geodesy]'`.
 
 ## Install and use
 
@@ -86,50 +89,55 @@ else:
 
 ### Feed NTRIP corrections to an RTK rover
 
-This short example demonstrates the protocol. For reconnection, monitoring and
-scheduled GGA updates in a longer-running application, see the integration guide.
+Configure the receiver as a rover before starting the relay. The session retries
+transient caster failures and reports its state through `health()`.
 
 ```python
 import os
-from time import monotonic
+from threading import Event
 
-from um982py import NtripClient, Receiver
-from um982py.commands import logging, modes
-from um982py.messages import RtcmMessage
+from um982py import NtripClient, Receiver, ReceiverStream, RtkSession
+from um982py.commands import logging
+from um982py.errors import ResponseTimeout
+from um982py.messages import Sentence
 from um982py.messages.navigation import Fix
-from um982py.protocol import StreamDecoder
 from um982py.protocol.checksums import nmea_checksum
 
 
-def rover_gga(receiver: Receiver) -> bytes:
-    sentence = receiver.execute(logging.request("GPGGA"))
-    if not Fix.from_message(sentence).valid:
-        raise RuntimeError("Wait for an initial position before connecting to NTRIP")
-    body = ("GPGGA," + ",".join(sentence.fields)).encode("ascii")
-    return b"$" + body + f"*{nmea_checksum(body):02X}\r\n".encode("ascii")
-
-
-# Set NTRIP_URL to your provider's http(s)://host:port/mountpoint.
-# Set NTRIP_USERNAME and NTRIP_PASSWORD if authentication is required.
 with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    receiver.execute(modes.rover())
-    with NtripClient(
-        os.environ["NTRIP_URL"],
-        username=os.getenv("NTRIP_USERNAME"),
-        password=os.getenv("NTRIP_PASSWORD"),
-        initial_gga=rover_gga(receiver),
-    ) as caster:
-        decoder = StreamDecoder(strict=True)
-        next_gga = monotonic() + 10
-        while data := caster.read():
-            for message in decoder.feed(data):
-                if isinstance(message, RtcmMessage):
-                    receiver.send_correction(message)
-            if monotonic() >= next_gga:
-                caster.send_gga(rover_gga(receiver))
-                next_gga = monotonic() + 10
-        decoder.finish()
+    stream = ReceiverStream(receiver)
+    stream.start()
+
+    def rover_gga() -> bytes | None:
+        try:
+            message = stream.execute(logging.request("GPGGA"), timeout=2).result()
+        except ResponseTimeout:
+            return None
+        if isinstance(message, Sentence) and Fix.from_message(message).valid:
+            body = ("GPGGA," + ",".join(message.fields)).encode("ascii")
+            return b"$" + body + f"*{nmea_checksum(body):02X}\r\n".encode("ascii")
+        return None
+
+    def client() -> NtripClient:
+        return NtripClient(
+            os.environ["NTRIP_URL"],
+            username=os.getenv("NTRIP_USERNAME"),
+            password=os.getenv("NTRIP_PASSWORD"),
+            initial_gga=rover_gga(),
+        )
+
+    session = RtkSession(stream, client, gga_provider=rover_gga)
+    try:
+        session.run(Event())
+    except KeyboardInterrupt:
+        pass
+    finally:
+        stream.close()
 ```
+
+Set `NTRIP_URL` to the provider's mountpoint URL and, when required, set both
+`NTRIP_USERNAME` and `NTRIP_PASSWORD`. Some casters require a valid initial fix
+before connecting.
 
 ### Capture a measurement session and export RINEX
 
