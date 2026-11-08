@@ -1,20 +1,11 @@
 # um982py
 
 Python 3.12+ library and command-line tools for the Unicore UM982 GNSS receiver.
-It reads and configures the receiver, handles NMEA, Unicore and RTCM streams,
-and provides tools for GNSS capture and analysis.
 
-Some features may also work with the UM960 and UM980; these receivers have not
-been tested.
+Some features may also work with the UM960 and UM980.
 
 Validate the receiver firmware, positioning accuracy, timing and sustained
 operation on the target system before deployment.
-
-The [examples](examples/README.md) include reconnecting position streams,
-segmented field recording, NTRIP discovery, post-processed RTK and RINEX export.
-Coordinate transformations are available with `pip install 'um982py[geodesy]'`.
-The [time transfer example](examples/time_transfer/README.md) includes Linux
-PPS timestamp capture.
 
 ## Install and use
 
@@ -34,6 +25,24 @@ um982py --port tcp://192.0.2.10:4001 doctor
 Queries leave augmentation settings unchanged. Use `--augment` to enable
 augmentation for the current receiver session without saving the configuration.
 
+## Find the right API
+
+| Task | Start here |
+| --- | --- |
+| Open a serial port or TCP gateway | `Receiver.connect(target)` |
+| Identify the receiver | `receiver.version()` |
+| Read position, heading, or velocity | `receiver.fix()`, `receiver.heading()`, `receiver.best_navigation()` |
+| Query one receiver log | `receiver.read_log(Log.BESTNAV)` |
+| Inspect satellites and their signals | `receiver.read_log(Log.SATSINFO).records("satellites")` |
+| Capture one log or several logs | `capture_live()` |
+| Read a saved capture | `load_records(path, log)` or `iter_frames(path)` |
+| Relay NTRIP corrections | `relay_ntrip(receiver, url)` |
+| Export observations | `export_rinex()` |
+| Convert coordinates and measure distance | `ecef_from_geodetic()`, `geodetic_from_ecef()`, `haversine_distance()` |
+| Read a Linux PPS timestamp | `with PpsDevice(path) as device: device.fetch()` |
+| Use asyncio | `AsyncReceiver.connect()` |
+
+
 ## Development
 
 ```bash
@@ -51,24 +60,20 @@ python -m pytest
 ```python
 from time import sleep
 
-from um982py import Receiver, record_epoch, solution_from_record
-from um982py.commands import Log
+from um982py import Receiver
 
 with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
     for _ in range(60):
-        position = receiver.read_log(Log.BESTNAV)
-        quality = solution_from_record(record_epoch(position), position)
-        if quality.is_available:
+        fix = receiver.fix()
+        if fix.valid:
             print(
-                f"{position.real('lat'):.9f}, {position.real('lon'):.9f} | "
-                f"receiver std (N/E/up): {position.real('lat_std'):.3f}/"
-                f"{position.real('lon_std'):.3f}/{position.real('hgt_std'):.3f} m | "
-                f"{quality.position_label} | {quality.satellites_used} satellites | "
-                f"fresh RTK: {quality.fresh_fixed}",
+                f"{fix.latitude}, {fix.longitude} | "
+                f"quality: {fix.quality} | {fix.satellites} satellites | "
+                f"RTK fixed: {fix.rtk_fixed}",
                 flush=True,
             )
         else:
-            print(f"Waiting for a position: {quality.solution_label}", flush=True)
+            print("Waiting for a position", flush=True)
         sleep(1)
 ```
 
@@ -91,50 +96,24 @@ else:
 
 ### Feed NTRIP corrections to an RTK rover
 
-Configure the receiver as a rover before starting the relay. The session retries
-transient caster failures and reports its state through `health()`.
+Configure the receiver as a rover before starting the relay. It retries transient
+caster failures and returns its health when stopped with a `threading.Event`.
 
 ```python
 import os
-from threading import Event
-
-from um982py import NtripClient, Receiver, ReceiverStream, RtkSession
-from um982py.commands import logging
-from um982py.errors import ResponseTimeout
-from um982py.messages import Sentence
-from um982py.messages.navigation import Fix
-from um982py.protocol.checksums import nmea_checksum
+from um982py import Receiver, relay_ntrip
 
 
 with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    stream = ReceiverStream(receiver)
-    stream.start()
-
-    def rover_gga() -> bytes | None:
-        try:
-            message = stream.execute(logging.request("GPGGA"), timeout=2).result()
-        except ResponseTimeout:
-            return None
-        if isinstance(message, Sentence) and Fix.from_message(message).valid:
-            body = ("GPGGA," + ",".join(message.fields)).encode("ascii")
-            return b"$" + body + f"*{nmea_checksum(body):02X}\r\n".encode("ascii")
-        return None
-
-    def client() -> NtripClient:
-        return NtripClient(
+    try:
+        relay_ntrip(
+            receiver,
             os.environ["NTRIP_URL"],
             username=os.getenv("NTRIP_USERNAME"),
             password=os.getenv("NTRIP_PASSWORD"),
-            initial_gga=rover_gga(),
         )
-
-    session = RtkSession(stream, client, gga_provider=rover_gga)
-    try:
-        session.run(Event())
     except KeyboardInterrupt:
         pass
-    finally:
-        stream.close()
 ```
 
 Set `NTRIP_URL` to the provider's mountpoint URL and, when required, set both
@@ -146,17 +125,15 @@ before connecting.
 ```python
 from pathlib import Path
 
-from um982py import Receiver, capture_live, export_rinex
-from um982py.experimental import FirmwareLog
-from um982py.rinex import RinexMetadata
+from um982py import FirmwareLog, Receiver, RinexMetadata, capture_live, export_rinex
 
 with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    session = capture_live(
-        receiver, [FirmwareLog.RANGE], duration=60, interval=1, show_progress=True
+    observations = capture_live(
+        receiver, FirmwareLog.RANGE, duration=60, interval=1, show_progress=True
     )
 
 result = export_rinex(
-    session["RANGE"],
+    observations,
     marker_name="FIELD01",
     metadata=RinexMetadata(receiver_type="UM982"),
 )
@@ -164,6 +141,45 @@ Path("field.obs").write_text(result.text, encoding="ascii")
 print(f"Exported {result.epochs} epochs, {result.satellite_records} satellite records")
 print(f"Omitted observations: {result.omitted}")
 ```
+
+### Read speed and convert coordinates
+
+```python
+from um982py import Receiver, ecef_from_geodetic, geodetic_from_ecef
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    navigation = receiver.best_navigation()
+
+if navigation.valid and navigation.datum == "WGS84":
+    xyz = ecef_from_geodetic(
+        navigation.latitude, navigation.longitude, navigation.ellipsoidal_height
+    )
+    print("ECEF metres:", xyz)
+    print("Latitude, longitude, ellipsoidal height:", geodetic_from_ecef(*xyz))
+if navigation.velocity_valid:
+    print("Horizontal speed in m/s:", navigation.horizontal_speed)
+```
+
+The coordinate conversion uses WGS 84. The example checks the ASCII BESTNAV
+datum before applying it; binary BESTNAV reports a numeric datum code instead.
+`haversine_distance` uses a spherical approximation rather than an ellipsoidal
+geodesic.
+
+### Read a PPS edge
+
+```python
+from um982py import PpsDevice
+
+with PpsDevice("/dev/pps0") as device:
+    edge = device.fetch().assert_edge
+    if edge is not None:
+        print("Host CLOCK_REALTIME in nanoseconds:", edge.realtime_ns)
+```
+
+PPS timestamps use the host clock; comparing them to receiver UTC requires an
+explicit association between a pulse and a receiver time. `fix.rtk_fixed`
+reports GGA's fix type and does not check the freshness of corrections.
+
 ## License
 
 AGPLv3
