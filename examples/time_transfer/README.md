@@ -20,6 +20,16 @@ Replay the supplied capture:
 python -m examples.time_transfer --replay tests/fixtures/captures/TIMEB.bin
 ```
 
+With 64-bit Python on Linux x86-64 or AArch64, read an already configured kernel
+PPS device:
+
+```bash
+python -m examples.time_transfer.pps --device /dev/pps0 --count 5
+```
+
+The device must be connected to the receiver's pulse output and configured by
+the operating system. See the [Linux PPS documentation](https://docs.kernel.org/driver-api/pps.html).
+
 ## Inputs and results
 
 The report uses receiver TIME messages and their leap-second information.
@@ -33,6 +43,11 @@ the bundled table and checks it against the receiver's TIME offset. A mismatch
 returns `offset_disagreement` with no GPST result; update or independently check
 the table and receiver. Python datetime cannot represent an inserted leap second,
 so these instants are rejected.
+
+The PPS example reports host `CLOCK_REALTIME` timestamps. It does not associate
+the pulse with a receiver TIME message, compensate for pulse delay, or establish
+timestamp accuracy. The host clock can step. Establish the association and
+measure the timing path before comparing a pulse with receiver UTC.
 
 ## References
 

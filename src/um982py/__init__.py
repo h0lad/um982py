@@ -95,6 +95,13 @@ if TYPE_CHECKING:
         parse_sourcetable,
     )
     from um982py.ppk import PostProcessingError, PpkResult, run_ppk
+    from um982py.pps import (
+        PpsDevice,
+        PpsEdge,
+        PpsSnapshot,
+        missed_pps_edges,
+        pps_clock_offset_ns,
+    )
     from um982py.precise import PrecisePoint, Sp3Product, interpolate_sp3, parse_sp3
     from um982py.quality import (
         EpochSolution,
@@ -218,6 +225,11 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "PositionUpdate": ("um982py.live", "PositionUpdate"),
     "PostProcessingError": ("um982py.ppk", "PostProcessingError"),
     "PpkResult": ("um982py.ppk", "PpkResult"),
+    "PpsDevice": ("um982py.pps", "PpsDevice"),
+    "PpsEdge": ("um982py.pps", "PpsEdge"),
+    "PpsSnapshot": ("um982py.pps", "PpsSnapshot"),
+    "missed_pps_edges": ("um982py.pps", "missed_pps_edges"),
+    "pps_clock_offset_ns": ("um982py.pps", "pps_clock_offset_ns"),
     "QualitySummary": ("um982py.quality", "QualitySummary"),
     "RangeSample": ("um982py.measurement", "RangeSample"),
     "Receiver": ("um982py.receiver", "Receiver"),
@@ -372,6 +384,9 @@ __all__ = [
     "PositionUpdate",
     "PostProcessingError",
     "PpkResult",
+    "PpsDevice",
+    "PpsEdge",
+    "PpsSnapshot",
     "PrecisePoint",
     "QualitySummary",
     "RangeSample",
@@ -447,6 +462,7 @@ __all__ = [
     "lomb_scargle",
     "mean",
     "merge_gps_observations",
+    "missed_pps_edges",
     "navsatfix",
     "norm",
     "open_receiver",
@@ -455,6 +471,7 @@ __all__ = [
     "parse_sp3",
     "peaks",
     "percentile",
+    "pps_clock_offset_ns",
     "progress_printer",
     "range_samples",
     "read_frames",

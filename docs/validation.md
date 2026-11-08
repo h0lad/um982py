@@ -7,6 +7,7 @@
 | NTRIP | Client, caster and reconnect tests; optional third-party clients | Test the chosen provider, credentials, GGA policy, outages and correction latency. |
 | RINEX and scientific processing | Fixture and independent-reference tests; some external tools are optional | Validate the generated products, antenna metadata, frame, time and analysis against independent references. |
 | Long-running recording | Segmentation, journaling, disk and restart tests | Soak-test power loss, storage exhaustion, link loss and recovery on the target system. |
+| PPS timing | Linux kernel ABI and simulated edge tests | Measure receiver, wiring, timestamp source, pulse association and host clock behavior on the target system. |
 
 The navigation exporter is compared with selected DLR broadcast records for
 Galileo, BeiDou and GLONASS, and its output is read by RTKLIB. Those comparisons

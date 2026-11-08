@@ -14,6 +14,8 @@ scientific sessions and configuration changes, and the
 The [examples](examples/README.md) include reconnecting position streams,
 segmented field recording, NTRIP discovery, post-processed RTK and RINEX export.
 Coordinate transformations are available with `pip install 'um982py[geodesy]'`.
+The [time transfer example](examples/time_transfer/README.md) includes Linux
+PPS timestamp capture.
 
 ## Install and use
 

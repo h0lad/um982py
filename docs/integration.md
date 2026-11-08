@@ -106,6 +106,17 @@ selected PROJ operation and rejects unavailable best operations. Use explicit
 see the [CRS example](../examples/crs_transform/README.md). The operation's
 reported accuracy is not an estimate of the receiver's position error.
 
+## Pulse timing
+
+`PpsDevice` reads an already configured Linux PPS device using 64-bit Python on
+x86-64 or AArch64.
+It returns kernel edge timestamps in host `CLOCK_REALTIME` and sequence numbers;
+the host clock can step. Associate each pulse with receiver UTC independently
+before using `pps_clock_offset_ns()`, and account for configured pulse delay and
+timestamping uncertainty. See the [time transfer example](../examples/time_transfer/README.md).
+`missed_pps_edges()` assumes both snapshots come from the same device instance;
+a reset near sequence-number wrap can appear to be a normal wrap.
+
 ## Post-processed RTK
 
 `run_ppk()` validates RINEX headers and runs an installed RTKLIB `rnx2rtkp`
