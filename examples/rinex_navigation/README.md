@@ -42,6 +42,9 @@ repeated messages; a Galileo record produces separate I/NAV and F/NAV messages,
 so the message count is not a count of distinct satellites.
 For Galileo, independently establish the I/NAV source signals and pass them
 with `--galileo-inav-sources E1B`, `E5B`, or both.
+The selection applies to every Galileo record in the export. Split captures if
+the verified sources differ by satellite or epoch, and check the receiver's
+timestamp quality before using it to resolve the ephemeris week.
 For GLONASS, verify the GPS–UTC leap-second offset for the data and pass it as
 `--glonass-leap-seconds`. The same offset applies to every record in the file;
 split captures spanning a leap-second change. Use `--rinex-version 3.04` for
