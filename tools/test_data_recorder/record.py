@@ -1,4 +1,4 @@
-"""Record an enabled receiver stream as a replayable test dataset."""
+"""Configure and record a receiver stream as a replayable test dataset."""
 
 import argparse
 import json
@@ -11,10 +11,15 @@ from pathlib import Path
 from time import monotonic
 
 from tools.test_data_recorder.audit import LOGS, log_name
+from tools.test_data_recorder.profile import select
 
+from um982py import Receiver
+from um982py.capture import RecordingTransport
+from um982py.commands import Port
 from um982py.errors import TransportError
 from um982py.protocol import StreamDecoder
 from um982py.session import SessionRecorder
+from um982py.subscriptions import temporary_subscriptions
 from um982py.transports.base import Transport
 from um982py.transports.serial import SerialTransport
 
@@ -128,8 +133,16 @@ def record(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("port", help="serial device with logs already enabled")
+    parser.add_argument("port", help="host serial device")
     parser.add_argument("directory", type=Path, help="new recording directory")
+    parser.add_argument(
+        "--receiver-port",
+        required=True,
+        choices=[port.value for port in Port],
+        help="receiver COM port connected to the host",
+    )
+    parser.add_argument("--compressed", action="store_true")
+    parser.add_argument("--corrections", action="store_true")
     parser.add_argument("--baud", type=int, default=921600)
     parser.add_argument("--duration", type=float, default=86400, help="seconds")
     parser.add_argument("--segment-bytes", type=int, default=256 * 1024 * 1024)
@@ -157,15 +170,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not isinstance(metadata, dict):
         parser.error("metadata must be a JSON object")
 
+    port = Port(args.receiver_port)
+    planned = tuple(
+        (log.wire_name(binary=True), log.output(interval, binary=True, port=port))
+        for log, interval in select(
+            compressed=args.compressed, corrections=args.corrections
+        )
+    )
+    report: dict | None = None
+    failure: Exception | None = None
     with SessionRecorder(
         args.directory,
-        metadata={"port": args.port, "baud": args.baud, "notes": metadata},
+        metadata={
+            "port": args.port,
+            "baud": args.baud,
+            "receiver_port": port.value,
+            "commands": [command.text for _, command in planned],
+            "notes": metadata,
+        },
         segment_bytes=args.segment_bytes,
         fsync=not args.no_fsync,
     ) as recorder:
         transport = SerialTransport(args.port, args.baud)
+        receiver = Receiver(RecordingTransport(transport, recorder, close_stream=False))
         try:
-            print("Recording stream; press Ctrl-C to stop early.", file=sys.stderr)
 
             def show_status(values: dict) -> None:
                 try:
@@ -178,19 +206,42 @@ def main(argv: Sequence[str] | None = None) -> int:
                     flush=True,
                 )
 
-            report = record(
-                transport,
-                recorder,
-                args.duration,
-                segment_seconds=args.segment_seconds,
-                status_seconds=args.status_seconds,
-                progress=show_status,
-            )
+            try:
+                print("Configuring receiver outputs.", file=sys.stderr)
+                with temporary_subscriptions(receiver, *planned):
+                    print(
+                        "Recording stream; press Ctrl-C to stop early.", file=sys.stderr
+                    )
+                    try:
+                        report = record(
+                            transport,
+                            recorder,
+                            args.duration,
+                            segment_seconds=args.segment_seconds,
+                            status_seconds=args.status_seconds,
+                            progress=show_status,
+                        )
+                    finally:
+                        # The raw recorder consumed the stream independently.
+                        receiver.drain_pending()
+                        receiver.decoder.reset()
+                if report is not None:
+                    report["subscriptions_restored"] = True
+            except Exception as error:
+                failure = error
+                if report is not None:
+                    report["subscriptions_restored"] = False
         finally:
-            transport.close()
+            receiver.close()
+    if report is None:
+        if failure is not None:
+            raise failure
+        raise RuntimeError("recording did not start")
     (args.directory / "capture.json").write_text(
         json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8"
     )
+    if failure is not None:
+        raise failure
     print(f"Recording {report['status']}: {report['received_bytes']} bytes.")
     return 0 if report["status"] == "complete" else 1
 

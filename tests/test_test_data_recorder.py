@@ -6,8 +6,10 @@ from pathlib import Path
 import pytest
 from tools.test_data_recorder import audit, profile, record
 
+from conftest import SubscriptionTransport
 from test_protocol import binary
-from um982py.errors import TransportError
+from um982py.commands import Port
+from um982py.errors import CommandRejected, TransportError
 from um982py.session import SessionRecorder, iter_session_bytes
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -93,29 +95,94 @@ def test_record_preserves_partial_capture_on_interruption(
 def test_cli_writes_metadata_and_does_not_overwrite(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    source = Input([b"original data"])
+    source = SubscriptionTransport()
+    source.subscriptions = {("OBSVMB", Port.COM1): 5.0, ("RANGEB", Port.COM2): 2.0}
+    original = dict(source.subscriptions)
     monkeypatch.setattr(record, "SerialTransport", lambda *args: source)
-    run = record.record
+
+    def capture(
+        transport: object, recorder: SessionRecorder, duration: float, **kwargs: object
+    ) -> dict:
+        assert source.subscriptions[("OBSVMB", Port.COM1)] == 1.0
+        assert source.subscriptions[("OBSVHB", Port.COM1)] == 1.0
+        assert source.subscriptions[("OBSVMCMPB", Port.COM1)] == 1.0
+        assert ("E6MASKBLOCKB", Port.COM1) in source.subscriptions
+        recorder.write(b"original data")
+        return {"status": "complete", "received_bytes": len(b"original data")}
+
     monkeypatch.setattr(
         record,
         "record",
-        lambda transport, recorder, duration, **kwargs: run(
-            transport, recorder, duration, clock=lambda: source.time, **kwargs
-        ),
+        capture,
     )
     notes = tmp_path / "metadata.json"
     notes.write_text('{"antenna": "TEST"}')
     output = tmp_path / "session"
-    args = ["dummy", str(output), "--duration", "1", "--metadata", str(notes)]
+    args = [
+        "dummy",
+        str(output),
+        "--receiver-port",
+        "COM1",
+        "--duration",
+        "1",
+        "--metadata",
+        str(notes),
+        "--compressed",
+        "--corrections",
+    ]
     assert record.main(args) == 0
     assert source.closed
-    assert b"".join(iter_session_bytes(output)) == b"original data"
+    assert b"original data" in b"".join(iter_session_bytes(output))
+    assert source.subscriptions == original
     assert json.loads((output / "session.json").read_text())["metadata"]["notes"] == {
         "antenna": "TEST"
     }
     assert json.loads((output / "capture.json").read_text())["status"] == "complete"
+    assert json.loads((output / "capture.json").read_text())["subscriptions_restored"]
     with pytest.raises(FileExistsError):
         record.main(args)
+
+
+def test_configuration_failure_restores_previous_subscriptions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = SubscriptionTransport()
+    source.subscriptions = {("OBSVMB", Port.COM1): 5.0, ("RANGEB", Port.COM2): 2.0}
+    original = dict(source.subscriptions)
+    source.rejected.add("OBSVHB COM1 1")
+    monkeypatch.setattr(record, "SerialTransport", lambda *args: source)
+    with pytest.raises(CommandRejected):
+        record.main(["dummy", str(tmp_path / "session"), "--receiver-port", "COM1"])
+    assert source.subscriptions == original
+    assert source.closed
+
+
+def test_restoration_failure_preserves_recording_report(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class DisconnectedOnRestore(SubscriptionTransport):
+        def write(self, data: bytes, timeout: float) -> None:
+            if data.startswith(b"UNLOG "):
+                raise TransportError("disconnected")
+            super().write(data, timeout)
+
+    source = DisconnectedOnRestore()
+    monkeypatch.setattr(record, "SerialTransport", lambda *args: source)
+
+    def capture(
+        transport: object, recorder: SessionRecorder, duration: float, **kwargs: object
+    ) -> dict:
+        recorder.write(b"original data")
+        return {"status": "complete", "received_bytes": len(b"original data")}
+
+    monkeypatch.setattr(record, "record", capture)
+    directory = tmp_path / "session"
+    with pytest.raises(ExceptionGroup, match="restore"):
+        record.main(["dummy", str(directory), "--receiver-port", "COM1"])
+    report = json.loads((directory / "capture.json").read_text())
+    assert report["status"] == "complete"
+    assert report["subscriptions_restored"] is False
+    assert b"original data" in b"".join(iter_session_bytes(directory))
 
 
 def test_audit_rejects_corrupted_segment(tmp_path: Path) -> None:

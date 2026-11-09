@@ -1,8 +1,9 @@
 # Receiver test recordings
 
 Record the receiver's unmodified serial output directly to disk for replay and
-decoder, RINEX, orbit and measurement tests. The recorder does not configure the
-receiver. It writes the incoming bytes before decoding them for live statistics.
+decoder, RINEX, orbit and measurement tests. The recorder temporarily configures
+the receiver's log output. It writes incoming bytes before decoding them for
+live statistics.
 The default run is 24 hours at 921600 baud, with 30-minute segments. Ensure at
 least 10 GB is free and run a short trial first to measure the actual data
 rate. Use two fixed antennas and document the receiver, firmware, configuration,
@@ -11,15 +12,18 @@ a JSON file. Record the baseline and setup needed to interpret both inputs.
 
 ## Receiver setup
 
-Generate the core commands, then apply them with a serial console on the port
-to be recorded. Close the console before running the recorder:
+The recorder reads the current log subscriptions, enables the core profile on
+the selected receiver COM port, and restores the affected subscriptions after
+the run. Specify the receiver port connected to the host serial device with
+`--receiver-port COM1`, `COM2` or `COM3`. Close any serial console before
+starting. To inspect the commands without changing the receiver:
 
 ```bash
 python -m tools.test_data_recorder.profile
 ```
 
-The tool only prints commands; it does not send them. Add `--port COM1` (or
-COM2/COM3) to target a particular receiver output. The core profile includes:
+This profile tool only prints commands. Add `--port COM1` (or COM2/COM3) to
+see commands for that receiver output. The core profile includes:
 
 | Data | Test coverage |
 | --- | --- |
@@ -29,19 +33,23 @@ COM2/COM3) to target a particular receiver output. The core profile includes:
 | SATVIS2, RECTIME, TIME | Sky geometry and receiver timing |
 | Ionosphere/UTC parameters, hardware and RTK status | Model and diagnostic decoders |
 
-For more coverage, append `--compressed` for OBSVMCMP/OBSVHCMP, or
-`--corrections` for PPP, RTCM, Galileo E6 and BeiDou PPP-B2b diagnostics. These
-options print the core profile as well. Output availability depends on the
+For more coverage, pass `--compressed` to the recorder for OBSVMCMP/OBSVHCMP,
+or `--corrections` for PPP, RTCM, Galileo E6 and BeiDou PPP-B2b diagnostics.
+The profile tool accepts the same options. Output availability depends on the
 receiver, signal reception, firmware and enabled correction services; a zero
 count for an optional service does not establish a failure. The logs alone do
 not prove that a correction was applied or that a phase measurement is correct.
 
-Confirm each command is accepted and that the combined output fits the
+The recorder checks command responses and stops if a requested log is rejected
+or its subscription snapshot cannot be read. Restoration is attempted on
+normal completion, interruption and configuration failure; a disconnect or
+abrupt process termination can prevent restoration. Check the receiver's log
+configuration if restoration fails. Confirm that the combined output fits the
 configured port and baud rate. The 1 Hz dual-antenna observations can be
 substantial; measure the trial rate and reduce optional logs or increase baud if
 necessary. `ONCHANGED` alone does not guarantee a complete initial ephemeris
-set. The recorder leaves receiver subscriptions unchanged, including on
-interruption; restore your previous configuration afterwards.
+set. The recorder does not change signal groups, antenna power or correction
+service settings.
 
 ## Capture and verify
 
@@ -49,10 +57,10 @@ Install the project as described in the root README. Replace the port, paths and
 metadata with your setup. The output directory must not already exist.
 
 ```bash
-python -m tools.test_data_recorder.record /dev/ttyUSB0 /path/to/trial \
+python -m tools.test_data_recorder.record /dev/ttyUSB0 /path/to/trial --receiver-port COM1 \
     --metadata /path/to/metadata.json --duration 600
 python -m tools.test_data_recorder.audit /path/to/trial
-python -m tools.test_data_recorder.record /dev/ttyUSB0 /path/to/session \
+python -m tools.test_data_recorder.record /dev/ttyUSB0 /path/to/session --receiver-port COM1 \
     --metadata /path/to/metadata.json
 python -m tools.test_data_recorder.audit /path/to/session
 python -m tools.test_data_recorder.audit /path/to/session --export /path/to/capture.bin
@@ -76,6 +84,10 @@ records elapsed time, byte count and whether the duration completed. A closed
 journal alone does not mean the requested duration was reached. A transport
 error records a gap and an incomplete run; the audit refuses sessions with a
 gap so it cannot accidentally join frames across an interruption.
+The stream also contains receiver responses and any data read while setting up
+or restoring subscriptions. `capture.json` byte and frame counts cover the
+timed recording interval; the offline audit includes those additional bytes.
+The session metadata records the requested commands and receiver port.
 
 During capture, JSON status lines on standard error show elapsed time, total
 and recent data rate, free disk space, frame counts, decoder errors and the

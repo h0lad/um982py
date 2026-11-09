@@ -52,6 +52,13 @@ CORRECTIONS: Profile = (
 TRACKED = CORE + COMPRESSED + CORRECTIONS
 
 
+def select(*, compressed: bool = False, corrections: bool = False) -> Profile:
+    """Return the requested output profile."""
+    return (
+        CORE + (COMPRESSED if compressed else ()) + (CORRECTIONS if corrections else ())
+    )
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--compressed", action="store_true")
@@ -59,11 +66,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--port", choices=[port.value for port in Port])
     args = parser.parse_args(argv)
     port = Port(args.port) if args.port else None
-    selected = CORE
-    if args.compressed:
-        selected += COMPRESSED
-    if args.corrections:
-        selected += CORRECTIONS
+    selected = select(compressed=args.compressed, corrections=args.corrections)
     for log, interval in selected:
         print(log.output(interval, binary=True, port=port).text)
     return 0
