@@ -41,6 +41,8 @@ agreement with that product, not the rover's position accuracy.
 
 The supplied `GPSEPHA.bin` fixture contains a G17 ephemeris that differs from
 the corresponding IGS broadcast data and produces a large orbit discrepancy.
+The same coefficients appear in the receiver's binary `GPSEPHB.bin` capture.
+These captures are not independent measurements, and the cause remains unknown.
 
 ## References
 

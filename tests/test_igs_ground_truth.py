@@ -22,9 +22,11 @@ POSITIONS = {
 GPS_SECONDS = 1476720000.0
 
 
-def _elements(prn: int) -> tuple[KeplerElements, float]:
-    capture = Path(__file__).parent / "fixtures/captures/GPSEPHA.bin"
-    for frame in StreamDecoder().feed(capture.read_bytes()):
+def _elements(
+    prn: int, capture: str = "captures/GPSEPHA.bin"
+) -> tuple[KeplerElements, float]:
+    path = Path(__file__).parent / "fixtures" / capture
+    for frame in StreamDecoder().feed(path.read_bytes()):
         try:
             record = Log.GPSEPH.decode(frame)
         except ProtocolError:
@@ -52,8 +54,21 @@ def test_captured_broadcast_positions_agree_with_igs_rapid(prn: int) -> None:
 def test_g17_capture_disagrees_with_independent_broadcast_message() -> None:
     elements, dt = _elements(17)
     assert dt == 0
+    # These values are present in the captured ASCII fields before decoding.
+    assert elements.cic == 7.582828403e-06
+    assert elements.right_ascension == -1.870339078
     assert _distance(elements, dt, 17) > 3_000_000
     # Two coefficients from IGS BRDC00IGS_R_20262950000_01D_MN.rnx.gz,
     # G17 issue 129 at 16:00 GPST.
     reference = replace(elements, cic=6.70552253723e-08, right_ascension=-2.06668861845)
     assert _distance(reference, dt, 17) < 2.0
+
+
+def test_g17_binary_capture_matches_ascii_coefficients() -> None:
+    ascii_elements, ascii_dt = _elements(17)
+    binary_elements, binary_dt = _elements(17, "captures-live/GPSEPHB.bin")
+    assert binary_dt == ascii_dt
+    assert binary_elements.cic == pytest.approx(ascii_elements.cic, rel=1e-9)
+    assert binary_elements.right_ascension == pytest.approx(
+        ascii_elements.right_ascension, rel=1e-9
+    )
