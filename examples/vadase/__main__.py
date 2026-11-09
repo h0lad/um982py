@@ -2,8 +2,8 @@
 
 from collections.abc import Sequence
 
+from examples._console import run
 from examples._gps_motion import motion_main
-from um982py.console import run
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -8,6 +8,15 @@ from collections import Counter
 from collections.abc import Sequence
 from pathlib import Path
 
+from examples._console import (
+    add_debug_argument,
+    debug_header,
+    experiment_parser,
+    progress_printer,
+    run,
+    write_json,
+)
+from examples._console_capture import capture_records
 from examples.precise_fix import (
     Axis,
     FixEstimate,
@@ -18,15 +27,6 @@ from examples.precise_fix import (
     reference_error,
 )
 from um982py.commands import Log
-from um982py.console import (
-    add_debug_argument,
-    debug_header,
-    experiment_parser,
-    progress_printer,
-    run,
-    write_json,
-)
-from um982py.console_capture import capture_records
 from um982py.corrections import stale_correction
 from um982py.geodesy import geodetic_from_ecef
 

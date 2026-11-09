@@ -7,6 +7,14 @@ import sys
 from collections.abc import Sequence
 from pathlib import Path
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    run,
+    write_json,
+)
+from examples._console_capture import open_receiver
 from examples.ephemeris_orbit import receiver_ecef
 from examples.navigation_messages import (
     FAMILIES,
@@ -19,14 +27,6 @@ from um982py import Receiver
 from um982py.antenna import antenna_log
 from um982py.capture import iter_frames
 from um982py.commands import Log
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    run,
-    write_json,
-)
-from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout
 from um982py.geodesy import ecef_from_geodetic
 from um982py.messages import Record

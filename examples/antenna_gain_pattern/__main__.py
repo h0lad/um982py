@@ -7,6 +7,8 @@ from collections.abc import Callable, Sequence
 from dataclasses import asdict
 from pathlib import Path
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.antenna_gain_pattern import (
     DEFAULT_CURVE_STEP,
     GainFit,
@@ -16,8 +18,6 @@ from examples.antenna_gain_pattern import (
     gain_curve,
 )
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.messages.record import Record
 from um982py.signals import tracking_signal
 

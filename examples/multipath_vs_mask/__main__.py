@@ -6,6 +6,14 @@ import argparse
 import sys
 from collections.abc import Sequence
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    run,
+    write_json,
+)
+from examples._console_capture import open_receiver
 from examples._observation_arcs import CarrierState
 from examples.multipath_analysis import Observation
 from examples.multipath_vs_mask import (
@@ -33,14 +41,6 @@ from um982py.capture import (
 )
 from um982py.commands import Log
 from um982py.commands.configuration import elevation_mask
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    run,
-    write_json,
-)
-from um982py.console_capture import open_receiver
 from um982py.experimental.capture import receiver_state
 from um982py.messages.record import Record
 from um982py.subscriptions import temporary_subscriptions

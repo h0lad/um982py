@@ -3,6 +3,7 @@
 import importlib.util
 import subprocess
 import sys
+from pathlib import Path
 
 
 def test_core_receiver_api_can_load_without_experimental_modules() -> None:
@@ -22,6 +23,23 @@ from um982py.commands import Log as LogCatalog
 assert Log is LogCatalog
 """
     subprocess.run([sys.executable, "-c", code], check=True, timeout=10)
+
+
+def test_receiver_loads_log_layouts_only_when_decoding_a_log() -> None:
+    code = """
+import sys
+from pathlib import Path
+from um982py import Log, Receiver
+from um982py.protocol.ascii import parse_ascii
+
+assert Receiver
+assert 'um982py.messages.layouts' not in sys.modules
+message = parse_ascii(Path(sys.argv[1]).read_bytes())
+assert Log.BESTNAV.decode(message).name == 'BESTNAV'
+assert 'um982py.messages.layouts' in sys.modules
+"""
+    fixture = Path(__file__).parent / "fixtures/bodies/BESTNAVA.bin"
+    subprocess.run([sys.executable, "-c", code, str(fixture)], check=True, timeout=10)
 
 
 def test_removed_compatibility_imports_are_not_exposed() -> None:

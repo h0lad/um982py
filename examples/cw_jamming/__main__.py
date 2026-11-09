@@ -5,6 +5,15 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    progress_printer,
+    run,
+    write_json,
+)
+from examples._console_capture import capture_records
 from examples.cw_jamming import (
     Band,
     BandFingerprint,
@@ -20,15 +29,6 @@ from examples.cw_jamming import (
     worst_flag,
 )
 from um982py.commands import Log
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    progress_printer,
-    run,
-    write_json,
-)
-from um982py.console_capture import capture_records
 from um982py.messages import Record
 
 

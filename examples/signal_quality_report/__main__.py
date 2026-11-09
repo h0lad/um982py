@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable, Sequence
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.signal_quality_report import (
     SignalObservation,
     as_dict,
@@ -12,8 +14,6 @@ from examples.signal_quality_report import (
     summarise,
 )
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.messages import Record
 
 

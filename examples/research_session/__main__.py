@@ -6,9 +6,9 @@ from dataclasses import asdict
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 
+from examples._console import ExampleParser, add_receiver_arguments, run
+from examples._console_capture import capture_records
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run
-from um982py.console_capture import capture_records
 from um982py.field_data import file_sha256
 from um982py.observation_quality import audit_observations
 from um982py.rinex import RinexMetadata, export_rinex

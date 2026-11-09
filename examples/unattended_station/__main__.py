@@ -12,8 +12,8 @@ from collections.abc import Sequence
 from datetime import UTC, datetime
 from pathlib import Path
 
+from examples._console import ExampleParser, add_receiver_arguments, run
 from examples.research_session.__main__ import main as record_session
-from um982py.console import ExampleParser, add_receiver_arguments, run
 from um982py.receiver import Receiver
 
 

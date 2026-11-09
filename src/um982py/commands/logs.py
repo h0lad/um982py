@@ -9,7 +9,6 @@ from um982py.commands.extended import EXTENDED_LOGS
 from um982py.commands.types import Port, Trigger
 from um982py.errors import ProtocolError
 from um982py.messages import BinaryMessage, CommandResponse, Message
-from um982py.messages.decode import decode_log
 from um982py.messages.record import Record
 
 
@@ -283,6 +282,8 @@ class Log(StrEnum):
             from um982py.extended_logs import decode_extended
 
             return decode_extended(self.value, message)
+        from um982py.messages.decode import decode_log
+
         return decode_log(message)
 
     def stop(

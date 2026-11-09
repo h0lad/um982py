@@ -6,11 +6,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from examples.sidereal_multipath import SkyResidual, evaluate_repeatability
-from um982py.antenna import antenna_log
-from um982py.capture import load_records, record_epoch
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     add_debug_argument,
     debug_header,
     experiment_parser,
@@ -18,7 +14,11 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.console_capture import capture_logs
+from examples._console_capture import capture_logs
+from examples.sidereal_multipath import SkyResidual, evaluate_repeatability
+from um982py.antenna import antenna_log
+from um982py.capture import load_records, record_epoch
+from um982py.commands import Log
 from um982py.measurement import RangeSample, sample_series
 from um982py.messages import Record
 from um982py.stats import detrend, is_continuous

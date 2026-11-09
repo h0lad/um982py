@@ -8,11 +8,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from um982py import export_rinex
-from um982py.antenna import AntennaLog
-from um982py.capture import record_epoch
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     ExampleParser,
     add_receiver_arguments,
     debug_header,
@@ -20,7 +16,11 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.console_capture import capture_records
+from examples._console_capture import capture_records
+from um982py import export_rinex
+from um982py.antenna import AntennaLog
+from um982py.capture import record_epoch
+from um982py.commands import Log
 from um982py.field_data import file_sha256
 from um982py.messages import Record
 from um982py.observation_quality import audit_observations

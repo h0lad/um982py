@@ -36,12 +36,12 @@ def test_receiver_is_closed_if_setup_fails(failure: BaseException) -> None:
     from argparse import Namespace
     from unittest.mock import patch
 
-    from um982py.console_capture import open_receiver
+    from examples._console_capture import open_receiver
 
     args = Namespace(port="fake", baud=921600, augment=True, replay=None)
     with (
-        patch("um982py.console_capture.Receiver.connect") as connect,
-        patch("um982py.console_capture.enable_augmentation", side_effect=failure),
+        patch("examples._console_capture.Receiver.connect") as connect,
+        patch("examples._console_capture.enable_augmentation", side_effect=failure),
         pytest.raises(type(failure)),
     ):
         open_receiver(args)

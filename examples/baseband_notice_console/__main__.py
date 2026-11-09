@@ -7,15 +7,15 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from examples.baseband_notice_console import apply_notices, solution_summary
-from um982py.console import (
+from examples._console import (
     ExampleParser,
     add_receiver_arguments,
     debug_header,
     run,
     write_json,
 )
-from um982py.console_capture import open_receiver
+from examples._console_capture import open_receiver
+from examples.baseband_notice_console import apply_notices, solution_summary
 from um982py.errors import CommandRejected
 from um982py.experimental import BasebandNotice, capture_baseband_notices, scan_notices
 

@@ -7,6 +7,8 @@ import sys
 from collections import Counter
 from collections.abc import Callable, Sequence
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.scintillation_monitor import (
     ScintillationSample,
     ScintillationSummary,
@@ -15,8 +17,6 @@ from examples.scintillation_monitor import (
 )
 from um982py.capture import uniform_interval
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.geodesy import records_from
 from um982py.messages.record import Record
 

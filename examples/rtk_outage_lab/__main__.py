@@ -5,6 +5,16 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
+from examples._console import (
+    add_debug_argument,
+    debug_header,
+    experiment_parser,
+    progress_printer,
+    read_numeric_csv,
+    run,
+    write_json,
+)
+from examples._console_capture import capture_logs
 from examples.rtk_outage_lab import (
     Outage,
     PositionEpoch,
@@ -15,16 +25,6 @@ from examples.rtk_outage_lab import (
 from examples.rtk_quality import FixClass, solution_from_record
 from um982py.capture import record_epoch
 from um982py.commands import Log
-from um982py.console import (
-    add_debug_argument,
-    debug_header,
-    experiment_parser,
-    progress_printer,
-    read_numeric_csv,
-    run,
-    write_json,
-)
-from um982py.console_capture import capture_logs
 
 
 def main(argv: Sequence[str] | None = None) -> int:

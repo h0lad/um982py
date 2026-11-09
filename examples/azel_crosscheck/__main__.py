@@ -7,6 +7,15 @@ from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from pathlib import Path
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    progress_printer,
+    run,
+    write_json,
+)
+from examples._console_capture import capture_records
 from examples.azel_crosscheck import (
     AZIMUTH_TOLERANCE_DEGREES,
     ELEVATION_TOLERANCE_DEGREES,
@@ -15,15 +24,6 @@ from examples.azel_crosscheck import (
 )
 from um982py.capture import read_frames
 from um982py.commands import Log
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    progress_printer,
-    run,
-    write_json,
-)
-from um982py.console_capture import capture_records
 from um982py.errors import ProtocolError
 from um982py.geodesy import receiver_ecef
 from um982py.messages import (

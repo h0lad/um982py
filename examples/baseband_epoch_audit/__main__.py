@@ -4,18 +4,18 @@ import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
-from examples.baseband_epoch_audit import audit_baseband
-from um982py.antenna import antenna_log
-from um982py.capture import decode_records
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     add_debug_argument,
     debug_header,
     experiment_parser,
     run,
     write_json,
 )
-from um982py.console_capture import open_receiver
+from examples._console_capture import open_receiver
+from examples.baseband_epoch_audit import audit_baseband
+from um982py.antenna import antenna_log
+from um982py.capture import decode_records
+from um982py.commands import Log
 from um982py.experimental import capture_baseband_notices, scan_notices
 from um982py.protocol import StreamDecoder
 from um982py.subscriptions import temporary_subscriptions

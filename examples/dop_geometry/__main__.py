@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable, Sequence
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.dop_geometry import (
     DilutionOfPrecision,
     ReportedDilution,
@@ -12,8 +14,6 @@ from examples.dop_geometry import (
 )
 from um982py.capture import latest_epoch, record_epoch
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.messages.record import Record
 
 _REPORTED_TIMEOUT = 0.2

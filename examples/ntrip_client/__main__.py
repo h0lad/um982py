@@ -11,13 +11,13 @@ from contextlib import closing
 from time import monotonic, sleep
 from urllib.parse import urlsplit
 
+from examples._console import ExampleParser, debug_header, run
 from examples.ntrip_client import CorrectionStats, forward_corrections, gga_from_fix
 from examples.ntrip_client.precision import PrecisionMonitor, precision_line
 from examples.position_tracking import TrackPoint, collect_positions
 from um982py import NtripClient, Receiver
 from um982py.antenna import antenna_log
 from um982py.commands import Log, modes
-from um982py.console import ExampleParser, debug_header, run
 from um982py.corrections import stale_correction
 from um982py.errors import CommandRejected, ProtocolError, ResponseTimeout
 from um982py.geodesy import ecef_from_geodetic

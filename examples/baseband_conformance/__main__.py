@@ -7,6 +7,14 @@ import sys
 from collections.abc import Sequence
 from time import monotonic
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    run,
+    write_json,
+)
+from examples._console_capture import open_receiver
 from examples.baseband_conformance import (
     BasebandSnapshot,
     ConformanceRow,
@@ -20,14 +28,6 @@ from examples.baseband_conformance import (
     state_check,
 )
 from um982py.commands import queries
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    run,
-    write_json,
-)
-from um982py.console_capture import open_receiver
 from um982py.errors import CommandRejected, ResponseTimeout, UM982Error
 from um982py.experimental import (
     BasebandCommand,

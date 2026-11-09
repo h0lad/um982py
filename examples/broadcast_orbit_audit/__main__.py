@@ -9,6 +9,15 @@ from dataclasses import asdict, replace
 from pathlib import Path
 from statistics import median
 
+from examples._console import (
+    add_debug_argument,
+    debug_header,
+    experiment_parser,
+    progress_printer,
+    run,
+    write_json,
+)
+from examples._console_capture import capture_logs
 from examples.broadcast_orbit_audit import (
     OrbitDifference,
     compare_state,
@@ -17,15 +26,6 @@ from examples.broadcast_orbit_audit import (
 from examples.ephemeris_orbit import KeplerElements, orbit_state
 from um982py import parse_sp3
 from um982py.commands import Log
-from um982py.console import (
-    add_debug_argument,
-    debug_header,
-    experiment_parser,
-    progress_printer,
-    run,
-    write_json,
-)
-from um982py.console_capture import capture_logs
 from um982py.experimental.gps_motion import choose_ephemeris
 from um982py.stats import rms
 

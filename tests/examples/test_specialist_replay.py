@@ -127,10 +127,11 @@ def test_type_two_reserved_byte_is_not_a_prn_mask_issue() -> None:
 
 
 def test_replay_retains_wire_order_across_correction_log_types(tmp_path: Path) -> None:
+    from examples._console import experiment_parser
+    from examples._console_capture import capture_records
+
     from um982py.capture import read_frames
     from um982py.commands import Log
-    from um982py.console import experiment_parser
-    from um982py.console_capture import capture_records
     from um982py.messages import Record
 
     frames = read_frames(FIXTURES / "labelled-b2b.bin")
@@ -154,7 +155,7 @@ def test_replay_retains_wire_order_across_correction_log_types(tmp_path: Path) -
     ["max-gap", "tau", "sigma", "phase-tolerance", "cell-degrees", "mask-max-age"],
 )
 def test_invalid_experiment_controls_are_rejected_before_capture(option: str) -> None:
-    from um982py.console import experiment_parser
+    from examples._console import experiment_parser
 
     parser = experiment_parser("test", "test")
     parser.add_argument("--" + option, type=float)
@@ -175,7 +176,7 @@ def test_invalid_experiment_controls_are_rejected_before_capture(option: str) ->
 def test_reference_inputs_cannot_be_overwritten_by_json_output(
     option: str, source: str
 ) -> None:
-    from um982py.console import experiment_parser
+    from examples._console import experiment_parser
 
     parser = experiment_parser("test", "test")
     parser.add_argument(option, type=Path)

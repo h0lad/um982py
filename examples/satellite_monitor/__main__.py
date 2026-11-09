@@ -7,6 +7,8 @@ import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.satellite_monitor import (
     AngleRange,
     ConstellationVisibility,
@@ -17,8 +19,6 @@ from examples.satellite_monitor import (
 )
 from um982py.capture import latest_epoch
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.messages.record import Record
 
 

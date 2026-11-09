@@ -8,6 +8,15 @@ from collections.abc import Sequence
 from contextlib import suppress
 from pathlib import Path
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    progress_printer,
+    run,
+    write_json,
+)
+from examples._console_capture import capture_records
 from examples.ephemeris_orbit import EARTH_ROTATION_RATE, state_from_record
 from examples.wls_position import (
     PositionSolution,
@@ -17,15 +26,6 @@ from examples.wls_position import (
 )
 from um982py.capture import gps_signals, read_frames, record_epoch
 from um982py.commands import Log
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    progress_printer,
-    run,
-    write_json,
-)
-from um982py.console_capture import capture_records
 from um982py.errors import ProtocolError
 from um982py.geodesy import SPEED_OF_LIGHT, geodetic_from_ecef, receiver_ecef
 from um982py.messages import (

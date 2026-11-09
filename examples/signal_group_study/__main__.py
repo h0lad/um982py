@@ -7,6 +7,14 @@ import sys
 from collections.abc import Sequence
 from time import sleep
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    run,
+    write_json,
+)
+from examples._console_capture import open_receiver
 from examples.dop_geometry import (
     DilutionOfPrecision,
     ReportedDilution,
@@ -28,14 +36,6 @@ from um982py.commands.configuration import (
     current_signal_group,
     signal_group,
 )
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    run,
-    write_json,
-)
-from um982py.console_capture import open_receiver
 from um982py.errors import UM982Error
 from um982py.geodesy import records_from
 from um982py.messages.enums import PositionType

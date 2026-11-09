@@ -5,10 +5,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from examples.zero_baseline_lab import double_differences, estimate_noise
-from um982py.capture import load_records
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     add_debug_argument,
     debug_header,
     experiment_parser,
@@ -16,7 +13,10 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.console_capture import capture_logs
+from examples._console_capture import capture_logs
+from examples.zero_baseline_lab import double_differences, estimate_noise
+from um982py.capture import load_records
+from um982py.commands import Log
 from um982py.measurement import sample_series
 
 

@@ -9,10 +9,7 @@ from dataclasses import asdict
 from pathlib import Path
 from time import monotonic
 
-from examples.compressed_observation_audit import agree_epoch, summarise_epochs
-from um982py.capture import iter_frames
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     ExampleParser,
     add_debug_argument,
     debug_header,
@@ -20,7 +17,10 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.console_capture import open_receiver
+from examples._console_capture import open_receiver
+from examples.compressed_observation_audit import agree_epoch, summarise_epochs
+from um982py.capture import iter_frames
+from um982py.commands import Log
 from um982py.errors import ResponseTimeout
 from um982py.experimental import decode_rangecmp, rangecmp_output
 from um982py.messages import BinaryMessage, Record

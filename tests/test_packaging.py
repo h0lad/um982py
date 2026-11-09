@@ -3,6 +3,7 @@
 import subprocess
 import sys
 import tarfile
+import zipfile
 from pathlib import Path
 
 
@@ -16,6 +17,8 @@ def test_source_distribution_contains_examples(tmp_path: Path) -> None:
             "build",
             "-t",
             "sdist",
+            "-t",
+            "wheel",
             "-d",
             str(tmp_path),
         ],
@@ -33,3 +36,10 @@ def test_source_distribution_contains_examples(tmp_path: Path) -> None:
             assert path.relative_to(project).as_posix() in names
     assert "src/um982py/py.typed" in names
     assert "docs/api.md" in names
+    assert "examples/_console.py" in names
+    assert "examples/_console_capture.py" in names
+    with zipfile.ZipFile(next(tmp_path.glob("*.whl"))) as wheel:
+        wheel_names = wheel.namelist()
+    assert not any(name.startswith("examples/") for name in wheel_names)
+    assert "um982py/console.py" not in wheel_names
+    assert "um982py/console_capture.py" not in wheel_names

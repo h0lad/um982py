@@ -7,6 +7,15 @@ from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from pathlib import Path
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    progress_printer,
+    run,
+    write_json,
+)
+from examples._console_capture import capture_records
 from examples.azel_crosscheck import galileo_elements
 from examples.ephemeris_orbit import orbit_state, state_from_record
 from examples.raim_fde import RaimResult, raim_fde
@@ -21,15 +30,6 @@ from examples.wls_position.__main__ import (
 )
 from um982py.capture import read_frames, record_epoch
 from um982py.commands import Log
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    progress_printer,
-    run,
-    write_json,
-)
-from um982py.console_capture import capture_records
 from um982py.errors import ProtocolError
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef, records_from
 from um982py.messages import (

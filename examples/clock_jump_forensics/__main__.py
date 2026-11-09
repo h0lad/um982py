@@ -5,9 +5,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from itertools import pairwise
 
-from examples.clock_jump_forensics import clock_residuals, detect_clock_jumps
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     add_debug_argument,
     debug_header,
     experiment_parser,
@@ -15,7 +13,9 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.console_capture import capture_logs
+from examples._console_capture import capture_logs
+from examples.clock_jump_forensics import clock_residuals, detect_clock_jumps
+from um982py.commands import Log
 from um982py.measurement import range_samples
 
 

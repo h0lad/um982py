@@ -6,6 +6,8 @@ import math
 import sys
 from collections.abc import Callable, Sequence
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.base_station_survey import (
     AxisStatistics,
     SurveyCriteria,
@@ -15,8 +17,6 @@ from examples.base_station_survey import (
 )
 from um982py.capture import record_epoch
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.corrections import stale_correction
 from um982py.geodesy import haversine_distance
 from um982py.messages.record import Record

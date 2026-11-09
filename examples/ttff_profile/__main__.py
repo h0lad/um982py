@@ -7,6 +7,14 @@ import sys
 from collections.abc import Sequence
 from time import monotonic, sleep
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    run,
+    write_json,
+)
+from examples._console_capture import open_receiver
 from examples.rtk_quality import FixClass, position_type_code, solution_status_code
 from examples.ttff_profile import (
     FixEpoch,
@@ -21,14 +29,6 @@ from examples.ttff_profile import (
 from um982py.antenna import antenna_log
 from um982py.capture import decode_records, iter_frames, record_epoch
 from um982py.commands import Log
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    run,
-    write_json,
-)
-from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout, TransportError
 from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.messages.record import Record

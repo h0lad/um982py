@@ -4,6 +4,8 @@ import argparse
 from pathlib import Path
 
 import pytest
+from examples._console import add_receiver_arguments
+from examples._console_capture import capture_records
 
 from um982py.antenna import (
     AntennaLog,
@@ -15,8 +17,6 @@ from um982py.antenna import (
 )
 from um982py.capture import decode_records
 from um982py.commands import Log, queries
-from um982py.console import add_receiver_arguments
-from um982py.console_capture import capture_records
 from um982py.messages.navigation import BestNavigation
 from um982py.protocol import StreamDecoder
 

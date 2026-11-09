@@ -3,7 +3,7 @@
 from collections.abc import Sequence
 
 from examples._carrier_cli import carrier_main
-from um982py.console import run
+from examples._console import run
 
 
 def main(argv: Sequence[str] | None = None) -> int:

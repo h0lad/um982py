@@ -7,14 +7,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from examples.b2b_correction_audit import (
-    align_navigation,
-    audit_corrections,
-    chronological,
-    service_census,
-)
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     add_debug_argument,
     debug_header,
     experiment_parser,
@@ -23,7 +16,14 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.console_capture import capture_logs
+from examples._console_capture import capture_logs
+from examples.b2b_correction_audit import (
+    align_navigation,
+    audit_corrections,
+    chronological,
+    service_census,
+)
+from um982py.commands import Log
 from um982py.corrections import audit_has, correction_events
 from um982py.field_data import file_sha256
 from um982py.messages import Record

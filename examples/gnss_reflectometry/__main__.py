@@ -14,6 +14,8 @@ from dataclasses import asdict
 from pathlib import Path
 from typing import cast
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.dual_antenna_rf_audit import compare_antennas, summarize_by_signal
 from examples.gnss_reflectometry import (
     MAX_ELEVATION_DEGREES,
@@ -39,8 +41,6 @@ from um982py import export_rinex
 from um982py.antenna import AntennaLog, antenna_index, antenna_log
 from um982py.capture import DataLog, record_epoch
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.diagnostics import signal_inventory
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record

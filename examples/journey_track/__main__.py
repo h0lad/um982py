@@ -3,11 +3,11 @@
 import math
 from collections.abc import Sequence
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.heading_attitude import attitude_from_record, swapped_attitude
 from um982py.capture import record_epoch
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.field_data import file_sha256
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
 from um982py.messages import Record

@@ -8,6 +8,14 @@ from contextlib import ExitStack
 from math import isfinite
 from time import monotonic
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    run,
+    write_json,
+)
+from examples._console_capture import open_receiver
 from examples.navigation_message_hex import (
     MessageHex,
     families,
@@ -18,14 +26,6 @@ from um982py import Receiver
 from um982py.antenna import AntennaLog, antenna_log
 from um982py.capture import iter_frames
 from um982py.commands import Log, Trigger
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    run,
-    write_json,
-)
-from um982py.console_capture import open_receiver
 from um982py.errors import CommandRejected, ResponseTimeout
 from um982py.messages import BinaryMessage, Message
 from um982py.subscriptions import temporary_subscriptions

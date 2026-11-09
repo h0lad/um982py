@@ -7,6 +7,14 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from examples._console import (
+    ExampleParser,
+    add_receiver_arguments,
+    debug_header,
+    run,
+    write_json,
+)
+from examples._console_capture import open_receiver
 from examples.spoof_dual_antenna import (
     Alarm,
     EcefBaseline,
@@ -24,14 +32,6 @@ from examples.spoof_dual_antenna import (
 from um982py import Receiver
 from um982py.capture import iter_frames
 from um982py.commands import Log
-from um982py.console import (
-    ExampleParser,
-    add_receiver_arguments,
-    debug_header,
-    run,
-    write_json,
-)
-from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout
 from um982py.messages import Record
 

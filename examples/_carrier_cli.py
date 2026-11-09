@@ -4,15 +4,15 @@ import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     add_debug_argument,
     debug_header,
     experiment_parser,
     progress_printer,
     write_json,
 )
-from um982py.console_capture import capture_logs
+from examples._console_capture import capture_logs
+from um982py.commands import Log
 from um982py.experimental.carrier import monitor_divergence, smooth_code
 from um982py.measurement import sample_series
 from um982py.stats import rms

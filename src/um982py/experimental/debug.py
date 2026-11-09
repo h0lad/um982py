@@ -403,24 +403,6 @@ _POS_BSCE = re.compile(r"^bsce([0-9A-Fa-f]{2})$")
 _POS_XJ = re.compile(r"^xj,(\d+)$")
 
 
-def _float_or_none(text: str | None) -> float | None:
-    if text is None:
-        return None
-    try:
-        return float(text)
-    except ValueError:
-        return None
-
-
-def _int_or_none(text: str | None) -> int | None:
-    if text is None:
-        return None
-    try:
-        return int(text)
-    except ValueError:
-        return None
-
-
 def parse_pos_debug(raw: bytes | str) -> PosDebugData | None:
     """Parse selected FASTDEBUGMSG fields while retaining undecoded tokens."""
     text_line = (

@@ -9,16 +9,16 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from um982py.capture import load_records, record_epoch
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     add_debug_argument,
     debug_header,
     experiment_parser,
     progress_printer,
     write_json,
 )
-from um982py.console_capture import capture_logs
+from examples._console_capture import capture_logs
+from um982py.capture import load_records, record_epoch
+from um982py.commands import Log
 from um982py.experimental.gps_motion import (
     choose_ephemeris,
     doppler_measurement,

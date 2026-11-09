@@ -7,6 +7,8 @@ import sys
 from collections.abc import Callable, Sequence
 from datetime import datetime, timedelta
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.time_transfer import (
     LEAP_SECONDS,
     day_of_year,
@@ -14,8 +16,6 @@ from examples.time_transfer import (
     leap_seconds,
 )
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.messages.record import Record
 
 

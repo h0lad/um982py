@@ -4,16 +4,16 @@ import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
-from examples.ppp_filter_inspector import analyse_ppp_filter
-from um982py.capture import iter_frames
-from um982py.console import (
+from examples._console import (
     add_debug_argument,
     debug_header,
     experiment_parser,
     run,
     write_json,
 )
-from um982py.console_capture import open_receiver
+from examples._console_capture import open_receiver
+from examples.ppp_filter_inspector import analyse_ppp_filter
+from um982py.capture import iter_frames
 from um982py.experimental import (
     InternalDebugLog,
     capture_internal_debug,

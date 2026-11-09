@@ -12,6 +12,7 @@ from contextlib import AsyncExitStack
 from functools import partial
 from pathlib import Path
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples.ntrip_server.auth import Credentials, hash_password
 from examples.ntrip_server.caster import Caster, Hub, Limits, listen
 from examples.ntrip_server.source import (
@@ -24,7 +25,6 @@ from examples.ntrip_server.station import Station
 from examples.ntrip_server.status import StatusSettings, StatusSite, listen_status
 from examples.ntrip_server.survey import capture_survey
 from um982py.capture import iter_frames
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
 from um982py.messages import RtcmMessage
 
 

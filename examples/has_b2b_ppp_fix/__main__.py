@@ -9,6 +9,14 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
+from examples._console import (
+    add_debug_argument,
+    debug_header,
+    experiment_parser,
+    run,
+    write_json,
+)
+from examples._console_capture import capture_logs
 from examples.has_b2b_ppp_fix import (
     DivergenceTally,
     MeanFix,
@@ -25,14 +33,6 @@ from examples.has_b2b_ppp_fix import (
 )
 from um982py.capture import record_epoch
 from um982py.commands import Log
-from um982py.console import (
-    add_debug_argument,
-    debug_header,
-    experiment_parser,
-    run,
-    write_json,
-)
-from um982py.console_capture import capture_logs
 from um982py.experimental.carrier import monitor_divergence
 from um982py.measurement import RangeSample, SignalKey, range_samples
 from um982py.messages import Record

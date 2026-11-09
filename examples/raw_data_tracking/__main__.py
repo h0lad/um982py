@@ -7,20 +7,20 @@ from collections.abc import Sequence
 from dataclasses import asdict
 from pathlib import Path
 
-from examples.raw_data_tracking import (
-    catalogue_summary,
-    field_coverage,
-    report,
-)
-from um982py.commands.types import Port, Trigger
-from um982py.console import (
+from examples._console import (
     ExampleParser,
     add_receiver_arguments,
     debug_header,
     run,
     write_json,
 )
-from um982py.console_capture import open_receiver
+from examples._console_capture import open_receiver
+from examples.raw_data_tracking import (
+    catalogue_summary,
+    field_coverage,
+    report,
+)
+from um982py.commands.types import Port, Trigger
 from um982py.experimental import BasebandCapture, RawDataLog, capture_baseband
 
 

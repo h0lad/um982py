@@ -5,9 +5,9 @@ from collections.abc import Sequence
 from contextlib import suppress
 from time import monotonic, sleep
 
+from examples._console import experiment_parser, run, write_json
+from examples._console_capture import open_receiver
 from um982py.capture import iter_frames
-from um982py.console import experiment_parser, run, write_json
-from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout
 from um982py.experimental import (
     MatchedSolution,

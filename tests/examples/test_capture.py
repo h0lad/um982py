@@ -6,12 +6,14 @@ from pathlib import Path
 from unittest.mock import Mock, patch
 
 import pytest
+from examples._console import ExampleParser, add_receiver_arguments, write_json
+from examples._console_capture import capture_records, open_receiver
 
 from conftest import SubscriptionTransport, ascii_message
+from examples import _console_capture
 from test_protocol import binary
 from um982py import Receiver
 from um982py import capture as _capture
-from um982py import console_capture as _console_capture
 from um982py.capture import (
     InterruptedCapture,
     gps_signals,
@@ -22,8 +24,6 @@ from um982py.capture import (
 )
 from um982py.commands import Log
 from um982py.commands.types import Port
-from um982py.console import ExampleParser, add_receiver_arguments, write_json
-from um982py.console_capture import capture_records, open_receiver
 from um982py.corrections import stale_correction
 from um982py.errors import ProtocolError
 from um982py.messages import Record
@@ -37,7 +37,7 @@ def test_shared_receiver_accepts_tcp_target() -> None:
     transport = SubscriptionTransport()
     with (
         patch.object(Receiver, "connect", return_value=Receiver(transport)) as factory,
-        patch("um982py.console_capture.enable_augmentation") as augmentation,
+        patch("examples._console_capture.enable_augmentation") as augmentation,
     ):
         augmentation.return_value.changed = False
         augmentation.return_value.rejected = ()
@@ -54,7 +54,7 @@ def test_shared_receiver_augmentation_is_explicit() -> None:
     receiver = Mock()
     with (
         patch.object(Receiver, "connect", return_value=receiver),
-        patch("um982py.console_capture.enable_augmentation") as augmentation,
+        patch("examples._console_capture.enable_augmentation") as augmentation,
     ):
         augmentation.return_value.changed = False
         augmentation.return_value.rejected = ()
@@ -67,7 +67,7 @@ def test_shared_receiver_closes_after_augmentation_failure() -> None:
     with (
         patch.object(Receiver, "connect", return_value=receiver),
         patch(
-            "um982py.console_capture.enable_augmentation", side_effect=OSError("lost")
+            "examples._console_capture.enable_augmentation", side_effect=OSError("lost")
         ),
         pytest.raises(OSError, match="lost"),
     ):
@@ -88,7 +88,7 @@ def test_live_receiver_configures_requested_ppp_service(service: str) -> None:
     receiver = Mock()
     with (
         patch.object(Receiver, "connect", return_value=receiver),
-        patch("um982py.console_capture.enable_augmentation") as augmentation,
+        patch("examples._console_capture.enable_augmentation") as augmentation,
     ):
         augmentation.return_value.changed = False
         augmentation.return_value.rejected = ()
@@ -369,7 +369,7 @@ def test_load_records_accepts_string_paths() -> None:
 def test_output_helpers_accept_string_paths(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from um982py.console import read_numeric_csv, write_json
+    from examples._console import read_numeric_csv, write_json
 
     path = tmp_path / "reference.csv"
     path.write_text("time,value\n1,2\n", encoding="utf-8")

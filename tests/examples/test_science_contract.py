@@ -99,7 +99,8 @@ def test_absolute_position_uncertainty_is_not_used_as_baseline_uncertainty() -> 
 def test_expected_cleanup_failures_are_readable_and_keep_failure_exit_status(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    from um982py.console import run
+    from examples._console import run
+
     from um982py.errors import ResponseTimeout
 
     def failed_restore() -> int:
@@ -110,7 +111,7 @@ def test_expected_cleanup_failures_are_readable_and_keep_failure_exit_status(
 
 
 def test_unexpected_programming_errors_are_not_hidden() -> None:
-    from um982py.console import run
+    from examples._console import run
 
     def bug() -> int:
         raise ExceptionGroup("bug", [TypeError("broken code")])

@@ -6,6 +6,8 @@ import math
 import sys
 from collections.abc import Callable, Sequence
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples._observation_arcs import CarrierState, continuous
 from examples.ionosphere_tec import (
     GPS_L1_HZ,
@@ -20,8 +22,6 @@ from examples.ionosphere_tec import (
 )
 from um982py.capture import GPS_FREQUENCIES, gps_signals, record_epoch
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.messages.record import Record
 
 

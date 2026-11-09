@@ -4,9 +4,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
-from examples.triple_frequency_closure import frequency_closures
-from um982py.commands import Log
-from um982py.console import (
+from examples._console import (
     add_debug_argument,
     debug_header,
     experiment_parser,
@@ -14,7 +12,9 @@ from um982py.console import (
     run,
     write_json,
 )
-from um982py.console_capture import capture_logs
+from examples._console_capture import capture_logs
+from examples.triple_frequency_closure import frequency_closures
+from um982py.commands import Log
 from um982py.diagnostics import signal_inventory
 
 

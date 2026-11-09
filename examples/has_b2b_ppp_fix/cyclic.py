@@ -8,6 +8,15 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from time import monotonic
 
+from examples._console import (
+    ExampleParser,
+    add_debug_argument,
+    add_receiver_arguments,
+    debug_header,
+    run,
+    write_json,
+)
+from examples._console_capture import open_receiver
 from examples.has_b2b_ppp_fix import (
     MeanFix,
     PppEpoch,
@@ -22,15 +31,6 @@ from examples.has_b2b_ppp_fix import (
 from um982py import Receiver
 from um982py.capture import decode_records, load_records
 from um982py.commands import Log
-from um982py.console import (
-    ExampleParser,
-    add_debug_argument,
-    add_receiver_arguments,
-    debug_header,
-    run,
-    write_json,
-)
-from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout
 from um982py.subscriptions import temporary_subscriptions
 

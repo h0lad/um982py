@@ -5,20 +5,20 @@ from __future__ import annotations
 import sys
 from collections.abc import Sequence
 
-from examples.pwv_meteorology import (
-    Troposphere,
-    WaterVapour,
-    manual_troposphere,
-)
-from um982py.commands import Command, Log, Trigger, logging
-from um982py.console import (
+from examples._console import (
     ExampleParser,
     add_receiver_arguments,
     debug_header,
     run,
     write_json,
 )
-from um982py.console_capture import capture_records
+from examples._console_capture import capture_records
+from examples.pwv_meteorology import (
+    Troposphere,
+    WaterVapour,
+    manual_troposphere,
+)
+from um982py.commands import Command, Log, Trigger, logging
 from um982py.messages import Record
 
 _QUERY_TIMEOUT = 2.0

@@ -5,6 +5,8 @@ from __future__ import annotations
 import sys
 from collections.abc import Callable, Sequence
 
+from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples._console_capture import capture_records
 from examples.rtk_quality import (
     EpochSolution,
     QualitySummary,
@@ -13,8 +15,6 @@ from examples.rtk_quality import (
 )
 from um982py.capture import record_epoch
 from um982py.commands import Log
-from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.console_capture import capture_records
 from um982py.messages import Record
 
 POSITION_LOGS = (Log.BESTPOS, Log.RTKPOS)
