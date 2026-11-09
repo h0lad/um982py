@@ -18,6 +18,12 @@ _IDENTITY = (
     "APPROX POSITION XYZ",
     "ANTENNA: DELTA H/E/N",
 )
+_PLACEHOLDERS = frozenset(
+    {
+        "Approximate position unknown; zeros are placeholders",
+        "Antenna delta unknown; zeros are placeholders",
+    }
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +42,7 @@ class _Header:
     gps_codes: tuple[str, ...]
     identity: tuple[tuple[str, str], ...]
     l2c_declaration: tuple[str, ...]
+    placeholders: frozenset[str]
 
 
 def _read_header(path: Path) -> _Header:
@@ -43,6 +50,7 @@ def _read_header(path: Path) -> _Header:
     codes: list[str] = []
     identity: dict[str, str] = {}
     comments: list[str] = []
+    placeholders: set[str] = set()
     expected: int | None = None
     active = ""
     gps_phase_unknown = False
@@ -66,6 +74,8 @@ def _read_header(path: Path) -> _Header:
                 native |= line[:60].startswith("Native RANGE input; GPST epochs")
                 if line[:60].startswith("Type-9 L2C attribute supplied"):
                     comments.append(line[:60])
+                if line[:60].strip() in _PLACEHOLDERS:
+                    placeholders.add(line[:60].strip())
             if label == "SYS / # / OBS TYPES":
                 if line[:1].strip():
                     active = line[0]
@@ -99,7 +109,11 @@ def _read_header(path: Path) -> _Header:
     ):
         raise ValueError("unsupported or incomplete um982py GPS observation header")
     return _Header(
-        tuple(lines), tuple(codes), tuple(sorted(identity.items())), tuple(comments)
+        tuple(lines),
+        tuple(codes),
+        tuple(sorted(identity.items())),
+        tuple(comments),
+        frozenset(placeholders),
     )
 
 
@@ -127,10 +141,12 @@ def merge_gps_observations(
 ) -> MergeResult:
     """Merge um982py RANGE exports with unknown phase alignment into GPS RINEX.
 
-    Input files must be in strict time order. The output is created only after
-    they have been validated. Each carrier's first observation after a segment
-    boundary gets a loss-of-lock flag because continuity through the
-    interruption is unknown. Other constellations are omitted.
+    Input files must be in strict time order and agree on station metadata,
+    including whether zero coordinates or antenna offsets are placeholders.
+    The output is created only after they have been validated. Each carrier's
+    first observation after a segment boundary gets a loss-of-lock flag because
+    continuity through the interruption is unknown. Other constellations are
+    omitted.
     """
     if not inputs:
         raise ValueError("at least one segment is required")
@@ -142,6 +158,7 @@ def merge_gps_observations(
     if any(
         header.identity != headers[0].identity
         or header.l2c_declaration != headers[0].l2c_declaration
+        or header.placeholders != headers[0].placeholders
         for header in headers[1:]
     ):
         raise ValueError(

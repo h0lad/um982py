@@ -78,3 +78,22 @@ def test_merge_rejects_overlap_and_metadata_changes_without_writing_output(
     with pytest.raises(ValueError, match="metadata"):
         merge_gps_observations((first, second), output)
     assert not output.exists()
+
+
+@pytest.mark.parametrize("field", ["position_xyz", "antenna_delta_hen"])
+@pytest.mark.parametrize("unknown_first", [True, False])
+def test_merge_rejects_unknown_and_explicit_zero_metadata(
+    tmp_path: Path, field: str, unknown_first: bool
+) -> None:
+    first, second, output = (tmp_path / name for name in ("a.obs", "b.obs", "out.obs"))
+    unknown = RinexMetadata(antenna_type="TEST")
+    explicit = RinexMetadata(antenna_type="TEST", **{field: (0.0, 0.0, 0.0)})
+    metadata = (unknown, explicit) if unknown_first else (explicit, unknown)
+    for path, epoch, item in zip((first, second), (0, 1), metadata, strict=True):
+        path.write_text(
+            export_rinex((record(epoch, [observation()]),), metadata=item).text,
+            encoding="ascii",
+        )
+    with pytest.raises(ValueError, match="metadata"):
+        merge_gps_observations((first, second), output)
+    assert not output.exists()
