@@ -15,11 +15,10 @@ from um982py.antenna import AntennaLog
 from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
-_POSITION = FirmwareLog.BESTXYZ.read()
-_BASELINE = FirmwareLog.BSLNENUHD.read()
+_POSITION = Log.BESTXYZ.read()
+_BASELINE = Log.BSLNENUHD.read()
 
 
 def _parser() -> ExampleParser:
@@ -116,7 +115,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
             flush=True,
         )
-    logs = [FirmwareLog.BESTXYZ, FirmwareLog.BSLNENUHD]
+    logs = [Log.BESTXYZ, Log.BSLNENUHD]
     secondary = args.antenna in ("secondary", "2")
     anchor = AntennaLog(Log.BESTNAVXYZ, Log.BESTNAVXYZ)
     captured = capture_records(

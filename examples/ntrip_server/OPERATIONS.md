@@ -101,7 +101,7 @@ dedicated relay account on the origin:
 read -rsp 'Relay password: ' NTRIP_UPSTREAM_PASSWORD
 export NTRIP_UPSTREAM_PASSWORD
 python -m examples.ntrip_server \
-  --station station.json --public \
+  --station station.json --mode public \
   --upstream-host origin.example.org --upstream-port 2101 --upstream-user relay01 \
   --bind 0.0.0.0 --listen-port 2101 \
   --tls-cert edge-fullchain.pem --tls-key edge-privkey.pem

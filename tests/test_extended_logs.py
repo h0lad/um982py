@@ -3,40 +3,42 @@ from dataclasses import replace
 import pytest
 
 from conftest import FIXTURES
+from um982py.commands import Log
+from um982py.commands.extended import EXTENDED_LOGS
 from um982py.errors import ProtocolError
 from um982py.experimental import configuration as config
-from um982py.logs import FirmwareLog
 from um982py.messages import AsciiMessage, BinaryMessage
 from um982py.protocol import StreamDecoder
 
 SENSITIVE = {
-    FirmwareLog.ALIGNBSLNENU,
-    FirmwareLog.ALIGNBSLNXYZ,
-    FirmwareLog.BESTGNSSPOS,
-    FirmwareLog.BESTPOS,
-    FirmwareLog.BESTPOS2,
-    FirmwareLog.BESTXYZ,
-    FirmwareLog.BSLNENUHD,
-    FirmwareLog.BSLNXYZHD,
-    FirmwareLog.PSRPOS,
-    FirmwareLog.RANGE,
-    FirmwareLog.RANGEH,
-    FirmwareLog.RTKPOS,
+    Log.ALIGNBSLNENU,
+    Log.ALIGNBSLNXYZ,
+    Log.BESTGNSSPOS,
+    Log.BESTPOS,
+    Log.BESTPOS2,
+    Log.BESTXYZ,
+    Log.BSLNENUHD,
+    Log.BSLNXYZHD,
+    Log.PSRPOS,
+    Log.RANGE,
+    Log.RANGEH,
+    Log.RTKPOS,
 }
 
 FORMATS = [
     (log, binary)
-    for log in FirmwareLog
+    for log in Log
     for binary in (False, True)
-    if (log != FirmwareLog.RXSTATUS or not binary) and log not in SENSITIVE
+    if (log.value in EXTENDED_LOGS or log == Log.RTKSTATUS2)
+    and (log != Log.RXSTATUS or not binary)
+    and log not in SENSITIVE
 ]
 
 
-def captured(log: FirmwareLog, binary: bool) -> AsciiMessage | BinaryMessage:
+def captured(log: Log, binary: bool) -> AsciiMessage | BinaryMessage:
     folder = (
         "captures-extra"
-        if log
-        in (FirmwareLog.RTKSTATUS2, FirmwareLog.RTKSTATUSD, FirmwareLog.RTKSTATUS2D)
+        if log in (Log.RTKSTATUS2, Log.RTKSTATUSD, Log.RTKSTATUS2D)
         else "captures"
     )
     raw = (FIXTURES / folder / (log.wire_name(binary=binary) + ".bin")).read_bytes()
@@ -48,20 +50,20 @@ def captured(log: FirmwareLog, binary: bool) -> AsciiMessage | BinaryMessage:
 
 
 @pytest.mark.parametrize("log,binary", FORMATS)
-def test_live_captures(log: FirmwareLog, binary: bool) -> None:
+def test_live_captures(log: Log, binary: bool) -> None:
     message = captured(log, binary)
     record = log.decode(message)
     assert record.name == log.value and record.message is message
     assert log.read(binary=binary).decode(message) == record
-    if log in (FirmwareLog.RANGE, FirmwareLog.RANGEH):
+    if log in (Log.RANGE, Log.RANGEH):
         assert len(record.records("observations")) == record.integer("count")
         assert record.records("observations")[0].real("pseudorange") > 1_000_000
-    if log == FirmwareLog.HEADINGOFFSET:
+    if log == Log.HEADINGOFFSET:
         assert record.real("heading") == record.real("pitch") == 0
 
 
 @pytest.mark.parametrize("log,binary", FORMATS)
-def test_truncated_and_extra_fields(log: FirmwareLog, binary: bool) -> None:
+def test_truncated_and_extra_fields(log: Log, binary: bool) -> None:
     message = captured(log, binary)
     if isinstance(message, BinaryMessage):
         bad = [
@@ -70,7 +72,7 @@ def test_truncated_and_extra_fields(log: FirmwareLog, binary: bool) -> None:
         ]
     else:
         fields = message.fields
-        if log == FirmwareLog.HEADINGOFFSET:
+        if log == Log.HEADINGOFFSET:
             fields = fields[:-1]
         bad = [
             replace(message, fields=fields[:-1]),

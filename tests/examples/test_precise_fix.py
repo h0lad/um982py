@@ -19,8 +19,8 @@ from examples.precise_fix import (
 )
 
 from um982py.capture import decode_records, read_frames
+from um982py.commands import Log
 from um982py.geodesy import ecef_from_geodetic, geodetic_from_ecef
-from um982py.logs import FirmwareLog
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "captures" / "BESTXYZB.bin"
 CENTRE = (3_782_563.8151, 899_476.2810, 5_039_205.3876)
@@ -242,7 +242,7 @@ def test_invalid_estimate_options_are_rejected() -> None:
 
 
 def test_fixture_bestxyz_decodes_into_a_sample() -> None:
-    records = decode_records(read_frames(FIXTURE), FirmwareLog.BESTXYZ)
+    records = decode_records(read_frames(FIXTURE), Log.BESTXYZ)
     assert records
     decoded = fix_sample(records[0])
     assert decoded.position_type == SINGLE_TYPE

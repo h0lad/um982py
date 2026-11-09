@@ -11,15 +11,15 @@ import sys
 import um982py
 assert not any(name.startswith('um982py.') for name in sys.modules)
 from um982py import (
-    BestNavigation, FirmwareLog, Fix, Heading, Log, Receiver, ReceiverState,
+    BestNavigation, Log, Fix, Heading, Receiver,
     RinexMetadata, capture_live,
 )
-assert FirmwareLog.RANGE.value == 'RANGE'
-assert Receiver and ReceiverState and capture_live
+assert Log.RANGE.value == 'RANGE'
+assert Receiver and capture_live
 assert BestNavigation and Fix and Heading and Log and RinexMetadata
 assert not any(name.startswith('um982py.experimental') for name in sys.modules)
-from um982py.logs import FirmwareLog as LogCatalog
-assert FirmwareLog is LogCatalog
+from um982py.commands import Log as LogCatalog
+assert Log is LogCatalog
 """
     subprocess.run([sys.executable, "-c", code], check=True, timeout=10)
 
@@ -29,6 +29,10 @@ def test_removed_compatibility_imports_are_not_exposed() -> None:
     import um982py.capture
     import um982py.experimental
 
+    assert not hasattr(um982py, "FirmwareLog")
+    assert not hasattr(um982py, "gnss_range_samples")
+    assert importlib.util.find_spec("um982py.logs") is None
+
     for name in ("capture_logs", "capture_records", "open_receiver", "capture_log"):
         assert not hasattr(um982py, name)
         assert not hasattr(um982py.capture, name)
@@ -36,3 +40,14 @@ def test_removed_compatibility_imports_are_not_exposed() -> None:
         assert not hasattr(um982py.experimental, name)
     for name in ("logs", "layouts", "models", "diagnostics", "navigation", "b2b"):
         assert importlib.util.find_spec(f"um982py.experimental.{name}") is None
+
+
+def test_one_log_catalogue_covers_documented_and_extended_logs() -> None:
+    from um982py import Log
+    from um982py.commands.catalog import LOGS
+    from um982py.commands.extended import EXTENDED_LOGS
+
+    assert set(LOGS).isdisjoint(EXTENDED_LOGS)
+    assert {log.value for log in Log} == set(LOGS) | set(EXTENDED_LOGS)
+    assert Log.RANGE.definition.binary_command == "RANGEB"
+    assert Log.BESTNAV.definition.binary_command == "BESTNAVB"

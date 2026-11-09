@@ -25,10 +25,9 @@ that requires it, `optional` always has the listed default.
 | Option | Default | Level | Note |
 | --- | --- | --- | --- |
 | `--station` | none | required | Reviewed ARP manifest with `position_verified` already set to `true`. |
-| `--mode` | legacy behavior | optional | `public` enables guest rovers, while `private` requires accounts, protects sourcetable access and keeps the status site on loopback. |
+| `--mode` | `private` | optional | `public` enables guest rovers, while `private` requires accounts, protects sourcetable access and keeps the status site on loopback. |
 | `--users` | none | required for private access, optional for public | `0600` JSON of rover username to password hash. The wizard creates it for private mode. |
 | `--source-users` | none | optional | `0600` JSON of source-only credentials, enabling incoming source mode in place of the receiver. The v1 source password uses the username `source`. Cannot be combined with `--upstream-host`. |
-| `--public` | off | optional | Allows guest GET without a user file. |
 | `--hash-password` | off | optional | Prints one hash and exits, ignoring all other options. |
 
 ## Listener and TLS

@@ -3,6 +3,11 @@
 from enum import IntEnum, IntFlag
 
 
+def _reported_datum[T](value: T) -> T | str:
+    """Name the documented WGS84 datum code and preserve other values."""
+    return "WGS84" if type(value) is int and value == 61 else value
+
+
 class PositionType(IntEnum):
     NONE = 0
     FIXEDPOS = 1
@@ -27,6 +32,9 @@ class PositionType(IntEnum):
     PPP_AR = 70
     PPP_RTK = 71
 
+    def __str__(self) -> str:
+        return self.name
+
 
 class SolutionStatus(IntEnum):
     SOL_COMPUTED = 0
@@ -34,6 +42,9 @@ class SolutionStatus(IntEnum):
     NO_CONVERGENCE = 2
     SINGULARITY = 3
     COV_TRACE = 4
+
+    def __str__(self) -> str:
+        return self.name
 
 
 class SatelliteSystem(IntEnum):

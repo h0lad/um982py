@@ -14,7 +14,7 @@ from examples.time_transfer import (
     utc_offset_seconds,
 )
 
-from um982py.logs import FirmwareLog
+from um982py.commands import Log
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder
 
@@ -34,9 +34,9 @@ ROUND_TRIP_EPOCHS = (
 def time_record() -> Record:
     frames = StreamDecoder().feed((FIXTURES / "TIMEB.bin").read_bytes())
     return next(
-        FirmwareLog.TIME.decode(message)
+        Log.TIME.decode(message)
         for message in frames
-        if FirmwareLog.TIME.request(binary=True).matches(message)
+        if Log.TIME.request(binary=True).matches(message)
     )
 
 

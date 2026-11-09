@@ -13,9 +13,9 @@ from examples.cycle_slip_detection import (
     report,
 )
 from um982py.capture import gps_signals, record_epoch
+from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 
@@ -98,7 +98,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     records = capture_records(
         args,
-        [FirmwareLog.RANGE],
+        [Log.RANGE],
         duration=args.duration,
         frames=args.frames,
         interval=args.interval,

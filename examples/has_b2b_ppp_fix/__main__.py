@@ -34,8 +34,7 @@ from um982py.console import (
 )
 from um982py.console_capture import capture_logs
 from um982py.experimental.carrier import monitor_divergence
-from um982py.logs import FirmwareLog
-from um982py.measurement import RangeSample, SignalKey, gnss_range_samples
+from um982py.measurement import RangeSample, SignalKey, range_samples
 from um982py.messages import Record
 
 B2B_LOGS = (
@@ -66,7 +65,7 @@ def _divergence_lines(
     """Per-signal divergence summary used by both the log and the report."""
     series: dict[SignalKey, list[RangeSample]] = defaultdict(list)
     for record in range_records:
-        for sample in gnss_range_samples(record, epoch=record_epoch(record)):
+        for sample in range_samples(record, epoch=record_epoch(record)):
             series[sample.key].append(sample)
     summary = []
     for key in sorted(series):
@@ -278,7 +277,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     captured = capture_logs(
         args,
-        (Log.PPPNAV, FirmwareLog.BESTXYZ, FirmwareLog.RANGE, *B2B_LOGS, *HAS_LOGS),
+        (Log.PPPNAV, Log.BESTXYZ, Log.RANGE, *B2B_LOGS, *HAS_LOGS),
         on_progress=on_progress if args.debug else None,
     )
     epochs = ppp_epochs(captured.get("PPPNAV", ()))

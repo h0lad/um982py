@@ -11,7 +11,6 @@ from um982py.capture import gps_signals, record_epoch
 from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.observation_quality import audit_observations
 
@@ -59,7 +58,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("input, recording and report paths must be distinct")
     captured = capture_records(
         args,
-        [FirmwareLog.RANGE, Log.BESTNAV, Log.JAMSTATUS],
+        [Log.RANGE, Log.BESTNAV, Log.JAMSTATUS],
         duration=args.duration,
         interval=args.interval,
     )

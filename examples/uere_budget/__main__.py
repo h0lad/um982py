@@ -13,6 +13,7 @@ from examples.uere_budget import (
     pseudorange_uere,
 )
 from um982py.capture import record_epoch
+from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -22,7 +23,6 @@ from um982py.console import (
     write_json,
 )
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.stats import percentile
 
@@ -134,7 +134,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     debug_header(args, "uere_budget")
     captured = capture_records(
         args,
-        [FirmwareLog.PSRPOS, FirmwareLog.PSRDOP, FirmwareLog.RANGE],
+        [Log.PSRPOS, Log.PSRDOP, Log.RANGE],
         duration=args.duration,
         interval=args.interval,
         on_progress=progress_printer("uere_budget") if args.debug else None,

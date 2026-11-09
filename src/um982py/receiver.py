@@ -1,10 +1,10 @@
 """Receiver transactions and message streaming."""
 
 from collections import deque
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from math import isfinite
-from threading import RLock
-from time import monotonic
+from threading import Event, RLock
+from time import monotonic, sleep
 from types import TracebackType
 from typing import Self
 from urllib.parse import urlsplit
@@ -23,12 +23,12 @@ from um982py.errors import (
     ResponseTimeout,
     TransportClosed,
 )
-from um982py.logs import FirmwareLog
-from um982py.measurement import RangeSample, gnss_range_samples
+from um982py.measurement import RangeSample, range_samples
 from um982py.messages.frames import CommandResponse, Message, RtcmMessage
 from um982py.messages.navigation import BestNavigation, Fix, Heading
 from um982py.messages.record import Record
 from um982py.messages.version import Version
+from um982py.ppp import PppService, PppSession, _start_ppp
 from um982py.protocol.decoder import StreamDecoder
 from um982py.receiver_models import (
     FirmwareInfo,
@@ -44,6 +44,7 @@ from um982py.receiver_queries import (
     performance_status,
     receiver_system_status,
 )
+from um982py.satellites import Satellite, satellites_from_record
 from um982py.transports.base import Transport
 from um982py.transports.serial import SerialTransport
 from um982py.transports.tcp import TcpTransport
@@ -76,6 +77,7 @@ class Receiver:
         self._backlog: deque[Message] = deque()
         self._lock = RLock()
         self._closed = False
+        self._in_poll_callback = False
 
     @classmethod
     def serial(cls, port: str, baudrate: int = 115200, *, timeout: float = 3) -> Self:
@@ -125,6 +127,8 @@ class Receiver:
 
     def close(self) -> None:
         with self._lock:
+            if self._in_poll_callback:
+                raise RuntimeError("receiver operations are unavailable in on_message")
             if not self._closed:
                 self.transport.close()
                 self._closed = True
@@ -225,6 +229,39 @@ class Receiver:
         """Query a one-shot GGA position fix for the selected antenna."""
         return self.execute(queries.fix(antenna=antenna))
 
+    def positions(
+        self,
+        *,
+        interval: float = 1,
+        antenna: int = 1,
+        stop: Event | None = None,
+        on_message: Callable[[Message], None] | None = None,
+    ) -> Iterator[Fix]:
+        """Poll GGA positions until the caller stops iterating.
+
+        Each query uses the receiver timeout. The interval is the pause between
+        queries, and the receiver remains open when iteration stops. Other
+        messages received during a query go to ``on_message`` or are discarded.
+        Messages already queued before the query remain available to ``receive``.
+        The callback runs within the transaction and must not use the receiver.
+        """
+        if isinstance(interval, bool) or not isfinite(interval) or interval <= 0:
+            raise ValueError("interval must be finite and positive")
+        if antenna not in (1, 2):
+            raise ValueError("antenna must be 1 or 2")
+        if on_message is not None and not callable(on_message):
+            raise TypeError("on_message must be callable")
+
+        def poll() -> Iterator[Fix]:
+            while stop is None or not stop.is_set():
+                yield self._poll_query(queries.fix(antenna=antenna), on_message)
+                if stop is None:
+                    sleep(interval)
+                elif stop.wait(interval):
+                    return
+
+        return poll()
+
     def best_navigation(
         self, *, binary: bool = False, antenna: int = 1
     ) -> BestNavigation:
@@ -235,9 +272,20 @@ class Receiver:
         """Query a one-shot dual-antenna THS heading solution."""
         return self.execute(queries.heading())
 
+    def satellites(self) -> tuple[Satellite, ...]:
+        """Return tracked satellites with named constellations and signals."""
+        return satellites_from_record(self.read_log(Log.SATSINFO))
+
+    def start_ppp(self, *, service: PppService = "E6-HAS") -> PppSession:
+        """Configure a satellite PPP service and read its solutions.
+
+        An active ONLY setting for the requested service is retained.
+        """
+        return _start_ppp(self, service=service)
+
     def read_log(
         self,
-        log: Log | FirmwareLog | AntennaLog,
+        log: Log | AntennaLog,
         *,
         binary: bool | None = None,
         antenna: str = "primary",
@@ -264,8 +312,8 @@ class Receiver:
         signals: tuple[int, ...] | None = None,
     ) -> tuple[RangeSample, ...]:
         """Read one RANGE or RANGEH epoch and return observations in SI units."""
-        record = self.read_log(FirmwareLog.RANGE, binary=True, antenna=antenna)
-        return gnss_range_samples(record, systems=systems, signals=signals)
+        record = self.read_log(Log.RANGE, binary=True, antenna=antenna)
+        return range_samples(record, systems=systems, signals=signals)
 
     def enable_augmentation(self, *, persist: bool = False) -> AugmentationState:
         """Enable high-accuracy signal group, SBAS, E6-HAS, B2b-PPP and MMP."""
@@ -289,6 +337,74 @@ class Receiver:
             self._save(self._incoming.popleft())
         self.transport.write(command.encode(checksummed=self.checksummed), duration)
 
+    def _poll_query[T](
+        self, command: Command[T], on_message: Callable[[Message], None] | None = None
+    ) -> T:
+        """Run a polling query while routing other new messages to the callback."""
+        if on_message is not None and not callable(on_message):
+            raise TypeError("on_message must be callable")
+        with self._lock:
+            self._check_open()
+            prior_bytes = len(self.decoder.pending)
+            if (
+                prior_bytes
+                and len(self._incoming) + len(self._backlog) >= self.queue_limit
+            ):
+                raise BufferOverflow("Receiver queue full; consume messages")
+            deadline = monotonic() + self.timeout
+            self._start(command, self.timeout)
+            while True:
+                remaining = deadline - monotonic()
+                if remaining <= 0:
+                    raise ResponseTimeout(f"Timed out waiting for {command.text}")
+                chunk = self.transport.read(65536, remaining)
+                newly_completed: list[Message] = []
+                if prior_bytes:
+                    for index, byte in enumerate(chunk):
+                        discarded = self.decoder.discarded_bytes
+                        completed = self.decoder.feed(bytes((byte,)))
+                        prior_bytes = max(
+                            0,
+                            prior_bytes - (self.decoder.discarded_bytes - discarded),
+                        )
+                        for message in completed:
+                            if prior_bytes:
+                                prior_bytes = max(0, prior_bytes - len(message.raw))
+                                self._save(message)
+                            else:
+                                newly_completed.append(message)
+                        if not prior_bytes:
+                            chunk = chunk[index + 1 :]
+                            break
+                    else:
+                        continue
+                messages = (*newly_completed, *self.decoder.feed(chunk))
+                found = False
+                result: T | None = None
+                failure: Exception | None = None
+                for message in messages:
+                    if failure is None:
+                        try:
+                            self._check_rejection(command.text, message)
+                            if not found and command.matches(message):
+                                result = command.decode(message)
+                                found = True
+                                continue
+                        except Exception as error:
+                            failure = error
+                            if not found:
+                                continue
+                    if on_message is not None:
+                        self._in_poll_callback = True
+                        try:
+                            on_message(message)
+                        finally:
+                            self._in_poll_callback = False
+                if failure is not None:
+                    raise failure
+                if found:
+                    return result  # type: ignore[return-value]
+
     def _next(self, deadline: float) -> Message | None:
         while True:
             if self._incoming:
@@ -306,6 +422,8 @@ class Receiver:
         self._backlog.append(message)
 
     def _check_open(self) -> None:
+        if self._in_poll_callback:
+            raise RuntimeError("receiver operations are unavailable in on_message")
         if self._closed:
             raise TransportClosed("Receiver is closed")
 

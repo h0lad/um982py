@@ -15,7 +15,6 @@ from um982py.commands.core import action
 from um982py.commands.types import NmeaVersion, Trigger
 from um982py.errors import CommandRejected, ResponseTimeout, UM982Error
 from um982py.experimental.capture import ordered_log_list
-from um982py.logs import FirmwareLog
 from um982py.messages import AsciiHeader, AsciiMessage, Fix, Sentence
 from um982py.receiver_queries import firmware_info
 
@@ -78,25 +77,25 @@ def test_identity(receiver: Receiver, report: dict[str, object]) -> None:
 def test_firmware_queries(receiver: Receiver, report: dict[str, object]) -> None:
     results = []
     # Query diagnostics before epoch-driven RANGE logs.
-    for log in sorted(FirmwareLog, key=lambda log: log != FirmwareLog.HEADINGOFFSET):
+    for log in sorted(Log, key=lambda log: log != Log.HEADINGOFFSET):
         for binary in (False, True):
-            if log == FirmwareLog.RXSTATUS and binary:
+            if log == Log.RXSTATUS and binary:
                 continue
             command = log.read(binary=binary)
             sys.stderr.write(f"  query {log.wire_name(binary=binary)}\n")
             sys.stderr.flush()
             bodies = (
                 receiver.collect(command)
-                if log == FirmwareLog.SATVIS2
+                if log == Log.SATVIS2
                 else (receiver.execute(command),)
             )
             for body in bodies:
                 assert body.name == log.value
-                if log in (FirmwareLog.RANGE, FirmwareLog.RANGEH):
+                if log in (Log.RANGE, Log.RANGEH):
                     assert len(body.records("observations")) == body.integer("count")
-                if log in (FirmwareLog.SATVIS, FirmwareLog.SATVIS2):
+                if log in (Log.SATVIS, Log.SATVIS2):
                     assert len(body.records("satellites")) == body.integer("count")
-            if log == FirmwareLog.SATVIS2:
+            if log == Log.SATVIS2:
                 report[log.wire_name(binary=binary) + "_frames"] = len(bodies)
             results.append(log.wire_name(binary=binary))
     report["firmware_queries"] = results
@@ -105,8 +104,10 @@ def test_firmware_queries(receiver: Receiver, report: dict[str, object]) -> None
 def test_firmware_logging(receiver: Receiver, report: dict[str, object]) -> None:
     before = ordered_log_list(receiver)
     results = []
-    for log in FirmwareLog:
-        if log in (FirmwareLog.HEADINGOFFSET, FirmwareLog.RXSTATUS):
+    for log in Log:
+        if log.definition.section != "extended" and log != Log.RTKSTATUS2:
+            continue
+        if log in (Log.HEADINGOFFSET, Log.RXSTATUS):
             continue
         for binary in (False, True):
             name = log.wire_name(binary=binary)

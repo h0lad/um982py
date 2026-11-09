@@ -11,13 +11,13 @@ from examples.dop_geometry import (
     geometry_from_records,
 )
 from um982py.capture import latest_epoch, record_epoch
+from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 _REPORTED_TIMEOUT = 0.2
-_REPORTED_LOG = {"PSRDOP": FirmwareLog.PSRDOP, "RTKDOP": FirmwareLog.RTKDOP}
+_REPORTED_LOG = {"PSRDOP": Log.PSRDOP, "RTKDOP": Log.RTKDOP}
 
 
 def _parser() -> ExampleParser:
@@ -109,7 +109,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     captured = capture_records(
         args,
-        [FirmwareLog.SATVIS2, FirmwareLog.PSRDOP, FirmwareLog.RTKDOP],
+        [Log.SATVIS2, Log.PSRDOP, Log.RTKDOP],
         duration=args.duration,
         interval=args.interval,
         on_progress=_progress_callback() if args.debug else None,

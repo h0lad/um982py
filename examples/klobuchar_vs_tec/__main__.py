@@ -27,7 +27,6 @@ from um982py.console import (
 from um982py.console_capture import capture_records
 from um982py.errors import ProtocolError
 from um982py.geodesy import geodetic_from_ecef
-from um982py.logs import FirmwareLog
 from um982py.messages import (
     AsciiHeader,
     AsciiMessage,
@@ -70,7 +69,7 @@ def _decode(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
     return tuple(decoded)
 
 
-def _decode_firmware(frames: Sequence[Message], log: FirmwareLog) -> tuple[Record, ...]:
+def _decode_firmware(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
     decoded: list[Record] = []
     for message in frames:
         with suppress(ProtocolError):
@@ -79,7 +78,7 @@ def _decode_firmware(frames: Sequence[Message], log: FirmwareLog) -> tuple[Recor
 
 
 def _position(frames: Sequence[Message]) -> Record | None:
-    for log in (FirmwareLog.BESTPOS, FirmwareLog.BESTXYZ):
+    for log in (Log.BESTPOS, Log.BESTXYZ):
         records = _decode_firmware(frames, log)
         if records:
             return records[0]
@@ -212,7 +211,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.replay is None:
         captured = capture_records(
             args,
-            [FirmwareLog.RANGE, FirmwareLog.SATVIS2, Log.GPSION, FirmwareLog.BESTPOS],
+            [Log.RANGE, Log.SATVIS2, Log.GPSION, Log.BESTPOS],
             duration=args.duration,
             interval=args.interval,
             on_progress=progress_printer("klobuchar_vs_tec") if args.debug else None,
@@ -234,9 +233,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         position_frames = (
             read_frames(args.position) if args.position is not None else range_frames
         )
-        range_records = _decode_firmware(range_frames, FirmwareLog.RANGE)
+        range_records = _decode_firmware(range_frames, Log.RANGE)
         ionosphere = _decode(ionosphere_frames, Log.GPSION)
-        satellites = _decode_firmware(satvis_frames, FirmwareLog.SATVIS2)
+        satellites = _decode_firmware(satvis_frames, Log.SATVIS2)
         position = _position(position_frames)
         positions = (position,) if position is not None else ()
     if not range_records or not ionosphere or not satellites or not positions:

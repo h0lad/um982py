@@ -17,7 +17,6 @@ from um982py.capture import decode_records
 from um982py.commands import Log, queries
 from um982py.console import add_receiver_arguments
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages.navigation import BestNavigation
 from um982py.protocol import StreamDecoder
 
@@ -27,41 +26,41 @@ FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "captures"
 @pytest.mark.parametrize("antenna", ["secondary", "2"])
 def test_secondary_replay_reads_only_rangeh(antenna: str) -> None:
     args = argparse.Namespace(replay=FIXTURES / "RANGEHB.bin", antenna=antenna)
-    records = capture_records(args, [FirmwareLog.RANGE])["RANGE"]
+    records = capture_records(args, [Log.RANGE])["RANGE"]
     assert records
     assert all(record.name == "RANGEH" for record in records)
     raw = (FIXTURES / "RANGEB.bin").read_bytes()
     assert not decode_records(
-        StreamDecoder().feed(raw), antenna_log(FirmwareLog.RANGE, antenna)
+        StreamDecoder().feed(raw), antenna_log(Log.RANGE, antenna)
     )
 
 
 def test_primary_replay_does_not_consume_secondary() -> None:
     args = argparse.Namespace(replay=FIXTURES / "RANGEHB.bin", antenna="primary")
-    assert not capture_records(args, [FirmwareLog.RANGE])["RANGE"]
+    assert not capture_records(args, [Log.RANGE])["RANGE"]
 
 
 @pytest.mark.parametrize(
     ("source", "wire"),
     [
-        (FirmwareLog.RANGE, "RANGEHB"),
-        (FirmwareLog.BESTPOS, "BESTNAVHB"),
-        (FirmwareLog.BESTXYZ, "BESTNAVXYZHB"),
-        (FirmwareLog.PSRDOP, "SPPDOPHB"),
-        (FirmwareLog.RTKDOP, "ADRDOPHB"),
+        (Log.RANGE, "RANGEHB"),
+        (Log.BESTPOS, "BESTNAVHB"),
+        (Log.BESTXYZ, "BESTNAVXYZHB"),
+        (Log.PSRDOP, "SPPDOPHB"),
+        (Log.RTKDOP, "ADRDOPHB"),
         (Log.BESTNAV, "BESTNAVHB"),
         (Log.OBSVM, "OBSVHB"),
     ],
 )
-def test_secondary_wire_command(source: Log | FirmwareLog, wire: str) -> None:
+def test_secondary_wire_command(source: Log, wire: str) -> None:
     assert antenna_log(source, "2").request(binary=True).text == wire
 
 
 def test_receiver_wide_and_baseline_logs_keep_scope() -> None:
-    for log in (FirmwareLog.TIME, FirmwareLog.ANTENNA, FirmwareLog.BSLNENUHD):
+    for log in (Log.TIME, Log.ANTENNA, Log.BSLNENUHD):
         assert antenna_log(log, "2") is log
     with pytest.raises(ValueError, match="no verified secondary"):
-        antenna_log(FirmwareLog.PTOBSINFO, "2")
+        antenna_log(Log.PTOBSINFO, "2")
 
 
 def test_secondary_navigation_query_matches_real_wire_identity() -> None:
@@ -119,13 +118,13 @@ def test_secondary_dop_reports_actual_source() -> None:
 
 
 def test_mirror_pairs_documented_inputs_in_both_directions() -> None:
-    assert mirror(FirmwareLog.RANGE) is FirmwareLog.RANGEH
-    assert mirror(FirmwareLog.RANGEH) is FirmwareLog.RANGE
+    assert mirror(Log.RANGE) is Log.RANGEH
+    assert mirror(Log.RANGEH) is Log.RANGE
     assert mirror(Log.OBSVM) is Log.OBSVH
     assert mirror(Log.OBSVH) is Log.OBSVM
     assert mirror(Log.PPPNAV) is Log.PPPNAVH
     assert mirror(Log.PPPNAVH) is Log.PPPNAV
-    for receiver_wide in (FirmwareLog.TIME, FirmwareLog.BSLNENUHD):
+    for receiver_wide in (Log.TIME, Log.BSLNENUHD):
         assert mirror(receiver_wide) is receiver_wide
 
 
@@ -135,16 +134,16 @@ def test_a_target_shared_by_two_primaries_is_not_mirrored_arbitrarily() -> None:
 
 
 def test_swap_retains_the_logical_key_and_only_moves_the_wire() -> None:
-    swapped = swap_antenna(AntennaLog(FirmwareLog.RANGE, FirmwareLog.RANGE))
-    assert swapped.logical is FirmwareLog.RANGE
-    assert swapped.wire is FirmwareLog.RANGEH
+    swapped = swap_antenna(AntennaLog(Log.RANGE, Log.RANGE))
+    assert swapped.logical is Log.RANGE
+    assert swapped.wire is Log.RANGEH
 
 
 def test_swap_makes_the_primary_role_read_the_secondary_transcript() -> None:
     args = argparse.Namespace(
         replay=FIXTURES / "RANGEHB.bin", antenna="primary", swap_antennas=True
     )
-    records = capture_records(args, [FirmwareLog.RANGE])["RANGE"]
+    records = capture_records(args, [Log.RANGE])["RANGE"]
     assert records
     assert all(record.name == "RANGEH" for record in records)
 
@@ -153,7 +152,7 @@ def test_selection_is_applied_before_the_swap() -> None:
     args = argparse.Namespace(
         replay=FIXTURES / "RANGEB.bin", antenna="secondary", swap_antennas=True
     )
-    records = capture_records(args, [FirmwareLog.RANGE])["RANGE"]
+    records = capture_records(args, [Log.RANGE])["RANGE"]
     assert records
     assert all(record.name == "RANGE" for record in records)
 

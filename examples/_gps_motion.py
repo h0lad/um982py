@@ -27,7 +27,6 @@ from um982py.experimental.gps_motion import (
     solve_velocity,
 )
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
-from um982py.logs import FirmwareLog
 from um982py.measurement import RangeSample, range_samples
 from um982py.messages import Record
 from um982py.messages.enums import PositionType, SolutionStatus
@@ -152,9 +151,9 @@ def motion_main(name: str, argv: Sequence[str] | None) -> int:
     compare_receiver = bool(getattr(args, "compare_receiver", False))
     if compare_receiver and args.receiver_tolerance < 0:
         parser.error("receiver tolerance must be nonnegative")
-    logs: list[FirmwareLog | Log] = [FirmwareLog.RANGE, FirmwareLog.BESTXYZ, Log.GPSEPH]
+    logs: list[Log] = [Log.RANGE, Log.BESTXYZ, Log.GPSEPH]
     if compare_receiver:
-        logs.append(FirmwareLog.DOPPVEL)
+        logs.append(Log.DOPPVEL)
     data = capture_logs(
         args,
         logs,
@@ -174,8 +173,7 @@ def motion_main(name: str, argv: Sequence[str] | None) -> int:
             raise ValueError("RANGE epochs must increase strictly")
         samples = {
             sample.key.prn: sample
-            for sample in range_samples(record)
-            if sample.key.signal == 0
+            for sample in range_samples(record, systems=(0,), signals=(0,))
         }
         try:
             observer = _observer(args, data["BESTXYZ"], epoch)

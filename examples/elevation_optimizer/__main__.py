@@ -12,6 +12,7 @@ from examples.elevation_optimizer import (
     sky_from_satvis_log,
 )
 from um982py.capture import latest_epoch
+from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -21,7 +22,6 @@ from um982py.console import (
     write_json,
 )
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 
@@ -61,7 +61,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--minimum-satellites must be at least 4")
     records = capture_records(
         args,
-        [FirmwareLog.SATVIS2],
+        [Log.SATVIS2],
         duration=args.duration,
         interval=args.interval,
         on_progress=progress_printer("elevation_optimizer") if args.debug else None,

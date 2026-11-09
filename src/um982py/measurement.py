@@ -1,9 +1,10 @@
-"""Timestamped GPS measurements with a range-increasing carrier."""
+"""GNSS timestamps and measurements with a range-increasing carrier."""
 
 import math
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
 from um982py.geodesy import SPEED_OF_LIGHT
@@ -17,14 +18,16 @@ from um982py.messages import (
     Message,
     Record,
 )
+from um982py.messages.observations import Observation
 from um982py.signals import tracking_signal
 
 __all__ = [
     "RangeSample",
     "SignalKey",
     "bdt_week_to_gps_seconds",
-    "gnss_range_samples",
     "gps_epoch",
+    "gps_to_utc",
+    "message_utc",
     "range_samples",
     "sample_series",
 ]
@@ -122,14 +125,53 @@ def gps_epoch(
     return week * 604800.0 + seconds
 
 
+def _check_leap_seconds(leap_seconds: int) -> None:
+    if type(leap_seconds) is not int or not 0 <= leap_seconds <= 99:
+        raise ValueError("GPS-UTC leap seconds must be an integer in 0..99")
+
+
+def gps_to_utc(week: int, seconds_of_week: float, *, leap_seconds: int) -> datetime:
+    """Convert GPS week and seconds to UTC using a verified GPS-UTC offset.
+
+    Python datetimes cannot represent a leap second. The caller supplies the
+    offset valid at the observation epoch.
+    """
+    if type(week) is not int or not 0 <= week <= 65535:
+        raise ValueError("GPS week must be an integer in 0..65535")
+    if (
+        isinstance(seconds_of_week, bool)
+        or not math.isfinite(seconds_of_week)
+        or not 0 <= seconds_of_week < 604800
+    ):
+        raise ValueError("GPS seconds outside week range")
+    _check_leap_seconds(leap_seconds)
+    return datetime(1980, 1, 6, tzinfo=UTC) + timedelta(
+        weeks=week, seconds=seconds_of_week - leap_seconds
+    )
+
+
+def message_utc(
+    source: Message | Record,
+    *,
+    leap_seconds: int,
+    week_scale: Literal["GPST", "BDT"] | None = None,
+) -> datetime:
+    """Convert a frame or decoded record timestamp to UTC.
+
+    Supply the verified GPS-UTC offset and, for non-GPS receiver time
+    references, the verified week scale. Check the receiver's time status
+    before treating the result as a valid timestamp.
+    """
+    if isinstance(source, Record):
+        if source.message is None:
+            raise ValueError("record carries no receiver timestamp")
+        source = source.message
+    _check_leap_seconds(leap_seconds)
+    epoch = gps_epoch(source, week_scale=week_scale)
+    return datetime(1980, 1, 6, tzinfo=UTC) + timedelta(seconds=epoch - leap_seconds)
+
+
 def range_samples(
-    record: Record, *, epoch: float | None = None
-) -> tuple[RangeSample, ...]:
-    """Select locked GPS signals and negate RANGE ADR into carrier metres."""
-    return gnss_range_samples(record, epoch=epoch, systems=(0,), signals=(0, 14))
-
-
-def gnss_range_samples(
     record: Record,
     *,
     epoch: float | None = None,
@@ -137,7 +179,15 @@ def gnss_range_samples(
     signals: tuple[int, ...] | None = None,
     glonass_channels: Mapping[int, int] | None = None,
 ) -> tuple[RangeSample, ...]:
-    """Convert known GNSS carriers to range-increasing SI and omit unknown ones."""
+    """Convert supported GNSS observations to range-increasing SI measurements.
+
+    Accepts RANGE, RANGEH, OBSVM, OBSVH and OBSVBASE records. Compressed
+    observations require phase reconstruction before conversion. Optional
+    filters select receiver constellation and signal codes. Unknown carrier
+    frequencies and observations without usable code or phase are omitted.
+    """
+    if record.name not in ("RANGE", "RANGEH", "OBSVM", "OBSVH", "OBSVBASE"):
+        raise ValueError("expected an uncompressed RANGE or OBSV observation log")
     if epoch is None:
         if record.message is None:
             raise ValueError("RANGE record carries no receiver timestamp")
@@ -145,31 +195,37 @@ def gnss_range_samples(
     if not math.isfinite(epoch):
         raise ValueError("epoch must be finite")
     selected: dict[SignalKey, RangeSample] = {}
+    uncompressed_obsv = record.name in ("OBSVM", "OBSVH", "OBSVBASE")
     for observation in record.records("observations"):
-        status = observation.integer("tracking_status")
-        key = SignalKey(
-            (status >> 16) & 7, observation.integer("prn"), (status >> 21) & 31
+        status = observation.integer(
+            "ch_tr_status" if uncompressed_obsv else "tracking_status"
         )
+        system, signal_code = (status >> 16) & 7, (status >> 21) & 31
+        if (
+            (systems is not None and system not in systems)
+            or (signals is not None and signal_code not in signals)
+            or status & 0x1400 != 0x1400
+        ):
+            continue
+        prn = observation.integer("prn_slot" if uncompressed_obsv else "prn")
+        key = SignalKey(system, prn, signal_code)
+        native = Observation.from_record(observation) if uncompressed_obsv else None
         channel = None
         if key.system == 1 and key.signal in (0, 5):
             # GLONASS uses frequency channels whose wire values are biased by seven.
             if glonass_channels is not None and key.prn in glonass_channels:
                 channel = glonass_channels[key.prn]
+            elif native is not None:
+                channel = native.glonass_frequency
             else:
                 channel = observation.integer("frequency_channel") - 7
-            if not -7 <= channel <= 6:
+            if channel is None or not -7 <= channel <= 6:
                 continue
         signal = tracking_signal(
             status,
             glonass_channel=channel,
         )
-        if (
-            signal is None
-            or signal.frequency_hz is None
-            or (systems is not None and key.system not in systems)
-            or (signals is not None and key.signal not in signals)
-            or status & 0x1400 != 0x1400
-        ):
+        if signal is None or signal.frequency_hz is None:
             continue
         carrier = signal.frequency_hz
         scale = SPEED_OF_LIGHT / carrier
@@ -177,13 +233,32 @@ def gnss_range_samples(
         sample = RangeSample(
             key,
             epoch,
-            observation.real("pseudorange"),
-            -scale * observation.real("carrier_phase"),
-            -scale * observation.real("doppler"),
-            observation.real("pseudorange_std"),
-            scale * observation.real("carrier_phase_std"),
-            observation.real("cn0"),
-            observation.real("lock_time"),
+            native.pseudorange_m
+            if native is not None
+            else observation.real("pseudorange"),
+            -scale
+            * (
+                native.carrier_phase_cycles
+                if native is not None
+                else observation.real("carrier_phase")
+            ),
+            -scale
+            * (
+                native.doppler_hz if native is not None else observation.real("doppler")
+            ),
+            native.pseudorange_std_m
+            if native is not None
+            else observation.real("pseudorange_std"),
+            scale
+            * (
+                native.carrier_phase_std_cycles
+                if native is not None
+                else observation.real("carrier_phase_std")
+            ),
+            native.cn0_db_hz if native is not None else observation.real("cn0"),
+            native.lock_seconds
+            if native is not None
+            else observation.real("lock_time"),
         )
         values = (
             sample.code_m,
@@ -211,11 +286,17 @@ def gnss_range_samples(
 
 def sample_series(
     records: Sequence[Record],
+    *,
+    systems: tuple[int, ...] | None = None,
+    signals: tuple[int, ...] | None = None,
+    glonass_channels: Mapping[int, int] | None = None,
 ) -> dict[SignalKey, tuple[RangeSample, ...]]:
-    """Group GPS measurements while rejecting unordered or duplicate epochs."""
+    """Group supported GNSS measurements by signal in increasing epoch order."""
     series: dict[SignalKey, list[RangeSample]] = defaultdict(list)
     for record in records:
-        for sample in range_samples(record):
+        for sample in range_samples(
+            record, systems=systems, signals=signals, glonass_channels=glonass_channels
+        ):
             previous = series[sample.key]
             if previous and sample.epoch <= previous[-1].epoch:
                 raise ValueError("RANGE epochs must increase strictly for each signal")

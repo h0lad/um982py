@@ -42,7 +42,6 @@ from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
 from um982py.console_capture import capture_records
 from um982py.diagnostics import signal_inventory
-from um982py.logs import FirmwareLog
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 
@@ -66,12 +65,12 @@ TRACKING_SYSTEMS = {
     Constellation.QZSS: 5,
     Constellation.NAVIC: 6,
 }
-TELEMETRY_LOGS: tuple[Log | FirmwareLog, ...] = (
+TELEMETRY_LOGS: tuple[Log, ...] = (
     Log.JAMSTATUS,
     Log.FREQJAMSTATUS,
-    FirmwareLog.SPOOFINFO,
-    FirmwareLog.ANTENNASTATUS,
-    FirmwareLog.BSLNENUHD,
+    Log.SPOOFINFO,
+    Log.ANTENNASTATUS,
+    Log.BSLNENUHD,
     Log.PPPNAV,
 )
 
@@ -531,14 +530,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not isinstance(reference, dict) or reference.get("schema_version") != 1:
             parser.error("reference JSON must be a GNSS-IR schema_version 1 report")
     logs: list[DataLog] = (
-        [antenna_log(FirmwareLog.RANGE, args.antenna)]
+        [antenna_log(Log.RANGE, args.antenna)]
         if args.single_antenna
         else [
-            AntennaLog(FirmwareLog.RANGE, FirmwareLog.RANGE),
-            AntennaLog(FirmwareLog.RANGEH, FirmwareLog.RANGEH),
+            AntennaLog(Log.RANGE, Log.RANGE),
+            AntennaLog(Log.RANGEH, Log.RANGEH),
         ]
     )
-    logs.append(AntennaLog(FirmwareLog.SATVIS2, FirmwareLog.SATVIS2))
+    logs.append(AntennaLog(Log.SATVIS2, Log.SATVIS2))
     if args.telemetry:
         logs.extend(AntennaLog(log, log) for log in TELEMETRY_LOGS)
     source = f"replay {args.replay}" if args.replay else f"receiver {args.port}"

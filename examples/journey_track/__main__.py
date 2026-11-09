@@ -10,7 +10,6 @@ from um982py.console import ExampleParser, add_receiver_arguments, run, write_js
 from um982py.console_capture import capture_records
 from um982py.field_data import file_sha256
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 
@@ -211,9 +210,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         or not -180 <= args.waypoint[1] <= 180
     ):
         parser.error("waypoint latitude and longitude must be finite and in range")
-    logs: list[Log | FirmwareLog] = [Log.BESTNAVXYZ]
+    logs: list[Log] = [Log.BESTNAVXYZ]
     if args.dual_heading:
-        logs.append(FirmwareLog.BSLNENUHD)
+        logs.append(Log.BSLNENUHD)
     captured = capture_records(
         args, logs, duration=args.duration, interval=args.interval
     )

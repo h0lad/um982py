@@ -19,7 +19,6 @@ from um982py.console import ExampleParser, add_receiver_arguments, run, write_js
 from um982py.console_capture import capture_records
 from um982py.corrections import stale_correction
 from um982py.geodesy import haversine_distance
-from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 
@@ -172,7 +171,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     captured = capture_records(
         args,
-        [FirmwareLog.BESTXYZ, Log.BESTNAV],
+        [Log.BESTXYZ, Log.BESTNAV],
         duration=args.duration,
         frames=args.frames,
         interval=args.interval,

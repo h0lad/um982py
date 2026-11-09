@@ -15,7 +15,7 @@ from examples.satellite_monitor import (
 )
 
 from conftest import FIXTURES
-from um982py.logs import FirmwareLog
+from um982py.commands import Log
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder
 
@@ -32,10 +32,10 @@ ASCII_ELEVATION_STEP = 0.1
 
 
 def visibility_frames(binary: bool) -> list[Record]:
-    name = FirmwareLog.SATVIS2.wire_name(binary=binary)
-    request = FirmwareLog.SATVIS2.request(binary=binary)
+    name = Log.SATVIS2.wire_name(binary=binary)
+    request = Log.SATVIS2.request(binary=binary)
     return [
-        FirmwareLog.SATVIS2.decode(message)
+        Log.SATVIS2.decode(message)
         for message in StreamDecoder().feed(
             (FIXTURES / "captures" / (name + ".bin")).read_bytes()
         )

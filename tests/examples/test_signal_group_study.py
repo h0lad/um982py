@@ -24,8 +24,8 @@ from examples.signal_group_study import (
 from examples.signal_group_study.__main__ import main
 
 from conftest import FIXTURES
+from um982py.commands import Log
 from um982py.commands.configuration import SignalGroup
-from um982py.logs import FirmwareLog
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder
@@ -99,9 +99,9 @@ def injected_samples() -> tuple[SettingSample, ...]:
 
 def live_records(name: str) -> list[Record]:
     """Decode one log of the 26-epoch live capture."""
-    request = FirmwareLog[name].request()
+    request = Log[name].request()
     return [
-        FirmwareLog[name].decode(message)
+        Log[name].decode(message)
         for message in StreamDecoder().feed((LIVE / (name + "A.bin")).read_bytes())
         if request.matches(message)
     ]

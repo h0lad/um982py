@@ -14,6 +14,7 @@ from examples.rtk_outage_lab import (
 )
 from examples.rtk_quality import FixClass, solution_from_record
 from um982py.capture import record_epoch
+from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -24,7 +25,6 @@ from um982py.console import (
     write_json,
 )
 from um982py.console_capture import capture_logs
-from um982py.logs import FirmwareLog
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -53,7 +53,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     events = read_numeric_csv(args.outages, ("start", "end"))
     data = capture_logs(
         args,
-        [FirmwareLog.BESTXYZ],
+        [Log.BESTXYZ],
         on_progress=progress_printer("rtk_outage_lab") if args.debug else None,
     )
     epochs = []

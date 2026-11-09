@@ -11,8 +11,8 @@ from examples.doppler_velocity import wave_parameters
 
 from tests.examples._specialist import TRUTH
 from um982py.capture import decode_records, read_frames, record_epoch
+from um982py.commands import Log
 from um982py.experimental.gps_motion import RateMeasurement, solve_velocity
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 
@@ -96,7 +96,7 @@ def test_duplicate_signals_cannot_count_as_independent_satellites() -> None:
 
 def test_receiver_speed_comparison_is_time_bounded_and_excludes_invalid_fixes() -> None:
     path = Path("tests/fixtures/captures/DOPPVELA.bin")
-    record = decode_records(read_frames(path), FirmwareLog.DOPPVEL)[0]
+    record = decode_records(read_frames(path), Log.DOPPVEL)[0]
     epoch = record_epoch(record)
     result = _receiver_comparison(
         epoch, (1.0, 2.0, 3.0), (6378137.0, 0.0, 0.0), [record], tolerance=0.1

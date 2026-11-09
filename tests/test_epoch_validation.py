@@ -48,7 +48,7 @@ def test_incomplete_legacy_binary_timestamp_is_rejected() -> None:
 
 
 def test_glonass_channel_override_does_not_require_receiver_channel() -> None:
-    from um982py.measurement import gnss_range_samples
+    from um982py.measurement import range_samples
     from um982py.messages import Record
 
     observation = Record(
@@ -66,7 +66,7 @@ def test_glonass_channel_override_does_not_require_receiver_channel() -> None:
         ),
     )
     record = Record("RANGE", (("observations", (observation,)),))
-    result = gnss_range_samples(record, epoch=1.0, glonass_channels={38: -7})
+    result = range_samples(record, epoch=1.0, glonass_channels={38: -7})
     assert len(result) == 1
     assert result[0].phase_m == pytest.approx(1000 * 299792458 / 1598062500)
 

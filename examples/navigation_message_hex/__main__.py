@@ -27,32 +27,31 @@ from um982py.console import (
 )
 from um982py.console_capture import open_receiver
 from um982py.errors import CommandRejected, ResponseTimeout
-from um982py.logs import FirmwareLog
 from um982py.messages import BinaryMessage, Message
 from um982py.subscriptions import temporary_subscriptions
 
 __all__ = ["main"]
 
 
-def resolve(name: str) -> Log | FirmwareLog:
+def resolve(name: str) -> Log:
     """Documented or extended log by name."""
     if name in Log.__members__:
         return Log[name]
     try:
-        return FirmwareLog[name]
+        return Log[name]
     except KeyError as error:
         raise ValueError(f"Unknown log: {name}") from error
 
 
 def _targets(
     wanted: Sequence[str], extra: Sequence[str], antenna: str = "primary"
-) -> tuple[tuple[str, Log | FirmwareLog], ...]:
+) -> tuple[tuple[str, Log], ...]:
     unknown = set(wanted) - dict(families()).keys()
     if unknown:
         raise ValueError(f"Unknown families: {', '.join(sorted(unknown))}")
     names = [(name, log) for name, log in families() if not wanted or name in wanted]
     names.extend((name, name) for name in extra)
-    targets: dict[str, tuple[str, Log | FirmwareLog]] = {}
+    targets: dict[str, tuple[str, Log]] = {}
     for constellation, log_name in names:
         selected = antenna_log(resolve(log_name), antenna)
         log = selected.wire if isinstance(selected, AntennaLog) else selected
@@ -62,7 +61,7 @@ def _targets(
 
 
 def _annotate(
-    message: Message, targets: Sequence[tuple[str, Log | FirmwareLog]]
+    message: Message, targets: Sequence[tuple[str, Log]]
 ) -> MessageHex | None:
     if isinstance(message, BinaryMessage):
         for constellation, log in targets:

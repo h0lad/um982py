@@ -31,6 +31,7 @@ from um982py.capture import (
     receive_records,
     record_epoch,
 )
+from um982py.commands import Log
 from um982py.commands.configuration import elevation_mask
 from um982py.console import (
     ExampleParser,
@@ -41,7 +42,6 @@ from um982py.console import (
 )
 from um982py.console_capture import open_receiver
 from um982py.experimental.capture import receiver_state
-from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 from um982py.subscriptions import temporary_subscriptions
 
@@ -127,7 +127,7 @@ def payload(
 
 def live_sweep(args: argparse.Namespace) -> dict[str, object]:
     """Sweep the mask on a receiver and restore the captured mask afterwards."""
-    range_log = antenna_log(FirmwareLog.RANGE, getattr(args, "antenna", "primary"))
+    range_log = antenna_log(Log.RANGE, getattr(args, "antenna", "primary"))
     with open_receiver(args) as receiver:
         before = ReceiverState.from_parts(receiver_state(receiver))
         original = mask_degrees(before)
@@ -139,8 +139,8 @@ def live_sweep(args: argparse.Namespace) -> dict[str, object]:
                 range_log.output(args.interval, binary=True),
             ),
             (
-                FirmwareLog.SATVIS2.wire_name(binary=True),
-                FirmwareLog.SATVIS2.output(args.interval, binary=True),
+                Log.SATVIS2.wire_name(binary=True),
+                Log.SATVIS2.output(args.interval, binary=True),
             ),
         ):
             try:
@@ -153,7 +153,7 @@ def live_sweep(args: argparse.Namespace) -> dict[str, object]:
                     )
                     captured = receive_records(
                         receiver,
-                        [range_log, FirmwareLog.SATVIS2],
+                        [range_log, Log.SATVIS2],
                         duration=args.frames * args.interval + args.timeout,
                         show_progress=True,
                     )
@@ -181,12 +181,12 @@ def replay_sweep(args: argparse.Namespace) -> dict[str, object]:
     frames = read_frames(args.replay)
     observations = observations_from(
         decode_records(
-            frames, antenna_log(FirmwareLog.RANGE, getattr(args, "antenna", "primary"))
+            frames, antenna_log(Log.RANGE, getattr(args, "antenna", "primary"))
         ),
         interval=args.interval,
         frequency_hz=args.frequency,
     )
-    elevations = gps_elevations(decode_records(frames, FirmwareLog.SATVIS2))
+    elevations = gps_elevations(decode_records(frames, Log.SATVIS2))
     series = elevated_series(observations, elevations)
     return payload(mask_sweep(series, args.masks), restore=None)
 

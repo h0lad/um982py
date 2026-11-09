@@ -32,3 +32,4 @@ def test_source_distribution_contains_examples(tmp_path: Path) -> None:
         if path.suffix in (".py", ".md", ".txt"):
             assert path.relative_to(project).as_posix() in names
     assert "src/um982py/py.typed" in names
+    assert "docs/api.md" in names

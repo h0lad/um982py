@@ -17,6 +17,7 @@ from examples.precise_fix import (
     marker_position,
     reference_error,
 )
+from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -28,7 +29,6 @@ from um982py.console import (
 from um982py.console_capture import capture_records
 from um982py.corrections import stale_correction
 from um982py.geodesy import geodetic_from_ecef
-from um982py.logs import FirmwareLog
 
 
 def _parse_ecef(text: str) -> tuple[float, float, float]:
@@ -234,7 +234,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     debug_header(args, "precise_fix")
     captured = capture_records(
         args,
-        [FirmwareLog.BESTXYZ, FirmwareLog.BESTPOS],
+        [Log.BESTXYZ, Log.BESTPOS],
         duration=args.duration,
         interval=args.interval,
         on_progress=progress_printer("precise_fix") if args.debug else None,

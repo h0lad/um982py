@@ -36,6 +36,7 @@ def _build_parser() -> ExampleParser:
     parser.add_argument(
         "--mode",
         choices=("public", "private"),
+        default="private",
         help="public permits guest rovers, while private requires named accounts",
     )
     parser.add_argument(
@@ -43,7 +44,6 @@ def _build_parser() -> ExampleParser:
         type=Path,
         help="0600 JSON source credentials that enable incoming source upload mode",
     )
-    parser.add_argument("--public", action="store_true", help="allow anonymous GET")
     parser.add_argument("--hash-password", action="store_true")
     parser.add_argument("--bind", default="127.0.0.1")
     parser.add_argument("--listen-port", type=int, default=2101)
@@ -122,7 +122,7 @@ async def serve(
     caster = Caster(
         hub,
         credentials,
-        public=args.public,
+        public=args.mode == "public",
         source_credentials=source_credentials,
         protect_table=args.mode == "private",
     )
@@ -208,10 +208,6 @@ def main() -> int:
     if args.hash_password:
         print(hash_password(getpass.getpass("NTRIP password (16+ bytes): ")))
         return 0
-    if args.mode == "public":
-        args.public = True
-    elif args.mode == "private" and args.public:
-        parser.error("--mode private cannot be combined with --public")
     if args.antenna not in ("primary", "1"):
         parser.error("reference station and survey require ANT1/primary")
     if args.replay is not None and not args.replay.is_file():
@@ -252,8 +248,8 @@ def main() -> int:
         return 0
     if args.record is not None or args.json is not None:
         parser.error("--record is for surveys; --json is for offline RTCM checks")
-    if not args.public and args.users is None:
-        parser.error("supply --users or explicitly enable --public")
+    if args.mode == "private" and args.users is None:
+        parser.error("private mode requires --users; select public mode for guests")
     if args.source_users and args.upstream_host:
         parser.error("--source-users and --upstream-host select different source modes")
     for value in (args.listen_port, args.upstream_port):

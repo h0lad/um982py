@@ -5,14 +5,14 @@ import pytest
 from conftest import FIXTURES, ReplayTransport
 from test_extended_logs import captured
 from um982py import Receiver
+from um982py.commands import Log
 from um982py.errors import ProtocolError
-from um982py.logs import FirmwareLog
 from um982py.messages import AsciiMessage, BinaryMessage
 from um982py.protocol import StreamDecoder
 
 
 def visibility_frames(binary: bool) -> list[AsciiMessage | BinaryMessage]:
-    name = FirmwareLog.SATVIS2.wire_name(binary=binary)
+    name = Log.SATVIS2.wire_name(binary=binary)
     return [
         m
         for m in StreamDecoder(strict=True).feed(
@@ -24,7 +24,7 @@ def visibility_frames(binary: bool) -> list[AsciiMessage | BinaryMessage]:
 
 @pytest.mark.parametrize("binary", [False, True])
 def test_all_constellations_and_signed_glonass_channels(binary: bool) -> None:
-    records = [FirmwareLog.SATVIS2.decode(m) for m in visibility_frames(binary)]
+    records = [Log.SATVIS2.decode(m) for m in visibility_frames(binary)]
     assert len(records) == 7
     glonass = next(
         r for r in records if r["constellation"] == (1 if binary else "GLONASS")
@@ -50,19 +50,19 @@ def test_collect_keeps_satvis2_constellations_and_interleaved_output(
             return data
 
     frames = visibility_frames(False)
-    other = captured(FirmwareLog.ANTENNA, False)
+    other = captured(Log.ANTENNA, False)
     raw = frames[0].raw + other.raw + b"".join(m.raw for m in frames[1:])
     with Receiver(TimedReplayTransport({b"SATVIS2A\r\n": raw})) as receiver:
-        records = receiver.collect(FirmwareLog.SATVIS2.read(), quiet=0.001)
+        records = receiver.collect(Log.SATVIS2.read(), quiet=0.001)
         assert len(records) == 7
         assert receiver.receive() == other
 
 
 @pytest.mark.parametrize("binary", [False, True])
-@pytest.mark.parametrize("log", [FirmwareLog.SATVIS, FirmwareLog.SATVIS2])
-def test_visibility_rejects_bad_counts(log: FirmwareLog, binary: bool) -> None:
+@pytest.mark.parametrize("log", [Log.SATVIS, Log.SATVIS2])
+def test_visibility_rejects_bad_counts(log: Log, binary: bool) -> None:
     message = captured(log, binary)
-    offset = 12 if log == FirmwareLog.SATVIS2 else 8
+    offset = 12 if log == Log.SATVIS2 else 8
     for value in (0, 241, 0xFFFFFFFF):
         if isinstance(message, BinaryMessage):
             changed = replace(
@@ -89,19 +89,19 @@ def test_visibility_rejects_bad_counts(log: FirmwareLog, binary: bool) -> None:
 
 @pytest.mark.parametrize("text", ["-1", "42abc", "42--2", "42-40000", "65536"])
 def test_satvis2_satellite_id_validation(text: str) -> None:
-    message = captured(FirmwareLog.SATVIS2, False)
+    message = captured(Log.SATVIS2, False)
     assert isinstance(message, AsciiMessage)
     changed = replace(message, fields=(*message.fields[:4], text, *message.fields[5:]))
     with pytest.raises(ProtocolError):
-        FirmwareLog.SATVIS2.decode(changed)
+        Log.SATVIS2.decode(changed)
 
 
 @pytest.mark.parametrize("text", ["nan", "-1", "241", "4294967296"])
 def test_satvis2_ascii_count_validation(text: str) -> None:
-    message = captured(FirmwareLog.SATVIS2, False)
+    message = captured(Log.SATVIS2, False)
     assert isinstance(message, AsciiMessage)
     with pytest.raises(ProtocolError):
-        FirmwareLog.SATVIS2.decode(
+        Log.SATVIS2.decode(
             replace(
                 message,
                 fields=(*message.fields[:3], text, *message.fields[4:]),
@@ -112,13 +112,13 @@ def test_satvis2_ascii_count_validation(text: str) -> None:
 @pytest.mark.parametrize(
     "log",
     [
-        FirmwareLog.PSRDOP,
-        FirmwareLog.PSRDOP2,
-        FirmwareLog.RTKDOP,
-        FirmwareLog.RTKDOP2,
+        Log.PSRDOP,
+        Log.PSRDOP2,
+        Log.RTKDOP,
+        Log.RTKDOP2,
     ],
 )
-def test_dop_counts_and_empty_solutions(log: FirmwareLog) -> None:
+def test_dop_counts_and_empty_solutions(log: Log) -> None:
     for binary in (False, True):
         record = log.decode(captured(log, binary))
         assert isinstance(record["sats_list"], tuple)
@@ -136,7 +136,7 @@ def test_dop_counts_and_empty_solutions(log: FirmwareLog) -> None:
 
 def test_rtk_velocity_and_psr_velocity_have_different_final_field_types() -> None:
     for binary in (False, True):
-        rtk = FirmwareLog.RTKVEL.decode(captured(FirmwareLog.RTKVEL, binary))
-        psr = FirmwareLog.PSRVEL.decode(captured(FirmwareLog.PSRVEL, binary))
+        rtk = Log.RTKVEL.decode(captured(Log.RTKVEL, binary))
+        psr = Log.PSRVEL.decode(captured(Log.PSRVEL, binary))
         assert isinstance(rtk["reserved"], float)
         assert isinstance(psr["reserved"], int)

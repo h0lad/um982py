@@ -18,7 +18,7 @@ from examples.interference_monitor import (
     status_alerts,
 )
 
-from um982py.logs import FirmwareLog
+from um982py.commands import Log
 from um982py.messages import Record
 from um982py.messages.enums import PositionType
 from um982py.protocol import StreamDecoder
@@ -46,7 +46,7 @@ SHALLOW_DROP_DB = 7.5
 DEEP_DROP_DB = 11.5
 
 
-def record(log: FirmwareLog, *, binary: bool) -> Record:
+def record(log: Log, *, binary: bool) -> Record:
     path = FIXTURES / f"{log.wire_name(binary=binary)}.bin"
     messages = StreamDecoder().feed(path.read_bytes())
     return next(
@@ -143,8 +143,8 @@ def test_series_shorter_than_five_samples_is_not_tested() -> None:
 
 
 def test_spoofinfo_fixture_reports_no_spoofing_indicator() -> None:
-    binary = spoof_report(record(FirmwareLog.SPOOFINFO, binary=True))
-    ascii_record = record(FirmwareLog.SPOOFINFO, binary=False)
+    binary = spoof_report(record(Log.SPOOFINFO, binary=True))
+    ascii_record = record(Log.SPOOFINFO, binary=False)
     assert binary.spoof_indicator == 0
     assert binary.is_suspect is False
     assert binary.position_type == PositionType.SINGLE
@@ -153,8 +153,8 @@ def test_spoofinfo_fixture_reports_no_spoofing_indicator() -> None:
 
 
 def test_antenna_fixture_reports_both_antennas_working() -> None:
-    binary = antenna_report(record(FirmwareLog.ANTENNA, binary=True))
-    ascii_record = record(FirmwareLog.ANTENNA, binary=False)
+    binary = antenna_report(record(Log.ANTENNA, binary=True))
+    ascii_record = record(Log.ANTENNA, binary=False)
     assert (binary.state_1, binary.state_2) == (AntennaState.WORK, AntennaState.WORK)
     assert binary.state_3 is AntennaState.RESERVED
     assert binary.is_degraded is False
@@ -163,8 +163,8 @@ def test_antenna_fixture_reports_both_antennas_working() -> None:
 
 
 def test_ascii_labels_decode_like_the_binary_codes() -> None:
-    for log in (FirmwareLog.SPOOFINFO, FirmwareLog.ANTENNA):
-        decoder = spoof_report if log is FirmwareLog.SPOOFINFO else antenna_report
+    for log in (Log.SPOOFINFO, Log.ANTENNA):
+        decoder = spoof_report if log is Log.SPOOFINFO else antenna_report
         assert decoder(record(log, binary=False)) == decoder(record(log, binary=True))
 
 

@@ -22,7 +22,6 @@ from um982py.console import (
 )
 from um982py.console_capture import capture_records
 from um982py.field_data import file_sha256
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.observation_quality import audit_observations
 from um982py.rinex import RinexMetadata
@@ -119,9 +118,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if len({path.resolve() for path in destinations}) != len(destinations):
         parser.error("output, report, capture and metadata paths must be distinct")
     first_log, second_log = (
-        (Log.OBSVM, Log.OBSVH)
-        if args.source == "obsv"
-        else (FirmwareLog.RANGE, FirmwareLog.RANGEH)
+        (Log.OBSVM, Log.OBSVH) if args.source == "obsv" else (Log.RANGE, Log.RANGEH)
     )
     logs = (
         [

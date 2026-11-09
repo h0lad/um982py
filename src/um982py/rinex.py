@@ -5,6 +5,8 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+from os import PathLike
+from pathlib import Path
 from typing import Literal
 
 from um982py.measurement import gps_epoch
@@ -23,6 +25,12 @@ class RinexExport:
     satellite_records: int
     signal_observations: int
     omitted: dict[str, int]
+
+    def write(self, path: str | PathLike[str]) -> Path:
+        """Write the RINEX observation file and return its path."""
+        destination = Path(path)
+        destination.write_text(self.text, encoding="ascii", newline="\n")
+        return destination
 
 
 @dataclass(frozen=True, slots=True)

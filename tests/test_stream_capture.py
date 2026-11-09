@@ -4,8 +4,8 @@ import pytest
 
 from conftest import SubscriptionTransport
 from um982py.capture import iter_frames
+from um982py.commands import Log
 from um982py.commands.types import Port
-from um982py.logs import FirmwareLog
 from um982py.receiver import Receiver
 from um982py.stream_capture import EpochTracker, iter_decoded_records, iter_live_records
 
@@ -22,7 +22,7 @@ def test_epoch_tracker_flags_gaps_and_duplicates() -> None:
 
 def test_replay_decodes_lazily() -> None:
     path = Path("tests/fixtures/captures/RANGEB.bin")
-    records = iter_decoded_records(iter_frames(path), [FirmwareLog.RANGE])
+    records = iter_decoded_records(iter_frames(path), [Log.RANGE])
     name, record = next(records)
     assert name == record.name == "RANGE"
     records.close()
@@ -39,7 +39,7 @@ def test_stopping_live_iterator_restores_subscriptions() -> None:
 
     transport = StreamingTransport()
     with Receiver(transport, timeout=1) as receiver:
-        records = iter_live_records(receiver, [FirmwareLog.RANGE], duration=5)
+        records = iter_live_records(receiver, [Log.RANGE], duration=5)
         assert next(records)[0] == "RANGE"
         records.close()
         assert transport.subscriptions == {}

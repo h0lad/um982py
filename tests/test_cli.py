@@ -1,3 +1,4 @@
+import json
 import runpy
 from pathlib import Path
 from types import SimpleNamespace
@@ -9,6 +10,8 @@ from conftest import ReplayTransport
 from um982py import Receiver
 from um982py.cli import _json, main
 from um982py.errors import TransportError
+from um982py.messages.navigation import BestNavigation
+from um982py.protocol.ascii import parse_ascii
 
 
 def test_cli_errors(capsys: pytest.CaptureFixture[str]) -> None:
@@ -21,6 +24,35 @@ def test_cli_errors(capsys: pytest.CaptureFixture[str]) -> None:
         main(["monitor", "--count", "0"])
     with pytest.raises(TypeError):
         _json(object())
+
+
+def test_cli_help_highlights_common_tasks(capsys: pytest.CaptureFixture[str]) -> None:
+    with pytest.raises(SystemExit) as caught:
+        main(["--help"])
+    assert caught.value.code == 0
+    help_text = capsys.readouterr().out
+    assert "Common actions:" in help_text
+    assert "best-nav" in help_text and "heading" in help_text and "rinex" in help_text
+
+
+def test_cli_navigation_uses_readable_status_and_omits_raw_frame() -> None:
+    raw = (Path(__file__).parent / "fixtures/bodies/BESTNAVA.bin").read_bytes()
+    navigation = BestNavigation.from_message(parse_ascii(raw))
+    result = json.loads(json.dumps(navigation, default=_json))
+    assert result["position_type"] == "SINGLE"
+    assert result["solution_status"] == "SOL_COMPUTED"
+    assert "message" not in result
+
+
+def test_cli_satellites_shows_names(capsys: pytest.CaptureFixture[str]) -> None:
+    raw = (Path(__file__).parent / "fixtures/bodies/SATSINFOB.bin").read_bytes()
+    transport = ReplayTransport({b"SATSINFOB\r\n": raw})
+    with patch.object(Receiver, "connect", return_value=Receiver(transport)):
+        assert main(["satellites"]) == 0
+    satellites = json.loads(capsys.readouterr().out)
+    assert satellites[0]["constellation"] == "GPS"
+    assert satellites[0]["signals"][0]["name"] == "L1 C/A"
+    assert transport.closed
 
 
 def test_module_entry_point() -> None:

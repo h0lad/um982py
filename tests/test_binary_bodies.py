@@ -4,7 +4,7 @@ import pytest
 
 from test_bodies import binary_message
 from um982py.commands import Log
-from um982py.commands.catalog import RTCM_LOGS
+from um982py.commands.catalog import LOGS, RTCM_LOGS
 from um982py.errors import ProtocolError
 from um982py.messages import Record, decode_log
 
@@ -117,7 +117,9 @@ def test_binary_inventory() -> None:
     assert set(LENGTHS) == {
         log.value
         for log in Log
-        if log.definition.binary_command is not None and log.value not in RTCM_LOGS
+        if log.value in LOGS
+        and log.definition.binary_command is not None
+        and log.value not in RTCM_LOGS
     } | {"L1SMT47", "L1SMT48", "L1SMT49", "L1SMT50"}
 
 

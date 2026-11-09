@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from um982py import Receiver, export_rinex, gnss_range_samples
+from um982py import Receiver, export_rinex, range_samples
 from um982py.capture import capture_live, record_epoch
 from um982py.commands import Log, configuration
 from um982py.diagnostics import (
@@ -29,7 +29,6 @@ from um982py.experimental import (
 )
 from um982py.experimental.capture import receiver_state
 from um982py.experimental.tracking import tracking_slots
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.rinex import _observation
 
@@ -59,9 +58,7 @@ def save(request: pytest.FixtureRequest, name: str, payload: object) -> None:
 
 def test_live_range_and_obsv_report_same_receiver_phases(device: Receiver) -> None:
     """Compare same-epoch receiver logs, not independent phase alignment."""
-    captured = capture_live(
-        device, [FirmwareLog.RANGE, Log.OBSVM], duration=10, interval=1
-    )
+    captured = capture_live(device, [Log.RANGE, Log.OBSVM], duration=10, interval=1)
     ranges = {record_epoch(item): item for item in captured["RANGE"]}
     obsv = {record_epoch(item): item for item in captured["OBSVM"]}
     shared = ranges.keys() & obsv.keys()
@@ -135,7 +132,7 @@ def test_live_both_antenna_carriers_and_doctor(
     }
     for name in ("RANGE", "RANGEH"):
         record = capture.records[name][-1]
-        samples = gnss_range_samples(record)
+        samples = range_samples(record)
         assert samples and record.integer("count") > 0
         assert any(s.key.system == 0 and s.key.signal == 9 for s in samples)
         for sample in samples:
@@ -200,11 +197,11 @@ def test_live_tracking_diagnostic_slots(
     device: Receiver,
     request: pytest.FixtureRequest,
 ) -> None:
-    record = device.execute(FirmwareLog.PTOBSINFO.read(binary=True))
+    record = device.execute(Log.PTOBSINFO.read(binary=True))
     slots = tracking_slots(record)
     assert len(slots) == 18 and any(slot.written for slot in slots)
     assert all(math.isfinite(slot.native_value) for slot in slots)
-    ascii_record = device.execute(FirmwareLog.PTOBSINFO.read())
+    ascii_record = device.execute(Log.PTOBSINFO.read())
     assert len(tracking_slots(ascii_record)) == 18
     save(request, "tracking", [asdict(slot) for slot in slots])
 

@@ -9,7 +9,6 @@ from conftest import ReplayTransport, ascii_message
 from um982py import (
     Receiver,
     export_rinex,
-    gnss_range_samples,
     range_samples,
     tracking_signal,
 )
@@ -18,7 +17,6 @@ from um982py.corrections import audit_has
 from um982py.diagnostics import DiagnosticCapture, ppp_diagnostics
 from um982py.experimental.capture import receiver_state
 from um982py.experimental.tracking import tracking_slots
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.protocol import StreamDecoder
 from um982py.protocol.checksums import nmea_checksum
@@ -31,7 +29,7 @@ def captured(name: str, form: str = "B") -> Record:
     frame = StreamDecoder(strict=True).feed(
         (FIXTURES / f"{name}{form}.bin").read_bytes()
     )[0]
-    return (Log[name] if name in Log.__members__ else FirmwareLog[name]).decode(frame)
+    return Log[name].decode(frame)
 
 
 def test_has_signal_masks_from_receiver_capture() -> None:
@@ -83,10 +81,13 @@ def test_l2_discriminator_and_glonass_channel_are_not_l1() -> None:
 
 
 @pytest.mark.parametrize("name", ("RANGE", "RANGEH"))
-def test_live_captures_expand_without_changing_legacy_gps_selection(name: str) -> None:
+def test_live_captures_include_supported_systems_and_allow_gps_selection(
+    name: str,
+) -> None:
     record = captured(name)
-    old, expanded = range_samples(record), gnss_range_samples(record)
-    assert old and set(old) <= set(expanded)
+    gps = range_samples(record, systems=(0,), signals=(0, 14))
+    expanded = range_samples(record)
+    assert gps and set(gps) <= set(expanded)
     assert {sample.key.system for sample in expanded} == {0, 1, 3, 4}
     l2 = [
         sample
@@ -95,7 +96,7 @@ def test_live_captures_expand_without_changing_legacy_gps_selection(name: str) -
     ]
     assert l2
     export = export_rinex((record,))
-    assert export.signal_observations > len(old)
+    assert export.signal_observations > len(gps)
     assert export.omitted["unverified_l2c_component"] > 0
     explicit = export_rinex((record,), l2c_code="2S")
     assert "C2S" in explicit.text and "L2S" in explicit.text

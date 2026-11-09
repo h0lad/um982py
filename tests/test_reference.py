@@ -104,7 +104,11 @@ def test_all_configuration_sections_are_covered() -> None:
     assert queries.configuration().text == "CONFIG"
 
 
-@pytest.mark.parametrize("log", list(Log), ids=lambda log: log.value)
+@pytest.mark.parametrize(
+    "log",
+    [log for log in Log if log.definition.section != "extended"],
+    ids=lambda log: log.value,
+)
 def test_all_documented_logs(log: Log) -> None:
     definition = log.definition
     interval = Trigger.ON_CHANGED if definition.changed_only else 1

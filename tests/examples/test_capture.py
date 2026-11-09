@@ -20,12 +20,12 @@ from um982py.capture import (
     record_epoch,
     uniform_interval,
 )
+from um982py.commands import Log
 from um982py.commands.types import Port
 from um982py.console import ExampleParser, add_receiver_arguments, write_json
 from um982py.console_capture import capture_records, open_receiver
 from um982py.corrections import stale_correction
 from um982py.errors import ProtocolError
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 
@@ -132,7 +132,7 @@ def test_live_collection_waits_for_multiple_epochs_and_restores_logs(
     )
     snapshots: list[dict[str, tuple[Record, ...]]] = []
     records = capture_records(
-        options(), [FirmwareLog.RANGE], frames=3, on_progress=snapshots.append
+        options(), [Log.RANGE], frames=3, on_progress=snapshots.append
     )["RANGE"]
     assert len(records) == 3
     assert transport.emitted == 3
@@ -157,7 +157,7 @@ def test_replay_decodes_ascii_and_binary_without_opening_a_receiver(
     snapshots: list[dict[str, tuple[Record, ...]]] = []
     result = capture_records(
         argparse.Namespace(replay=path),
-        [FirmwareLog.RANGE],
+        [Log.RANGE],
         on_progress=snapshots.append,
     )["RANGE"]
     assert len(result) == 2
@@ -182,7 +182,7 @@ def test_cancelled_capture_restores_logs_and_preserves_received_data(
     monkeypatch.setattr(
         _console_capture, "open_receiver", lambda args: Receiver(transport)
     )
-    result = capture_records(options(), [FirmwareLog.RANGE], frames=3)
+    result = capture_records(options(), [Log.RANGE], frames=3)
     assert len(result["RANGE"]) == 1
     assert not transport.subscriptions
     assert transport.closed
@@ -197,7 +197,7 @@ def test_cancelled_sweep_reader_propagates_cancellation() -> None:
         Receiver(InterruptedTransport()) as receiver,
         pytest.raises(InterruptedCapture) as caught,
     ):
-        receive_records(receiver, [FirmwareLog.RANGE], duration=1.0)
+        receive_records(receiver, [Log.RANGE], duration=1.0)
     assert caught.value.records == {"RANGE": ()}
 
 
@@ -317,10 +317,10 @@ def test_uniform_sampling_checks_actual_receiver_timestamps() -> None:
 
     message = StreamDecoder().feed(binary((0).to_bytes(4, "little"), 43))[0]
     assert isinstance(message, BinaryMessage)
-    first = FirmwareLog.RANGE.decode(message)
+    first = Log.RANGE.decode(message)
     assert record_epoch(first) == 2400 * 604800 + 123
     header = message.header
-    second = FirmwareLog.RANGE.decode(
+    second = Log.RANGE.decode(
         replace(message, header=replace(header, milliseconds=125000))
     )
     assert uniform_interval([first, second], 1.0) == 2.0
@@ -346,10 +346,10 @@ def test_library_capture_uses_open_receiver_without_cli_or_output(
     monkeypatch.setattr(_capture, "monotonic", lambda: clock[0])
     monkeypatch.setattr("um982py.receiver.monotonic", lambda: clock[0])
     receiver = Receiver(transport, timeout=1.0)
-    records = _capture.capture_live(receiver, [FirmwareLog.RANGE], duration=8, frames=3)
+    records = _capture.capture_live(receiver, [Log.RANGE], duration=8, frames=3)
     assert len(records["RANGE"]) == 3
     assert transport.subscriptions == {}
-    single = _capture.capture_live(receiver, FirmwareLog.RANGE, duration=8, frames=2)
+    single = _capture.capture_live(receiver, Log.RANGE, duration=8, frames=2)
     assert isinstance(single, tuple) and len(single) == 2
     assert transport.subscriptions == {}
     with pytest.raises(ValueError, match="at least one log"):
@@ -361,17 +361,15 @@ def test_library_capture_uses_open_receiver_without_cli_or_output(
 
 def test_load_records_accepts_string_paths() -> None:
     path = Path(__file__).parents[1] / "fixtures/captures-live/RANGEA.bin"
-    records = _capture.load_records(str(path), FirmwareLog.RANGE)
-    assert records == _capture.decode_records(
-        _capture.read_frames(path), FirmwareLog.RANGE
-    )
+    records = _capture.load_records(str(path), Log.RANGE)
+    assert records == _capture.decode_records(_capture.read_frames(path), Log.RANGE)
     assert records
 
 
 def test_output_helpers_accept_string_paths(
     tmp_path: Path, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    from um982py import read_numeric_csv, write_json
+    from um982py.console import read_numeric_csv, write_json
 
     path = tmp_path / "reference.csv"
     path.write_text("time,value\n1,2\n", encoding="utf-8")

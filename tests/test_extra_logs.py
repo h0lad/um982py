@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from um982py.logs import FirmwareLog
+from um982py.commands import Log
 from um982py.messages import AsciiMessage, BinaryMessage
 from um982py.protocol import StreamDecoder
 
@@ -16,13 +16,13 @@ def message(wire_name: str, binary: bool) -> AsciiMessage | BinaryMessage:
     return next(m for m in messages if isinstance(m, wanted))
 
 
-def decoded(log: FirmwareLog, binary: bool) -> dict:
+def decoded(log: Log, binary: bool) -> dict:
     return dict(log.decode(message(log.wire_name(binary=binary), binary)).entries)
 
 
 def test_bestsats_fields() -> None:
-    body = decoded(FirmwareLog.BESTSATS, False)
-    binary = decoded(FirmwareLog.BESTSATS, True)
+    body = decoded(Log.BESTSATS, False)
+    binary = decoded(Log.BESTSATS, True)
     assert body["count"] == binary["count"] == 10
     first = body["satellites"][0]
     assert first["system"] == "GPS"
@@ -40,8 +40,8 @@ def test_bestsats_fields() -> None:
 
 
 def test_aligndop_fields() -> None:
-    body = decoded(FirmwareLog.ALIGNDOP, False)
-    binary = decoded(FirmwareLog.ALIGNDOP, True)
+    body = decoded(Log.ALIGNDOP, False)
+    binary = decoded(Log.ALIGNDOP, True)
     assert body["gdop"] == pytest.approx(12.2004, abs=1e-4)
     assert body["elev_mask"] == pytest.approx(2.0)
     assert body["count_sats"] == binary["count_sats"] == 8
@@ -50,10 +50,10 @@ def test_aligndop_fields() -> None:
 
 
 def test_antenna_group_layouts() -> None:
-    first = decoded(FirmwareLog.ANT1GROUP, False)
-    second = decoded(FirmwareLog.ANT2GROUP, False)
-    first_binary = decoded(FirmwareLog.ANT1GROUP, True)
-    second_binary = decoded(FirmwareLog.ANT2GROUP, True)
+    first = decoded(Log.ANT1GROUP, False)
+    second = decoded(Log.ANT2GROUP, False)
+    first_binary = decoded(Log.ANT1GROUP, True)
+    second_binary = decoded(Log.ANT2GROUP, True)
     assert (first["field_01"], first["count"]) == (3, 5)
     assert (second["field_01"], second["count"]) == (6, 4)
     assert first["groups"][0]["system"] == "GP"

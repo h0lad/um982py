@@ -10,7 +10,6 @@ from time import monotonic
 from um982py.commands import Log, Trigger, logging, queries
 from um982py.corrections import audit_corrections, audit_has, correction_events
 from um982py.errors import ResponseTimeout
-from um982py.logs import FirmwareLog
 from um982py.measurement import gps_epoch
 from um982py.messages import Record, Sentence
 from um982py.messages.enums import PositionType, SolutionStatus
@@ -19,27 +18,27 @@ from um982py.receiver_queries import log_list
 from um982py.signals import tracking_signal
 from um982py.subscriptions import temporary_subscriptions
 
-type DiagnosticLog = Log | FirmwareLog
+type DiagnosticLog = Log
 
 DOCTOR_LOGS: tuple[DiagnosticLog, ...] = (
-    FirmwareLog.RANGE,
-    FirmwareLog.RANGEH,
-    FirmwareLog.ANTENNASTATUS,
+    Log.RANGE,
+    Log.RANGEH,
+    Log.ANTENNASTATUS,
     Log.AGC,
     Log.HWSTATUS,
-    FirmwareLog.TIME,
+    Log.TIME,
     Log.BESTNAV,
     Log.BESTNAVH,
 )
 RTK_LOGS: tuple[DiagnosticLog, ...] = (
     Log.RTKSTATUS,
-    FirmwareLog.RTKSTATUS2,
-    FirmwareLog.RTKSTATUSD,
-    FirmwareLog.RTKSTATUS2D,
+    Log.RTKSTATUS2,
+    Log.RTKSTATUSD,
+    Log.RTKSTATUS2D,
     Log.RTCMSTATUS,
     Log.BESTNAV,
     Log.BESTNAVH,
-    FirmwareLog.BESTSATS,
+    Log.BESTSATS,
 )
 PPP_LOGS: tuple[DiagnosticLog, ...] = (
     Log.PPPNAV,
@@ -99,11 +98,8 @@ def collect_diagnostics(
     arrival_order: list[Record] = []
     matchers = [
         logging.request(
-            log.wire_name(binary=True),
-            message_id=log.definition.message_id if isinstance(log, Log) else None,
+            log.wire_name(binary=True), message_id=log.definition.message_id
         )
-        if isinstance(log, Log)
-        else log.request(binary=True)
         for log in logs
     ]
     started = monotonic()

@@ -18,7 +18,7 @@ from examples.elevation_optimizer import (
     sky_from_satvis_log,
 )
 
-from um982py.logs import FirmwareLog
+from um982py.commands import Log
 from um982py.protocol import StreamDecoder
 
 FIXTURES = Path(__file__).resolve().parents[2] / "tests" / "fixtures"
@@ -170,8 +170,8 @@ def test_satvis2_fixture_geometry_is_usable() -> None:
     satellites = tuple(
         satellite
         for message in frames
-        if FirmwareLog.SATVIS2.request(binary=True).matches(message)
-        for satellite in sky_from_satvis_log(FirmwareLog.SATVIS2.decode(message))
+        if Log.SATVIS2.request(binary=True).matches(message)
+        for satellite in sky_from_satvis_log(Log.SATVIS2.decode(message))
     )
     assert len(satellites) == pytest.approx(28)
     solution = highest_feasible_mask(satellites, minimum_satellites=8)
@@ -189,9 +189,9 @@ def test_minimum_elevation_filters_the_satvis2_frame() -> None:
         for message in StreamDecoder().feed(
             (FIXTURES / "captures" / "SATVIS2B.bin").read_bytes()
         )
-        if FirmwareLog.SATVIS2.request(binary=True).matches(message)
+        if Log.SATVIS2.request(binary=True).matches(message)
     )
-    record = FirmwareLog.SATVIS2.decode(frame)
+    record = Log.SATVIS2.decode(frame)
     every = sky_from_satvis_log(record)
     above_thirty = sky_from_satvis_log(record, minimum_elevation=30.0)
     assert len(above_thirty) < len(every)

@@ -23,6 +23,7 @@ from examples.spoof_dual_antenna import (
 )
 from um982py import Receiver
 from um982py.capture import iter_frames
+from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -32,7 +33,6 @@ from um982py.console import (
 )
 from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 
@@ -48,7 +48,7 @@ class Capture:
     sky: tuple[Record, ...] = ()
 
 
-def _records(paths: Sequence[Path], log: FirmwareLog) -> tuple[Record, ...]:
+def _records(paths: Sequence[Path], log: Log) -> tuple[Record, ...]:
     """Decode one log from every captured transcript given."""
     decoded = []
     for path in paths:
@@ -63,22 +63,22 @@ def _records(paths: Sequence[Path], log: FirmwareLog) -> tuple[Record, ...]:
 def _captured(paths: Sequence[Path]) -> Capture:
     """Decode the single-value logs and the sky views from transcripts."""
     return Capture(
-        enu=_records(paths, FirmwareLog.BSLNENUHD),
-        ecef=_records(paths, FirmwareLog.BSLNXYZHD),
-        position=_records(paths, FirmwareLog.BESTPOS),
-        offset=_records(paths, FirmwareLog.HEADINGOFFSET),
-        spoof=_records(paths, FirmwareLog.SPOOFINFO),
-        sky=_records(paths, FirmwareLog.SATVIS2),
+        enu=_records(paths, Log.BSLNENUHD),
+        ecef=_records(paths, Log.BSLNXYZHD),
+        position=_records(paths, Log.BESTPOS),
+        offset=_records(paths, Log.HEADINGOFFSET),
+        spoof=_records(paths, Log.SPOOFINFO),
+        sky=_records(paths, Log.SATVIS2),
     )
 
 
-_FIELDS: dict[str, FirmwareLog] = {
-    "enu": FirmwareLog.BSLNENUHD,
-    "ecef": FirmwareLog.BSLNXYZHD,
-    "position": FirmwareLog.BESTPOS,
-    "offset": FirmwareLog.HEADINGOFFSET,
-    "spoof": FirmwareLog.SPOOFINFO,
-    "sky": FirmwareLog.SATVIS2,
+_FIELDS: dict[str, Log] = {
+    "enu": Log.BSLNENUHD,
+    "ecef": Log.BSLNXYZHD,
+    "position": Log.BESTPOS,
+    "offset": Log.HEADINGOFFSET,
+    "spoof": Log.SPOOFINFO,
+    "sky": Log.SATVIS2,
 }
 
 
@@ -105,7 +105,7 @@ def _queried(receiver: Receiver) -> Capture:
 def _sky_again(receiver: Receiver) -> tuple[Record, ...]:
     """Collect the second SATVIS2 view, which the binary form provides."""
     try:
-        return receiver.collect(FirmwareLog.SATVIS2.read(binary=True))
+        return receiver.collect(Log.SATVIS2.read(binary=True))
     except ResponseTimeout:
         return ()
 

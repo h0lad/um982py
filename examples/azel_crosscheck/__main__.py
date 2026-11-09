@@ -26,7 +26,6 @@ from um982py.console import (
 from um982py.console_capture import capture_records
 from um982py.errors import ProtocolError
 from um982py.geodesy import receiver_ecef
-from um982py.logs import FirmwareLog
 from um982py.messages import (
     AsciiHeader,
     AsciiMessage,
@@ -74,7 +73,7 @@ def _decode(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
     return tuple(decoded)
 
 
-def _decode_firmware(frames: Sequence[Message], log: FirmwareLog) -> tuple[Record, ...]:
+def _decode_firmware(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
     decoded: list[Record] = []
     for message in frames:
         with suppress(ProtocolError):
@@ -82,12 +81,12 @@ def _decode_firmware(frames: Sequence[Message], log: FirmwareLog) -> tuple[Recor
     return tuple(decoded)
 
 
-def _first_decoded(frames: Sequence[Message], log: FirmwareLog) -> Record | None:
+def _first_decoded(frames: Sequence[Message], log: Log) -> Record | None:
     return next(iter(_decode_firmware(frames, log)), None)
 
 
 def _single_position(frames: Sequence[Message]) -> Record | None:
-    for log in (FirmwareLog.BESTPOS, FirmwareLog.BESTXYZ):
+    for log in (Log.BESTPOS, Log.BESTXYZ):
         record = _first_decoded(frames, log)
         if record is not None:
             return record
@@ -157,9 +156,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     debug_header(args, "azel_crosscheck")
     if args.replay is None:
-        logs: list[Log | FirmwareLog] = [
-            FirmwareLog.SATVIS2,
-            FirmwareLog.BESTPOS,
+        logs: list[Log] = [
+            Log.SATVIS2,
+            Log.BESTPOS,
             *_EPHEMERIS_LOGS.values(),
         ]
         captured = capture_records(
@@ -188,7 +187,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.ephemeris is not None
             else list(satellite_frames)
         )
-        satellite_records = _decode_firmware(satellite_frames, FirmwareLog.SATVIS2)
+        satellite_records = _decode_firmware(satellite_frames, Log.SATVIS2)
         position_records = tuple(
             record
             for record in (_single_position(position_frames),)

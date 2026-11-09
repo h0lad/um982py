@@ -8,11 +8,11 @@ import pytest
 from conftest import FIXTURES, ReplayTransport
 from test_extended_logs import captured
 from um982py import Receiver
+from um982py.commands import Log
 from um982py.commands.core import Command, action
 from um982py.errors import CommandRejected, ProtocolError
 from um982py.experimental import FirmwareSwitch
 from um982py.experimental import configuration as config
-from um982py.logs import FirmwareLog
 from um982py.messages import AsciiMessage, BinaryMessage, CommandResponse
 
 
@@ -137,18 +137,18 @@ def test_missing_arguments_are_errors_not_setting_queries(topic: str) -> None:
 
 
 def test_antenna_and_spoof_records() -> None:
-    a = FirmwareLog.ANTENNA.decode(captured(FirmwareLog.ANTENNA, False))
-    b = FirmwareLog.ANTENNA.decode(captured(FirmwareLog.ANTENNA, True))
+    a = Log.ANTENNA.decode(captured(Log.ANTENNA, False))
+    b = Log.ANTENNA.decode(captured(Log.ANTENNA, True))
     assert a["status_1"] == a["status_2"] == "WORK"
     assert b["status_1"] == b["status_2"] == 5
-    spoof = FirmwareLog.SPOOFINFO.decode(captured(FirmwareLog.SPOOFINFO, True))
+    spoof = Log.SPOOFINFO.decode(captured(Log.SPOOFINFO, True))
     assert spoof.integer("spoof_indicator") == 0
     assert spoof.integer("field_21") == 0
-    message = captured(FirmwareLog.SPOOFINFO, False)
+    message = captured(Log.SPOOFINFO, False)
     assert isinstance(message, AsciiMessage)
     for bad in ("not_hex", "10000000000000000"):
         with pytest.raises(ProtocolError):
-            FirmwareLog.SPOOFINFO.decode(
+            Log.SPOOFINFO.decode(
                 replace(
                     message, fields=(*message.fields[:20], bad, *message.fields[21:])
                 )
@@ -156,7 +156,7 @@ def test_antenna_and_spoof_records() -> None:
 
 
 def test_doppler_logs_have_both_velocity_deviations() -> None:
-    for log in (FirmwareLog.DOPPVEL, FirmwareLog.DOPPVELH):
+    for log in (Log.DOPPVEL, Log.DOPPVELH):
         message = captured(log, True)
         assert isinstance(message, BinaryMessage) and len(message.payload) == 48
         body = log.decode(message)

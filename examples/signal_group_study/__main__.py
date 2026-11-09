@@ -22,6 +22,7 @@ from examples.signal_group_study import (
 )
 from um982py.antenna import antenna_log
 from um982py.capture import decode_records, read_frames, receive_records
+from um982py.commands import Log
 from um982py.commands.configuration import (
     SignalGroup,
     current_signal_group,
@@ -37,7 +38,6 @@ from um982py.console import (
 from um982py.console_capture import open_receiver
 from um982py.errors import UM982Error
 from um982py.geodesy import records_from
-from um982py.logs import FirmwareLog
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 from um982py.state import restore_receiver_state, snapshot_receiver_state
@@ -103,18 +103,18 @@ def cn0_from(records: Sequence[Record]) -> tuple[float, ...]:
 def replay_samples(args: argparse.Namespace) -> tuple[SettingSample, ...]:
     """One setting per signal group named in a captured transcript."""
     frames = read_frames(args.replay)
-    sky = decode_records(frames, FirmwareLog.SATVIS2)
+    sky = decode_records(frames, Log.SATVIS2)
     dop_records = decode_records(
-        frames, antenna_log(FirmwareLog.PSRDOP, getattr(args, "antenna", "primary"))
+        frames, antenna_log(Log.PSRDOP, getattr(args, "antenna", "primary"))
     )
     positions = decode_records(
-        frames, antenna_log(FirmwareLog.BESTPOS, getattr(args, "antenna", "primary"))
+        frames, antenna_log(Log.BESTPOS, getattr(args, "antenna", "primary"))
     )
     if not sky or not dop_records or not positions:
         raise ValueError("replay requires SATVIS2, PSRDOP and BESTPOS records")
     dilution = ReportedDilution.from_record(dop_records[0], "PSRDOP")
     ranges = decode_records(
-        frames, antenna_log(FirmwareLog.RANGE, getattr(args, "antenna", "primary"))
+        frames, antenna_log(Log.RANGE, getattr(args, "antenna", "primary"))
     )
     best = positions[0]
     sample = SettingSample(
@@ -131,9 +131,9 @@ def replay_samples(args: argparse.Namespace) -> tuple[SettingSample, ...]:
 
 def measure_setting(args: argparse.Namespace, setting: SignalGroup) -> SettingSample:
     """Select a signal group, wait out the reboot, then sample the resulting sky."""
-    range_log = antenna_log(FirmwareLog.RANGE, getattr(args, "antenna", "primary"))
-    position_log = antenna_log(FirmwareLog.BESTPOS, getattr(args, "antenna", "primary"))
-    dop_log = antenna_log(FirmwareLog.PSRDOP, getattr(args, "antenna", "primary"))
+    range_log = antenna_log(Log.RANGE, getattr(args, "antenna", "primary"))
+    position_log = antenna_log(Log.BESTPOS, getattr(args, "antenna", "primary"))
+    dop_log = antenna_log(Log.PSRDOP, getattr(args, "antenna", "primary"))
     print(
         f"Selecting group {setting.master}/{setting.slave}; "
         f"reboot wait {args.reboot_seconds:g}s...",
@@ -148,8 +148,8 @@ def measure_setting(args: argparse.Namespace, setting: SignalGroup) -> SettingSa
         temporary_subscriptions(
             receiver,
             (
-                FirmwareLog.SATVIS2.wire_name(),
-                FirmwareLog.SATVIS2.output(args.interval),
+                Log.SATVIS2.wire_name(),
+                Log.SATVIS2.output(args.interval),
             ),
             (
                 dop_log.wire_name(),
@@ -173,7 +173,7 @@ def measure_setting(args: argparse.Namespace, setting: SignalGroup) -> SettingSa
         captured = receive_records(
             receiver,
             [
-                FirmwareLog.SATVIS2,
+                Log.SATVIS2,
                 dop_log,
                 range_log,
                 position_log,

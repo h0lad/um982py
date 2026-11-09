@@ -8,8 +8,8 @@ import pytest
 
 from um982py import PrecisePoint, gps_epoch, interpolate_sp3, parse_sp3, range_samples
 from um982py.capture import decode_records, read_frames
+from um982py.commands import Log
 from um982py.experimental import tracking_fields
-from um982py.logs import FirmwareLog
 from um982py.messages import BinaryMessage, Record
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -19,13 +19,11 @@ SPECIALIST = FIXTURES / "specialist"
 def test_captured_range_phase_and_doppler_signs_match_raw_binary_values() -> None:
     frames = read_frames(FIXTURES / "captures/RANGEB.bin")
     message = next(
-        frame
-        for frame in frames
-        if FirmwareLog.RANGE.request(binary=True).matches(frame)
+        frame for frame in frames if Log.RANGE.request(binary=True).matches(frame)
     )
     assert isinstance(message, BinaryMessage)
-    record = FirmwareLog.RANGE.decode(message)
-    samples = range_samples(record)
+    record = Log.RANGE.decode(message)
+    samples = range_samples(record, systems=(0,), signals=(0, 14))
     assert samples
     assert all(item.key.system == 0 and item.key.signal in (0, 14) for item in samples)
     for sample in samples:
@@ -46,14 +44,20 @@ def test_captured_range_phase_and_doppler_signs_match_raw_binary_values() -> Non
 
 
 def test_equal_prns_in_other_constellations_cannot_become_gps_samples() -> None:
-    record = decode_records(
-        read_frames(FIXTURES / "captures/RANGEB.bin"), FirmwareLog.RANGE
-    )[0]
+    record = decode_records(read_frames(FIXTURES / "captures/RANGEB.bin"), Log.RANGE)[0]
     observation = record.records("observations")[0]
     fields = dict(observation.entries)
     fields.update(tracking_status=0x1400 | (3 << 16), lock_time=100)
     other = Record("observations", tuple(fields.items()))
-    assert range_samples(Record("RANGE", (("observations", (other,)),)), epoch=0) == ()
+    assert (
+        range_samples(
+            Record("RANGE", (("observations", (other,)),)),
+            epoch=0,
+            systems=(0,),
+            signals=(0, 14),
+        )
+        == ()
+    )
 
 
 def test_unstamped_measurements_require_an_explicit_epoch() -> None:
@@ -63,7 +67,7 @@ def test_unstamped_measurements_require_an_explicit_epoch() -> None:
 
 def test_tracking_fields_match_captured_byte_offsets_without_renaming() -> None:
     record = decode_records(
-        read_frames(FIXTURES / "captures/PTOBSINFOB.bin"), FirmwareLog.PTOBSINFO
+        read_frames(FIXTURES / "captures/PTOBSINFOB.bin"), Log.PTOBSINFO
     )[0]
     assert isinstance(record.message, BinaryMessage)
     fields = tracking_fields(record)

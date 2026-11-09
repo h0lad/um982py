@@ -134,17 +134,13 @@ def test_reserved_fields_are_flagged(constellation: str = "GLONASS") -> None:
 
 def test_unknown_log_marks_every_field_neutral() -> None:
     raw = (FIXTURES.parent / "captures" / "ENVINFOB.bin").read_bytes()
-    log = Log.ENVINFO if "ENVINFO" in Log.__members__ else None
-    assert log is None
-    from um982py.logs import FirmwareLog
-
-    request = FirmwareLog.ENVINFO.request(binary=True)
+    request = Log.ENVINFO.request(binary=True)
     message = next(
         m
         for m in StreamDecoder().feed(raw)
         if isinstance(m, BinaryMessage) and request.matches(m)
     )
-    record = FirmwareLog.ENVINFO.decode(message)
+    record = Log.ENVINFO.decode(message)
     view = message_hex(
         "ENVINFO", "ENVINFO", message.header.message_id, message.payload, record
     )

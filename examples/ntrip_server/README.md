@@ -91,8 +91,7 @@ Use `--mode public` instead of `--mode private --users users.json` for a free
 public rover stream. Both modes require TLS on non-loopback listeners. Private
 mode requires rover accounts, protects the sourcetable, and restricts the
 unauthenticated status website to loopback. Source uploads always require a
-separate source account in either mode. `--public` remains available for the
-legacy guest configuration.
+separate source account in either mode.
 
 Details: [SURVEY.md](SURVEY.md), [SETTINGS.md](SETTINGS.md),
 [ACCESS.md](ACCESS.md), [OPERATIONS.md](OPERATIONS.md), [CLIENTS.md](CLIENTS.md),

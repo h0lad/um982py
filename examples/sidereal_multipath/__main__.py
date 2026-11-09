@@ -9,6 +9,7 @@ from pathlib import Path
 from examples.sidereal_multipath import SkyResidual, evaluate_repeatability
 from um982py.antenna import antenna_log
 from um982py.capture import load_records, record_epoch
+from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -18,7 +19,6 @@ from um982py.console import (
     write_json,
 )
 from um982py.console_capture import capture_logs
-from um982py.logs import FirmwareLog
 from um982py.measurement import RangeSample, sample_series
 from um982py.messages import Record
 from um982py.stats import detrend, is_continuous
@@ -40,7 +40,7 @@ def sky_residuals(
             )
     times = sorted(skies)
     result = []
-    for samples in sample_series(ranges).values():
+    for samples in sample_series(ranges, systems=(0,), signals=(0, 14)).values():
         arcs: list[list[RangeSample]] = []
         for sample in samples:
             if not arcs or not is_continuous(arcs[-1][-1], sample):
@@ -91,12 +91,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--cell-degrees must not exceed 30")
     data = capture_logs(
         args,
-        [FirmwareLog.RANGE, FirmwareLog.SATVIS2],
+        [Log.RANGE, Log.SATVIS2],
         on_progress=progress_printer("sidereal_multipath") if args.debug else None,
     )
     training = sky_residuals(
-        load_records(args.training, antenna_log(FirmwareLog.RANGE, args.antenna)),
-        load_records(args.training, FirmwareLog.SATVIS2),
+        load_records(args.training, antenna_log(Log.RANGE, args.antenna)),
+        load_records(args.training, Log.SATVIS2),
     )
     validation = sky_residuals(data["RANGE"], data["SATVIS2"])
     score = evaluate_repeatability(

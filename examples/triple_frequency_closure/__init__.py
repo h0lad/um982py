@@ -5,7 +5,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 
 from um982py.capture import record_epoch
-from um982py.measurement import RangeSample, gnss_range_samples
+from um982py.measurement import RangeSample, range_samples
 from um982py.messages import Record
 from um982py.signals import tracking_signal
 
@@ -74,7 +74,7 @@ def _trios(
         frequencies[key] = identity.frequency_hz
         selected.append(row)
     filtered = Record(record.name, (("observations", tuple(selected)),), record.message)
-    samples = gnss_range_samples(filtered)
+    samples = range_samples(filtered)
     by_key = {(sample.key.prn, sample.key.signal): sample for sample in samples}
     return {
         prn: tuple(

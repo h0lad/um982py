@@ -3,7 +3,7 @@
 import struct
 
 from tests.test_protocol import binary
-from um982py.logs import FirmwareLog
+from um982py.commands import Log
 from um982py.messages import Record
 from um982py.protocol import StreamDecoder
 from um982py.protocol.checksums import unicore_crc32
@@ -53,4 +53,4 @@ def wire(epoch: int, rows: list[bytes], *, secondary: bool = False) -> bytes:
 def record(epoch: int, rows: list[bytes], *, secondary: bool = False) -> Record:
     """Decode synthetic wire data using the library's native parser."""
     frame = StreamDecoder(strict=True).feed(wire(epoch, rows, secondary=secondary))[0]
-    return (FirmwareLog.RANGEH if secondary else FirmwareLog.RANGE).decode(frame)
+    return (Log.RANGEH if secondary else Log.RANGE).decode(frame)

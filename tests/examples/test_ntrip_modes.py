@@ -50,8 +50,8 @@ def test_private_mode_protects_sourcetable_and_stream(station: Station) -> None:
     asyncio.run(scenario())
 
 
-@pytest.mark.parametrize("mode", ("public", "private"))
-def test_cli_mode_policy(station: Station, tmp_path: Path, mode: str) -> None:
+@pytest.mark.parametrize("mode", ("public", "private", None))
+def test_cli_mode_policy(station: Station, tmp_path: Path, mode: str | None) -> None:
     async def scenario() -> None:
         manifest = tmp_path / "station.json"
         manifest.write_text(json.dumps(asdict(station)))
@@ -68,8 +68,7 @@ def test_cli_mode_policy(station: Station, tmp_path: Path, mode: str) -> None:
             sys.executable,
             "-m",
             "examples.ntrip_server",
-            "--mode",
-            mode,
+            *(["--mode", mode] if mode is not None else []),
             "--station",
             str(manifest),
             "--users",

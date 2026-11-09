@@ -18,19 +18,18 @@ from um982py.capture import read_frames
 from um982py.commands import Log
 from um982py.errors import ProtocolError
 from um982py.geodesy import geodetic_from_ecef
-from um982py.logs import FirmwareLog
 from um982py.messages import BinaryMessage, Sentence, decode_log
 from um982py.messages.record import Record
 
 FIXTURES = Path(__file__).parent / "fixtures"
 POSITION_LOGS = {
-    FirmwareLog.BESTPOS,
-    FirmwareLog.BESTPOS2,
-    FirmwareLog.BESTGNSSPOS,
-    FirmwareLog.PSRPOS,
-    FirmwareLog.RTKPOS,
-    FirmwareLog.BESTXYZ,
-    FirmwareLog.REFSTATION,
+    Log.BESTPOS,
+    Log.BESTPOS2,
+    Log.BESTGNSSPOS,
+    Log.PSRPOS,
+    Log.RTKPOS,
+    Log.BESTXYZ,
+    Log.REFSTATION,
 }
 
 
@@ -109,17 +108,17 @@ def test_position_bearing_replay_frames_are_in_the_synthetic_area() -> None:
             extensions = [extension] if extension is not None else []
             if (
                 isinstance(message, BinaryMessage)
-                and FirmwareLog.BESTXYZ.request(binary=True).matches(message)
-                and FirmwareLog.BESTXYZ not in extensions
+                and Log.BESTXYZ.request(binary=True).matches(message)
+                and Log.BESTXYZ not in extensions
             ):
-                extensions.append(FirmwareLog.BESTXYZ)
+                extensions.append(Log.BESTXYZ)
             for log in extensions:
                 with suppress(ProtocolError):
                     position = _position(log.decode(message))
                     if position is not None:
                         assert _synthetic_area(*position), path
                         checked["extended"] += 1
-                        if log is FirmwareLog.BESTXYZ:
+                        if log is Log.BESTXYZ:
                             checked["bestxyz"] += 1
     assert checked["nmea"] > 100
     assert checked["core"] > 100
@@ -129,10 +128,8 @@ def test_position_bearing_replay_frames_are_in_the_synthetic_area() -> None:
 
 def test_replay_pseudoranges_solve_to_the_synthetic_area() -> None:
     root = FIXTURES / "captures-live"
-    ranges = _decode_firmware(read_frames(root / "RANGEA.bin"), FirmwareLog.RANGE)
-    positions = _decode_firmware(
-        read_frames(root / "BESTPOSA.bin"), FirmwareLog.BESTPOS
-    )
+    ranges = _decode_firmware(read_frames(root / "RANGEA.bin"), Log.RANGE)
+    positions = _decode_firmware(read_frames(root / "BESTPOSA.bin"), Log.BESTPOS)
     ephemerides = _decode(read_frames(root / "GPSEPHA.bin"), Log.GPSEPH)
     observations = _gps_l1(
         ranges[0],

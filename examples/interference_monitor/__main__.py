@@ -17,6 +17,7 @@ from examples.interference_monitor import (
     spoof_report,
     status_alerts,
 )
+from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -26,7 +27,6 @@ from um982py.console import (
     write_json,
 )
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 
@@ -124,7 +124,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     debug_header(args, "interference_monitor")
     captured = capture_records(
         args,
-        [FirmwareLog.SPOOFINFO, FirmwareLog.ANTENNA, FirmwareLog.RANGE],
+        [Log.SPOOFINFO, Log.ANTENNA, Log.RANGE],
         duration=args.duration,
         interval=args.interval,
         on_progress=progress_printer("interference_monitor") if args.debug else None,

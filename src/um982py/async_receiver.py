@@ -3,19 +3,22 @@
 import asyncio
 from collections.abc import AsyncIterator, Callable
 from contextlib import suppress
+from math import isfinite
 from types import TracebackType
 from typing import Self
 
 from um982py.antenna import AntennaLog
-from um982py.commands import Log
+from um982py.async_ppp import AsyncPppSession
+from um982py.augmentation import AugmentationState
+from um982py.commands import Log, queries
 from um982py.commands.configuration.receiver import SignalGroup
 from um982py.commands.core import Command
-from um982py.logs import FirmwareLog
 from um982py.measurement import RangeSample
 from um982py.messages.frames import Message
 from um982py.messages.navigation import BestNavigation, Fix, Heading
 from um982py.messages.record import Record
 from um982py.messages.version import Version
+from um982py.ppp import PppService
 from um982py.receiver import Receiver
 from um982py.receiver_models import (
     FirmwareInfo,
@@ -24,6 +27,7 @@ from um982py.receiver_models import (
     ReceiverConfig,
     ReceiverSystemStatus,
 )
+from um982py.satellites import Satellite
 
 
 async def _wait_for_io[T](task: asyncio.Task[T]) -> T:
@@ -143,6 +147,58 @@ class AsyncReceiver:
         """Query a one-shot GGA position fix for the selected antenna."""
         return await self._run(lambda: self.receiver.fix(antenna=antenna))
 
+    async def positions(
+        self,
+        *,
+        interval: float = 1,
+        antenna: int = 1,
+        stop: asyncio.Event | None = None,
+        on_message: Callable[[Message], None] | None = None,
+    ) -> AsyncIterator[Fix]:
+        """Poll GGA positions until the caller stops iterating.
+
+        Other messages received during a query go to ``on_message`` or are
+        discarded. Previously queued messages remain available to ``receive``.
+        The callback runs in the worker thread and must not use the receiver.
+        """
+        if isinstance(interval, bool) or not isfinite(interval) or interval <= 0:
+            raise ValueError("interval must be finite and positive")
+        if antenna not in (1, 2):
+            raise ValueError("antenna must be 1 or 2")
+        if on_message is not None and not callable(on_message):
+            raise TypeError("on_message must be callable")
+        while stop is None or not stop.is_set():
+            yield await self._run(
+                lambda: self.receiver._poll_query(
+                    queries.fix(antenna=antenna), on_message
+                )
+            )
+            if stop is None:
+                await asyncio.sleep(interval)
+            else:
+                try:
+                    await asyncio.wait_for(stop.wait(), timeout=interval)
+                except TimeoutError:
+                    continue
+                return
+
+    async def enable_augmentation(self, *, persist: bool = False) -> AugmentationState:
+        """Enable the receiver's augmentation plan and report each result."""
+        return await self._run(
+            lambda: self.receiver.enable_augmentation(persist=persist)
+        )
+
+    async def start_ppp(self, *, service: PppService = "E6-HAS") -> AsyncPppSession:
+        """Configure and verify a PPP service for asynchronous position queries."""
+        try:
+            session = await self._run(lambda: self.receiver.start_ppp(service=service))
+        except asyncio.CancelledError as error:
+            error.add_note(
+                "PPP setup may have changed receiver settings before cancellation."
+            )
+            raise
+        return AsyncPppSession(self, session)
+
     async def best_navigation(
         self, *, binary: bool = False, antenna: int = 1
     ) -> BestNavigation:
@@ -155,9 +211,13 @@ class AsyncReceiver:
         """Query a one-shot dual-antenna THS heading solution."""
         return await self._run(self.receiver.heading)
 
+    async def satellites(self) -> tuple[Satellite, ...]:
+        """Return tracked satellites with named constellations and signals."""
+        return await self._run(self.receiver.satellites)
+
     async def read_log(
         self,
-        log: Log | FirmwareLog | AntennaLog,
+        log: Log | AntennaLog,
         *,
         binary: bool | None = None,
         antenna: str = "primary",

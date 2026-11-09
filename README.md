@@ -16,6 +16,7 @@ The CLI accepts a serial port or a transparent TCP-to-UART gateway:
 
 ```bash
 um982py --port /dev/ttyUSB0 --baud 921600 version
+um982py --port /dev/ttyUSB0 --baud 921600 satellites
 um982py --port tcp://192.0.2.10:4001 doctor
 ```
 
@@ -30,9 +31,12 @@ augmentation for the current receiver session without saving the configuration.
 | Identify the receiver | `receiver.version()` |
 | Read position, heading, or velocity | `receiver.fix()`, `receiver.heading()`, `receiver.best_navigation()` |
 | Query one receiver log | `receiver.read_log(Log.BESTNAV)` |
-| Inspect satellites and their signals | `receiver.read_log(Log.SATSINFO).records("satellites")` |
+| Inspect satellites and their signals | `receiver.satellites()` |
+| Follow positions | `receiver.positions(interval=1)` |
+| Start Galileo HAS or BeiDou PPP-B2b | `receiver.start_ppp(service="E6-HAS")` |
 | Capture one log or several logs | `capture_live()` |
-| Read a saved capture | `load_records(path, log)` or `iter_frames(path)` |
+| Read a saved capture or one message | `load_records(path, Log.RANGE)` or `decode_message(data)` |
+| Convert receiver time to UTC | `message_utc(record, leap_seconds=...)` |
 | Relay NTRIP corrections | `relay_ntrip(receiver, url)` |
 | Export observations | `export_rinex()` |
 | Convert coordinates and measure distance | `ecef_from_geodetic()`, `geodetic_from_ecef()`, `haversine_distance()` |
@@ -69,69 +73,48 @@ else:
 
 ### Watch a precise position converge
 
-```python
-from time import sleep
+Keep the antenna stationary and stop with Ctrl+C when the results are satisfactory:
 
-from um982py import (
-    HIGH_ACCURACY_SIGNAL_GROUP,
-    Log,
-    Receiver,
-    commands,
-    haversine_distance,
-)
+```python
+from um982py import Receiver, haversine_distance
 
 with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    setup = receiver.enable_augmentation()
-    if setup.active_group != HIGH_ACCURACY_SIGNAL_GROUP:
-        raise RuntimeError(f"Could not enable the signal group: {setup.rejected}")
-    receiver.execute(commands.configuration.ppp(service="E6-HAS"))
+    ppp = receiver.start_ppp(service="E6-HAS")
     previous = None
     try:
-        while True:
-            fix = receiver.read_log(Log.PPPNAV, binary=False)
+        for fix in ppp.positions(interval=5):
             print(
-                f"Solution: {fix['sol_status']}, {fix['pos_type']}; "
-                f"correction age: {fix['diff_age']} s"
+                f"{fix.position_type}: horizontal std {fix.horizontal_std_m} m, "
+                f"height std {fix.height_std_m} m, correction age {fix.correction_age_s} s"
             )
-            if fix["sol_status"] == "SOL_COMPUTED" and fix["pos_type"] in (
-                "PPP_CONVERGING",
-                "PPP",
-                "PPP_AR",
-                "PPP_RTK",
-            ):
-                position = (fix.real("lat"), fix.real("lon"))
+            if fix.valid and fix.latitude is not None and fix.longitude is not None:
+                position = (fix.latitude, fix.longitude)
                 print(f"Position: {position}")
-                print(
-                    f"Receiver std (lat, lon, height), m: "
-                    f"{fix['lat_std']}, {fix['lon_std']}, {fix['hgt_std']}"
-                )
                 if previous is not None:
-                    change = haversine_distance(*previous, *position)
-                    print(f"Change since previous reading: {change:.3f} m")
+                    print(f"Change: {haversine_distance(*previous, *position):.3f} m")
                 previous = position
             else:
                 previous = None
-            sleep(5)
     except KeyboardInterrupt:
         print("Stopped")
 ```
 
-Use `service="B2B-PPP"` for BeiDou PPP-B2b.
+Use `service="B2B-PPP"` for BeiDou PPP-B2b. Setup verifies the signal group and
+PPP service, and changes receiver settings for the current session when needed.
+Check the session's `group_changed` and `service_changed` fields for changes.
 
 ### Record observations for post-processing
 
 Collect one minute of observations and save them as a RINEX file:
 
 ```python
-from pathlib import Path
-
-from um982py import FirmwareLog, Receiver, capture_live, export_rinex
+from um982py import Log, Receiver, capture_live, export_rinex
 
 with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    observations = capture_live(receiver, FirmwareLog.RANGE, duration=60)
+    observations = capture_live(receiver, Log.RANGE, duration=60)
 
 result = export_rinex(observations, marker_name="FIELD01")
-Path("field.obs").write_text(result.text, encoding="ascii")
+result.write("field.obs")
 print(f"Saved {result.epochs} epochs; omitted observations: {result.omitted}")
 ```
 
@@ -158,21 +141,18 @@ the vehicle's forward direction.
 
 ### Check satellite reception
 
-Inspect the signals received at an antenna location:
-
 ```python
-from um982py import Log, Receiver
+from um982py import Receiver
 
 with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    satellites = receiver.read_log(Log.SATSINFO).records("satellites")
-
-for satellite in satellites:
-    for signal in satellite.records("frequencies"):
-        print(
-            f"System {signal['system']}, PRN {satellite['prn']}, "
-            f"signal {signal['signal']}: SNR {signal['snr']}"
-        )
+    for satellite in receiver.satellites():
+        print(satellite.constellation, satellite.prn)
+        for signal in satellite.signals:
+            print(f"  {signal.name or signal.signal_id}: SNR {signal.snr}")
 ```
+
+See the [API guide](docs/api.md) and [example catalogue](examples/README.md) for
+more applications.
 
 ## Development
 

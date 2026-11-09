@@ -5,6 +5,7 @@ from enum import StrEnum
 from um982py.commands import logging
 from um982py.commands.catalog import LOGS, LogDefinition
 from um982py.commands.core import Command
+from um982py.commands.extended import EXTENDED_LOGS
 from um982py.commands.types import Port, Trigger
 from um982py.errors import ProtocolError
 from um982py.messages import BinaryMessage, CommandResponse, Message
@@ -175,9 +176,58 @@ class Log(StrEnum):
     RTCM1126 = "RTCM1126"
     RTCM1127 = "RTCM1127"
 
+    RTKSTATUSD = "RTKSTATUSD"
+    RTKSTATUS2D = "RTKSTATUS2D"
+    PTOBSINFO = "PTOBSINFO"
+    BESTPOS = "BESTPOS"
+    PSRPOS = "PSRPOS"
+    RTKPOS = "RTKPOS"
+    BESTVEL = "BESTVEL"
+    TIME = "TIME"
+    RANGE = "RANGE"
+    RANGEH = "RANGEH"
+    HEADINGOFFSET = "HEADINGOFFSET"
+    PPSSTATUS = "PPSSTATUS"
+    ENVINFO = "ENVINFO"
+    RXSTATUS = "RXSTATUS"
+    ANTENNA = "ANTENNA"
+    ANTENNASTATUS = "ANTENNASTATUS"
+    DOPPVEL = "DOPPVEL"
+    DOPPVELH = "DOPPVELH"
+    SPOOFINFO = "SPOOFINFO"
+    BESTXYZ = "BESTXYZ"
+    SATVIS = "SATVIS"
+    SATVIS2 = "SATVIS2"
+    REFSTATION = "REFSTATION"
+    PSRDOP = "PSRDOP"
+    PSRDOP2 = "PSRDOP2"
+    RTKDOP = "RTKDOP"
+    RTKDOP2 = "RTKDOP2"
+    RTKVEL = "RTKVEL"
+    RTKVEL2 = "RTKVEL2"
+    PSRVEL = "PSRVEL"
+    PSRVEL2 = "PSRVEL2"
+    BESTGNSSPOS = "BESTGNSSPOS"
+    BESTGNSSVEL = "BESTGNSSVEL"
+    BESTPOS2 = "BESTPOS2"
+    BESTVEL2 = "BESTVEL2"
+    BESTSATS = "BESTSATS"
+    ALIGNDOP = "ALIGNDOP"
+    BSLNENUHD = "BSLNENUHD"
+    BSLNXYZHD = "BSLNXYZHD"
+    ALIGNBSLNENU = "ALIGNBSLNENU"
+    ALIGNBSLNXYZ = "ALIGNBSLNXYZ"
+    ANT1GROUP = "ANT1GROUP"
+    ANT2GROUP = "ANT2GROUP"
+
     @property
     def definition(self) -> LogDefinition:
-        return LOGS[self.value]
+        return LOGS[self.value] if self.value in LOGS else EXTENDED_LOGS[self.value]
+
+    @property
+    def onchanged_only(self) -> bool:
+        """Whether continuous output uses the ONCHANGED trigger."""
+        return self.definition.changed_only
 
     def wire_name(self, *, binary: bool = False) -> str:
         definition = self.definition
@@ -190,7 +240,7 @@ class Log(StrEnum):
     def request(
         self, *, binary: bool = False, port: Port | None = None
     ) -> Command[Message]:
-        if self.definition.changed_only:
+        if self.value in LOGS and self.definition.changed_only:
             raise ValueError(f"{self.value} requires ONCHANGED output")
         return logging.request(
             self.wire_name(binary=binary),
@@ -205,6 +255,8 @@ class Log(StrEnum):
         binary: bool = False,
         port: Port | None = None,
     ) -> Command[CommandResponse]:
+        if self.value in {"HEADINGOFFSET", "RXSTATUS"}:
+            raise ValueError(f"{self.value} only has verified one-shot queries")
         if self.definition.changed_only and interval != Trigger.ON_CHANGED:
             raise ValueError(f"{self.value} requires ONCHANGED output")
         return logging.output(self.wire_name(binary=binary), interval, port=port)
@@ -227,6 +279,10 @@ class Log(StrEnum):
         )
         if not command.matches(message):
             raise ProtocolError(f"Expected {self.value}")
+        if self.value in EXTENDED_LOGS:
+            from um982py.extended_logs import decode_extended
+
+            return decode_extended(self.value, message)
         return decode_log(message)
 
     def stop(

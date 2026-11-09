@@ -16,7 +16,6 @@ from examples.azel_crosscheck import (
 from examples.azel_crosscheck.__main__ import epoch_seconds
 
 from um982py.commands import Log
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.messages.enums import SatelliteSystem
 from um982py.protocol import StreamDecoder
@@ -42,7 +41,7 @@ def records(log: Log) -> tuple[Record, ...]:
 def satvis_records() -> tuple[Record, ...]:
     """The four SATVIS2 frames of the first live epoch."""
     return tuple(
-        FirmwareLog.SATVIS2.decode(message)
+        Log.SATVIS2.decode(message)
         for message in StreamDecoder().feed((FIXTURES / "SATVIS2A.bin").read_bytes())
         if getattr(message, "name", "").startswith("SATVIS2A")
         and float(message.header.fields[5]) == EPOCH_SECONDS
@@ -114,11 +113,11 @@ def test_binary_satvis_constellations_match_ascii_names() -> None:
     fixtures = FIXTURES.parent / "captures"
     decoded = [
         tuple(
-            visibility_from_satvis(FirmwareLog.SATVIS2.decode(message))
+            visibility_from_satvis(Log.SATVIS2.decode(message))
             for message in StreamDecoder().feed(
                 (fixtures / f"SATVIS2{encoding}.bin").read_bytes()
             )
-            if FirmwareLog.SATVIS2.request(binary=encoding == "B").matches(message)
+            if Log.SATVIS2.request(binary=encoding == "B").matches(message)
         )
         for encoding in ("A", "B")
     ]

@@ -1,12 +1,12 @@
 """Typed navigation and heading records."""
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from math import isfinite
 from struct import unpack_from
 from typing import Self
 
 from um982py.errors import ProtocolError
-from um982py.messages.enums import PositionType, SolutionStatus
+from um982py.messages.enums import PositionType, SolutionStatus, _reported_datum
 from um982py.messages.frames import AsciiMessage, BinaryMessage, Message, Sentence
 
 
@@ -24,6 +24,22 @@ def _standard_deviation(value: str | float) -> float | None:
         return None
     number = float(value)
     return number if isfinite(number) and number >= 0 else None
+
+
+def _solution_status(value: str | int) -> SolutionStatus | str | int:
+    try:
+        return (
+            SolutionStatus[value] if isinstance(value, str) else SolutionStatus(value)
+        )
+    except (KeyError, ValueError):
+        return value
+
+
+def _position_type(value: str | int) -> PositionType | str | int:
+    try:
+        return PositionType[value] if isinstance(value, str) else PositionType(value)
+    except (KeyError, ValueError):
+        return value
 
 
 def _coordinate(value: str, direction: str, *, latitude: bool) -> float | None:
@@ -122,11 +138,13 @@ class Heading:
 class BestNavigation:
     """Position and velocity with receiver-estimated standard deviations in metres.
 
-    A standard deviation is None when the receiver value is unavailable.
+    Known status values use the same enums for ASCII and binary messages.
+    WGS84 is named consistently across formats. Unknown values retain their
+    original representation. The original message is available through ``message``.
     """
 
-    solution_status: str | int
-    position_type: str | int
+    solution_status: SolutionStatus | str | int
+    position_type: PositionType | str | int
     latitude: float
     longitude: float
     altitude_msl: float
@@ -136,12 +154,15 @@ class BestNavigation:
     horizontal_speed: float
     track: float
     vertical_speed: float
-    velocity_solution_status: str | int
-    velocity_type: str | int
+    velocity_solution_status: SolutionStatus | str | int
+    velocity_type: PositionType | str | int
     datum: str | int
     latitude_std_m: float | None = None
     longitude_std_m: float | None = None
     height_std_m: float | None = None
+    message: AsciiMessage | BinaryMessage | None = field(
+        default=None, repr=False, compare=False
+    )
 
     @property
     def valid(self) -> bool:
@@ -190,11 +211,12 @@ class BestNavigation:
             status, kind, lat, lon, height, undulation = unpack_from("<IIdddf", payload)
             speed, track, vertical = unpack_from("<ddd", payload, 88)
             velocity_status, velocity_type = unpack_from("<II", payload, 72)
-            datum = unpack_from("<I", payload, 36)[0]
+            datum_code = unpack_from("<I", payload, 36)[0]
+            datum = _reported_datum(datum_code)
             standard_deviations = unpack_from("<fff", payload, 40)
             return cls(
-                status,
-                kind,
+                _solution_status(status),
+                _position_type(kind),
                 lat,
                 lon,
                 height,
@@ -204,10 +226,13 @@ class BestNavigation:
                 speed,
                 track,
                 vertical,
-                velocity_status,
-                velocity_type,
+                _solution_status(velocity_status),
+                _position_type(velocity_type),
                 datum,
-                *(_standard_deviation(value) for value in standard_deviations),
+                _standard_deviation(standard_deviations[0]),
+                _standard_deviation(standard_deviations[1]),
+                _standard_deviation(standard_deviations[2]),
+                message=message,
             )
         if isinstance(message, AsciiMessage) and message.name in (
             "BESTNAVA",
@@ -218,8 +243,8 @@ class BestNavigation:
                 raise ProtocolError("Incomplete BESTNAV message")
             try:
                 return cls(
-                    fields[0],
-                    fields[1],
+                    _solution_status(fields[0]),
+                    _position_type(fields[1]),
                     float(fields[2]),
                     float(fields[3]),
                     float(fields[4]),
@@ -229,10 +254,13 @@ class BestNavigation:
                     float(fields[25]),
                     float(fields[26]),
                     float(fields[27]),
-                    fields[21],
-                    fields[22],
+                    _solution_status(fields[21]),
+                    _position_type(fields[22]),
                     fields[6],
-                    *(_standard_deviation(value) for value in fields[7:10]),
+                    _standard_deviation(fields[7]),
+                    _standard_deviation(fields[8]),
+                    _standard_deviation(fields[9]),
+                    message=message,
                 )
             except ValueError as error:
                 raise ProtocolError("Invalid BESTNAV value") from error

@@ -15,7 +15,7 @@ from examples.dop_geometry import (
 )
 
 from conftest import FIXTURES
-from um982py.logs import FirmwareLog
+from um982py.commands import Log
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder
 
@@ -42,10 +42,10 @@ IDENTITY = (
 
 
 def frames(binary: bool) -> list[Record]:
-    name = FirmwareLog.SATVIS2.wire_name(binary=binary)
-    request = FirmwareLog.SATVIS2.request(binary=binary)
+    name = Log.SATVIS2.wire_name(binary=binary)
+    request = Log.SATVIS2.request(binary=binary)
     return [
-        FirmwareLog.SATVIS2.decode(message)
+        Log.SATVIS2.decode(message)
         for message in StreamDecoder().feed(
             (FIXTURES / "captures" / (name + ".bin")).read_bytes()
         )
@@ -166,9 +166,9 @@ def test_dop_ordering_holds_for_the_captured_sky() -> None:
 
 def test_psrdop_fixture_matches_its_ascii_fields() -> None:
     path = FIXTURES / "captures" / "PSRDOPA.bin"
-    request = FirmwareLog.PSRDOP.request()
+    request = Log.PSRDOP.request()
     record = next(
-        FirmwareLog.PSRDOP.decode(message)
+        Log.PSRDOP.decode(message)
         for message in StreamDecoder().feed(path.read_bytes())
         if request.matches(message)
     )

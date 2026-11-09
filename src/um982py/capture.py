@@ -14,7 +14,6 @@ from um982py.antenna import AntennaLog
 from um982py.commands import Log, Trigger, logging
 from um982py.commands.core import Command
 from um982py.errors import RecordingError, ResponseTimeout
-from um982py.logs import FirmwareLog
 from um982py.measurement import gps_epoch
 from um982py.messages import CommandResponse, Message, Record
 from um982py.protocol import StreamDecoder
@@ -45,7 +44,7 @@ __all__ = [
 
 GPS_FREQUENCIES = {0: 1575.42e6, 9: 1227.60e6, 17: 1227.60e6, 14: 1176.45e6}
 
-type DataLog = Log | FirmwareLog | AntennaLog
+type DataLog = Log | AntennaLog
 
 
 class InterruptedCapture(KeyboardInterrupt):
@@ -82,13 +81,11 @@ def latest_epoch(records: Sequence[Record]) -> tuple[Record, ...]:
 
 def matcher(log: DataLog, binary: bool) -> Command[Message]:
     """Match a data log, including logs emitted only on events."""
-    if isinstance(log, (Log, AntennaLog)):
-        if isinstance(log, AntennaLog):
-            return log.request(binary=binary)
-        return logging.request(
-            log.wire_name(binary=binary), message_id=log.definition.message_id
-        )
-    return log.request(binary=binary)
+    if isinstance(log, AntennaLog):
+        return log.request(binary=binary)
+    return logging.request(
+        log.wire_name(binary=binary), message_id=log.definition.message_id
+    )
 
 
 def _matching_requests(log: DataLog) -> tuple[Command[Message], ...]:
@@ -224,7 +221,7 @@ def capture_live(
     if frames is not None and frames < 1:
         raise ValueError("frames must be positive")
     selected: Sequence[DataLog] = (
-        (logs,) if isinstance(logs, (Log, FirmwareLog, AntennaLog)) else logs
+        (logs,) if isinstance(logs, (Log, AntennaLog)) else logs
     )
     if not selected:
         raise ValueError("at least one log is required")
@@ -240,11 +237,7 @@ def capture_live(
             on_progress=on_progress,
             show_progress=show_progress,
         )
-    return (
-        records[logs.value]
-        if isinstance(logs, (Log, FirmwareLog, AntennaLog))
-        else records
-    )
+    return records[logs.value] if isinstance(logs, (Log, AntennaLog)) else records
 
 
 def receive_records(
@@ -315,7 +308,7 @@ def receive_records(
             if (
                 frames is not None
                 and len(logs) == 1
-                and logs[0] != FirmwareLog.SATVIS2
+                and logs[0] != Log.SATVIS2
                 and len(collected[logs[0].value]) >= frames
             ):
                 break

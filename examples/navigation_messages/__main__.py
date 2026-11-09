@@ -29,10 +29,9 @@ from um982py.console import (
 from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout
 from um982py.geodesy import ecef_from_geodetic
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
-POSITION_LOGS: tuple[FirmwareLog, ...] = (FirmwareLog.BESTPOS, FirmwareLog.BESTXYZ)
+POSITION_LOGS: tuple[Log, ...] = (Log.BESTPOS, Log.BESTXYZ)
 
 
 def _records(paths: Sequence[Path], name: str) -> tuple[Record, ...]:
@@ -86,7 +85,7 @@ def _device_position(
 ) -> tuple[float, float, float] | None:
     """Observer ECEF from the receiver's own BESTPOS record."""
     try:
-        positions = receiver.collect(antenna_log(FirmwareLog.BESTPOS, antenna).read())
+        positions = receiver.collect(antenna_log(Log.BESTPOS, antenna).read())
     except ResponseTimeout:
         return None
     return receiver_ecef(positions[-1]) if positions else None

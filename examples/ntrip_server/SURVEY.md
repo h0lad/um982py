@@ -111,7 +111,7 @@ characters maximum). Set H/E/N to zero only when the ARP itself is the marker.
 The library writes H/E/N into the RINEX file so the PPP service can relate the
 antenna and marker. These offsets are not an antenna phase-centre correction.
 Enter the measured values in the same H/E/N order shown above.
-Capture and export use `FirmwareLog.RANGE` on ANT1 and
+Capture and export use `Log.RANGE` on ANT1 and
 `um982py.rinex.export_rinex()` for RINEX 3.05. Supported simultaneous code/phase
 pairs on GPS L1/L2 or Galileo E1/E5a are required. GPS L1/L5 alone does not pass
 this export check. Set `--l2c-code` only for a known firmware relationship, and

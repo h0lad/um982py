@@ -7,6 +7,7 @@ from pathlib import Path
 
 from examples.zero_baseline_lab import double_differences, estimate_noise
 from um982py.capture import load_records
+from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -16,7 +17,6 @@ from um982py.console import (
     write_json,
 )
 from um982py.console_capture import capture_logs
-from um982py.logs import FirmwareLog
 from um982py.measurement import sample_series
 
 
@@ -52,11 +52,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("noise estimation requires exactly synchronized receiver epochs")
     data = capture_logs(
         args,
-        [FirmwareLog.RANGE],
+        [Log.RANGE],
         on_progress=progress_printer("zero_baseline_lab") if args.debug else None,
     )
-    first = sample_series(data["RANGE"])
-    second = sample_series(load_records(args.reference, FirmwareLog.RANGE))
+    first = sample_series(data["RANGE"], systems=(0,), signals=(0, 14))
+    second = sample_series(
+        load_records(args.reference, Log.RANGE), systems=(0,), signals=(0, 14)
+    )
     differences = double_differences(
         [sample for series in first.values() for sample in series],
         [sample for series in second.values() for sample in series],

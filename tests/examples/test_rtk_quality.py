@@ -15,7 +15,7 @@ from examples.rtk_quality import (
 from examples.rtk_quality.__main__ import _diagnostic_rows
 
 from um982py.capture import decode_records, read_frames
-from um982py.logs import FirmwareLog
+from um982py.commands import Log
 from um982py.messages.enums import PositionType, SolutionStatus
 
 
@@ -137,9 +137,9 @@ def test_ppp_solutions_keep_their_own_categories() -> None:
 def test_diagnostics_preserve_raw_flags_and_separate_timestamps() -> None:
     root = Path("tests/fixtures")
     files = {
-        FirmwareLog.RTKDOP: root / "captures/RTKDOPA.bin",
-        FirmwareLog.BESTSATS: root / "captures/BESTSATSA.bin",
-        FirmwareLog.RTKSTATUS2: root / "captures-extra/RTKSTATUS2A.bin",
+        Log.RTKDOP: root / "captures/RTKDOPA.bin",
+        Log.BESTSATS: root / "captures/BESTSATSA.bin",
+        Log.RTKSTATUS2: root / "captures-extra/RTKSTATUS2A.bin",
     }
     captured = {
         log.value: decode_records(read_frames(path), log) for log, path in files.items()

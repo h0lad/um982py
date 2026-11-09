@@ -19,9 +19,7 @@ still depends on the bind address and firewall.
 Use `--mode private --users users.json` for an authenticated service, including
 access to the sourcetable. Private mode binds the unauthenticated status site to
 loopback only, so protect any proxy used to expose it. Both modes allow non-loopback
-caster listeners with TLS. The legacy `--public` switch still enables guest
-access, while omitting both `--mode` and `--public` preserves the earlier
-behavior: authenticated streams with a public sourcetable.
+caster listeners with TLS. Private mode is the default.
 
 Private mode allows remote users if you expose the TLS listener, but does not
 automatically set up a VPN or IP allowlist. Create a distinct account for each
@@ -59,7 +57,7 @@ put it in a mode-0600 file containing a JSON object such as
 ellipsis. Start the source-enabled caster on loopback for a local source:
 
 ```bash
-python -m examples.ntrip_server --station station.json --public \
+python -m examples.ntrip_server --station station.json --mode public \
     --source-users source-users.json --bind 127.0.0.1 --listen-port 2101
 ```
 

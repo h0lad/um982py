@@ -12,13 +12,13 @@ from examples.rtk_quality import (
     timeline,
 )
 from um982py.capture import record_epoch
+from um982py.commands import Log
 from um982py.console import ExampleParser, add_receiver_arguments, run, write_json
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
-POSITION_LOGS = (FirmwareLog.BESTPOS, FirmwareLog.RTKPOS)
-DIAGNOSTIC_LOGS = (FirmwareLog.RTKDOP, FirmwareLog.BESTSATS, FirmwareLog.RTKSTATUS2)
+POSITION_LOGS = (Log.BESTPOS, Log.RTKPOS)
+DIAGNOSTIC_LOGS = (Log.RTKDOP, Log.BESTSATS, Log.RTKSTATUS2)
 
 
 def _diagnostic_rows(captured: dict[str, tuple[Record, ...]]) -> dict[str, object]:
@@ -137,7 +137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
             flush=True,
         )
-    position_logs = POSITION_LOGS if args.replay is not None else (FirmwareLog.BESTPOS,)
+    position_logs = POSITION_LOGS if args.replay is not None else (Log.BESTPOS,)
     logs = (*position_logs, *DIAGNOSTIC_LOGS) if args.diagnostics else position_logs
     captured = capture_records(
         args,

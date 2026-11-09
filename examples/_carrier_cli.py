@@ -4,6 +4,7 @@ import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
+from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -13,7 +14,6 @@ from um982py.console import (
 )
 from um982py.console_capture import capture_logs
 from um982py.experimental.carrier import monitor_divergence, smooth_code
-from um982py.logs import FirmwareLog
 from um982py.measurement import sample_series
 from um982py.stats import rms
 
@@ -50,7 +50,7 @@ def carrier_main(name: str, argv: Sequence[str] | None) -> int:
         parser.error("tau, maximum gap and phase tolerance must be positive")
     data = capture_logs(
         args,
-        [FirmwareLog.RANGE],
+        [Log.RANGE],
         on_progress=progress_printer(name) if args.debug else None,
     )
     groups = sample_series(data["RANGE"])

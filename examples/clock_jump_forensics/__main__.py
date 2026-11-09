@@ -6,6 +6,7 @@ from dataclasses import asdict
 from itertools import pairwise
 
 from examples.clock_jump_forensics import clock_residuals, detect_clock_jumps
+from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -15,7 +16,6 @@ from um982py.console import (
     write_json,
 )
 from um982py.console_capture import capture_logs
-from um982py.logs import FirmwareLog
 from um982py.measurement import range_samples
 
 
@@ -39,12 +39,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     debug_header(args, "clock_jump_forensics")
     data = capture_logs(
         args,
-        [FirmwareLog.RANGE],
+        [Log.RANGE],
         on_progress=progress_printer("clock_jump_forensics") if args.debug else None,
     )
     epochs = [
-        tuple(sample for sample in range_samples(record) if sample.key.signal == 0)
-        for record in data["RANGE"]
+        range_samples(record, systems=(0,), signals=(0,)) for record in data["RANGE"]
     ]
     events = [
         event

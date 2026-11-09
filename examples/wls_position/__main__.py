@@ -28,7 +28,6 @@ from um982py.console import (
 from um982py.console_capture import capture_records
 from um982py.errors import ProtocolError
 from um982py.geodesy import SPEED_OF_LIGHT, geodetic_from_ecef, receiver_ecef
-from um982py.logs import FirmwareLog
 from um982py.messages import (
     AsciiHeader,
     AsciiMessage,
@@ -136,7 +135,7 @@ def _decode(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
     return tuple(decoded)
 
 
-def _decode_firmware(frames: Sequence[Message], log: FirmwareLog) -> tuple[Record, ...]:
+def _decode_firmware(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
     decoded: list[Record] = []
     for message in frames:
         with suppress(ProtocolError):
@@ -266,7 +265,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.replay is None:
         captured = capture_records(
             args,
-            [FirmwareLog.RANGE, FirmwareLog.BESTPOS, Log.GPSEPH],
+            [Log.RANGE, Log.BESTPOS, Log.GPSEPH],
             duration=args.duration,
             interval=args.interval,
             on_progress=progress_printer("wls_position") if args.debug else None,
@@ -283,10 +282,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.ephemeris is not None
             else list(range_frames)
         )
-        range_records = _decode_firmware(range_frames, FirmwareLog.RANGE)
-        position_records = _decode_firmware(position_frames, FirmwareLog.BESTPOS)
+        range_records = _decode_firmware(range_frames, Log.RANGE)
+        position_records = _decode_firmware(position_frames, Log.BESTPOS)
         if not position_records:
-            position_records = _decode_firmware(position_frames, FirmwareLog.BESTXYZ)
+            position_records = _decode_firmware(position_frames, Log.BESTXYZ)
         ephemeris_records = _decode(ephemeris_frames, Log.GPSEPH)
     if not range_records or not position_records:
         parser.error("a RANGE frame and a BESTPOS/BESTXYZ frame are required")

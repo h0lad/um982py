@@ -23,7 +23,6 @@ from examples.navigation_messages import (
 
 from um982py.capture import read_frames
 from um982py.commands import Log
-from um982py.logs import FirmwareLog
 from um982py.messages.record import Record
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "captures-live"
@@ -32,7 +31,7 @@ FAMILY_COUNTS = {"GPSEPH": 20, "GALEPH": 13, "BDSEPH": 13, "GLOEPH": 10}
 SVG = "{http://www.w3.org/2000/svg}"
 
 
-def decoded(log: Log | FirmwareLog, path: Path) -> tuple[Record, ...]:
+def decoded(log: Log, path: Path) -> tuple[Record, ...]:
     found = []
     for message in read_frames(path):
         for binary in (True, False):

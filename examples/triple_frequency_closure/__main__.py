@@ -5,6 +5,7 @@ from collections.abc import Sequence
 from dataclasses import asdict
 
 from examples.triple_frequency_closure import frequency_closures
+from um982py.commands import Log
 from um982py.console import (
     add_debug_argument,
     debug_header,
@@ -15,7 +16,6 @@ from um982py.console import (
 )
 from um982py.console_capture import capture_logs
 from um982py.diagnostics import signal_inventory
-from um982py.logs import FirmwareLog
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -44,7 +44,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("--signals needs three distinct native IDs in 0..31")
     data = capture_logs(
         args,
-        [FirmwareLog.RANGE],
+        [Log.RANGE],
         on_progress=progress_printer("triple_frequency_closure")
         if args.debug
         else None,

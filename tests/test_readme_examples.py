@@ -1,8 +1,8 @@
 """Run the README snippets unchanged against recorded receiver responses."""
 
-import json
 import re
 from pathlib import Path
+from struct import pack_into, unpack_from
 from types import SimpleNamespace
 
 import pytest
@@ -13,10 +13,13 @@ from conftest import (
     acknowledgement,
     ascii_message,
 )
-from um982py import HIGH_ACCURACY_SIGNAL_GROUP, Receiver
+from um982py import Receiver
+from um982py.commands.configuration import SignalGroup
 from um982py.commands.types import Port
 from um982py.messages import AsciiMessage
 from um982py.protocol.ascii import parse_ascii
+from um982py.protocol.binary import BINARY_HEADER
+from um982py.protocol.checksums import unicore_crc32
 from um982py.rinex import RinexExport
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -132,34 +135,45 @@ def test_readme_satellite_reception(
         tmp_path,
     )
     lines = capsys.readouterr().out.splitlines()
-    assert lines[0] == "System 0, PRN 29, signal 0: SNR 22"
-    assert "System 0, PRN 26, signal 14: SNR 39" in lines
+    assert lines[0] == "GPS 29"
+    assert lines[1] == "  L1 C/A: SNR 22"
+    assert "  L5 pilot: SNR 39" in lines
 
 
 def test_readme_precise_position_can_be_interrupted(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
-    samples = json.loads(
-        (ROOT / "tests/fixtures/manual-examples-r1.4.json").read_text(encoding="utf-8")
-    )
-    raw = (samples["PPPNAVA"] + "\r\n").encode("ascii")
-    message = parse_ascii(raw)
-    assert isinstance(message, AsciiMessage)
-    fields = list(message.fields)
-    fields[2] = str(float(fields[2]) + 0.00001)
-    moved = ascii_message("PPPNAVA", ",".join(fields))
-    command = b"CONFIG PPP ENABLE E6-HAS\r\n"
+    raw = (ROOT / "tests/fixtures/captures-extra/PPPNAVB.bin").read_bytes()
+    body = bytearray(raw[:-4])
+    latitude = unpack_from("<d", body, BINARY_HEADER.size + 8)[0]
+    pack_into("<d", body, BINARY_HEADER.size + 8, latitude + 0.00001)
+    moved = bytes(body) + unicore_crc32(body).to_bytes(4, "little")
+    group = b"CONFIG SIGNALGROUP 3 6\r\n"
+    service = b"CONFIG PPP ENABLE E6-HAS\r\n"
     transport = ReplayTransport(
-        {command: acknowledgement("CONFIG PPP ENABLE E6-HAS"), b"PPPNAVA\r\n": raw}
+        {
+            group: acknowledgement("CONFIG SIGNALGROUP 3 6"),
+            service: acknowledgement("CONFIG PPP ENABLE E6-HAS"),
+            b"PPPNAVB\r\n": raw,
+        }
     )
     monkeypatch.setattr(
         Receiver, "serial", staticmethod(lambda *args: Receiver(transport, timeout=1))
     )
-    monkeypatch.setattr(
-        Receiver,
-        "enable_augmentation",
-        lambda receiver: SimpleNamespace(active_group=HIGH_ACCURACY_SIGNAL_GROUP),
+    configs = iter(
+        [
+            SimpleNamespace(
+                signal_group=SignalGroup(4, 5), ppp_enabled=False, ppp_service=None
+            ),
+            SimpleNamespace(
+                signal_group=SignalGroup(3, 6), ppp_enabled=False, ppp_service=None
+            ),
+            SimpleNamespace(
+                signal_group=SignalGroup(3, 6), ppp_enabled=True, ppp_service="E6-HAS"
+            ),
+        ]
     )
+    monkeypatch.setattr(Receiver, "configuration", lambda receiver: next(configs))
     pauses = 0
 
     def stop_after_two_readings(seconds: float) -> None:
@@ -167,20 +181,20 @@ def test_readme_precise_position_can_be_interrupted(
         assert seconds == 5
         pauses += 1
         if pauses == 1:
-            transport.responses[b"PPPNAVA\r\n"] = moved
+            transport.responses[b"PPPNAVB\r\n"] = moved
         else:
             raise KeyboardInterrupt
 
-    monkeypatch.setattr("time.sleep", stop_after_two_readings)
+    monkeypatch.setattr("um982py.ppp.sleep", stop_after_two_readings)
     exec(  # noqa: S102
         compile(SNIPPETS["Watch a precise position converge"], "README.md", "exec"), {}
     )
     output = capsys.readouterr().out
-    assert output.count("Solution: SOL_COMPUTED, PPP_CONVERGING") == 2
-    assert "Receiver std (lat, lon, height), m: 1.8755, 1.4254, 2.4821" in output
-    assert "Change since previous reading: 1.112 m" in output
+    assert output.count("PPP_CONVERGING: horizontal std") == 2
+    assert "height std 30.083" in output and "correction age 14.0 s" in output
+    assert "Change: 1.112 m" in output
     assert output.endswith("Stopped\n")
-    assert transport.writes == [command, b"PPPNAVA\r\n", b"PPPNAVA\r\n"]
+    assert transport.writes == [group, service, b"PPPNAVB\r\n", b"PPPNAVB\r\n"]
     assert transport.closed
 
 

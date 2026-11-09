@@ -3,14 +3,15 @@
 import argparse
 import json
 import sys
-from dataclasses import asdict, is_dataclass
+from dataclasses import asdict, fields, is_dataclass
+from enum import IntEnum
 from math import isfinite
 from pathlib import Path
 
 from um982py.antenna import antenna_log
 from um982py.augmentation import enable_augmentation
 from um982py.capture import RecordingTransport
-from um982py.commands import queries
+from um982py.commands import Log, queries
 from um982py.diagnostics import (
     DOCTOR_LOGS,
     PPP_LOGS,
@@ -31,7 +32,7 @@ from um982py.experimental import (
 from um982py.experimental.configuration import antenna_power_on
 from um982py.experimental.raw_data import capture_baseband
 from um982py.experimental.tracking import tracking_fields, tracking_slots
-from um982py.logs import FirmwareLog
+from um982py.messages.navigation import BestNavigation
 from um982py.receiver import Receiver
 from um982py.receiver_queries import (
     firmware_info,
@@ -40,49 +41,94 @@ from um982py.receiver_queries import (
     receiver_system_status,
 )
 from um982py.rinex import export_rinex
+from um982py.satellites import Satellite
 
 _EXTENDED_ACTIONS = {
-    "best-pos": FirmwareLog.BESTPOS,
-    "psr-pos": FirmwareLog.PSRPOS,
-    "rtk-pos": FirmwareLog.RTKPOS,
-    "best-vel": FirmwareLog.BESTVEL,
-    "time": FirmwareLog.TIME,
-    "range": FirmwareLog.RANGE,
-    "range-secondary": FirmwareLog.RANGEH,
-    "heading-offset": FirmwareLog.HEADINGOFFSET,
-    "pps-status": FirmwareLog.PPSSTATUS,
-    "env-info": FirmwareLog.ENVINFO,
-    "rx-status": FirmwareLog.RXSTATUS,
-    "antenna": FirmwareLog.ANTENNA,
-    "antenna-status": FirmwareLog.ANTENNASTATUS,
-    "doppler-vel": FirmwareLog.DOPPVEL,
-    "doppler-vel-secondary": FirmwareLog.DOPPVELH,
-    "spoof-info": FirmwareLog.SPOOFINFO,
-    "best-xyz": FirmwareLog.BESTXYZ,
-    "sat-vis": FirmwareLog.SATVIS,
-    "sat-vis-by-system": FirmwareLog.SATVIS2,
-    "ref-station": FirmwareLog.REFSTATION,
-    "psr-dop": FirmwareLog.PSRDOP,
-    "psr-dop-secondary": FirmwareLog.PSRDOP2,
-    "rtk-dop": FirmwareLog.RTKDOP,
-    "rtk-dop-secondary": FirmwareLog.RTKDOP2,
-    "rtk-vel": FirmwareLog.RTKVEL,
-    "rtk-vel-secondary": FirmwareLog.RTKVEL2,
-    "psr-vel": FirmwareLog.PSRVEL,
-    "psr-vel-secondary": FirmwareLog.PSRVEL2,
+    "best-pos": Log.BESTPOS,
+    "psr-pos": Log.PSRPOS,
+    "rtk-pos": Log.RTKPOS,
+    "best-vel": Log.BESTVEL,
+    "time": Log.TIME,
+    "range": Log.RANGE,
+    "range-secondary": Log.RANGEH,
+    "heading-offset": Log.HEADINGOFFSET,
+    "pps-status": Log.PPSSTATUS,
+    "env-info": Log.ENVINFO,
+    "rx-status": Log.RXSTATUS,
+    "antenna": Log.ANTENNA,
+    "antenna-status": Log.ANTENNASTATUS,
+    "doppler-vel": Log.DOPPVEL,
+    "doppler-vel-secondary": Log.DOPPVELH,
+    "spoof-info": Log.SPOOFINFO,
+    "best-xyz": Log.BESTXYZ,
+    "sat-vis": Log.SATVIS,
+    "sat-vis-by-system": Log.SATVIS2,
+    "ref-station": Log.REFSTATION,
+    "psr-dop": Log.PSRDOP,
+    "psr-dop-secondary": Log.PSRDOP2,
+    "rtk-dop": Log.RTKDOP,
+    "rtk-dop-secondary": Log.RTKDOP2,
+    "rtk-vel": Log.RTKVEL,
+    "rtk-vel-secondary": Log.RTKVEL2,
+    "psr-vel": Log.PSRVEL,
+    "psr-vel-secondary": Log.PSRVEL2,
 }
 
 
 def _json(value: object) -> object:
     if isinstance(value, bytes):
         return value.hex()
+    if isinstance(value, BestNavigation):
+        return {
+            item.name: (
+                field.name
+                if isinstance(field := getattr(value, item.name), IntEnum)
+                else field
+            )
+            for item in fields(value)
+            if item.name != "message"
+        }
+    if isinstance(value, Satellite):
+        return {
+            "constellation": value.constellation,
+            "prn": value.prn,
+            "azimuth_deg": value.azimuth_deg,
+            "elevation_deg": value.elevation_deg,
+            "signals": [
+                {
+                    "constellation": signal.constellation,
+                    "name": signal.name,
+                    "snr": signal.snr,
+                    "system_id": signal.system_id,
+                    "signal_id": signal.signal_id,
+                }
+                for signal in value.signals
+            ],
+        }
     if is_dataclass(value) and not isinstance(value, type):
         return asdict(value)
     raise TypeError(f"Cannot serialize {type(value).__name__}")
 
 
 def _parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="UM982 receiver client")
+    parser = argparse.ArgumentParser(
+        description="Read and configure a UM982 receiver.",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Common actions:\n"
+            "  version          identify the receiver\n"
+            "  fix              read a position\n"
+            "  best-nav         read position, velocity and precision\n"
+            "  heading          read dual-antenna heading\n"
+            "  satellites       show tracked satellites and signals\n"
+            "  monitor          display incoming messages\n"
+            "  rinex            capture and export observations\n"
+            "  doctor           inspect receiver configuration and health\n"
+            "  ppp-diagnostics  inspect PPP and correction delivery\n"
+            "  rtk-diagnostics  inspect RTK status\n\n"
+            "Use a serial port or tcp://host:port with --port."
+        ),
+    )
     parser.add_argument(
         "--port", default="/dev/ttyUSB0", help="serial device or tcp://host:port"
     )
@@ -116,12 +162,15 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", type=Path, help="write JSON to a new file")
     parser.add_argument(
         "action",
+        metavar="ACTION",
+        help="receiver action; see common actions below",
         choices=(
             "version",
             "config",
             "mode",
             "fix",
             "heading",
+            "satellites",
             "best-nav",
             "fw-info",
             "log-list",
@@ -192,7 +241,7 @@ def _run_action(receiver: Receiver, args: argparse.Namespace, antenna: int) -> o
                 "iq_samples_verified": False,
             }
         case "rinex":
-            range_log = FirmwareLog.RANGEH if antenna == 2 else FirmwareLog.RANGE
+            range_log = Log.RANGEH if antenna == 2 else Log.RANGE
             capture = collect_diagnostics(receiver, (range_log,), seconds=args.duration)
             return export_rinex(
                 capture.records[range_log.value], l2c_code=args.l2c_code
@@ -210,7 +259,7 @@ def _run_action(receiver: Receiver, args: argparse.Namespace, antenna: int) -> o
                 return rtk_diagnostics(capture)
             return ppp_diagnostics(capture)
         case "tracking-info":
-            record = receiver.execute(FirmwareLog.PTOBSINFO.read(binary=True))
+            record = receiver.execute(Log.PTOBSINFO.read(binary=True))
             return {
                 "source": record.name,
                 "baseband_source_message_id": 24,
@@ -228,6 +277,8 @@ def _run_action(receiver: Receiver, args: argparse.Namespace, antenna: int) -> o
             return receiver.execute(queries.fix(antenna=antenna))
         case "heading":
             return receiver.execute(queries.heading())
+        case "satellites":
+            return receiver.satellites()
         case "antenna-power-on":
             return receiver.execute(antenna_power_on())
         case "best-nav":
@@ -247,7 +298,7 @@ def _run_action(receiver: Receiver, args: argparse.Namespace, antenna: int) -> o
             command = log.read(binary=args.binary)
             return (
                 receiver.collect(command)
-                if log == FirmwareLog.SATVIS2
+                if log == Log.SATVIS2
                 else receiver.execute(command)
             )
         case _:

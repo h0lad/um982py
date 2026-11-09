@@ -17,6 +17,7 @@ from examples.attitude_budget import (
 from um982py import Receiver
 from um982py.antenna import antenna_log
 from um982py.capture import DataLog, iter_frames
+from um982py.commands import Log
 from um982py.console import (
     ExampleParser,
     add_receiver_arguments,
@@ -26,7 +27,6 @@ from um982py.console import (
 )
 from um982py.console_capture import open_receiver
 from um982py.errors import ResponseTimeout
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 
 
@@ -133,20 +133,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     paths = _paths(args)
     if paths is not None:
         budget = _budget(
-            _records(paths, FirmwareLog.BSLNENUHD),
-            _records(paths, antenna_log(FirmwareLog.BESTPOS, args.antenna)),
+            _records(paths, Log.BSLNENUHD),
+            _records(paths, antenna_log(Log.BESTPOS, args.antenna)),
             swapped=args.swap_antennas,
         )
-        offsets = _records(paths, FirmwareLog.HEADINGOFFSET)
+        offsets = _records(paths, Log.HEADINGOFFSET)
     else:
         receiver = open_receiver(args)
         try:
             budget = _budget(
-                _queried(receiver, FirmwareLog.BSLNENUHD),
-                _queried(receiver, antenna_log(FirmwareLog.BESTPOS, args.antenna)),
+                _queried(receiver, Log.BSLNENUHD),
+                _queried(receiver, antenna_log(Log.BESTPOS, args.antenna)),
                 swapped=args.swap_antennas,
             )
-            offsets = _queried(receiver, FirmwareLog.HEADINGOFFSET)
+            offsets = _queried(receiver, Log.HEADINGOFFSET)
         finally:
             receiver.close()
     payload = _payload(budget, offsets)

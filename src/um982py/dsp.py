@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING
 from um982py.commands import Log
 from um982py.commands.catalog import LOGS, RTCM_LOGS
 from um982py.commands.core import Command
+from um982py.commands.extended import EXTENDED_LOGS
 from um982py.errors import ProtocolError, UM982Error
 from um982py.experimental import DebugOutput
 from um982py.experimental.baseband import RawBasebandPacket, scan_packets
@@ -23,7 +24,6 @@ from um982py.experimental.capture import (
     analyze_capture,
     receiver_state,
 )
-from um982py.logs import FirmwareLog
 from um982py.messages import (
     BinaryMessage,
     CommandResponse,
@@ -59,7 +59,7 @@ class DspProfile(StrEnum):
                 for log in (Log.OBSVM, Log.OBSVH)
             )
         if self == self.TRACKING:
-            log = FirmwareLog.PTOBSINFO
+            log = Log.PTOBSINFO
             return (
                 (
                     log.wire_name(binary=True),
@@ -95,8 +95,8 @@ def decode_dsp(message: Message) -> Record:
         )
         if any(matches_id):
             return decode_log(message)
-        for log in FirmwareLog:
-            if log == FirmwareLog.RXSTATUS:
+        for log in Log:
+            if log.value not in EXTENDED_LOGS or log == Log.RXSTATUS:
                 continue
             if log.request(binary=True).matches(message):
                 return log.decode(message)
@@ -105,8 +105,8 @@ def decode_dsp(message: Message) -> Record:
             (("message_id", identifier), ("payload", message.payload)),
             message,
         )
-    for log in FirmwareLog:
-        if log.request().matches(message):
+    for log in Log:
+        if log.value in EXTENDED_LOGS and log.request().matches(message):
             return log.decode(message)
     return decode_log(message)
 

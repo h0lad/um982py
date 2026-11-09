@@ -4,8 +4,8 @@ import argparse
 import math
 from collections.abc import Sequence
 
+from um982py.commands import Log
 from um982py.console_capture import capture_records
-from um982py.logs import FirmwareLog
 from um982py.messages import Record
 from um982py.rinex import export_rinex
 from um982py.signals import tracking_signal
@@ -158,7 +158,7 @@ def capture_survey(args: argparse.Namespace) -> None:
     with args.survey_output.open("x", encoding="ascii") as stream:
         captured = capture_records(
             args,
-            [FirmwareLog.RANGE],
+            [Log.RANGE],
             interval=args.interval,
             duration=args.seconds,
             frames=math.ceil(args.seconds / args.interval),

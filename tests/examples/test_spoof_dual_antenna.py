@@ -28,7 +28,7 @@ from examples.spoof_dual_antenna import (
     sky_snapshots,
 )
 
-from um982py.logs import FirmwareLog
+from um982py.commands import Log
 from um982py.messages import Record
 from um982py.protocol import StreamDecoder
 
@@ -39,7 +39,7 @@ ECEF_X, ECEF_Y, ECEF_Z = -0.0038, 0.0101, -0.0169
 
 
 def records(name: str) -> tuple[Record, ...]:
-    log = FirmwareLog(name.rstrip("AB"))
+    log = Log(name.rstrip("AB"))
     decoded = []
     for message in StreamDecoder().feed((FIXTURES / f"{name}.bin").read_bytes()):
         for binary in (True, False):
