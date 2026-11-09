@@ -165,7 +165,7 @@ class NtripClient:
                 headers.append("Ntrip-Version: Ntrip/2.0")
             headers.extend(
                 (
-                    f"User-Agent: {'NTRIP ' if self.version == 1 else ''}um982py/1.0",
+                    "User-Agent: NTRIP um982py/1.0",
                     "Accept: */*",
                     "Connection: close",
                 )

@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path
+from typing import Literal
 from unittest.mock import patch
 
 import pytest
@@ -151,6 +152,17 @@ def test_reconnect_discards_partial_frame_from_previous_connection() -> None:
         ntrip_main._stream(receiver, args, stats, PrecisionMonitor(), None)  # type: ignore[arg-type]
     assert receiver.frames == [complete]
     assert stats.frames_forwarded == 1 and stats.connection_failures == 1
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_ntrip_user_agent_identifies_client(version: Literal[1, 2]) -> None:
+    connection = FakeSocket(b"HTTP/1.1 200 OK\r\n\r\n")
+    with (
+        patch("socket.create_connection", return_value=connection),
+        NtripClient("http://caster.test:2101/BASE", version=version),
+    ):
+        pass
+    assert b"\r\nUser-Agent: NTRIP um982py/1.0\r\n" in connection.sent[0]
 
 
 def test_ntrip_v1_sends_gga_after_connecting() -> None:
