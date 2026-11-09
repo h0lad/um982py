@@ -74,7 +74,7 @@ def msm(value: Literal[32, 64]) -> Command[CommandResponse]:
 
 
 def tracking_mode(value: Literal[0, 1]) -> Command[CommandResponse]:
-    """Select TRACKMODE 0 or 1, whose meanings have not been verified."""
+    """Select TRACKMODE 0 or 1. The meaning of each mode remains unverified."""
     return config("TRACKMODE", integer(value, 0, 1))
 
 
@@ -169,5 +169,5 @@ def rtk_elevation_mask(
 
 
 def antenna_power_on() -> Command[CommandResponse]:
-    """Request antenna feed power, which board wiring may or may not deliver."""
+    """Request antenna feed power. Delivery depends on the board wiring."""
     return config("ANTENNA", "POWERON")

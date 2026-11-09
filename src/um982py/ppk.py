@@ -14,7 +14,7 @@ from typing import Literal
 
 
 class PostProcessingError(RuntimeError):
-    """The external solver failed or did not produce a usable solution."""
+    """The external solver failed to produce a usable solution."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -95,9 +95,9 @@ def run_ppk(
     """Run RTKLIB on RINEX observations with an explicit base ECEF position.
 
     A new output directory receives the solver output, logs, and a manifest of
-    input hashes and options. The solver's quality codes are reported as given
-    and do not establish accuracy. The reference frame and epoch are recorded
-    as supplied, without transformation or comparison with observation metadata.
+    input hashes and options. The solver quality codes, reference frame, and
+    epoch are recorded as supplied. The caller is responsible for matching the
+    reference frame and epoch to the observation metadata.
     """
     if len(base_ecef) != 3 or not all(math.isfinite(v) for v in base_ecef):
         raise ValueError("base_ecef must contain three finite coordinates")

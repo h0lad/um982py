@@ -29,9 +29,9 @@ class GpsGlonassBds2Signals(IntFlag):
 
 @dataclass(frozen=True, slots=True)
 class SolutionSignals:
-    """Receiver-reported solution signal masks retain reserved bits in the value.
+    """Signals reported by the receiver as used in a position solution.
 
-    These flags report signal use, not correction application or solution accuracy.
+    The masks retain reserved bits in their values.
     """
 
     galileo_bds3: GalileoBds3Signals

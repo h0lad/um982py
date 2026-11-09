@@ -1,7 +1,7 @@
 """RINEX 3.05 broadcast navigation export from receiver ephemerides."""
-# The receiver does not expose the RINEX L2 code, L2 P-data or fit interval.
-# Leave those fields blank and use the transmission-time sentinel because the
-# receiver's `tow` has not been established as the transmitted message time.
+# RINEX L2 code, L2 P-data and fit interval fields remain blank because the
+# receiver leaves them unspecified. Transmission time uses the RINEX sentinel
+# until the receiver's `tow` is verified as the transmission time.
 
 import math
 from collections.abc import Sequence

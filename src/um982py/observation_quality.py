@@ -1,4 +1,4 @@
-"""Receiver-reported observation continuity, without inferring cycle slips."""
+"""Observation continuity reported by the receiver."""
 
 import math
 from collections.abc import Sequence

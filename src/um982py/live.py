@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class PositionUpdate:
-    """A GGA fix and its arrival time on the host, without mixing epochs."""
+    """A GGA fix and its host arrival time."""
 
     fix: Fix
     received_at: datetime

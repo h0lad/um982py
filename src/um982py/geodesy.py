@@ -54,8 +54,7 @@ def haversine_distance(
 ) -> float:
     """Measure the great-circle distance between two WGS 84 positions in metres.
 
-    The calculation uses the mean Earth radius, so it is a spherical
-    approximation rather than an ellipsoidal geodesic.
+    The calculation uses a spherical Earth with the mean Earth radius.
     """
     coordinates = (latitude_a, longitude_a, latitude_b, longitude_b)
     if not all(math.isfinite(value) for value in coordinates):

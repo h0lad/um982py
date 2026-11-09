@@ -159,7 +159,7 @@ class RawBasebandPacket:
 
     @property
     def frequency_code(self) -> int:
-        """Return the receiver's code without assigning it a carrier frequency."""
+        """Return the frequency code reported by the receiver."""
         return self.header.frequency_code
 
     @property
@@ -193,7 +193,7 @@ class RawBasebandPacket:
 
     @property
     def checksum_excluded(self) -> bytes:
-        """Return the trailing partial word that the checksum does not cover."""
+        """Return the trailing partial word beyond the checksum coverage."""
         end = (self.declared_length - CHECKSUM_SIZE) & ~3
         return self.raw[end:-CHECKSUM_SIZE]
 
@@ -330,7 +330,7 @@ class BasebandStream:
         self.discarded = 0
 
     def finish(self) -> bytes:
-        """Return and clear bytes that cannot complete a retained candidate."""
+        """Return and clear the buffered trailing bytes."""
         remainder = bytes(self._buffer)
         self._buffer.clear()
         return remainder
@@ -373,7 +373,7 @@ class BasebandStream:
         return None
 
     def _keep_possible_partial_header(self) -> None:
-        """Discard everything that cannot be the start of a container."""
+        """Keep the trailing bytes that could contain a partial header."""
         keep = min(len(self._buffer), HEADER_SIZE - 1)
         self._discard_prefix(len(self._buffer) - keep)
 

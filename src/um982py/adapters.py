@@ -80,9 +80,9 @@ def navsatfix(
 ) -> RosNavSatFix:
     """Build a ROS 2 NavSatFix using an application-supplied ROS timestamp.
 
-    The caller must establish the coordinate frame and any augmentation
-    status. By default, only GGA quality 1 is treated as a valid unaugmented
-    fix. Constellation and covariance are not inferred from GGA.
+    Supply the coordinate frame and augmentation status for the application.
+    By default, GGA quality 1 is treated as a valid unaugmented fix. The
+    service mask comes from the caller and covariance remains unknown.
     """
     if reference_frame != "WGS84":
         raise ValueError("NavSatFix coordinates must be WGS84")

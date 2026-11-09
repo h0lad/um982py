@@ -45,7 +45,7 @@ class StreamDecoder:
             first = self._buffer[0]
             binary = first == 0xAA
             rtcm = first == 0xD3
-            # UNILOGLIST uses a multiline response rather than an ASCII checksum.
+            # UNILOGLIST uses a multiline response with its own framing.
             listing = (
                 self._buffer.startswith(b"#UNILOGLIST,")
                 and b"*" not in self._buffer[: self._buffer.find(b"\n")]

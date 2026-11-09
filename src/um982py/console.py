@@ -145,7 +145,7 @@ class ExampleParser(argparse.ArgumentParser):
 
 
 def run(main: Callable[[], int]) -> int:
-    """Report expected input and receiver failures without a traceback."""
+    """Report expected input and receiver failures as concise errors."""
     try:
         return main()
     except (OSError, UM982Error, ValueError) as error:
@@ -224,7 +224,7 @@ def add_receiver_arguments(
 def write_json(
     payload: object, destination: str | os.PathLike[str] | None = None
 ) -> None:
-    """Serialise to a file, or to stdout when no destination is given."""
+    """Serialise to the given file or to stdout by default."""
 
     def finite(value: object) -> object:
         if isinstance(value, float) and not math.isfinite(value):

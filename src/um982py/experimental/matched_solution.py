@@ -46,7 +46,7 @@ class MatchedSolution:
 
 
 def decode_matched_solution(message: Message) -> MatchedSolution:
-    """Decode observed binary framing without assigning units."""
+    """Decode observed binary framing and preserve its native values."""
     if not isinstance(message, BinaryMessage) or message.header.message_id != 2020:
         raise ProtocolError("Expected MATCHEDSOLUTIONB message ID 2020")
     payload = message.payload

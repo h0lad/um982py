@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from um982py.messages.enums import MessageSatelliteSystem
 from um982py.messages.record import Record
 
-# IS-GPS-200N table 20-VIII: five-bit signal-component status, not a bitmask.
+# IS-GPS-200N table 20-VIII encodes signal-component status as a five-bit value.
 _SIGNAL_STATUS = (
     "all signals OK",
     "all signals weak",

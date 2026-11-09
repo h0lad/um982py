@@ -1,4 +1,4 @@
-"""Build receiver debug commands without sending or saving them."""
+"""Build receiver debug commands for the caller to send."""
 
 import re
 from dataclasses import dataclass
@@ -20,7 +20,7 @@ def debug_write_target(value: int) -> int:
 
 
 def enter_debug_mode(value: int) -> Command[CommandResponse]:
-    """Build ``ENTERDEBUGMODE``, a one-word write rather than a query."""
+    """Build the one-word ``ENTERDEBUGMODE`` write command."""
     return action(f"ENTERDEBUGMODE {integer(value, -(1 << 31), (1 << 31) - 1)}")
 
 
@@ -36,7 +36,7 @@ def enter_debug_mode_at(target: int) -> Command[CommandResponse]:
 
 
 def bb_debug(*, enabled: bool) -> Command[CommandResponse]:
-    """Build BBDEBUG ON/OFF, whose original setting has no verified query."""
+    """Build BBDEBUG ON/OFF. Readback of the original setting is unverified."""
     if type(enabled) is not bool:
         raise ValueError("enabled must be a boolean")
     return action("BBDEBUG ON" if enabled else "BBDEBUG OFF")
@@ -72,7 +72,7 @@ def event_cpu_speed(profile: int) -> Command[CommandResponse]:
 
 
 def event_memory(value: int) -> Command[CommandResponse]:
-    """Build EVTMEMORY 0..1024, which is not a documented memory-read API."""
+    """Build EVTMEMORY with a native value in the range 0..1024."""
     return action(f"EVTMEMORY {integer(value, 0, 1024)}")
 
 
@@ -82,7 +82,7 @@ def event_stack(task: str) -> Command[CommandResponse]:
 
 
 class DebugOutput(StrEnum):
-    """Raw-output paths where an acknowledgement proves no delivery."""
+    """Raw-output paths whose acknowledgements confirm command acceptance."""
 
     SAMPLE_DATA = "DATASAMPLE"
     BASEBAND_PACKETS = "RAWBBPKG"
@@ -92,7 +92,7 @@ class DebugOutput(StrEnum):
     BASEBAND_NOTICE = "BBNOTICE"
 
     def once(self) -> Command[CommandResponse]:
-        """Request the path and match only its command acknowledgement."""
+        """Request the path and match its command acknowledgement."""
         return action(self.value)
 
     def output(

@@ -34,7 +34,7 @@ def tec_phase_change(
 
 
 def sample_variance(values: Sequence[float]) -> float:
-    """Calculate unbiased sample variance without implying independence."""
+    """Calculate unbiased sample variance for the supplied values."""
     if len(values) < 2:
         raise ValueError("at least two samples required")
     _finite(*values)

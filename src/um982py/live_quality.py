@@ -45,9 +45,8 @@ class LiveAssessment:
 class PositionMonitor:
     """Assess successive updates using host-monotonic arrival intervals.
 
-    Displacement rate is the straight-line distance divided by the arrival
-    interval, not a measured speed. The monitor is intended for one consumer
-    and does not provide integrity monitoring or safety certification.
+    Displacement rate is the straight-line distance between fixes divided by
+    their arrival interval. Use one consumer per monitor.
     """
 
     def __init__(self, limits: LiveLimits) -> None:

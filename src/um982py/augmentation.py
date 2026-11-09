@@ -62,7 +62,7 @@ class AugmentationState:
 
     @property
     def changed(self) -> bool | None:
-        """Whether the verified group changed, or None if it could not be read."""
+        """Whether the verified group changed, or None when readback failed."""
         if self.active_group is None:
             return None
         return self.active_group != self.previous_group

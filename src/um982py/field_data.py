@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 def file_sha256(path: str | os.PathLike[str]) -> str:
-    """Hash a file without loading the entire recording into memory."""
+    """Hash a file incrementally."""
     with Path(path).open("rb") as stream:
         return hashlib.file_digest(stream, "sha256").hexdigest()
 

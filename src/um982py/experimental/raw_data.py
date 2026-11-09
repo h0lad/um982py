@@ -85,7 +85,7 @@ class RawDataLog(StrEnum):
     BASEBAND_PACKAGES = "RAWBBPKG"
 
     def once(self) -> Command[CommandResponse]:
-        """Request the path and match only its command acknowledgement."""
+        """Request the path and match its command acknowledgement."""
         return action(self.value)
 
     def output(
@@ -209,7 +209,7 @@ def capture_baseband_notices(
     enable_gate: bool = False,
     port: Port = Port.COM1,
 ) -> BasebandCapture:
-    """Capture BBNOTICE ONCHANGED diagnostic text instead of ADC/IQ samples."""
+    """Capture BBNOTICE ONCHANGED diagnostic text."""
     return _capture(
         receiver,
         "BBNOTICE",

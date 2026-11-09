@@ -1,4 +1,4 @@
-"""Use the receiver from asyncio without blocking the event loop."""
+"""Use the receiver from asyncio while keeping the event loop responsive."""
 
 import asyncio
 from collections.abc import AsyncIterator, Callable
@@ -105,7 +105,7 @@ class AsyncReceiver:
         return await self._run(lambda: self.receiver.receive(timeout=timeout))
 
     async def drain_pending(self) -> tuple[Message, ...]:
-        """Return queued messages without waiting for more receiver data."""
+        """Return the messages currently in the queue."""
         return await self._run(self.receiver.drain_pending)
 
     async def messages(self) -> AsyncIterator[Message]:

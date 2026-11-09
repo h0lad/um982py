@@ -1,4 +1,4 @@
-"""Select documented ANT2 solutions without rewriting captured wire messages."""
+"""Select documented ANT2 solutions while preserving captured wire messages."""
 
 from collections import Counter
 from dataclasses import dataclass
@@ -116,7 +116,7 @@ def antenna_log(
 _AMBIGUOUS = {
     secondary for secondary, count in Counter(_SECONDARY.values()).items() if count > 1
 }
-"""Targets that several primary logs share, so they cannot be mirrored back."""
+"""Targets shared by several primary logs have ambiguous reverse mappings."""
 
 _MIRROR: dict[Log | FirmwareLog, Log | FirmwareLog] = {}
 for _primary, _secondary in _SECONDARY.items():
@@ -143,9 +143,8 @@ def other_antenna(antenna: str) -> str:
 def mirror(log: Log | FirmwareLog) -> Log | FirmwareLog:
     """Return the wire log of the other antenna input, when one is documented.
 
-    Receiver-wide logs and baselines keep their scope. If several primary logs
-    share a target, the target is left unchanged rather than assigning it an
-    arbitrary partner.
+    Receiver-wide logs, baselines, and targets shared by several primary logs
+    keep their original scope.
     """
     return _MIRROR.get(log, log)
 

@@ -19,6 +19,13 @@ def _number(value: str) -> float | None:
     return number
 
 
+def _standard_deviation(value: str | float) -> float | None:
+    if value == "":
+        return None
+    number = float(value)
+    return number if isfinite(number) and number >= 0 else None
+
+
 def _coordinate(value: str, direction: str, *, latitude: bool) -> float | None:
     if not value or not direction:
         return None
@@ -57,7 +64,7 @@ class Fix:
 
     @property
     def rtk_fixed(self) -> bool:
-        """Whether GGA reports an RTK fixed fix, without assessing correction age."""
+        """Whether GGA reports an RTK fixed fix. Check correction age separately."""
         return self.valid and self.quality == 4
 
     @property
@@ -113,6 +120,11 @@ class Heading:
 
 @dataclass(frozen=True, slots=True)
 class BestNavigation:
+    """Position and velocity with receiver-estimated standard deviations in metres.
+
+    A standard deviation is None when the receiver value is unavailable.
+    """
+
     solution_status: str | int
     position_type: str | int
     latitude: float
@@ -127,6 +139,9 @@ class BestNavigation:
     velocity_solution_status: str | int
     velocity_type: str | int
     datum: str | int
+    latitude_std_m: float | None = None
+    longitude_std_m: float | None = None
+    height_std_m: float | None = None
 
     @property
     def valid(self) -> bool:
@@ -157,6 +172,11 @@ class BestNavigation:
             raise ProtocolError("Non-finite BESTNAV value")
         if not -90 <= self.latitude <= 90 or not -180 <= self.longitude <= 180:
             raise ProtocolError("BESTNAV coordinates out of range")
+        if any(
+            value is not None and (not isfinite(value) or value < 0)
+            for value in (self.latitude_std_m, self.longitude_std_m, self.height_std_m)
+        ):
+            raise ProtocolError("Invalid BESTNAV position standard deviation")
 
     @classmethod
     def from_message(cls, message: Message) -> Self:
@@ -171,6 +191,7 @@ class BestNavigation:
             speed, track, vertical = unpack_from("<ddd", payload, 88)
             velocity_status, velocity_type = unpack_from("<II", payload, 72)
             datum = unpack_from("<I", payload, 36)[0]
+            standard_deviations = unpack_from("<fff", payload, 40)
             return cls(
                 status,
                 kind,
@@ -186,6 +207,7 @@ class BestNavigation:
                 velocity_status,
                 velocity_type,
                 datum,
+                *(_standard_deviation(value) for value in standard_deviations),
             )
         if isinstance(message, AsciiMessage) and message.name in (
             "BESTNAVA",
@@ -210,6 +232,7 @@ class BestNavigation:
                     fields[21],
                     fields[22],
                     fields[6],
+                    *(_standard_deviation(value) for value in fields[7:10]),
                 )
             except ValueError as error:
                 raise ProtocolError("Invalid BESTNAV value") from error

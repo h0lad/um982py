@@ -53,7 +53,10 @@ class ReconnectPolicy:
 
 
 def retryable_ntrip_error(error: BaseException) -> bool:
-    """Recognize transient transport and caster errors, not TLS or auth failures."""
+    """Recognize retryable transport and caster errors.
+
+    TLS and authentication failures stop the retry loop.
+    """
     if isinstance(error, ssl.SSLError):
         return False
     if isinstance(error, NtripDisconnected):
@@ -328,7 +331,7 @@ class NtripClient:
 
 @dataclass(frozen=True, slots=True)
 class Mountpoint:
-    """A caster's advertised mountpoint, which may not be usable or available."""
+    """A mountpoint advertised by a caster."""
 
     name: str
     identifier: str
@@ -344,7 +347,7 @@ class Mountpoint:
     bitrate: int | None
 
     def distance_to(self, latitude: float, longitude: float) -> float | None:
-        """Return the great-circle distance in metres, or None without a location."""
+        """Return the great-circle distance in metres, or None for missing location."""
         if self.latitude is None or self.longitude is None:
             return None
         return haversine_distance(latitude, longitude, self.latitude, self.longitude)

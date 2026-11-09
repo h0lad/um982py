@@ -29,8 +29,8 @@ class RinexExport:
 class RinexMetadata:
     """User-supplied station metadata with coordinates and ARP offsets in metres.
 
-    XYZ is the geocentric marker position, while H/E/N is the antenna reference point
-    relative to the marker, not an antenna phase-centre correction.
+    XYZ is the geocentric marker position. H/E/N gives the antenna reference
+    point relative to the marker. Phase-centre corrections are separate.
     """
 
     observer: str = ""
@@ -284,8 +284,7 @@ def _header_lines(
                     "SYS / # / OBS TYPES",
                 )
             )
-    # RINEX 3.05 requires one record per system when phase alignment is
-    # unknown. Do not claim zero corrections without receiver evidence.
+    # RINEX 3.05 requires a record for each system with unknown phase alignment.
     lines.extend(_header(system, "SYS / PHASE SHIFT") for system in sorted(codes))
     if channels:
         slots = sorted(channels)

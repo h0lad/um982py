@@ -1,4 +1,4 @@
-"""GPS-time SP3 products without implicit extrapolation."""
+"""Read and interpolate GPS-time SP3 products."""
 
 import math
 from collections.abc import Sequence
@@ -142,7 +142,7 @@ def interpolate_sp3(
         raise ValueError("precise orbit extrapolation is not allowed")
     right = next(i for i, point in enumerate(series) if point.epoch > epoch)
     count = min(order + 1, len(series))
-    # Centre the interpolation window where possible, without crossing the ends.
+    # Centre the interpolation window and keep it within the available samples.
     start = min(max(right - count // 2, 0), len(series) - count)
     window = series[start : start + count]
     if any(b.epoch - a.epoch > max_gap for a, b in pairwise(window)):

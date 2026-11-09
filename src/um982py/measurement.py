@@ -60,8 +60,7 @@ def bdt_week_to_gps_seconds(week: int, seconds_of_week: float) -> float:
     """Convert a continuous BDT week and seconds to nominal GPST seconds.
 
     BDT week zero starts in GPS week 1356, and BDT is nominally 14 seconds
-    behind GPST. This conversion does not apply sub-microsecond corrections
-    between the system times.
+    behind GPST. The conversion uses this nominal offset.
     """
     if type(week) is not int or not 0 <= week <= 65535:
         raise ValueError("BDT week must be an integer in 0..65535")
@@ -80,10 +79,9 @@ def gps_epoch(
     """Return absolute GPST seconds from a receiver data-frame header.
 
     N4 ASCII GPS headers and binary reference 0 have been observed to use GPST.
-    R1.15 does not specify how non-GPS header weeks are numbered, so provide an
-    independently verified ``week_scale`` for those headers. BDT uses its own
-    continuous week number and seconds. Older headers are assumed to use GPST
-    unless the caller specifies otherwise.
+    For non-GPS headers, supply an independently verified ``week_scale``.
+    R1.15 leaves their week numbering unspecified. BDT uses its own continuous
+    week number and seconds. Older headers default to GPST.
     """
     if week_scale not in (None, "GPST", "BDT"):
         raise ValueError("week_scale must be GPST or BDT")

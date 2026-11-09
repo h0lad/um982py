@@ -321,7 +321,7 @@ LAYOUTS = (
 # QZSS L1S SLAS messages (7.5.54-57, tables 7-112 to 7-115). Binary offsets are
 # documented. The manual's ASCII examples carry an extra leading message-code
 # token and print the BDS mask truncated to five bytes. The ascii_count and
-# prefix fields accommodate those examples without changing binary decoding.
+# prefix fields accommodate those ASCII examples alongside the binary layout.
 LAYOUTS = (
     *LAYOUTS,
     Layout(

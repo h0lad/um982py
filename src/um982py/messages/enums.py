@@ -49,7 +49,7 @@ class SatelliteSystem(IntEnum):
 
 
 class MessageSatelliteSystem(IntEnum):
-    """Satellite-system values in R1.15 table 7-175, not tracking-status bits."""
+    """Satellite-system values from R1.15 table 7-175."""
 
     GPS = 0
     GLONASS = 1

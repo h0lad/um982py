@@ -12,19 +12,19 @@ class SideEffect(StrEnum):
     """How a baseband command affects the receiver's state."""
 
     QUERY = "QUERY"
-    """Inspect without changing receiver state."""
+    """Query receiver state."""
 
     CONFIGURATION = "CONFIGURATION"
-    """Volatile setting or assistance update, possibly without a readback query."""
+    """Volatile setting or assistance update. Readback varies by command."""
 
     DESTRUCTIVE = "DESTRUCTIVE"
     """Reset, forced state change, fault injection or persistent write."""
 
     UNVERIFIED = "UNVERIFIED"
-    """Command whose full argument semantics or effects are not established."""
+    """Command with partially understood arguments or effects."""
 
     NO_OP = "NO_OP"
-    """Acknowledged without performing a configuration or query operation."""
+    """Acknowledged as a no-op."""
 
 
 class BasebandCommand(StrEnum):
@@ -221,7 +221,7 @@ def _integers(values: tuple[int, ...], count: int) -> tuple[str, ...]:
 
 
 def signal_mask(*values: int) -> Command[CommandResponse]:
-    """Build SIGNALMASK's two native arguments, whose operation is a no-op."""
+    """Build SIGNALMASK's two native arguments for the receiver's no-op command."""
     return baseband_command(BasebandCommand.SIGNALMASK, *_integers(values, 2))
 
 
@@ -286,7 +286,7 @@ def sbas_control(*values: int) -> Command[CommandResponse]:
 
 
 def log_enable(value: int) -> Command[CommandResponse]:
-    """Set the first native word of a LOG command, which is not a message ID."""
+    """Build a LOG command with its first native word."""
     return baseband_command(BasebandCommand.LOG, integer(value, 0, 0x7FFFFFFF))
 
 
@@ -328,7 +328,7 @@ def rf_spi_register_write(register: int, value: int) -> Command[CommandResponse]
 
 
 def ae_enable(value: int) -> Command[CommandResponse]:
-    """Set the native 16-bit AE control value without truncation."""
+    """Set the native 16-bit AE control value."""
     return baseband_command(BasebandCommand.AEEN, integer(value, 0, 0xFFFF))
 
 
@@ -367,7 +367,7 @@ def leap_second_config(seconds: int, *, enabled: bool) -> Command[CommandRespons
 
 
 def agnss_info(*values: int) -> Command[CommandResponse]:
-    """Supply six native assistance words as a command, which is not a query."""
+    """Build a command with six native assistance words."""
     if len(values) != 6:
         raise ValueError("AGNSSINFO requires six native assistance words")
     limits = [(0, 0xFFFF), (-(1 << 31), (1 << 31) - 1), (-128, 127)] + [
@@ -423,7 +423,7 @@ UNVERIFIED_COMMANDS = (
     BasebandCommand.SATMASK,
     BasebandCommand.BBLOGEN,
 )
-"""Commands whose full argument semantics or effects are not established."""
+"""Commands with partially understood arguments or effects."""
 
 
 __all__ = [

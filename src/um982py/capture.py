@@ -81,7 +81,7 @@ def latest_epoch(records: Sequence[Record]) -> tuple[Record, ...]:
 
 
 def matcher(log: DataLog, binary: bool) -> Command[Message]:
-    """Match a data log, including event-only logs that cannot be queried."""
+    """Match a data log, including logs emitted only on events."""
     if isinstance(log, (Log, AntennaLog)):
         if isinstance(log, AntennaLog):
             return log.request(binary=binary)
@@ -168,8 +168,7 @@ def subscription_plan(
     return planned
 
 
-# Log enums inherit from str, but a log passed here represents one log rather
-# than a sequence of characters.
+# Log enums inherit from str. Treat a single enum as one log in this overload.
 @overload
 def capture_live(  # type: ignore[overload-overlap]
     receiver: Receiver,

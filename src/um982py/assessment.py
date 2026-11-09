@@ -59,9 +59,8 @@ def assess_position(
 ) -> PositionAssessment:
     """Check a solution against the application's limits.
 
-    Supply the epoch age in a compatible time scale. The standard deviations
-    are receiver estimates and do not establish measured accuracy, navigation
-    integrity, or safety certification.
+    Supply the epoch age in a compatible time scale. Standard deviations are
+    estimates reported by the receiver.
     """
     reasons: list[str] = []
     try:

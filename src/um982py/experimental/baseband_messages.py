@@ -29,19 +29,19 @@ class BasebandMessageFamily(StrEnum):
     """Reads a fixed set of payload fields."""
 
     DELEGATOR = "delegator"
-    """Hands the payload to a helper rather than reading fields."""
+    """Passes the payload to a helper."""
 
     FLAG = "flag"
-    """Updates receiver state without reading a payload field."""
+    """Updates receiver state."""
 
     NOOP = "noop"
-    """Takes no action and reports success."""
+    """Reports success for a no-op."""
 
     IGNORED = "ignored"
-    """Dropped without further processing."""
+    """Dropped on receipt."""
 
     UNKNOWN = "unknown"
-    """Accepted without a classified payload layout."""
+    """Accepted with an unclassified payload layout."""
 
 
 _FIELD_TYPES: dict[str, tuple[int, str]] = {

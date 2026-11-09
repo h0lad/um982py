@@ -252,8 +252,7 @@ def correlation(
 ) -> float | None:
     """Calculate Pearson correlation, returning None for a constant or short series.
 
-    ``minimum_samples`` defaults to three. Two paired samples are enough for
-    the arithmetic, but they do not establish a robust statistical relationship.
+    ``minimum_samples`` defaults to three and can be set as low as two.
     """
     if minimum_samples < 2:
         raise ValueError("minimum_samples must be at least two")

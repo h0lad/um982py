@@ -56,7 +56,7 @@ class BoundedRecordingTransport:
 
 @dataclass(frozen=True, slots=True)
 class CaptureAnalysis:
-    """A classification of a raw capture that leaves its bytes unchanged."""
+    """A classification of an unchanged raw capture."""
 
     messages: tuple[Message, ...]
     binary_ids: tuple[tuple[int, int], ...]
@@ -87,7 +87,7 @@ def capture_wire(
 
 
 def analyze_capture(raw: bytes) -> CaptureAnalysis:
-    """Classify known frames without changing the capture bytes."""
+    """Classify known frames while preserving the capture bytes."""
     decoder = StreamDecoder()
     messages = decoder.feed(raw)
     binaries = tuple(m for m in messages if isinstance(m, BinaryMessage))

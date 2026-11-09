@@ -67,7 +67,7 @@ def _identity(satellite_id: int) -> tuple[MessageSatelliteSystem | None, int | N
 
 
 def decode_rtk_data(message: Message) -> RtkData:
-    """Decode an RTKDATA frame without assigning state semantics."""
+    """Decode an RTKDATA frame into native fields."""
     if not isinstance(message, BinaryMessage) or message.header.message_id not in _IDS:
         raise ProtocolError("Expected RTKDATA message ID 215 or RTKDATA2 ID 2027")
     payload = message.payload

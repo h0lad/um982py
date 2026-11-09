@@ -35,10 +35,9 @@ class SessionGap:
 class SessionRecorder:
     """Write bounded raw segments through ``capture.RecordingTransport``.
 
-    The directory must not already exist. Completed segments are recorded in a
-    journal with their hashes, while an interrupted write leaves a ``.part``
-    file for inspection. Metadata is optional and comes from the caller, not
-    from the receiver messages.
+    Choose a new directory for the recording. Completed segments and their
+    hashes are recorded in a journal. An interrupted write leaves a ``.part``
+    file for inspection. Optional metadata comes from the caller.
     """
 
     def __init__(
@@ -265,7 +264,7 @@ def iter_session_bytes(
 def iter_session_events(
     directory: str | os.PathLike[str], *, allow_incomplete: bool = False
 ) -> Iterator[Message | SessionGap]:
-    """Decode segments and expose gaps without joining frames across them."""
+    """Decode segments separately and expose gaps between them."""
     decoder = StreamDecoder(strict=True)
     for item in _iter_session_items(directory, allow_incomplete=allow_incomplete):
         if isinstance(item, SessionGap):

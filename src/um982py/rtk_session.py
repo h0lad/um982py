@@ -23,11 +23,11 @@ if TYPE_CHECKING:
 
 
 class CorrectionWriteError(RuntimeError):
-    """A correction could not be delivered to the receiver."""
+    """Delivery of a correction to the receiver failed."""
 
 
 class GgaProviderError(RuntimeError):
-    """The application could not obtain its rover position."""
+    """The application failed to obtain its rover position."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,10 +108,9 @@ class RtkSession:
     ) -> Self:
         """Create a relay that queries the rover for initial and periodic GGA.
 
-        Start the stream before running the session. If the receiver times out
-        or has no valid fix, the connection is attempted without GGA. A caster
-        that requires a fix may reject it. The caller owns the stream and must
-        configure the receiver as a rover.
+        Start the stream and configure the receiver as a rover before running the
+        session. A receiver timeout or an unavailable fix causes a connection
+        attempt without GGA, which some casters may reject.
         """
         if not 0 < gga_timeout < float("inf"):
             raise ValueError("GGA timeout must be finite and positive")
@@ -282,9 +281,9 @@ def relay_ntrip(
 ) -> RtkHealth:
     """Relay corrections until stopped, leaving receiver ownership to the caller.
 
-    This blocking operation owns a receiver stream while running. Configure the
-    receiver as a rover first and do not use it concurrently. Pass a stop event
-    to stop from another thread, or interrupt the call in the main thread.
+    Configure the receiver as a rover before starting. This blocking operation
+    owns the receiver stream until it stops. Pass a stop event from another
+    thread, or interrupt the call in the main thread.
     """
     with ReceiverStream(receiver) as stream:
         session = RtkSession.from_url(

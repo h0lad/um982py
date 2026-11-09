@@ -236,7 +236,7 @@ def rtk_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
 
 
 def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
-    """Report native B2b delivery and PPP solutions without inferring application."""
+    """Report B2b correction delivery alongside PPP solutions."""
     records = capture.arrival_order or tuple(
         sorted(
             (

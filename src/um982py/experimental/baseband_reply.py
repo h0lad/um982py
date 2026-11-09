@@ -605,7 +605,7 @@ class BasebandNoticeStream:
         self.discarded = 0
 
     def _keep_possible_partial_line(self) -> None:
-        """Discard everything that cannot still grow into a notice."""
+        """Keep the most recent bytes of an oversized partial line."""
         if len(self._buffer) > MAX_PARTIAL_LINE:
             del self._buffer[:-MAX_PARTIAL_LINE]
 

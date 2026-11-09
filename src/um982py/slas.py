@@ -6,9 +6,8 @@ from typing import Literal
 from um982py.messages import Record
 
 # Each entry gives a system, SLAS slot prefix, and mask width in bits. QZSS
-# slots J01..J09 are mask indices, not navigation PRNs (193+). Their mapping to
-# live PRNs depends on the revision and has not been verified, so results are
-# never marked usable.
+# slots J01..J09 are mask indices. Their mapping to navigation PRNs (193+)
+# depends on the revision and remains unverified, so results stay unusable.
 _SLOT_WIDTHS: tuple[tuple[str, str, int], ...] = (
     ("GPS", "G", 64),
     ("QZSS", "J", 9),
@@ -73,9 +72,8 @@ class SlasCandidate:
 class SlasCorrection:
     """One MT50 pseudorange correction for a selected slot.
 
-    ``usable`` is always False because the slot-to-PRN mapping and bit packing
-    have not been verified against receiver data. Do not use this correction
-    to calculate a fix.
+    ``usable`` is always False. The slot-to-PRN mapping and bit packing need
+    receiver-data verification before the correction can be used in a fix.
     """
 
     satellite: str
@@ -203,8 +201,8 @@ class SlasTracker:
     ) -> SlasResult | None:
         """Map one source using independently verified transmitter and MT48 IODP.
 
-        R1.15 does not identify the extra ASCII fields or include these two
-        fields in the binary tables, so callers must supply them explicitly.
+        Supply these fields explicitly. R1.15 leaves the extra ASCII fields
+        unidentified and omits both fields from the binary tables.
         """
         name = record.name
         try:

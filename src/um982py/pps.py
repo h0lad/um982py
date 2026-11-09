@@ -34,8 +34,7 @@ class _KernelFetch(ctypes.Structure):
     _fields_ = [("info", _KernelInfo), ("timeout", _KernelTime)]
 
 
-# The Linux PPS_FETCH ioctl encodes the pointer size, rather than the size of
-# the structure passed through that pointer.
+# The Linux PPS_FETCH ioctl encodes the size of the pointer to the structure.
 _PPS_FETCH = (3 << 30) | (ctypes.sizeof(ctypes.c_void_p) << 16) | (ord("p") << 8) | 0xA4
 _UNIX_EPOCH = datetime(1970, 1, 1, tzinfo=UTC)
 
@@ -73,7 +72,7 @@ def missed_pps_edges(previous: PpsEdge, current: PpsEdge) -> int:
     """Count missed edges between two samples from the same device instance.
 
     The count assumes fewer than 2**31 edges elapsed. A reset near sequence
-    wrap looks the same as a wrap and cannot be detected here.
+    wrap is indistinguishable from a wrap.
     """
     if previous.edge != current.edge:
         raise ValueError("PPS edges must have the same polarity")
@@ -103,9 +102,7 @@ class PpsDevice:
     """Read timestamps from a configured Linux PPS device on x86-64 or AArch64.
 
     Timestamps use the host's CLOCK_REALTIME, and sequence numbers help identify
-    missed or repeated edges. Reading does not change the receiver, kernel PPS
-    settings, or system clock. Do not call ``fetch`` concurrently with another
-    fetch or with ``close``.
+    missed or repeated edges. Call ``fetch`` and ``close`` sequentially.
     """
 
     def __init__(self, path: str | os.PathLike[str]) -> None:

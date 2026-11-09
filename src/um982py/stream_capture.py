@@ -50,7 +50,7 @@ class EpochTracker:
 def iter_decoded_records(
     messages: Iterable[Message], logs: Sequence[DataLog]
 ) -> Iterator[tuple[str, Record]]:
-    """Yield matching records in arrival order without retaining the input."""
+    """Yield matching records in arrival order as input arrives."""
     requests = [(log, _matching_requests(log)) for log in logs]
     for message in messages:
         for log, matchers in requests:

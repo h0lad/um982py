@@ -4,7 +4,7 @@ from time import sleep
 
 import pytest
 
-from conftest import ReplayTransport, acknowledgement, rtcm, sentence
+from conftest import FIXTURES, ReplayTransport, acknowledgement, rtcm, sentence
 from um982py import Receiver, relay_ntrip
 from um982py.commands.core import action
 from um982py.errors import ResponseTimeout
@@ -191,3 +191,59 @@ def test_gga_provider_failure_is_not_retried_as_a_caster_error() -> None:
         session.run(stop)
     assert session.health().state == "failed"
     assert session.health().connection_attempts == 1
+
+
+def test_relay_ntrip_forwards_corrections_and_sends_initial_gga(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from tests.examples.test_ntrip_client import FakeSocket
+    from um982py import ReceiverStream
+    from um982py.protocol import StreamDecoder
+
+    frames = [rtcm((kind << 4).to_bytes(2, "big")) for kind in (1005, 1077, 1087)]
+    connection = FakeSocket(b"HTTP/1.1 200 OK\r\n\r\n" + b"".join(frames))
+
+    def fragmented_recv(size: int) -> bytes:
+        return connection.reply.read(min(size, 7))
+
+    monkeypatch.setattr(connection, "recv", fragmented_recv)
+    monkeypatch.setattr("socket.create_connection", lambda *args: connection)
+    transport = ReplayTransport(
+        {
+            b"GPGGA\r\n": (FIXTURES / "captures-live/GNGGA.bin").read_bytes(),
+        }
+    )
+    active_stop = []
+    send = ReceiverStream.send_correction
+    run = RtkSession.run
+
+    def stop_after_last(stream: ReceiverStream, message: RtcmMessage) -> object:
+        future = send(stream, message)
+        if message.message_type == 1087:
+            future.add_done_callback(lambda _: active_stop[0].set())
+        return future
+
+    def run_until_complete(session: RtkSession, stop: object) -> None:
+        active_stop.append(stop)
+        run(session, stop)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(ReceiverStream, "send_correction", stop_after_last)
+    monkeypatch.setattr(RtkSession, "run", run_until_complete)
+    with Receiver(transport) as receiver:
+        relay_ntrip(
+            receiver,
+            "http://caster.example:2101/STATION",
+            username="researcher",
+            password="test-credential",  # noqa: S106
+        )
+    forwarded = [data for data in transport.writes if data.startswith(b"\xd3")]
+    assert forwarded == frames
+    assert transport.closed
+    assert transport.writes.count(b"GPGGA\r\n") >= 1
+    assert b"Ntrip-GGA: $GPGGA," in connection.sent[0]
+    assert b"Authorization: Basic " in connection.sent[0]
+    decoder = StreamDecoder(strict=True)
+    assert all(
+        isinstance(frame, RtcmMessage) for frame in decoder.feed(b"".join(forwarded))
+    )
+    decoder.finish()

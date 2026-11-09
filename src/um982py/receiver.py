@@ -182,7 +182,7 @@ class Receiver:
             return message
 
     def drain_pending(self) -> tuple[Message, ...]:
-        """Return queued messages without reading from the transport."""
+        """Return the messages currently in the queue."""
         with self._lock:
             self._check_open()
             messages = (*self._backlog, *self._incoming)

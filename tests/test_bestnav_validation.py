@@ -84,3 +84,35 @@ def test_binary_position_and_velocity_have_independent_validity() -> None:
     pack_into("<II", payload, 72, 0, 9999)
     navigation = BestNavigation.from_message(binary_message("BESTNAV", bytes(payload)))
     assert not navigation.valid and not navigation.velocity_valid
+
+
+def test_position_standard_deviations_from_ascii_and_binary() -> None:
+    message = manual_message("BESTNAVA")
+    assert isinstance(message, AsciiMessage)
+    fields = list(message.fields)
+    fields[7:10] = ["0.12", "0.34", "0.56"]
+    ascii_nav = BestNavigation.from_message(replace(message, fields=tuple(fields)))
+
+    payload = bytearray(120)
+    pack_into("<fff", payload, 40, 0.12, 0.34, 0.56)
+    binary_nav = BestNavigation.from_message(binary_message("BESTNAV", bytes(payload)))
+    for navigation in (ascii_nav, binary_nav):
+        assert navigation.latitude_std_m == pytest.approx(0.12)
+        assert navigation.longitude_std_m == pytest.approx(0.34)
+        assert navigation.height_std_m == pytest.approx(0.56)
+
+
+def test_unavailable_position_standard_deviations() -> None:
+    message = manual_message("BESTNAVA")
+    assert isinstance(message, AsciiMessage)
+    fields = list(message.fields)
+    fields[7:10] = ["", "-1", "nan"]
+    ascii_nav = BestNavigation.from_message(replace(message, fields=tuple(fields)))
+
+    payload = bytearray(120)
+    pack_into("<fff", payload, 40, float("inf"), -1, float("nan"))
+    binary_nav = BestNavigation.from_message(binary_message("BESTNAV", bytes(payload)))
+    for navigation in (ascii_nav, binary_nav):
+        assert navigation.latitude_std_m is None
+        assert navigation.longitude_std_m is None
+        assert navigation.height_std_m is None

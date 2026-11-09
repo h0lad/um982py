@@ -21,7 +21,7 @@ class TrackingField:
 
 @dataclass(frozen=True, slots=True)
 class TrackingSlot:
-    """A diagnostic slot that does not by itself identify a satellite or average."""
+    """A diagnostic slot with receiver-reported values."""
 
     slot: int
     bank: int
@@ -48,7 +48,7 @@ def tracking_slots(record: Record) -> tuple[TrackingSlot, ...]:
 
 
 def tracking_fields(record: Record) -> tuple[TrackingField, ...]:
-    """Expose PTOBSINFO values without assigning unverified physical meanings."""
+    """Expose PTOBSINFO values using their native representation."""
     if record.name != "PTOBSINFO":
         raise ValueError("a PTOBSINFO record is required")
     tracked = []

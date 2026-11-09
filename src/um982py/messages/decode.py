@@ -95,7 +95,7 @@ def _decode_log(message: Message) -> Record:
         raise ProtocolError(f"No body layout for {name}")
     layout = LAYOUTS[name]
     if name == "L1SMT48" and isinstance(payload, tuple) and len(payload) > 10:
-        # The printed example contains five mask bytes, rather than eight.
+        # The printed example contains five mask bytes. The binary layout has eight.
         hex_mask = payload[10]
         if len(hex_mask) not in (10, 16):
             raise ProtocolError("L1SMT48 BDS mask must contain 5 or 8 bytes")
@@ -119,7 +119,7 @@ def _decode_log(message: Message) -> Record:
         layout = replace(layout, fields=fields)
     if name == "APPPNAV" and isinstance(payload, tuple) and len(payload) == 21:
         # R1.15's ASCII example has four undocumented tail fields, so retain
-        # their values without assuming PPPNAV semantics for those fields.
+        # the values under unverified field names.
         ppp_fields = LAYOUTS["PPPNAV"].fields
         layout = replace(
             layout,

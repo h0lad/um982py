@@ -1,4 +1,4 @@
-"""PPP-B2b age and issue-of-data checks without mask decoding."""
+"""Check PPP-B2b correction age and issue-of-data values."""
 
 import itertools
 import math
@@ -163,7 +163,7 @@ def audit_corrections(
 
 
 def correction_events(record: Record) -> tuple[CorrectionEvent, ...]:
-    """Extract native metadata without guessing storage order for a PRN mask."""
+    """Extract native correction metadata and preserve the PRN mask."""
     if record.message is None:
         raise ValueError("correction record needs a receiver timestamp")
     received = gps_epoch(record.message)

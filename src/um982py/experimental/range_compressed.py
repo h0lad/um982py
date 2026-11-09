@@ -115,7 +115,7 @@ def _reconstruct_phase(
 
 
 def _decode_entry(raw: int) -> CompressedObservation:
-    """Decode one packed entry without retaining its wire bytes."""
+    """Decode one packed entry into its fields."""
     status = _unsigned(raw, 0, 32)
     pseudorange = _unsigned(raw, 60, 36) / 128
     glonass_channel = _unsigned(raw, 170, 6)
