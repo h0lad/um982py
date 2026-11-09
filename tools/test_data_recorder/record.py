@@ -1,0 +1,199 @@
+"""Record an enabled receiver stream as a replayable test dataset."""
+
+import argparse
+import json
+import math
+import shutil
+import sys
+from collections.abc import Callable, Sequence
+from datetime import UTC, datetime
+from pathlib import Path
+from time import monotonic
+
+from tools.test_data_recorder.audit import LOGS, log_name
+
+from um982py.errors import TransportError
+from um982py.protocol import StreamDecoder
+from um982py.session import SessionRecorder
+from um982py.transports.base import Transport
+from um982py.transports.serial import SerialTransport
+
+
+def record(
+    transport: Transport,
+    recorder: SessionRecorder,
+    duration: float,
+    *,
+    segment_seconds: float = 1800,
+    status_seconds: float = 60,
+    progress: Callable[[dict], None] | None = None,
+    clock: Callable[[], float] = monotonic,
+) -> dict:
+    """Write received bytes before any decoding and report the outcome."""
+    if not all(
+        math.isfinite(value) and value > 0
+        for value in (duration, segment_seconds, status_seconds)
+    ):
+        raise ValueError("duration and intervals must be finite and positive")
+    started = datetime.now(UTC).isoformat()
+    start = clock()
+    last_flush = start
+    last_status = start
+    status_bytes = 0
+    last_data: float | None = None
+    next_segment = start + segment_seconds
+    next_status = start + status_seconds
+    received = 0
+    decoder = StreamDecoder()
+    counts = dict.fromkeys((log.value for log in LOGS), 0)
+    last_seen: dict[str, float] = {}
+    errors = other = 0
+    status = "complete"
+
+    def statistics(now: float) -> dict:
+        elapsed = max(0.0, now - start)
+        return {
+            "elapsed_seconds": round(elapsed, 1),
+            "received_bytes": received,
+            "average_bytes_per_second": round(received / elapsed, 1) if elapsed else 0,
+            "recent_bytes_per_second": (
+                round((received - status_bytes) / (now - last_status), 1)
+                if now > last_status
+                else 0
+            ),
+            "data_age_seconds": (
+                round(now - last_data, 1) if last_data is not None else None
+            ),
+            "valid_frames": dict(counts),
+            "observation_age_seconds": {
+                name: round(now - last_seen[name], 1) if name in last_seen else None
+                for name in ("OBSVM", "OBSVH")
+            },
+            "other_frames": other,
+            "decoder_errors_at_least": errors,
+            "discarded_bytes": decoder.discarded_bytes,
+            "pending_bytes": len(decoder.pending),
+        }
+
+    try:
+        while (remaining := duration - (clock() - start)) > 0:
+            now = clock()
+            data = transport.read(
+                65536,
+                max(0.0, min(1.0, remaining, next_segment - now, next_status - now)),
+            )
+            if data:
+                recorder.write(data)
+                received += len(data)
+                now = clock()
+                last_data = now
+                for message in decoder.feed(data):
+                    name = log_name(message)
+                    if name is None:
+                        other += 1
+                    else:
+                        counts[name] += 1
+                        last_seen[name] = now
+                errors += len(decoder.errors)
+                decoder.errors.clear()
+            now = clock()
+            if now - last_flush >= 5:
+                recorder.flush()
+                last_flush = now
+            if now >= next_segment:
+                recorder.rotate()
+                next_segment = now + segment_seconds
+            if now >= next_status:
+                if progress is not None:
+                    progress(statistics(now))
+                last_status = now
+                status_bytes = received
+                next_status = now + status_seconds
+    except KeyboardInterrupt:
+        status = "interrupted"
+    except TransportError as error:
+        status = "transport_error"
+        recorder.mark_gap(f"{type(error).__name__}: {error}"[:1024])
+    if status == "complete" and not received:
+        status = "no_data"
+    return {
+        "schema": "um982py-recording-report-1",
+        "status": status,
+        "started_at": started,
+        "ended_at": datetime.now(UTC).isoformat(),
+        "requested_seconds": duration,
+        **statistics(clock()),
+    }
+
+
+def main(argv: Sequence[str] | None = None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("port", help="serial device with logs already enabled")
+    parser.add_argument("directory", type=Path, help="new recording directory")
+    parser.add_argument("--baud", type=int, default=921600)
+    parser.add_argument("--duration", type=float, default=86400, help="seconds")
+    parser.add_argument("--segment-bytes", type=int, default=256 * 1024 * 1024)
+    parser.add_argument("--segment-seconds", type=float, default=1800)
+    parser.add_argument("--status-seconds", type=float, default=60)
+    parser.add_argument("--metadata", type=Path, help="JSON object with field notes")
+    parser.add_argument(
+        "--no-fsync", action="store_true", help="skip syncing completed segments"
+    )
+    args = parser.parse_args(argv)
+    if (
+        not math.isfinite(args.duration)
+        or args.duration <= 0
+        or args.baud <= 0
+        or args.segment_bytes <= 0
+        or not math.isfinite(args.segment_seconds)
+        or args.segment_seconds <= 0
+        or not math.isfinite(args.status_seconds)
+        or args.status_seconds <= 0
+    ):
+        parser.error("duration, baud, segment size and intervals must be positive")
+    metadata = (
+        json.loads(args.metadata.read_text(encoding="utf-8")) if args.metadata else {}
+    )
+    if not isinstance(metadata, dict):
+        parser.error("metadata must be a JSON object")
+
+    with SessionRecorder(
+        args.directory,
+        metadata={"port": args.port, "baud": args.baud, "notes": metadata},
+        segment_bytes=args.segment_bytes,
+        fsync=not args.no_fsync,
+    ) as recorder:
+        transport = SerialTransport(args.port, args.baud)
+        try:
+            print("Recording stream; press Ctrl-C to stop early.", file=sys.stderr)
+
+            def show_status(values: dict) -> None:
+                try:
+                    values["free_disk_bytes"] = shutil.disk_usage(args.directory).free
+                except OSError:
+                    values["free_disk_bytes"] = None
+                print(
+                    json.dumps(values, separators=(",", ":")),
+                    file=sys.stderr,
+                    flush=True,
+                )
+
+            report = record(
+                transport,
+                recorder,
+                args.duration,
+                segment_seconds=args.segment_seconds,
+                status_seconds=args.status_seconds,
+                progress=show_status,
+            )
+        finally:
+            transport.close()
+    (args.directory / "capture.json").write_text(
+        json.dumps(report, indent=2, allow_nan=False) + "\n", encoding="utf-8"
+    )
+    print(f"Recording {report['status']}: {report['received_bytes']} bytes.")
+    return 0 if report["status"] == "complete" else 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())

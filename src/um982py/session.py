@@ -134,6 +134,12 @@ class SessionRecorder:
         if self._file is not None:
             self._file.flush()
 
+    def rotate(self) -> None:
+        """Finish the current segment without interrupting the byte stream."""
+        if self._closed:
+            raise ValueError("session is closed")
+        self._finish_segment()
+
     def mark_gap(self, reason: str) -> None:
         """Finish the current segment and record a stream discontinuity."""
         if self._closed:
