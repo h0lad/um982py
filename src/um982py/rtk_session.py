@@ -19,8 +19,6 @@ from um982py.streaming import ReceiverStream
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from um982py.receiver import Receiver
-
 
 class CorrectionWriteError(RuntimeError):
     """Delivery of a correction to the receiver failed."""
@@ -263,40 +261,3 @@ class RtkSession:
                                 )
             if monotonic() - last_frame >= self.correction_timeout:
                 raise ConnectionError("no RTCM corrections before timeout")
-
-
-def relay_ntrip(
-    receiver: Receiver,
-    url: str,
-    *,
-    username: str | None = None,
-    password: str | None = None,
-    stop: Event | None = None,
-    version: Literal[1, 2] = 2,
-    gga_timeout: float = 2.0,
-    gga_interval: float = 10.0,
-    read_interval: float = 1.0,
-    correction_timeout: float = 60.0,
-    reconnect: ReconnectPolicy | None = None,
-) -> RtkHealth:
-    """Relay corrections until stopped, leaving receiver ownership to the caller.
-
-    Configure the receiver as a rover before starting. This blocking operation
-    owns the receiver stream until it stops. Pass a stop event from another
-    thread, or interrupt the call in the main thread.
-    """
-    with ReceiverStream(receiver) as stream:
-        session = RtkSession.from_url(
-            stream,
-            url,
-            username=username,
-            password=password,
-            version=version,
-            gga_timeout=gga_timeout,
-            gga_interval=gga_interval,
-            read_interval=read_interval,
-            correction_timeout=correction_timeout,
-            reconnect=reconnect,
-        )
-        session.run(stop if stop is not None else Event())
-        return session.health()

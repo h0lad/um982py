@@ -13,7 +13,7 @@ from conftest import (
     acknowledgement,
     ascii_message,
 )
-from um982py import Receiver
+from um982py import Receiver, Rover
 from um982py.commands.configuration import SignalGroup
 from um982py.commands.types import Port
 from um982py.messages import AsciiMessage
@@ -81,6 +81,39 @@ def test_readme_position(
         "Longitude standard deviation: 2.19 m\n"
         "Height standard deviation: 2.85 m\n"
     )
+
+
+def test_readme_corrected_rover(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    class FakeRover:
+        def __enter__(self) -> "FakeRover":
+            return self
+
+        def __exit__(self, *args: object) -> None:
+            pass
+
+        def positions(self, *, interval: float) -> list[SimpleNamespace]:
+            assert interval == 1
+            return [
+                SimpleNamespace(
+                    position=SimpleNamespace(valid=True, latitude=52.5, longitude=13.4),
+                    heading_deg=90.0,
+                    correction_age_s=2.0,
+                )
+            ]
+
+    def connect(target: str, baudrate: int, *, ntrip_url: str) -> FakeRover:
+        assert (target, baudrate, ntrip_url) == (
+            "/dev/ttyUSB0",
+            921600,
+            "https://caster.example:443/MOUNT",
+        )
+        return FakeRover()
+
+    monkeypatch.setattr(Rover, "connect", staticmethod(connect))
+    exec(compile(SNIPPETS["Use a corrected rover"], "README.md", "exec"), {})  # noqa: S102
+    assert capsys.readouterr().out == ("52.5 13.4\nHeading: 90.0 correction age: 2.0\n")
 
 
 def test_readme_position_without_solution(

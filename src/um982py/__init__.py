@@ -90,12 +90,12 @@ if TYPE_CHECKING:
     from um982py.rinex import RinexExport, RinexMetadata, export_rinex
     from um982py.rinex_merge import MergeResult, merge_gps_observations
     from um982py.rinex_nav import RinexNavigationExport, export_rinex_navigation
+    from um982py.rover import Rover, RoverPosition
     from um982py.rtk_session import (
         CorrectionWriteError,
         GgaProviderError,
         RtkHealth,
         RtkSession,
-        relay_ntrip,
     )
     from um982py.satellites import Satellite, SatelliteSignal
     from um982py.session import (
@@ -112,6 +112,9 @@ if TYPE_CHECKING:
         StreamHealth,
         Subscription,
     )
+    from um982py.survey import SurveyPoint, survey_point, wait_for_fix
+    from um982py.track import TrackWriter
+    from um982py.waypoint import WaypointDirection, waypoint_direction
 
 _EXPORTS: dict[str, tuple[str, str | None]] = {
     "AsyncPppSession": ("um982py.async_ppp", "AsyncPppSession"),
@@ -166,6 +169,8 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "RinexNavigationExport": ("um982py.rinex_nav", "RinexNavigationExport"),
     "RtkHealth": ("um982py.rtk_session", "RtkHealth"),
     "RtkSession": ("um982py.rtk_session", "RtkSession"),
+    "Rover": ("um982py.rover", "Rover"),
+    "RoverPosition": ("um982py.rover", "RoverPosition"),
     "Satellite": ("um982py.satellites", "Satellite"),
     "SatelliteSignal": ("um982py.satellites", "SatelliteSignal"),
     "SatelliteSystem": ("um982py.messages.enums", "SatelliteSystem"),
@@ -177,8 +182,11 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "StreamEvent": ("um982py.streaming", "StreamEvent"),
     "StreamHealth": ("um982py.streaming", "StreamHealth"),
     "Subscription": ("um982py.streaming", "Subscription"),
+    "SurveyPoint": ("um982py.survey", "SurveyPoint"),
     "TaskPerformance": ("um982py.receiver_models", "TaskPerformance"),
     "TrackingSignal": ("um982py.signals", "TrackingSignal"),
+    "TrackWriter": ("um982py.track", "TrackWriter"),
+    "WaypointDirection": ("um982py.waypoint", "WaypointDirection"),
     "assess_position": ("um982py.assessment", "assess_position"),
     "bdt_week_to_gps_seconds": ("um982py.measurement", "bdt_week_to_gps_seconds"),
     "capture_live": ("um982py.capture", "capture_live"),
@@ -213,15 +221,17 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "pps_clock_offset_ns": ("um982py.pps", "pps_clock_offset_ns"),
     "range_samples": ("um982py.measurement", "range_samples"),
     "read_frames": ("um982py.capture", "read_frames"),
-    "relay_ntrip": ("um982py.rtk_session", "relay_ntrip"),
     "run_ppk": ("um982py.ppk", "run_ppk"),
     "sample_series": ("um982py.measurement", "sample_series"),
     "solution_from_record": ("um982py.quality", "solution_from_record"),
     "stale_correction": ("um982py.corrections", "stale_correction"),
     "swap_antenna": ("um982py.antenna", "swap_antenna"),
+    "survey_point": ("um982py.survey", "survey_point"),
     "tracking_signal": ("um982py.signals", "tracking_signal"),
     "transform_coordinate": ("um982py.crs", "transform_coordinate"),
     "wavelength": ("um982py.geodesy", "wavelength"),
+    "wait_for_fix": ("um982py.survey", "wait_for_fix"),
+    "waypoint_direction": ("um982py.waypoint", "waypoint_direction"),
 }
 
 __all__ = [
@@ -272,6 +282,8 @@ __all__ = [
     "RinexExport",
     "RinexMetadata",
     "RinexNavigationExport",
+    "Rover",
+    "RoverPosition",
     "RtkHealth",
     "RtkSession",
     "Satellite",
@@ -285,8 +297,11 @@ __all__ = [
     "StreamEvent",
     "StreamHealth",
     "Subscription",
+    "SurveyPoint",
     "TaskPerformance",
+    "TrackWriter",
     "TrackingSignal",
+    "WaypointDirection",
     "assess_position",
     "bdt_week_to_gps_seconds",
     "capture_live",
@@ -321,15 +336,17 @@ __all__ = [
     "pps_clock_offset_ns",
     "range_samples",
     "read_frames",
-    "relay_ntrip",
     "run_ppk",
     "sample_series",
     "solution_from_record",
     "stale_correction",
+    "survey_point",
     "swap_antenna",
     "tracking_signal",
     "transform_coordinate",
+    "wait_for_fix",
     "wavelength",
+    "waypoint_direction",
 ]
 
 

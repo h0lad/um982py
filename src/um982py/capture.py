@@ -212,19 +212,29 @@ def capture_live(
 
     Pass one log to receive its records as a tuple, or pass a sequence of logs
     to receive a dictionary keyed by log name. Progress callbacks and
-    interrupted captures always use the dictionary form.
+    interrupted captures always use the dictionary form. ``duration`` bounds
+    the collection time in seconds. For a single log other than SATVIS2,
+    ``frames`` can stop collection early; it does not limit multiple logs or
+    SATVIS2, whose epochs can span multiple frames. Records are held in memory.
     """
     if not math.isfinite(duration) or duration <= 0:
         raise ValueError("duration must be finite and positive")
     if not math.isfinite(interval) or interval <= 0:
         raise ValueError("interval must be finite and positive")
-    if frames is not None and frames < 1:
-        raise ValueError("frames must be positive")
+    if frames is not None and (
+        isinstance(frames, bool) or not isinstance(frames, int) or frames < 1
+    ):
+        raise ValueError("frames must be a positive integer")
     selected: Sequence[DataLog] = (
         (logs,) if isinstance(logs, (Log, AntennaLog)) else logs
     )
     if not selected:
         raise ValueError("at least one log is required")
+    if any(not isinstance(log, (Log, AntennaLog)) for log in selected):
+        raise TypeError("logs must contain Log or AntennaLog values")
+    names = [log.value for log in selected]
+    if len(set(names)) != len(names):
+        raise ValueError("logs must have distinct names")
     planned = subscription_plan(selected, interval=interval, binary=binary)
     with temporary_subscriptions(receiver, *planned):
         records = receive_records(
@@ -308,7 +318,7 @@ def receive_records(
             if (
                 frames is not None
                 and len(logs) == 1
-                and logs[0] != Log.SATVIS2
+                and logs[0].value != Log.SATVIS2.value
                 and len(collected[logs[0].value]) >= frames
             ):
                 break

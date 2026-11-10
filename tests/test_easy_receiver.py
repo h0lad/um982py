@@ -3,11 +3,15 @@
 import asyncio
 from pathlib import Path
 from threading import Event
+from types import SimpleNamespace
 
 import pytest
 
 from conftest import ReplayTransport, sentence
-from um982py import AsyncReceiver, Receiver
+from um982py import AsyncReceiver, Log, Receiver, capture_live
+from um982py.antenna import AntennaLog
+from um982py.capture import receive_records
+from um982py.protocol import StreamDecoder
 
 
 def test_positions_poll_until_the_caller_stops(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -72,3 +76,48 @@ def test_async_positions_and_satellites() -> None:
         assert transport.closed
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize(
+    ("logs", "frames", "error", "message"),
+    [
+        ([Log.RANGE, Log.RANGE], None, ValueError, "distinct names"),
+        (
+            [Log.RANGE, AntennaLog(Log.RANGE, Log.RANGEH)],
+            None,
+            ValueError,
+            "distinct names",
+        ),
+        ("RANGE", None, TypeError, "Log or AntennaLog"),
+        (Log.RANGE, 1.5, ValueError, "positive integer"),
+        (Log.RANGE, True, ValueError, "positive integer"),
+    ],
+)
+def test_capture_rejects_invalid_selection_before_touching_receiver(
+    logs: object, frames: object, error: type[Exception], message: str
+) -> None:
+    transport = ReplayTransport()
+    with Receiver(transport) as receiver, pytest.raises(error, match=message):
+        capture_live(receiver, logs, duration=1, frames=frames)  # type: ignore[call-overload]
+    assert transport.writes == []
+
+
+@pytest.mark.parametrize("wrapped", [False, True])
+def test_satvis_capture_does_not_stop_mid_epoch(
+    monkeypatch: pytest.MonkeyPatch, wrapped: bool
+) -> None:
+    data = (Path(__file__).parent / "fixtures/captures-live/SATVIS2A.bin").read_bytes()
+    frames = StreamDecoder().feed(data)
+    assert len(frames) >= 2
+    clock = [0.0]
+    messages = iter(frames)
+
+    def receive(*, timeout: float) -> object:
+        clock[0] += 1
+        return next(messages)
+
+    monkeypatch.setattr("um982py.capture.monotonic", lambda: clock[0])
+    log = AntennaLog(Log.SATVIS2, Log.SATVIS2) if wrapped else Log.SATVIS2
+    receiver = SimpleNamespace(timeout=1, receive=receive)
+    records = receive_records(receiver, [log], duration=2, frames=1)
+    assert len(records["SATVIS2"]) == 2
