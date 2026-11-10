@@ -19,7 +19,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = ExampleParser(description=__doc__)
     add_receiver_arguments(parser)
     parser.add_argument("--duration", type=float, default=300)
-    parser.add_argument("--interval", type=float, default=1)
+    parser.add_output_interval(default=1)
     parser.add_argument(
         "--low-frequency",
         type=float,

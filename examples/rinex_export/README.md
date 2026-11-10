@@ -28,6 +28,16 @@ python -m examples.rinex_export --port /dev/ttyUSB0 --baud 921600 --frames 60 \
     --output /tmp/master.obs --json /tmp/rinex-report.json
 ```
 
+Request 10 Hz observations for a short trial:
+
+```bash
+python -m examples.rinex_export --port /dev/ttyUSB0 --baud 921600 --rate-hz 10 \
+    --duration 10 --frames 100 --output /tmp/fast.obs
+```
+
+`--rate-hz` and `--interval` are alternatives. The receiver may reject the rate
+or deliver observations more slowly; check the exported epochs and report.
+
 Export both antenna inputs:
 
 ```bash

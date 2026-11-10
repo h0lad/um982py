@@ -63,12 +63,13 @@ class AntennaLog:
 
     def output(
         self,
-        interval: float | Trigger = 1,
+        interval: float | Trigger | None = None,
         *,
+        rate_hz: float | None = None,
         binary: bool = False,
         port: Port | None = None,
     ) -> Command[CommandResponse]:
-        return self.wire.output(interval, binary=binary, port=port)
+        return self.wire.output(interval, rate_hz=rate_hz, binary=binary, port=port)
 
     def read(
         self, *, binary: bool = False, port: Port | None = None

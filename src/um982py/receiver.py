@@ -1,8 +1,8 @@
 """Receiver transactions and message streaming."""
 
 from collections import deque
-from collections.abc import Callable, Iterator
-from math import isfinite
+from collections.abc import Callable, Iterator, Sequence
+from math import isclose, isfinite
 from threading import Event, RLock
 from time import monotonic, sleep
 from types import TracebackType
@@ -11,15 +11,17 @@ from urllib.parse import urlsplit
 
 from um982py.antenna import AntennaLog, antenna_log
 from um982py.augmentation import AugmentationState, enable_augmentation
-from um982py.commands import Log, queries
+from um982py.commands import Log, logging, queries
 from um982py.commands.configuration.receiver import (
     SignalGroup,
     current_signal_group,
 )
 from um982py.commands.core import Command, normalize
+from um982py.commands.types import Port, Trigger
 from um982py.errors import (
     BufferOverflow,
     CommandRejected,
+    ProtocolError,
     ResponseTimeout,
     TransportClosed,
 )
@@ -212,6 +214,95 @@ class Receiver:
     def log_list(self) -> LogList:
         """Query the active log subscriptions on all ports."""
         return self.execute(log_list())
+
+    def set_output_rate(
+        self,
+        logs: Log | AntennaLog | Sequence[Log | AntennaLog],
+        rate_hz: float,
+        *,
+        binary: bool | None = None,
+        port: Port | None = None,
+        verify: bool = False,
+    ) -> tuple[CommandResponse, ...]:
+        """Configure the periodic output rate of one or more logs.
+
+        ``port=None`` selects the receiver's current port. The default wire
+        format prefers binary when available, otherwise ASCII. With an explicit
+        port, ``verify=True`` also checks LOGLIST after all acknowledgements.
+        Neither acknowledgement nor readback proves the actual emitted rate.
+        The signal group and persistent configuration are not changed.
+
+        All commands are validated before the first write. If a command fails,
+        earlier changes remain in effect, and a timed-out command may have been
+        applied. An exception note identifies the completed commands.
+        """
+        interval = logging.interval_from_rate(rate_hz)
+        if binary is not None and not isinstance(binary, bool):
+            raise TypeError("binary must be True, False or None")
+        if not isinstance(verify, bool):
+            raise TypeError("verify must be a bool")
+        selected_port = Port(port) if port is not None else None
+        if verify and selected_port is None:
+            raise ValueError("verify requires an explicit receiver port")
+        selected = (logs,) if isinstance(logs, (Log, AntennaLog)) else tuple(logs)
+        if not selected:
+            raise ValueError("at least one log is required")
+        if any(not isinstance(log, (Log, AntennaLog)) for log in selected):
+            raise TypeError("logs must contain Log or AntennaLog values")
+        commands: list[tuple[str, Command[CommandResponse]]] = []
+        for log in selected:
+            wire_log = log.wire if isinstance(log, AntennaLog) else log
+            if wire_log is Log.UNILOGLIST:
+                raise ValueError("UNILOGLIST only has a one-shot query")
+            form = binary
+            if form is None:
+                try:
+                    log.wire_name(binary=True)
+                except ValueError:
+                    form = False
+                else:
+                    form = True
+            name = log.wire_name(binary=form)
+            commands.append(
+                (name, log.output(rate_hz=rate_hz, binary=form, port=selected_port))
+            )
+        if len({name for name, _ in commands}) != len(commands):
+            raise ValueError("logs must select distinct wire outputs")
+        responses: list[CommandResponse] = []
+        with self._lock:
+            try:
+                for _, command in commands:
+                    responses.append(self.execute(command))
+                if verify:
+                    entries = self.log_list().entries
+                    for name, _ in commands:
+                        matches = [
+                            entry
+                            for entry in entries
+                            if entry.name == name and entry.port == selected_port
+                        ]
+                        if (
+                            len(matches) != 1
+                            or isinstance(matches[0].interval, Trigger)
+                            or not isclose(
+                                matches[0].interval, interval, rel_tol=0, abs_tol=1e-9
+                            )
+                        ):
+                            raise ProtocolError(
+                                f"LOGLIST did not confirm {name} at {interval:g} s "
+                                f"on {selected_port}"
+                            )
+            except Exception as error:
+                completed = (
+                    ", ".join(command.text for _, command in commands[: len(responses)])
+                    or "none"
+                )
+                error.add_note(
+                    f"Output commands acknowledged before failure: {completed}. "
+                    "A failed or timed-out command may also have changed settings."
+                )
+                raise
+        return tuple(responses)
 
     def firmware_info(self, *, binary: bool = False) -> FirmwareInfo:
         """Query extended enclosure and secondary firmware metadata."""

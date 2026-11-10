@@ -30,9 +30,7 @@ def _parser() -> ExampleParser:
     parser.add_argument(
         "--duration", type=float, default=5.0, help="collection time in seconds"
     )
-    parser.add_argument(
-        "--interval", type=float, default=1.0, help="SATVIS2 output interval in seconds"
-    )
+    parser.add_output_interval(default=1.0, help="SATVIS2 output interval in seconds")
     parser.add_argument(
         "--mask", type=float, default=0.0, help="elevation mask in degrees"
     )

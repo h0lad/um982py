@@ -29,6 +29,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = experiment_parser(
         "ppp_filter_inspector",
         "Internal PPP filter SSR coverage, multifrequency residuals and CPU load",
+        output_rate=False,
     )
     parser.set_defaults(duration=4.0)
     add_debug_argument(parser)

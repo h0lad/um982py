@@ -5,7 +5,9 @@ from dataclasses import dataclass
 from math import isfinite
 from time import monotonic
 
+from um982py.antenna import AntennaLog
 from um982py.capture import DataLog, _matching_requests, subscription_plan
+from um982py.commands import logging
 from um982py.errors import ResponseTimeout
 from um982py.messages import Message, Record
 from um982py.receiver import Receiver
@@ -63,7 +65,8 @@ def iter_live_records(
     logs: Sequence[DataLog],
     *,
     duration: float,
-    interval: float = 1.0,
+    interval: float | None = None,
+    rate_hz: float | None = None,
     binary: bool = True,
 ) -> Iterator[tuple[str, Record]]:
     """Temporarily subscribe and yield records until the duration elapses.
@@ -73,10 +76,16 @@ def iter_live_records(
     can cause data loss at the transport. Use RecordingTransport separately if
     you need to preserve the raw bytes.
     """
+    interval = logging.output_interval(interval, rate_hz)
     if not isfinite(duration) or duration <= 0:
         raise ValueError("duration must be finite and positive")
     if not isfinite(interval) or interval <= 0:
         raise ValueError("interval must be finite and positive")
+    if rate_hz is not None and any(
+        (log.wire if isinstance(log, AntennaLog) else log).onchanged_only
+        for log in logs
+    ):
+        raise ValueError("ONCHANGED-only logs do not support rate_hz")
     planned = subscription_plan(logs, interval=interval, binary=binary)
     with temporary_subscriptions(receiver, *planned):
         deadline = monotonic() + duration

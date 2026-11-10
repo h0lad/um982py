@@ -68,7 +68,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="maximum epochs (default: 60 live, all epochs when replaying)",
     )
     parser.add_argument("--source", choices=("range", "obsv"), default="range")
-    parser.add_argument("--interval", type=float, default=1.0)
+    parser.add_output_interval(default=1.0)
     parser.add_argument(
         "--duration", type=float, default=60.0, help="live collection time in seconds"
     )

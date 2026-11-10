@@ -33,7 +33,9 @@ from um982py.stats import rms
 def main(argv: Sequence[str] | None = None) -> int:
     """Compare healthy GPS broadcast states at exact precise-product epochs."""
     parser = experiment_parser(
-        "broadcast_orbit_audit", "Independent GPS orbit and clock product comparison"
+        "broadcast_orbit_audit",
+        "Independent GPS orbit and clock product comparison",
+        output_rate=False,
     )
     parser.add_argument(
         "--sp3",

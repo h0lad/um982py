@@ -1,6 +1,6 @@
 """Use position, heading and NTRIP corrections together in one rover session."""
 
-from collections.abc import Iterator
+from collections.abc import Iterator, Sequence
 from dataclasses import dataclass
 from math import isfinite
 from threading import Event, Thread
@@ -8,11 +8,14 @@ from time import sleep
 from types import TracebackType
 from typing import Literal, Self
 
+from um982py.antenna import AntennaLog
 from um982py.commands import Log, queries
 from um982py.commands.core import Command
+from um982py.commands.types import Port
 from um982py.errors import ResponseTimeout
 from um982py.measurement import gps_epoch
 from um982py.messages.enums import PositionType
+from um982py.messages.frames import CommandResponse
 from um982py.messages.navigation import BestNavigation, Fix
 from um982py.messages.record import Record
 from um982py.receiver import Receiver
@@ -187,6 +190,27 @@ class Rover:
     def correction_health(self) -> RtkHealth | None:
         """Return relay status; None means corrections were not requested."""
         return self._rtk.health() if self._rtk is not None else None
+
+    def set_output_rate(
+        self,
+        logs: Log | AntennaLog | Sequence[Log | AntennaLog],
+        rate_hz: float,
+        *,
+        binary: bool | None = None,
+        port: Port | None = None,
+        verify: bool = False,
+    ) -> tuple[CommandResponse, ...]:
+        """Configure receiver output while the correction relay is running."""
+        self._check()
+        result = self.stream.set_output_rate(
+            logs, rate_hz, binary=binary, port=port, verify=verify
+        ).result()
+        try:
+            self._check()
+        except RuntimeError as error:
+            error.add_note("The output-rate commands were already acknowledged.")
+            raise
+        return result
 
     @property
     def timeout(self) -> float:

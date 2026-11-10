@@ -70,7 +70,9 @@ def _report(samples: Sequence[MatchedSolution], max_gap: float) -> dict[str, obj
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = experiment_parser("matched_solution", "Inspect MATCHEDSOLUTIONB")
+    parser = experiment_parser(
+        "matched_solution", "Inspect MATCHEDSOLUTIONB", output_rate=False
+    )
     parser.add_argument("--max-gap", type=float, default=5.0)
     args = parser.parse_args(argv)
     if args.antenna not in ("primary", "1") or args.swap_antennas:

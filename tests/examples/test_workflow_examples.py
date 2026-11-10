@@ -109,6 +109,31 @@ def test_live_example_outputs_geojson(
     ]
 
 
+def test_live_example_configures_requested_receiver_rate(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    commands = []
+
+    class Session:
+        def __init__(self, factory: object, *, configure: object) -> None:
+            from unittest.mock import Mock
+
+            receiver = Mock()
+            configure(receiver)  # type: ignore[operator]
+            commands.extend(
+                call.args[0].text for call in receiver.execute.call_args_list
+            )
+
+        def positions(self, stop: object) -> object:
+            yield from ()
+
+    monkeypatch.setattr(position_cli, "PositionSession", Session)
+    assert position_cli.main(["/dev/test", "--rate-hz", "10"]) == 0
+    assert commands == ["GPGGA 0.1"]
+    with pytest.raises(SystemExit):
+        position_cli.main(["/dev/test", "--rate-hz", "100"])
+
+
 def test_ntrip_sources_example_orders_by_distance(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

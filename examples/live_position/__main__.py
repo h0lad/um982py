@@ -19,7 +19,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("target", help="serial port or tcp://host:port")
     parser.add_argument("--baud", type=int, default=115200)
-    parser.add_argument("--interval", type=float, default=1.0)
+    rate = parser.add_mutually_exclusive_group()
+    rate.add_argument("--interval", type=float, help="GGA output interval in seconds")
+    rate.add_argument("--rate-hz", type=float, help="GGA output rate in Hz")
     parser.add_argument(
         "--geojson", action="store_true", help="output WGS84 fixes as GeoJSON lines"
     )
@@ -30,9 +32,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--max-correction-age", type=float, help="maximum correction age in seconds"
     )
     args = parser.parse_args(argv)
+    try:
+        command = Log.GPGGA.output(args.interval, rate_hz=args.rate_hz)
+    except ValueError as error:
+        parser.error(str(error))
 
     def configure(receiver: Receiver) -> None:
-        receiver.execute(Log.GPGGA.output(args.interval))
+        receiver.execute(command)
 
     session = PositionSession(
         lambda: Receiver.connect(args.target, args.baud), configure=configure

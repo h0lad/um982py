@@ -62,7 +62,9 @@ def _report(samples: Sequence[RtkData]) -> dict[str, object]:
 
 def main(argv: Sequence[str] | None = None) -> int:
     """Collect RTKDATA frames and report engine covariance and states."""
-    parser = experiment_parser("engine_state", "Inspect RTKDATA/RTKDATA2B")
+    parser = experiment_parser(
+        "engine_state", "Inspect RTKDATA/RTKDATA2B", output_rate=False
+    )
     args = parser.parse_args(argv)
     if args.antenna not in ("primary", "1") or args.swap_antennas:
         parser.error("RTKDATA antenna scope is not established")

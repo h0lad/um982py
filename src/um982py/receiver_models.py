@@ -71,6 +71,15 @@ class LogEntry:
     port: Port
     interval: float | Trigger
 
+    @property
+    def rate_hz(self) -> float | None:
+        """Return the configured periodic rate, or None for ONCHANGED output."""
+        if isinstance(self.interval, Trigger):
+            return None
+        if not isfinite(self.interval) or self.interval <= 0:
+            raise ValueError("log interval must be finite and positive")
+        return 1 / self.interval
+
     def command(self) -> Command[CommandResponse]:
         return output(self.name, self.interval, port=self.port)
 

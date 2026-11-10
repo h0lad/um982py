@@ -33,6 +33,27 @@ for a later run, provided the recording destination does not already exist. Path
 create the directories as needed. The repository includes the files under
 `tests/fixtures/`.
 
+Examples that capture periodic receiver logs accept `--interval` in seconds.
+Captured receiver epochs are not interpolated or repeated to reach a requested
+rate. A repeated receiver timestamp is not an independent measurement; inspect
+timestamps and gaps when evaluating the actual cadence.
+The capture examples that expose `--rate-hz` also accept a documented N4 rate
+in Hz instead, for example:
+
+```bash
+python -m examples.position_tracking --port /dev/ttyUSB0 --duration 30 --rate-hz 10
+python -m examples.live_position /dev/ttyUSB0 --rate-hz 10
+```
+
+The options are alternatives: do not pass both. The rate is a request for
+periodic logs; logs configured as `ONCHANGED` retain their event trigger. Actual
+rates depend on firmware, signal group, log and available port bandwidth. A
+replay cannot change the recorded cadence; where an example uses the interval
+for analysis, the option changes that expected value only. Polling-only and
+event-only examples do not expose `--rate-hz`. See the
+[output-rate guide](../docs/api.md#receiver-output-rates) for limits and checking
+observed receiver epochs.
+
 ## Antennas
 
 Select an input with `--antenna`, or use `--swap-antennas` to exchange roles and

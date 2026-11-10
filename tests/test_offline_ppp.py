@@ -64,6 +64,33 @@ def test_record_passes_raw_capture_and_station_metadata(
     assert captured[captured.index("--frames") + 1] == "3"
 
 
+def test_record_rate_is_forwarded_as_receiver_interval(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    captured: list[str] = []
+    monkeypatch.setattr(
+        ppp, "record_rinex", lambda options: captured.extend(options) or 0
+    )
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "offline_ppp",
+            "record",
+            "--port",
+            "/dev/test",
+            "--duration",
+            "10",
+            "--rate-hz",
+            "10",
+            "--output-dir",
+            str(tmp_path / "occupation"),
+        ],
+    )
+    assert ppp.main() == 0
+    assert captured[captured.index("--interval") + 1] == "0.1"
+
+
 def test_segmented_recording_preserves_incomplete_segment_and_resumes(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

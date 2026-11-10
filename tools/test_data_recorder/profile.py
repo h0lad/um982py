@@ -4,6 +4,7 @@ import argparse
 from collections.abc import Sequence
 
 from um982py.commands import Log, Port, Trigger
+from um982py.commands.logging import interval_from_rate
 
 Profile = tuple[tuple[Log, float | Trigger], ...]
 
@@ -50,12 +51,34 @@ CORRECTIONS: Profile = (
     (Log.E6PBIASBLOCK, Trigger.ON_CHANGED),
 )
 TRACKED = CORE + COMPRESSED + CORRECTIONS
+RATE_LOGS = frozenset(
+    {
+        Log.OBSVM,
+        Log.OBSVH,
+        Log.RANGE,
+        Log.RANGEH,
+        Log.OBSVMCMP,
+        Log.OBSVHCMP,
+        Log.BESTNAV,
+        Log.BESTNAVH,
+        Log.PPPNAV,
+        Log.PPPNAVH,
+    }
+)
 
 
-def select(*, compressed: bool = False, corrections: bool = False) -> Profile:
+def select(
+    *, compressed: bool = False, corrections: bool = False, rate_hz: float | None = None
+) -> Profile:
     """Return the requested output profile."""
-    return (
+    selected = (
         CORE + (COMPRESSED if compressed else ()) + (CORRECTIONS if corrections else ())
+    )
+    if rate_hz is None:
+        return selected
+    interval = interval_from_rate(rate_hz)
+    return tuple(
+        (log, interval if log in RATE_LOGS else value) for log, value in selected
     )
 
 
@@ -64,9 +87,21 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--compressed", action="store_true")
     parser.add_argument("--corrections", action="store_true")
     parser.add_argument("--port", choices=[port.value for port in Port])
+    parser.add_argument(
+        "--rate-hz",
+        type=float,
+        help="requested observation and position output rate in Hz",
+    )
     args = parser.parse_args(argv)
     port = Port(args.port) if args.port else None
-    selected = select(compressed=args.compressed, corrections=args.corrections)
+    try:
+        selected = select(
+            compressed=args.compressed,
+            corrections=args.corrections,
+            rate_hz=args.rate_hz,
+        )
+    except ValueError as error:
+        parser.error(str(error))
     for log, interval in selected:
         print(log.output(interval, binary=True, port=port).text)
     return 0

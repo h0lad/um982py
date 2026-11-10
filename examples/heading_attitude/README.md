@@ -32,6 +32,9 @@ python -m examples.heading_attitude --port /dev/ttyUSB0 --swap-antennas \
 
 The example requires a dual-antenna baseline. If the antenna roles are reversed,
 `--swap-antennas` changes the baseline interpretation without changing RF power.
+BSLNENUHD is requested with `ONCHANGED`; `--interval` does not set a periodic
+baseline output rate. For periodic heading output, configure a supported log such
+as UNIHEADING as described in the [output-rate guide](../../docs/api.md#receiver-output-rates).
 
 ## Understanding the result
 

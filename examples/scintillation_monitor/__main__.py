@@ -69,7 +69,7 @@ def _parser() -> ExampleParser:
         "--duration", type=float, default=30.0, help="live collection time in seconds"
     )
     parser.add_argument("--window", type=int, default=60, help="epochs per S4 window")
-    parser.add_argument("--interval", type=float, default=1.0, help="epoch seconds")
+    parser.add_output_interval(default=1.0, help="epoch seconds")
     parser.add_argument(
         "--frames", type=int, default=120, help="RANGE epochs to collect"
     )

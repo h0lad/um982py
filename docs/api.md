@@ -104,6 +104,102 @@ before the query remain available through `receive()` or `drain_pending()`.
 The callback runs inside the transaction and must not call receiver methods.
 For `AsyncReceiver.positions()`, the callback runs in a worker thread.
 
+## Receiver output rates
+
+The receiver configures each periodic log separately. Set the rate in Hz for one
+or several logs, using the current receiver port by default:
+
+```python
+from um982py import Log, Receiver
+from um982py.commands import Port
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    receiver.set_output_rate([Log.GPGGA, Log.BESTNAV], 10, port=Port.COM1, verify=True)
+    for entry in receiver.log_list().entries:
+        print(entry.port, entry.name, entry.rate_hz)
+```
+
+`COM1` above is an example of a **receiver** port; select the port wired to your
+host. The API chooses binary for logs that support it and ASCII otherwise. Pass
+`binary=False` or `True` to require one format for every selected log, or use
+`antenna_log(log, "secondary")` to select a documented secondary-antenna log.
+`verify=True` requires an explicit port and checks the configured interval in
+`LOGLIST`. The command acknowledgement and readback do not measure actual output
+or guarantee a particular positioning solution rate. `LogEntry.rate_hz` is
+`None` for event-based `ONCHANGED` subscriptions.
+`await async_receiver.set_output_rate(...)` provides the same API for asyncio.
+When a `ReceiverStream` or `Rover` owns the receiver, use its
+`set_output_rate(...)` method; `ReceiverStream` returns a future.
+
+```bash
+um982py --port /dev/ttyUSB0 --baud 921600 output-rate \
+  --log GPGGA --log BESTNAV --rate-hz 10 --output-port COM1 --verify-rate
+```
+
+The CLI uses ASCII for logs by default; `--binary` requires binary for all
+selected logs. Configuration changes are not saved with `SAVECONFIG`, and the
+signal group is not changed. If a batch fails, earlier acknowledged commands
+remain active; a rejected or timed-out command may also have changed settings.
+The exception and CLI report the commands acknowledged before failure.
+
+The documented N4 periodic rates are 1, 2, 5, 10, 20 and 50 Hz; 50 Hz is limited
+to specific N4 products and firmware. Unicore specifies 20 Hz RTK and heading
+for the UM982. Its command manual qualifies 20 Hz in signal group 3/6 by firmware
+and log; it does not establish that every log or every signal group supports that
+rate. There is no documented N4 100 Hz output in these references, so `rate_hz=100`
+is rejected. A syntactically valid request can still be rejected, capped or
+produce data more slowly on the actual hardware. Check the delivered epochs and
+port throughput in your setup. Changing `SIGNALGROUP` can reset the receiver and
+be saved automatically; this API deliberately does not change it.
+
+The lower-level seconds interface can investigate a firmware-specific interval
+outside that documented rate list, for example
+`receiver.execute(Log.GPGGA.output(interval=0.01))`. This requests 100 Hz; it
+does not establish that the UM982 or that log supports it. Check the receiver
+response, `LOGLIST`, and the actual delivered epochs.
+
+At the command level, `Log.BESTNAV.output(rate_hz=10)` builds the same request;
+the existing `interval` argument remains in seconds and is mutually exclusive
+with `rate_hz`. For a temporary recording use, for example,
+`capture_live(receiver, Log.RANGE, duration=30, rate_hz=10)`: the previous
+subscriptions are restored afterward. `iter_live_records` accepts the same
+option for streaming. Explicit `rate_hz` is not applicable to ONCHANGED-only or
+one-shot logs. `receiver.positions(interval=...)` and `rover.positions(...)`
+poll at an application interval; they do not configure receiver output rates.
+Capture and replay do not interpolate, fill gaps or repeat measurements to
+match a requested rate. Receiver messages are preserved even when their epochs
+repeat; repeated epochs are not independent samples. Polling can return the
+same receiver epoch more than once and must not be treated as a native stream.
+
+For timestamped logs such as BESTNAV, inspect delivered receiver-epoch intervals
+after capturing data. For example, the following reports the median observed
+cadence and the largest gap; check the receiver's time status before relying on
+its timestamps:
+
+```python
+from itertools import pairwise
+from statistics import median
+
+from um982py import Log, Receiver, capture_live
+from um982py.capture import record_epoch
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    records = capture_live(receiver, Log.BESTNAV, duration=10, rate_hz=10)
+
+epochs = [record_epoch(record) for record in records]
+intervals = [later - earlier for earlier, later in pairwise(epochs)]
+if intervals and all(interval > 0 for interval in intervals):
+    print(
+        "Median rate:", 1 / median(intervals), "Hz; largest gap:", max(intervals), "s"
+    )
+else:
+    print("Not enough ordered epochs to measure the rate")
+```
+
+Sources: [Unicore N4 command reference, data output commands](https://en.unicore.com/uploads/file/Unicore%20Reference%20Commands%20Manual%20For%20N4%20High%20Precision%20Products_V2_EN_R1.3.pdf),
+[UM982 product specifications](https://en.unicorecomm.com/products/um982/),
+and [N4 signal-group configuration](https://en.unicore.com/uploads/file/unicore-reference-commands-manual-for-n4-high-precision-products-v2-en-r1.2.pdf).
+
 ## Satellites and measurements
 
 `receiver.satellites()` returns `Satellite` objects with a constellation, PRN,

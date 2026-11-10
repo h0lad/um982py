@@ -21,6 +21,7 @@ from typing import TypedDict
 
 from examples.offline_ppp.solver import process_observations
 from examples.rinex_export.__main__ import main as record_rinex
+from um982py.commands.logging import interval_from_rate
 from um982py.errors import TransportError
 from um982py.field_data import file_sha256
 from um982py.receiver import Receiver
@@ -547,7 +548,11 @@ def main() -> int:
         required=True,
         help="stationary observation time in seconds",
     )
-    record.add_argument("--interval", type=float, default=5.0)
+    output_rate = record.add_mutually_exclusive_group()
+    output_rate.add_argument("--interval", type=float, default=5.0)
+    output_rate.add_argument(
+        "--rate-hz", type=float, help="requested observation output rate in Hz"
+    )
     record.add_argument("--output-dir", type=Path, required=True)
     record.add_argument(
         "--metadata", type=Path, help="RinexMetadata JSON with measured antenna details"
@@ -592,6 +597,8 @@ def main() -> int:
     args = parser.parse_args()
     try:
         if args.action == "record":
+            if args.rate_hz is not None:
+                args.interval = interval_from_rate(args.rate_hz)
             if (
                 not math.isfinite(args.duration)
                 or not math.isfinite(args.interval)

@@ -14,6 +14,42 @@ from um982py.messages.frames import (
 )
 
 
+def interval_from_rate(rate_hz: float) -> float:
+    """Convert a documented N4 output rate to the receiver's interval in seconds.
+
+    The receiver, its firmware, signal group and log determine which rates are
+    actually available. In particular, 50 Hz applies only to certain N4 models.
+    """
+    intervals: dict[float, float] = {
+        1: 1.0,
+        2: 0.5,
+        5: 0.2,
+        10: 0.1,
+        20: 0.05,
+        50: 0.02,
+    }
+    if isinstance(rate_hz, bool) or not isinstance(rate_hz, (int, float)):
+        raise ValueError("rate_hz must be one of 1, 2, 5, 10, 20 or 50 Hz")
+    try:
+        return intervals[rate_hz]
+    except KeyError:
+        raise ValueError(
+            "rate_hz must be one of 1, 2, 5, 10, 20 or 50 Hz; "
+            "100 Hz is not documented for N4 output"
+        ) from None
+
+
+def output_interval(interval: float | None, rate_hz: float | None) -> float:
+    """Resolve mutually exclusive interval and rate options."""
+    if interval is not None and rate_hz is not None:
+        raise ValueError("specify interval or rate_hz, not both")
+    return (
+        interval_from_rate(rate_hz)
+        if rate_hz is not None
+        else (1.0 if interval is None else interval)
+    )
+
+
 def _text(name: str, interval: float | Trigger | None, port: Port | None) -> str:
     parts = [token(name)]
     if port is not None:

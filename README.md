@@ -20,6 +20,7 @@ The CLI accepts a serial port or a transparent TCP-to-UART gateway:
 um982py --port /dev/ttyUSB0 --baud 921600 version
 um982py --port /dev/ttyUSB0 --baud 921600 satellites
 um982py --port tcp://192.0.2.10:4001 doctor
+um982py --port /dev/ttyUSB0 --baud 921600 output-rate --log GPGGA --rate-hz 10
 ```
 
 Queries leave augmentation settings unchanged. Use `--augment` to enable
@@ -53,6 +54,7 @@ independent reference according to the application.
 | Query one receiver log | `receiver.read_log(Log.BESTNAV)` |
 | Inspect satellites and their signals | `receiver.satellites()` |
 | Follow positions | `receiver.positions(interval=1)` |
+| Configure periodic receiver output | `receiver.set_output_rate(Log.GPGGA, 10)` |
 | Start Galileo HAS or BeiDou PPP-B2b | `receiver.start_ppp(service="E6-HAS")` |
 | Capture one log or several logs | `capture_live()` |
 | Read a saved capture or one message | `load_records(path, Log.RANGE)` or `decode_message(data)` |

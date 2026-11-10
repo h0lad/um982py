@@ -198,9 +198,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--duration", type=float, default=5.0, help="live collection time in seconds"
     )
-    parser.add_argument(
-        "--interval", type=float, default=1.0, help="output interval in seconds"
-    )
+    parser.add_output_interval(default=1.0, help="output interval in seconds")
     parser.add_argument(
         "--debug",
         action="store_true",

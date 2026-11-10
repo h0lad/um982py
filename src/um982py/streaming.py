@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from concurrent.futures import Future
 from contextlib import suppress
 from dataclasses import dataclass
@@ -20,7 +21,11 @@ from um982py.messages import Message, RtcmMessage, Sentence
 if TYPE_CHECKING:
     from collections.abc import Callable
 
+    from um982py.antenna import AntennaLog
+    from um982py.commands import Log
     from um982py.commands.core import Command
+    from um982py.commands.types import Port
+    from um982py.messages import CommandResponse
     from um982py.receiver import Receiver
 
 
@@ -186,6 +191,27 @@ class ReceiverStream:
     ) -> Future[T]:
         """Queue a command and return a future for its result or error."""
         return self._submit(lambda: self.receiver.execute(command, timeout=timeout))
+
+    def set_output_rate(
+        self,
+        logs: Log | AntennaLog | Sequence[Log | AntennaLog],
+        rate_hz: float,
+        *,
+        binary: bool | None = None,
+        port: Port | None = None,
+        verify: bool = False,
+    ) -> Future[tuple[CommandResponse, ...]]:
+        """Queue a receiver output-rate change and return its future."""
+        selected = (
+            tuple(logs)
+            if isinstance(logs, Sequence) and not isinstance(logs, str)
+            else logs
+        )
+        return self._submit(
+            lambda: self.receiver.set_output_rate(
+                selected, rate_hz, binary=binary, port=port, verify=verify
+            )
+        )
 
     def send_correction(self, message: RtcmMessage) -> Future[None]:
         return self._submit(lambda: self.receiver.send_correction(message))

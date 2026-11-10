@@ -96,9 +96,7 @@ def _parser() -> ExampleParser:
         default=5.0,
         help="collection time in seconds when reading the device",
     )
-    parser.add_argument(
-        "--interval", type=float, default=1.0, help="output interval in seconds"
-    )
+    parser.add_output_interval(default=1.0, help="output interval in seconds")
     parser.add_argument(
         "--system",
         type=int,

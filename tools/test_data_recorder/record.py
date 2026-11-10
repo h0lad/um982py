@@ -212,6 +212,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     parser.add_argument("--compressed", action="store_true")
     parser.add_argument("--corrections", action="store_true")
+    parser.add_argument(
+        "--rate-hz",
+        type=float,
+        help="requested observation and position output rate in Hz",
+    )
     parser.add_argument("--baud", type=int, default=921600)
     parser.add_argument("--duration", type=float, default=86400, help="seconds")
     parser.add_argument("--segment-bytes", type=int, default=256 * 1024 * 1024)
@@ -234,6 +239,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         or args.status_seconds <= 0
     ):
         parser.error("duration, baud, segment size and intervals must be positive")
+    try:
+        profile = select(
+            compressed=args.compressed,
+            corrections=args.corrections,
+            rate_hz=args.rate_hz,
+        )
+    except ValueError as error:
+        parser.error(str(error))
     metadata = (
         json.loads(args.metadata.read_text(encoding="utf-8")) if args.metadata else {}
     )
@@ -243,9 +256,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     port = Port(args.receiver_port)
     planned = tuple(
         (log.wire_name(binary=True), log.output(interval, binary=True, port=port))
-        for log, interval in select(
-            compressed=args.compressed, corrections=args.corrections
-        )
+        for log, interval in profile
     )
     report: dict | None = None
     failure: Exception | None = None
@@ -255,6 +266,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "port": args.port,
             "baud": args.baud,
             "receiver_port": port.value,
+            "requested_rate_hz": args.rate_hz,
             "commands": [command.text for _, command in planned],
             "notes": metadata,
         },

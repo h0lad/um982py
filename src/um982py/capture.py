@@ -81,10 +81,9 @@ def latest_epoch(records: Sequence[Record]) -> tuple[Record, ...]:
 
 def matcher(log: DataLog, binary: bool) -> Command[Message]:
     """Match a data log, including logs emitted only on events."""
-    if isinstance(log, AntennaLog):
-        return log.request(binary=binary)
+    wire = log.wire if isinstance(log, AntennaLog) else log
     return logging.request(
-        log.wire_name(binary=binary), message_id=log.definition.message_id
+        log.wire_name(binary=binary), message_id=wire.definition.message_id
     )
 
 
@@ -157,10 +156,9 @@ def subscription_plan(
             matcher(log, form)
         except ValueError:
             form = False
-        try:
-            start = log.output(interval, binary=form)
-        except ValueError:
-            start = log.output(Trigger.ON_CHANGED, binary=form)
+        wire = log.wire if isinstance(log, AntennaLog) else log
+        trigger = Trigger.ON_CHANGED if wire.onchanged_only else interval
+        start = log.output(trigger, binary=form)
         planned.append((log.wire_name(binary=form), start))
     return planned
 
@@ -172,7 +170,8 @@ def capture_live(  # type: ignore[overload-overlap]
     logs: DataLog,
     *,
     duration: float,
-    interval: float = 1.0,
+    interval: float | None = None,
+    rate_hz: float | None = None,
     frames: int | None = None,
     binary: bool = True,
     arrival_order: list[Record] | None = None,
@@ -187,7 +186,8 @@ def capture_live(
     logs: Sequence[DataLog],
     *,
     duration: float,
-    interval: float = 1.0,
+    interval: float | None = None,
+    rate_hz: float | None = None,
     frames: int | None = None,
     binary: bool = True,
     arrival_order: list[Record] | None = None,
@@ -201,7 +201,8 @@ def capture_live(
     logs: DataLog | Sequence[DataLog],
     *,
     duration: float,
-    interval: float = 1.0,
+    interval: float | None = None,
+    rate_hz: float | None = None,
     frames: int | None = None,
     binary: bool = True,
     arrival_order: list[Record] | None = None,
@@ -216,7 +217,11 @@ def capture_live(
     the collection time in seconds. For a single log other than SATVIS2,
     ``frames`` can stop collection early; it does not limit multiple logs or
     SATVIS2, whose epochs can span multiple frames. Records are held in memory.
+    Supply ``rate_hz`` for a documented N4 rate or ``interval`` in seconds.
+    Event-only logs cannot use ``rate_hz``. Actual output depends on the
+    receiver, signal group, log and firmware.
     """
+    interval = logging.output_interval(interval, rate_hz)
     if not math.isfinite(duration) or duration <= 0:
         raise ValueError("duration must be finite and positive")
     if not math.isfinite(interval) or interval <= 0:
@@ -235,6 +240,11 @@ def capture_live(
     names = [log.value for log in selected]
     if len(set(names)) != len(names):
         raise ValueError("logs must have distinct names")
+    if rate_hz is not None and any(
+        (log.wire if isinstance(log, AntennaLog) else log).onchanged_only
+        for log in selected
+    ):
+        raise ValueError("ONCHANGED-only logs do not support rate_hz")
     planned = subscription_plan(selected, interval=interval, binary=binary)
     with temporary_subscriptions(receiver, *planned):
         records = receive_records(
@@ -266,7 +276,6 @@ def receive_records(
         raise ValueError("duration must be finite and positive")
     collected: dict[str, list[Record]] = {log.value: [] for log in logs}
     requests = [(log, _matching_requests(log)) for log in logs]
-    trimmed: set[str] = set()
     deadline = monotonic() + duration
     next_progress = monotonic() + 5
     try:
@@ -300,21 +309,6 @@ def receive_records(
                 values.extend(records)
                 if arrival_order is not None:
                     arrival_order.extend(records)
-                if (
-                    interval is not None
-                    and interval < 1.0
-                    and log.value not in trimmed
-                    and len(values) == 2
-                ):
-                    trimmed.add(log.value)
-                    with suppress(ValueError):
-                        if (
-                            record_epoch(values[1]) - record_epoch(values[0])
-                            > interval + 1e-4
-                        ):
-                            dropped = values.pop(0)
-                            if arrival_order is not None and dropped in arrival_order:
-                                arrival_order.remove(dropped)
             if (
                 frames is not None
                 and len(logs) == 1

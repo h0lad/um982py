@@ -30,9 +30,7 @@ def _parser() -> ExampleParser:
     parser.add_argument(
         "--duration", type=float, default=30.0, help="live collection time in seconds"
     )
-    parser.add_argument(
-        "--interval", type=float, default=1.0, help="position log interval in seconds"
-    )
+    parser.add_output_interval(default=1.0, help="position log interval in seconds")
     parser.add_argument(
         "--precision-service",
         dest="ppp_service",

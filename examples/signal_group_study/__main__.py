@@ -275,9 +275,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--frames", type=int, default=30, help="number of RANGE frames per setting"
     )
-    parser.add_argument(
-        "--interval", type=float, default=1.0, help="output interval in seconds"
-    )
+    parser.add_output_interval(default=1.0, help="output interval in seconds")
     parser.add_argument(
         "--reboot-seconds",
         type=float,

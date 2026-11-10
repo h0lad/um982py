@@ -223,9 +223,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--frames", type=int, default=60, help="number of RANGE frames per mask"
     )
-    parser.add_argument(
-        "--interval", type=float, default=1.0, help="seconds between RANGE frames"
-    )
+    parser.add_output_interval(default=1.0, help="seconds between RANGE frames")
     parser.add_argument(
         "--frequency",
         type=float,

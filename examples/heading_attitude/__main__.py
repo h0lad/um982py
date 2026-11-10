@@ -84,7 +84,7 @@ def _parser() -> ExampleParser:
         "--interval",
         type=float,
         default=1.0,
-        help="baseline output interval in seconds",
+        help="capture interval in seconds; BSLNENUHD output remains ONCHANGED",
     )
     parser.add_argument(
         "--debug",
@@ -119,7 +119,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         origin = f"replay {args.replay}" if args.replay else f"receiver {args.port}"
         print(
             f"heading_attitude debug: {origin}; "
-            f"duration={args.duration:g}s; interval={args.interval:g}s",
+            f"duration={args.duration:g}s; baseline=ONCHANGED",
             file=sys.stderr,
             flush=True,
         )

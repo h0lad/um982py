@@ -4,11 +4,14 @@ Print GGA fixes from a receiver and reconnect after a transport failure:
 
 ```bash
 python -m examples.live_position /dev/ttyUSB0 --baud 921600 --interval 1
+python -m examples.live_position /dev/ttyUSB0 --baud 921600 --rate-hz 10
 ```
 
 The example enables GPGGA output on each connection and leaves that output
 configured on the receiver. Stop it with Ctrl-C. A TCP target can be supplied as
 `tcp://host:port`.
+`--interval` specifies seconds; `--rate-hz` requests a documented rate in Hertz.
+Choose one option. The receiver and firmware determine the actual output rate.
 
 `PositionSession` reports host arrival time separately from the receiver's GGA
 UTC time of day. Missing measurements remain `None`; it does not combine

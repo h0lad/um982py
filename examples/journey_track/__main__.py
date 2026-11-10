@@ -168,7 +168,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--profile", choices=("marine", "aviation", "sport"), required=True
     )
     parser.add_argument("--duration", type=float, default=60)
-    parser.add_argument("--interval", type=float, default=1)
+    parser.add_output_interval(default=1)
     parser.add_argument("--max-gap-s", type=float, default=2)
     parser.add_argument("--moving-threshold-mps", type=float, default=0.5)
     parser.add_argument("--course-threshold-mps", type=float, default=1)

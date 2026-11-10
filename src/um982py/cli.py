@@ -11,7 +11,8 @@ from pathlib import Path
 from um982py.antenna import antenna_log
 from um982py.augmentation import enable_augmentation
 from um982py.capture import RecordingTransport
-from um982py.commands import Log, queries
+from um982py.commands import Log, logging, queries
+from um982py.commands.types import Port
 from um982py.diagnostics import (
     DOCTOR_LOGS,
     PPP_LOGS,
@@ -121,6 +122,7 @@ def _parser() -> argparse.ArgumentParser:
             "  best-nav         read position, velocity and precision\n"
             "  heading          read dual-antenna heading\n"
             "  satellites       show tracked satellites and signals\n"
+            "  output-rate      configure periodic log output\n"
             "  monitor          display incoming messages\n"
             "  rinex            capture and export observations\n"
             "  doctor           inspect receiver configuration and health\n"
@@ -152,6 +154,19 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--count", type=int, default=10)
     parser.add_argument("--duration", type=float, default=5.0)
     parser.add_argument(
+        "--log",
+        type=Log,
+        action="append",
+        help="log to configure; repeat for multiple logs",
+    )
+    parser.add_argument("--rate-hz", type=float, help="periodic log output rate in Hz")
+    parser.add_argument(
+        "--output-port", type=Port, choices=list(Port), help="receiver output port"
+    )
+    parser.add_argument(
+        "--verify-rate", action="store_true", help="verify settings through LOGLIST"
+    )
+    parser.add_argument(
         "--l2c-code",
         choices=("2S", "2L", "2X"),
         help="choose a RINEX component for type-9 L2C, otherwise omitted as unverified",
@@ -171,6 +186,7 @@ def _parser() -> argparse.ArgumentParser:
             "fix",
             "heading",
             "satellites",
+            "output-rate",
             "best-nav",
             "fw-info",
             "log-list",
@@ -195,6 +211,21 @@ def _parser() -> argparse.ArgumentParser:
 
 def _run_action(receiver: Receiver, args: argparse.Namespace, antenna: int) -> object:
     match args.action:
+        case "output-rate":
+            output_logs = [antenna_log(log, args.antenna) for log in args.log]
+            responses = receiver.set_output_rate(
+                output_logs,
+                args.rate_hz,
+                binary=args.binary,
+                port=args.output_port,
+                verify=args.verify_rate,
+            )
+            return {
+                "rate_hz": args.rate_hz,
+                "commands": [response.command for response in responses],
+                "readback_verified": args.verify_rate,
+                "actual_rate_measured": False,
+            }
         case "ppp-debug" | "fast-debug" | "mpt-debug":
             debug_log = {
                 "ppp-debug": InternalDebugLog.PPP_DEBUG_SECONDARY
@@ -327,6 +358,15 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--count must be positive")
     if not isfinite(args.duration) or args.duration <= 0:
         parser.error("--duration must be finite and positive")
+    if args.action == "output-rate":
+        if not args.log or args.rate_hz is None:
+            parser.error("output-rate requires --log and --rate-hz")
+        if args.verify_rate and args.output_port is None:
+            parser.error("--verify-rate requires --output-port")
+        try:
+            logging.interval_from_rate(args.rate_hz)
+        except ValueError as error:
+            parser.error(str(error))
     if args.record and args.output and args.record.resolve() == args.output.resolve():
         parser.error("--record and --output need different paths")
     for path in (args.record, args.output):
@@ -350,6 +390,8 @@ def main(argv: list[str] | None = None) -> int:
                 _write_result(_run_action(receiver, args, antenna), args)
     except (UM982Error, ValueError, OSError) as error:
         print(str(error), file=sys.stderr)
+        for note in getattr(error, "__notes__", ()):
+            print(note, file=sys.stderr)
         return 2
     except KeyboardInterrupt:
         return 130

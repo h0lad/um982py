@@ -50,11 +50,8 @@ def _parser() -> ExampleParser:
         default=SLIP_THRESHOLD_CYCLES,
         help="slip threshold in cycles",
     )
-    parser.add_argument(
-        "--interval",
-        type=float,
-        default=1.0,
-        help="seconds between collected RANGE frames",
+    parser.add_output_interval(
+        default=1.0, help="seconds between collected RANGE frames"
     )
     parser.add_argument(
         "--frames", type=int, default=60, help="number of RANGE frames to collect"

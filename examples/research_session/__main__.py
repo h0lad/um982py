@@ -22,7 +22,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     add_receiver_arguments(parser)
     parser.add_argument("--output-dir", type=Path, required=True)
     parser.add_argument("--duration", type=float, default=60)
-    parser.add_argument("--interval", type=float, default=10)
+    parser.add_output_interval(default=10)
     parser.add_argument(
         "--metadata", type=Path, help="primary antenna RINEX metadata JSON"
     )

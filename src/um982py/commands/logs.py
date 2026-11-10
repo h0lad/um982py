@@ -249,11 +249,22 @@ class Log(StrEnum):
 
     def output(
         self,
-        interval: float | Trigger = 1,
+        interval: float | Trigger | None = None,
         *,
+        rate_hz: float | None = None,
         binary: bool = False,
         port: Port | None = None,
     ) -> Command[CommandResponse]:
+        """Build a periodic or ONCHANGED output command for this log.
+
+        ``rate_hz`` uses documented N4 rates; actual support depends on the
+        receiver, firmware, signal group and log. ``interval`` is in seconds.
+        """
+        if isinstance(interval, Trigger):
+            if rate_hz is not None:
+                raise ValueError("specify interval or rate_hz, not both")
+        else:
+            interval = logging.output_interval(interval, rate_hz)
         if self.value in {"HEADINGOFFSET", "RXSTATUS"}:
             raise ValueError(f"{self.value} only has verified one-shot queries")
         if self.definition.changed_only and interval != Trigger.ON_CHANGED:

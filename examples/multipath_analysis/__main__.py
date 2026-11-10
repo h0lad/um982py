@@ -96,11 +96,8 @@ def _parser() -> ExampleParser:
     parser.add_argument(
         "--duration", type=float, default=30.0, help="live collection time in seconds"
     )
-    parser.add_argument(
-        "--interval",
-        type=float,
-        default=1.0,
-        help="seconds between collected RANGE frames",
+    parser.add_output_interval(
+        default=1.0, help="seconds between collected RANGE frames"
     )
     parser.add_argument(
         "--frames", type=int, default=60, help="number of RANGE frames to collect"

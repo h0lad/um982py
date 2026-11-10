@@ -8,8 +8,9 @@ import os
 import sys
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import overload
+from typing import cast, overload
 
+from um982py.commands.logging import interval_from_rate
 from um982py.errors import UM982Error
 from um982py.messages import Record
 from um982py.stats import finite
@@ -30,6 +31,19 @@ __all__ = [
 class ExampleParser(argparse.ArgumentParser):
     """Validate shared capture options before opening a connection."""
 
+    def add_output_interval(
+        self, *, default: float = 1.0, help: str = "log output interval in seconds"
+    ) -> None:
+        """Add alternative second-interval and documented Hertz options."""
+        options = self.add_mutually_exclusive_group()
+        options.add_argument("--interval", type=float, default=default, help=help)
+        options.add_argument(
+            "--rate-hz",
+            type=float,
+            help="requested periodic log output in Hz (1, 2, 5, 10, 20 or 50; "
+            "device dependent)",
+        )
+
     @overload
     def parse_args(
         self, args: Iterable[str] | None = None, namespace: None = None
@@ -46,6 +60,12 @@ class ExampleParser(argparse.ArgumentParser):
     ) -> object:
         supplied = list(sys.argv[1:] if args is None else args)
         parsed = super().parse_args(supplied, namespace)
+        rate_hz = getattr(parsed, "rate_hz", None)
+        if rate_hz is not None:
+            try:
+                cast(argparse.Namespace, parsed).interval = interval_from_rate(rate_hz)
+            except ValueError as error:
+                self.error(str(error))
         positive = {
             "baud",
             "duration",
@@ -281,16 +301,21 @@ def progress_printer(name: str) -> Callable[[dict[str, tuple[Record, ...]]], Non
     return progress
 
 
-def experiment_parser(name: str, description: str) -> ExampleParser:
+def experiment_parser(
+    name: str, description: str, *, output_rate: bool = True
+) -> ExampleParser:
     """Create a parser with bounded receiver capture and optional replay."""
     parser = ExampleParser(prog=f"python -m examples.{name}", description=description)
     add_receiver_arguments(parser)
     parser.add_argument(
         "--duration", type=float, default=30.0, help="live capture seconds"
     )
-    parser.add_argument(
-        "--interval", type=float, default=1.0, help="log interval seconds"
-    )
+    if output_rate:
+        parser.add_output_interval()
+    else:
+        parser.add_argument(
+            "--interval", type=float, default=1.0, help="interval in seconds"
+        )
     return parser
 
 

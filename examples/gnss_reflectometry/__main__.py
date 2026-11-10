@@ -185,9 +185,7 @@ def _parser() -> ExampleParser:
     parser.add_argument(
         "--duration", type=float, default=3600.0, help="capture seconds"
     )
-    parser.add_argument(
-        "--interval", type=float, default=5.0, help="log cadence seconds"
-    )
+    parser.add_output_interval(default=5.0, help="log cadence seconds")
     parser.add_argument(
         "--system",
         action="append",

@@ -337,6 +337,89 @@ def test_profile_commands_cover_both_antennas_and_optional_logs(
     assert "E6MASKBLOCKB COM1 ONCHANGED" in extended
 
 
+def test_profile_rate_changes_only_observation_and_position_logs(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert (
+        profile.main(
+            ["--port", "COM2", "--rate-hz", "10", "--compressed", "--corrections"]
+        )
+        == 0
+    )
+    commands = capsys.readouterr().out.splitlines()
+    for name in (
+        "OBSVMB",
+        "OBSVHB",
+        "RANGEB",
+        "RANGEHB",
+        "OBSVMCMPB",
+        "OBSVHCMPB",
+        "BESTNAVB",
+        "BESTNAVHB",
+        "PPPNAVB",
+        "PPPNAVHB",
+    ):
+        assert f"{name} COM2 0.1" in commands
+    assert "GPSEPHB COM2 ONCHANGED" in commands
+    assert "BSLNENUHDB COM2 ONCHANGED" in commands
+    assert "SATVIS2B COM2 10" in commands
+    assert "RECTIMEB COM2 1" in commands
+
+
+def test_recorder_applies_selected_rate_and_restores_subscriptions(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source = SubscriptionTransport()
+    source.subscriptions[("OBSVMB", Port.COM1)] = 5.0
+    original = dict(source.subscriptions)
+    monkeypatch.setattr(record, "SerialTransport", lambda *args: source)
+
+    def capture(
+        transport: object, recorder: SessionRecorder, duration: float, **kwargs: object
+    ) -> dict:
+        assert source.subscriptions[("OBSVMB", Port.COM1)] == 0.1
+        assert source.subscriptions[("RANGEHB", Port.COM1)] == 0.1
+        assert source.subscriptions[("SATVIS2B", Port.COM1)] == 10
+        recorder.write(b"data")
+        return {"status": "complete", "received_bytes": 4}
+
+    monkeypatch.setattr(record, "record", capture)
+    directory = tmp_path / "session"
+    assert (
+        record.main(
+            [
+                "dummy",
+                str(directory),
+                "--receiver-port",
+                "COM1",
+                "--duration",
+                "1",
+                "--rate-hz",
+                "10",
+            ]
+        )
+        == 0
+    )
+    assert source.subscriptions == original
+    metadata = json.loads((directory / "session.json").read_text())["metadata"]
+    assert metadata["requested_rate_hz"] == 10
+    assert "OBSVMB COM1 0.1" in metadata["commands"]
+
+
+def test_recorder_rejects_unsupported_rate_before_creating_session(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(
+        record, "SerialTransport", lambda *args: pytest.fail("unexpected connection")
+    )
+    directory = tmp_path / "session"
+    with pytest.raises(SystemExit):
+        record.main(
+            ["dummy", str(directory), "--receiver-port", "COM1", "--rate-hz", "100"]
+        )
+    assert not directory.exists()
+
+
 def test_live_and_offline_counts_include_changed_only_and_compressed_logs(
     tmp_path: Path,
 ) -> None:

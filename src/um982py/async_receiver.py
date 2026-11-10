@@ -1,7 +1,7 @@
 """Use the receiver from asyncio while keeping the event loop responsive."""
 
 import asyncio
-from collections.abc import AsyncIterator, Callable
+from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import suppress
 from math import isfinite
 from types import TracebackType
@@ -13,8 +13,9 @@ from um982py.augmentation import AugmentationState
 from um982py.commands import Log, queries
 from um982py.commands.configuration.receiver import SignalGroup
 from um982py.commands.core import Command
+from um982py.commands.types import Port
 from um982py.measurement import RangeSample
-from um982py.messages.frames import Message
+from um982py.messages.frames import CommandResponse, Message
 from um982py.messages.navigation import BestNavigation, Fix, Heading
 from um982py.messages.record import Record
 from um982py.messages.version import Version
@@ -130,6 +131,26 @@ class AsyncReceiver:
     async def log_list(self) -> LogList:
         """Query the active log subscriptions."""
         return await self._run(self.receiver.log_list)
+
+    async def set_output_rate(
+        self,
+        logs: Log | AntennaLog | Sequence[Log | AntennaLog],
+        rate_hz: float,
+        *,
+        binary: bool | None = None,
+        port: Port | None = None,
+        verify: bool = False,
+    ) -> tuple[CommandResponse, ...]:
+        """Configure log output rates through the receiver transaction lock."""
+        try:
+            return await self._run(
+                lambda: self.receiver.set_output_rate(
+                    logs, rate_hz, binary=binary, port=port, verify=verify
+                )
+            )
+        except asyncio.CancelledError as error:
+            error.add_note("Output settings may have changed before cancellation.")
+            raise
 
     async def firmware_info(self, *, binary: bool = False) -> FirmwareInfo:
         """Query extended firmware metadata."""

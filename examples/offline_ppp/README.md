@@ -74,6 +74,10 @@ python -m examples.offline_ppp record --port /dev/ttyUSB0 --baud 921600 \
   --duration 14400 --interval 5 --metadata station.json --output-dir occupation
 ```
 
+For a documented higher receiver output rate, use `--rate-hz 10` in place of
+`--interval 5`. Actual observation cadence depends on the receiver and selected
+signal group; recordings do not interpolate or fill missing epochs.
+
 This creates `capture.bin` with the original stream, `observation.obs` in RINEX
 3.05, and `capture.json` with capture details, omissions and hashes. The recording
 and its decoded observations are held in memory during export, so check memory

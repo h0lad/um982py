@@ -57,7 +57,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     add_receiver_arguments(parser)
     parser.add_argument("--directory", type=Path, required=True)
     parser.add_argument("--segment-seconds", type=float, default=900)
-    parser.add_argument("--interval", type=float, default=10)
+    parser.add_output_interval(default=10)
     parser.add_argument(
         "--segments",
         type=int,

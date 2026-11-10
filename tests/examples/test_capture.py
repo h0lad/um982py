@@ -328,6 +328,43 @@ def test_uniform_sampling_checks_actual_receiver_timestamps() -> None:
         uniform_interval([first, second, second], 1.0)
 
 
+def test_high_rate_capture_preserves_receiver_epochs_and_detects_duplicates() -> None:
+    from dataclasses import replace
+
+    from um982py.messages import BinaryMessage
+    from um982py.protocol import StreamDecoder
+
+    first = StreamDecoder().feed(binary((0).to_bytes(4, "little"), 43))[0]
+    assert isinstance(first, BinaryMessage)
+    later = replace(first, header=replace(first.header, milliseconds=123200))
+    receiver = Mock(timeout=1.0)
+    receiver.receive.side_effect = [first, later, later]
+    arrival_order: list[Record] = []
+    records = receive_records(
+        receiver,
+        [Log.RANGE],
+        duration=1,
+        frames=3,
+        interval=0.1,
+        arrival_order=arrival_order,
+    )["RANGE"]
+    assert [record.message for record in records] == [first, later, later]
+    assert list(records) == arrival_order
+    with pytest.raises(ValueError, match="duplicate"):
+        uniform_interval(records, 0.1)
+
+
+def test_example_rate_option_is_a_receiver_interval() -> None:
+    parser = ExampleParser()
+    parser.add_output_interval(default=2.0)
+    assert parser.parse_args([]).interval == 2.0
+    assert parser.parse_args(["--rate-hz", "10"]).interval == 0.1
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--rate-hz", "100"])
+    with pytest.raises(SystemExit):
+        parser.parse_args(["--rate-hz", "10", "--interval", "1"])
+
+
 def test_library_capture_uses_open_receiver_without_cli_or_output(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

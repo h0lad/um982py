@@ -29,9 +29,7 @@ def _parser() -> ExampleParser:
     parser.add_argument(
         "--duration", type=float, default=10.0, help="collection time in seconds"
     )
-    parser.add_argument(
-        "--interval", type=float, default=1.0, help="output interval in seconds"
-    )
+    parser.add_output_interval(default=1.0, help="output interval in seconds")
     parser.add_argument(
         "--debug",
         action="store_true",
