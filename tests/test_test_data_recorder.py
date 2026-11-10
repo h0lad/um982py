@@ -143,6 +143,66 @@ def test_cli_writes_metadata_and_does_not_overwrite(
         record.main(args)
 
 
+@pytest.mark.parametrize("status_format", ["text", "json"])
+def test_cli_status_format(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    status_format: str,
+) -> None:
+    source = SubscriptionTransport()
+    monkeypatch.setattr(record, "SerialTransport", lambda *args: source)
+
+    def capture(
+        transport: object, recorder: SessionRecorder, duration: float, **kwargs: object
+    ) -> dict:
+        values = {
+            "elapsed_seconds": 1,
+            "requested_seconds": duration,
+            "window_seconds": 1,
+            "received_bytes": 0,
+            "average_bytes_per_second": 0,
+            "recent_bytes_per_second": 0,
+            "data_age_seconds": None,
+            "valid_frames": dict.fromkeys((log.value for log in audit.LOGS), 0),
+            "recent_frames": dict.fromkeys((log.value for log in audit.LOGS), 0),
+            "observation_age_seconds": {"OBSVM": None, "OBSVH": None},
+            "other_frames": 0,
+            "decoder_errors_at_least": 0,
+            "discarded_bytes": 0,
+            "pending_bytes": 0,
+        }
+        kwargs["progress"](values)  # type: ignore[operator]
+        return {"status": "complete", "received_bytes": 0}
+
+    monkeypatch.setattr(record, "record", capture)
+    assert (
+        record.main(
+            [
+                "dummy",
+                str(tmp_path / "session"),
+                "--receiver-port",
+                "COM1",
+                "--duration",
+                "10",
+                "--status-format",
+                status_format,
+            ]
+        )
+        == 0
+    )
+    output = capsys.readouterr().err
+    if status_format == "json":
+        values = json.loads(
+            next(line for line in output.splitlines() if line.startswith("{"))
+        )
+        assert values["elapsed_seconds"] == 1
+        assert values["free_disk_bytes"] >= 0
+    else:
+        assert "[00:00:01 / 00:00:10] 10.0%" in output
+        assert "ANT2 OBSVH: 0 (+0), not received" in output
+
+
 def test_configuration_failure_restores_previous_subscriptions(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -230,9 +290,35 @@ def test_timed_segments_and_status_track_both_antennas(tmp_path: Path) -> None:
     assert len(list(directory.glob("segment-*.bin"))) == 2
     assert updates[0]["valid_frames"]["OBSVM"] == 1
     assert updates[0]["valid_frames"]["OBSVH"] == 1
+    assert updates[0]["recent_frames"]["OBSVM"] == 1
+    assert updates[0]["recent_frames"]["OBSVH"] == 1
     assert updates[0]["observation_age_seconds"] == {"OBSVM": 1.0, "OBSVH": 0.0}
     assert updates[1]["observation_age_seconds"]["OBSVH"] == 2.0
+    assert updates[1]["recent_frames"]["OBSVM"] == 1
+    assert updates[1]["recent_frames"]["OBSVH"] == 0
+    assert updates[1]["window_seconds"] == 2
     assert report["valid_frames"]["OBSVM"] == 2
+
+
+def test_status_shows_progress_and_missing_or_stale_antennas(tmp_path: Path) -> None:
+    primary = binary(b"\x00" * 4, message_id=12)
+    source = Input([primary])
+    updates: list[dict] = []
+    with SessionRecorder(tmp_path / "session") as recorder:
+        record.record(
+            source,  # type: ignore[arg-type]
+            recorder,
+            8,
+            status_seconds=8,
+            progress=updates.append,
+            clock=lambda: source.time,
+        )
+    text = record.format_status(updates[0])
+    assert "[00:00:08 / 00:00:08] 100.0%" in text
+    assert "ANT1 OBSVM: 1 (+1), 7.0s ago, stale" in text
+    assert "ANT2 OBSVH: 0 (+0), not received" in text
+    assert "Ephemerides (total): GPSEPH=0" in text
+    assert "free unknown" in text
 
 
 def test_profile_commands_cover_both_antennas_and_optional_logs(
