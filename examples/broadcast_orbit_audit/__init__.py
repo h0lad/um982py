@@ -89,9 +89,9 @@ def signal_in_space_range_error(
     """SISRE of one epoch, combining the projected orbit error with its clock.
 
     The textbook single-frequency form weights the radial orbit error together
-    with the clock offset and de-weights the along-track and cross-track
+    with the clock offset. It gives less weight to along-track and cross-track
     errors, so a large but harmless angular error does not dominate the score.
-    An epoch without a reference clock cannot be scored and is rejected.
+    A score requires a reference clock. An epoch without one raises an error.
     """
     finite(difference.radial_m, difference.along_m, difference.cross_m)
     if difference.clock_difference_seconds is None:

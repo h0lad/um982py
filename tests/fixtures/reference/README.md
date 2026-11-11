@@ -4,15 +4,15 @@ The compressed observation fixture is derived from the public IGS station file
 `NYA100NOR_S_20230010000_01D_30S_MO.crx.gz`, downloaded from the
 [BKG IGS archive](https://igs.bkg.bund.de/root_ftp/IGS/obs/2023/001/). The
 source SHA-256 is `8f7e511cd46d9effc82204dc6b7c2e11675c22c2e020779dff3296eec1d21c28`.
-The fixture contains its first 240 epochs after Hatanaka decompression. Its
-`TIME OF LAST OBS` header was updated to the last retained epoch; observations
-were not changed.
+The fixture contains the first 240 epochs after Hatanaka decompression. Its
+`TIME OF LAST OBS` header was updated to the last retained epoch. The
+observations are unchanged.
 
 The ANTEX fixture contains the original header and the complete GPS satellite
 and `ASH701073.1     SNOW` receiver antenna blocks from
 [igs20.atx](https://files.igs.org/pub/station/general/igs20.atx). The source
 file's SHA-256 was `0cd58d0d9ee678d5586de6c01f576e5aceb86f4a0735a168f733dfd091c0a614`.
-Other antenna blocks were removed to keep the test fixture small.
+Other antenna blocks were removed.
 
 The comparison position is taken from `SOLUTION/ESTIMATE`, station NYA1 A,
 solution 2, epoch `23:001:43185`, in the public CODE file

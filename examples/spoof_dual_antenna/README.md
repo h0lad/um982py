@@ -1,11 +1,10 @@
 # Dual-antenna spoofing checks
 
-Cross-checks heading, visibility, and spoof indicators.
+Cross-check heading, visibility and spoof indicators.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -21,20 +20,7 @@ python -m examples.spoof_dual_antenna \
     --replay tests/fixtures/captures/BSLNENUHDA.bin
 ```
 
-## Inputs and results
-
-The checks use available heading, visibility and spoof indicators. A result
-depends on the logs present and should be interpreted as diagnostic evidence.
-
-## Understanding the result
-
-A dual-antenna receiver can report heading and other indicators that help
-investigate inconsistent signals. This example cross-checks the available
-heading, visibility and spoofing-related receiver fields.
-
-Missing logs, antenna
-placement, receiver settings and ordinary interference can affect the result.
-
 ## References
 
-Kaplan & Hegarty (2017); Unicore UM982 manual.
+- Kaplan & Hegarty (2017).
+- Unicore UM982 manual.

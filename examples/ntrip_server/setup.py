@@ -26,7 +26,7 @@ def ask(label: str, default: str | None = None) -> str:
             return value
         if default is not None:
             return default
-        print("Please enter a value.")
+        print("Enter a value.")
 
 
 def choice(label: str, choices: tuple[str, ...], default: str) -> str:
@@ -97,7 +97,7 @@ def main() -> int:
     directory = args.directory.resolve()
     if directory.exists():
         parser.error(f"directory already exists: {directory}; choose a new directory")
-    print("NTRIP station setup. Run from the lib/um982py project directory.")
+    print("NTRIP station setup.")
     print("You need a reviewed survey of the fixed antenna or its ground marker.")
     print("The ARP is the antenna reference point, not its electrical phase centre.")
     mode = choice("Rover access", ("public", "private"), "public")

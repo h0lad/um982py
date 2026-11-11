@@ -46,33 +46,43 @@ def correlate_fields(
             "duplicate tracking epochs require an explicit channel selector"
         )
     label_times = sorted(labels)
-    used: set[float] = set()
+    used_label_times: set[float] = set()
     pairs: dict[tuple[str, int, str], tuple[list[float], list[float]]] = {}
     for epoch, fields in sorted(frames):
         finite(epoch)
         left = bisect_left(label_times, epoch - tolerance)
         right = bisect_right(label_times, epoch + tolerance)
-        matches = [time for time in label_times[left:right] if time not in used]
+        matches = [
+            time for time in label_times[left:right] if time not in used_label_times
+        ]
         if len(matches) > 1:
             raise ValueError("ambiguous tracking label epoch join")
         if not matches:
             continue
-        time = matches[0]
-        used.add(time)
+        label_time = matches[0]
+        used_label_times.add(label_time)
         for field in fields:
             if field.storage not in ("u", "i", "f", "d"):
                 continue
             finite(float(field.value))
-            x, y = pairs.setdefault((field.name, field.offset, field.storage), ([], []))
-            x.append(float(field.value))
-            y.append(labels[time])
-    result = [
-        FieldHypothesis(name, offset, storage, len(x), correlation(x, y))
-        for (name, offset, storage), (x, y) in pairs.items()
+            field_values, label_values = pairs.setdefault(
+                (field.name, field.offset, field.storage), ([], [])
+            )
+            field_values.append(float(field.value))
+            label_values.append(labels[label_time])
+    hypotheses = [
+        FieldHypothesis(
+            name,
+            offset,
+            storage,
+            len(field_values),
+            correlation(field_values, label_values),
+        )
+        for (name, offset, storage), (field_values, label_values) in pairs.items()
     ]
     return tuple(
         sorted(
-            result,
+            hypotheses,
             key=lambda item: (
                 -(abs(item.correlation) if item.correlation is not None else -1),
                 item.offset,

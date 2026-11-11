@@ -1,16 +1,14 @@
 # Examples
 
-These runnable projects use `um982py` for receiver access and GNSS analysis.
-Each project's guide explains its inputs and how to interpret the results.
+Run these examples to read receiver data and analyze GNSS measurements.
 
-You can run live examples through a local serial device or a transparent UART
-gateway specified as `--port tcp://host:port`. Configure the gateway's UART baud
+Run live examples through a local serial device or a transparent UART gateway
+specified as `--port tcp://host:port`. Configure the gateway's UART baud
 rate separately, since `--baud` applies only to local serial devices.
 
 ## Running the examples
 
-From the repository root (the directory containing `pyproject.toml`), install
-the package before running the examples:
+From the repository root, install the package:
 
 ```bash
 python -m pip install .
@@ -27,47 +25,48 @@ python -m examples.position_tracking --help
 ```
 
 Replace `/dev/ttyUSB0` with your receiver's serial device. Many examples accept
-`--replay` to read a capture without hardware and `--record` to save live data
-for a later run, provided the recording destination does not already exist. Paths such as
-`captures/` and `products/` are placeholders, so provide your own files and
-create the directories as needed. The repository includes the files under
-`tests/fixtures/`.
+`--replay` to read a capture without hardware and `--record` to save live data.
+The recording destination must not already exist. Paths such as `captures/` and
+`products/` are placeholders. Supply your own files and create the directories
+as needed. The repository includes the files under `tests/fixtures/`.
 
-Examples that capture periodic receiver logs accept `--interval` in seconds.
-Captured receiver epochs are not interpolated or repeated to reach a requested
-rate. A repeated receiver timestamp is not an independent measurement; inspect
-timestamps and gaps when evaluating the actual cadence.
-The capture examples that expose `--rate-hz` also accept a documented N4 rate
-in Hz instead, for example:
+For periodic receiver logs, `--interval` sets the requested interval in seconds.
+Capture preserves native receiver epochs without interpolation or duplicated
+measurements. Check timestamp spacing for the actual rate and gaps. If the
+receiver repeats a timestamp, count it as the same epoch.
+
+Some capture examples also accept a documented N4 rate in Hz through
+`--rate-hz`:
 
 ```bash
 python -m examples.position_tracking --port /dev/ttyUSB0 --duration 30 --rate-hz 10
 python -m examples.live_position /dev/ttyUSB0 --rate-hz 10
 ```
 
-The options are alternatives: do not pass both. The rate is a request for
-periodic logs; logs configured as `ONCHANGED` retain their event trigger. Actual
-rates depend on firmware, signal group, log and available port bandwidth. A
-replay cannot change the recorded cadence; where an example uses the interval
-for analysis, the option changes that expected value only. Polling-only and
-event-only examples do not expose `--rate-hz`. See the
-[output-rate guide](../docs/api.md#receiver-output-rates) for limits and checking
-observed receiver epochs.
+Use either `--interval` or `--rate-hz`. Both apply to periodic logs.
+`ONCHANGED` logs keep their event triggers. Firmware, signal group, log and port
+bandwidth determine the actual rate.
+
+Replay preserves the recorded cadence. An interval option used during replay
+sets the expected spacing for analysis. It does not resample the data.
+Polling-only and event-only examples do not accept `--rate-hz`. See the
+[output-rate guide](../docs/api.md#receiver-output-rates) for supported rates and
+measurement of the delivered rate.
 
 ## Antennas
 
 Select an input with `--antenna`, or use `--swap-antennas` to exchange roles and
 negate dual-antenna baselines. Neither option changes RF power or signal groups.
 
-For E6-HAS or B2b-PPP, connect the broadband helix to ANT1 ([UM982 frequency
-table](https://en.unicorecomm.com/products/um982/)). C/N₀ and heading confirm
-antenna activity, not correction tracking or PPP use.
+For E6-HAS or B2b-PPP, connect the broadband helix to ANT1. See the
+[UM982 frequency table](https://en.unicorecomm.com/products/um982/).
+C/N₀ and heading show antenna activity, but not whether the receiver tracks
+corrections or uses PPP.
 
-Orbit comparisons require a matching precise product, sidereal analysis requires
-a second day, and accuracy checks require independent reference data. Live
-examples leave the receiver configuration alone unless their documented options
-change it. For example, `--augment` enables augmentation without saving the
-receiver configuration.
+For orbit comparisons, supply a matching precise product. Sidereal analysis
+needs a second day of data. Accuracy checks need independent reference data.
+Live examples change receiver settings only through their documented options.
+For example, `--augment` enables augmentation without saving the configuration.
 
 ## Projects
 
@@ -130,7 +129,7 @@ receiver configuration.
 - [`code_carrier_divergence`](code_carrier_divergence/README.md): Tracks code-carrier divergence and resets after cycle slips.
 - [`cycle_slip_detection`](cycle_slip_detection/README.md): Flags cycle slips from Doppler consistency.
 - [`hatch_smoothing`](hatch_smoothing/README.md): Smooths code with carrier phase and resets on cycle slips.
-- [`multipath_analysis`](multipath_analysis/README.md): Measures code-minus-carrier multipath RMS.
+- [`multipath_analysis`](multipath_analysis/README.md): Calculates RMS code-minus-carrier residuals as a multipath proxy.
 - [`multipath_vs_mask`](multipath_vs_mask/README.md): Sweeps elevation masks and checks receiver state.
 - [`sidereal_multipath`](sidereal_multipath/README.md): Checks whether multipath repeats after one sidereal day.
 - [`triple_frequency_closure`](triple_frequency_closure/README.md): Tests triple-frequency combinations that cancel geometry and ionosphere.
@@ -141,14 +140,14 @@ receiver configuration.
 - [`ionosphere_tec`](ionosphere_tec/README.md): Computes slant TEC, ROT and ROTI from dual-frequency ranges.
 - [`klobuchar_vs_tec`](klobuchar_vs_tec/README.md): Compares Klobuchar delay with dual-frequency TEC.
 - [`pwv_meteorology`](pwv_meteorology/README.md): Derives precipitable water vapour from zenith wet delay.
-- [`scintillation_monitor`](scintillation_monitor/README.md): Computes the S4 amplitude scintillation index.
+- [`scintillation_monitor`](scintillation_monitor/README.md): Computes an uncalibrated S4-like proxy from C/N₀.
 
 ### Time and startup
 
 - [`clock_jump_forensics`](clock_jump_forensics/README.md): Flags code and carrier jumps that appear together across satellites.
 - [`clock_stability`](clock_stability/README.md): Computes Allan deviation from receiver clock offsets.
-- [`time_transfer`](time_transfer/README.md): Converts between GPST and UTC using leap seconds.
-- [`ttff_profile`](ttff_profile/README.md): Measures time to first fix after cold, warm, or hot starts.
+- [`time_transfer`](time_transfer/README.md): Converts receiver UTC to GPST using leap seconds.
+- [`ttff_profile`](ttff_profile/README.md): Measures time to first fix after cold or warm starts.
 
 ### Recording, export and navigation data
 
@@ -169,10 +168,9 @@ receiver configuration.
 
 ### Controlled scientific experiments
 
-
-- [`spatial_tec`](spatial_tec/README.md): Spatial ionospheric TEC changes.
-- [`noise_multipath`](noise_multipath/README.md): Shared-antenna noise and repeat-track multipath.
-- [`multifrequency_slips`](multifrequency_slips/README.md): Three-frequency cycle-slip observability.
-- [`uncertainty_coverage`](uncertainty_coverage/README.md): Reported uncertainty calibration.
-- [`phase_fluctuations`](phase_fluctuations/README.md): Low-rate carrier phase fluctuations.
-- [`orbit_position_effect`](orbit_position_effect/README.md): Satellite state errors projected into position.
+- [`spatial_tec`](spatial_tec/README.md): Compares TEC changes at two stations.
+- [`noise_multipath`](noise_multipath/README.md): Compares shared-antenna noise and repeat-track measurements.
+- [`multifrequency_slips`](multifrequency_slips/README.md): Tests ideal responses to injected cycle slips.
+- [`uncertainty_coverage`](uncertainty_coverage/README.md): Compares reported uncertainty with position errors.
+- [`phase_fluctuations`](phase_fluctuations/README.md): Measures carrier phase variability.
+- [`orbit_position_effect`](orbit_position_effect/README.md): Estimates the position effect of satellite state errors.

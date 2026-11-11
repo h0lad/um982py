@@ -17,16 +17,18 @@ def trio(epoch: int, *, step: float = 0, reset: bool = False) -> list[bytes]:
     return [
         observation(
             signal=signal,
-            frequency=f,
+            frequency=frequency,
             l2c=int(signal == 9),
-            code=20_000_000 + 1234 * epoch + (10 + epoch) * (FREQUENCIES[0] / f) ** 2,
+            code=20_000_000
+            + 1234 * epoch
+            + (10 + epoch) * (FREQUENCIES[0] / frequency) ** 2,
             phase=20_000_000
             + 1234 * epoch
-            - (10 + epoch) * (FREQUENCIES[0] / f) ** 2
+            - (10 + epoch) * (FREQUENCIES[0] / frequency) ** 2
             + (step if signal == 0 else 0),
             lock=1 if reset else 100 + epoch,
         )
-        for signal, f in zip((0, 9, 14), FREQUENCIES, strict=True)
+        for signal, frequency in zip((0, 9, 14), FREQUENCIES, strict=True)
     ]
 
 
@@ -35,7 +37,8 @@ def test_closed_form_null_vector_and_noise_gain() -> None:
     weights = closure_coefficients(FREQUENCIES)
     assert sum(weights) == pytest.approx(0, abs=1e-14)
     assert sum(
-        w * (FREQUENCIES[0] / f) ** 2 for w, f in zip(weights, FREQUENCIES, strict=True)
+        weight * (FREQUENCIES[0] / frequency) ** 2
+        for weight, frequency in zip(weights, FREQUENCIES, strict=True)
     ) == pytest.approx(0, abs=1e-14)
 
 
@@ -61,14 +64,14 @@ def test_lock_gap_and_missing_trio_start_new_arcs() -> None:
         record(7, trio(7)),
     ]
     rows = frequency_closures(values)
-    assert [r.arc_start_reason for r in rows] == [
+    assert [row.arc_start_reason for row in rows] == [
         "start",
         "lock_reset",
         "gap",
         "missing_trio",
     ]
-    assert [r.arc for r in rows] == [1, 2, 3, 4]
-    assert all(r.phase_increment_m is None for r in rows)
+    assert [row.arc for row in rows] == [1, 2, 3, 4]
+    assert all(row.phase_increment_m is None for row in rows)
 
 
 def test_wrong_l2c_flag_cannot_complete_a_trio() -> None:
@@ -113,12 +116,12 @@ def test_fdma_carriers_are_per_satellite_and_channel_changes_restart_arcs() -> N
                 system=1,
                 signal=signal,
                 channel=channel,
-                frequency=f,
+                frequency=frequency,
                 lock=100 + epoch,
-                code=20_000_000 + (1575.42e6 / f) ** 2,
-                phase=20_000_000 - (1575.42e6 / f) ** 2,
+                code=20_000_000 + (1575.42e6 / frequency) ** 2,
+                phase=20_000_000 - (1575.42e6 / frequency) ** 2,
             )
-            for signal, f in zip((0, 5, 6), frequencies, strict=True)
+            for signal, frequency in zip((0, 5, 6), frequencies, strict=True)
         ]
 
     result = frequency_closures(

@@ -1,5 +1,3 @@
-"""Receiver byte transport over TCP."""
-
 import socket
 
 from um982py.errors import TransportClosed, TransportError

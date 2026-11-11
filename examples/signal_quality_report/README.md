@@ -1,11 +1,10 @@
 # Signal quality report
 
-Reports C/N0 percentiles, lock time, and channel use.
+Summarize C/N0 percentiles, lock time and channel use.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -30,16 +29,13 @@ python -m examples.signal_quality_report \
 
 ## Inputs and results
 
-The report groups RANGE observations by signal and summarizes C/N0, lock time
-and channel use. The TCP example uses a placeholder address, so replace it with
-the address of your UART gateway.
+Replace the TCP example's placeholder address with the address of your UART
+gateway. The report groups RANGE observations by signal.
 
 ## Understanding the result
 
-The report groups observations by satellite signal and summarizes receiver
-C/N₀, lock time and channel use. These diagnostics vary with the satellites,
-antenna, cable and surroundings, so they do not provide calibrated antenna gain
-or guarantee position accuracy.
+The C/N₀ values include the effects of the antenna, cable and surroundings.
+They are not calibrated antenna gain measurements.
 
 ## References
 

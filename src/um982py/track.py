@@ -17,7 +17,7 @@ class TrackWriter:
     """Write valid WGS 84 positions without retaining the track in memory.
 
     Use a new path: existing files are never replaced. Pass a verified UTC
-    timestamp to ``write`` when available; receiver GGA time has no date.
+    timestamp to ``write`` when available. Receiver GGA time has no date.
     GPX elevation is the GGA/BESTNAV MSL height. GeoJSON elevation is the
     ellipsoidal height, when available. A track crossing a data gap should use
     a new file rather than implying continuous movement.
@@ -68,7 +68,7 @@ class TrackWriter:
     def write(
         self, position: Fix | BestNavigation, *, timestamp: datetime | None = None
     ) -> None:
-        """Append one valid fix; ``timestamp`` must be timezone-aware."""
+        """Append one valid fix. ``timestamp`` must be timezone-aware."""
         if self._file is None:
             raise RuntimeError("track is not open")
         if not position.valid:
@@ -76,10 +76,9 @@ class TrackWriter:
         lat, lon = position.latitude, position.longitude
         if lat is None or lon is None:
             raise ValueError("position has no coordinates")
-        # Also validates manually constructed Fix coordinates.
-        from um982py.geodesy import haversine_distance
+        from um982py.geodesy import _validate_positions
 
-        haversine_distance(lat, lon, lat, lon)
+        _validate_positions((lat, lon))
         if isinstance(position, BestNavigation) and position.datum != "WGS84":
             raise ValueError("BESTNAV datum must be WGS84")
         if timestamp is not None:

@@ -91,11 +91,10 @@ def test_current_signal_group_query_and_model() -> None:
     assert (group.master, group.slave) == (3, 6)
     assert "BDS" in group.master_bands and "20 Hz" in group.master_bands
     assert "GAL E1/E5b" in group.slave_bands
-    # Single-argument listings use slave 0.
-    single = SignalGroup.from_message(
+    single_master_group = SignalGroup.from_message(
         Sentence("CONFIG", ("SIGNALGROUP", "CONFIG SIGNALGROUP 4"), b"raw")
     )
-    assert (single.master, single.slave) == (4, 0)
+    assert (single_master_group.master, single_master_group.slave) == (4, 0)
     assert set(SIGNAL_GROUP_BANDS) == set(range(11))
     with pytest.raises(ValueError):
         SignalGroup.from_message(Sentence("CONFIG", ("MODE",), b"raw"))

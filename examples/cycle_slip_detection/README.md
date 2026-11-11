@@ -1,11 +1,10 @@
 # Cycle slip detection
 
-Flags cycle slips from Doppler consistency.
+Check for cycle slips by comparing phase changes with Doppler.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -23,16 +22,10 @@ python -m examples.cycle_slip_detection \
 
 ## Inputs and results
 
-`--threshold` controls the Doppler-consistency test, while `--frames` and
-`--interval` control the sampled RANGE epochs. Results depend on a continuous
-observation arc and the selected threshold.
+`--threshold` controls the Doppler-consistency test. `--frames` and `--interval`
+control the sampled RANGE epochs.
 
-## Understanding the result
-
-A cycle slip breaks carrier-phase continuity and can introduce a jump that
-affects precise positioning. The example compares phase changes with
-Doppler-derived expectations. Thresholds, sampling gaps and signal quality
-affect the result, so investigate a flag before treating it as a confirmed slip.
+A flag alone does not confirm a slip.
 
 ## References
 

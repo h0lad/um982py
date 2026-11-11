@@ -1,11 +1,10 @@
 # Doppler velocity
 
-Solves receiver velocity and clock drift from Doppler.
+Estimate receiver velocity and clock drift from Doppler observations.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -24,29 +23,21 @@ python -m examples.doppler_velocity \
 
 ## Inputs and results
 
-The solver uses Doppler observations and broadcast ephemerides. `--observer X Y
-Z` supplies an approximate ECEF receiver position in metres, while `--truth-velocity
-VX VY VZ` supplies independent ECEF velocity in metres per second for
-comparison.
+The solver uses Doppler observations and broadcast ephemerides. Use
+`--observer X Y Z` to supply an approximate ECEF receiver position in metres.
+For comparison, `--truth-velocity VX VY VZ` accepts an independent ECEF
+velocity in metres per second.
 
-Add `--compare-receiver` to capture primary-antenna `DOPPVEL` and compare
-computed horizontal and vertical speeds with the nearest computed Doppler
-solution. `--receiver-tolerance` sets the maximum header-epoch difference in
-seconds (default 0.5). The report includes the time offset, receiver latency and
-age, but does not correct for latency or interpolate. Receiver samples can be
-reused. The receiver and solver share observations, so this comparison is not an
-independent accuracy test. Captures without a matching `DOPPVEL` record leave
-the comparison empty.
+With `--compare-receiver`, capture primary-antenna `DOPPVEL` and compare speeds
+with the nearest computed receiver solution. The comparison uses horizontal
+and vertical speeds. `--receiver-tolerance` limits the difference between header
+epochs in seconds (default 0.5).
 
-## Understanding the result
-
-Doppler is the frequency shift associated with relative motion between
-receiver and satellite. This example uses observations and broadcast orbits to
-estimate receiver velocity and clock drift.
-
-The optional truth velocity is an independently known comparison in
-Earth-centred X/Y/Z axes, and you can omit it when unavailable. A result is not
-independently validated merely because the solver returns a value.
+The report includes the time offset, receiver latency and age. It applies no
+latency correction or interpolation and can reuse receiver samples. A capture
+without a matching `DOPPVEL` record leaves the comparison empty. Because the
+receiver and solver use the same observations, their agreement is not an
+independent accuracy check.
 
 ## References
 

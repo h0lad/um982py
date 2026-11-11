@@ -49,23 +49,25 @@ def analyse_ppp_filter(
     performance: PerformanceStatus | None = None,
 ) -> PppFilterAnalysis:
     """Aggregate PPPDEBUGMSG residuals, FASTDEBUGMSG ADR lock ratios and CPU load."""
-    by_freq: dict[int, list[tuple[int, float]]] = defaultdict(list)
-    steps: list[float] = []
+    residuals_by_frequency: dict[int, list[tuple[int, float]]] = defaultdict(list)
+    position_steps: list[float] = []
     for record in ppp_records:
         if record.delta_position_m is not None:
-            steps.append(norm(record.delta_position_m))
-        for res in record.residuals:
-            by_freq[res.frequency_index].append((res.slot, res.residual_m))
-    freq_summaries: list[FrequencyResidualSummary] = []
-    for freq_idx, entries in sorted(by_freq.items()):
-        values = [val for _, val in entries]
-        freq_summaries.append(
+            position_steps.append(norm(record.delta_position_m))
+        for residual in record.residuals:
+            residuals_by_frequency[residual.frequency_index].append(
+                (residual.slot, residual.residual_m)
+            )
+    frequency_summaries: list[FrequencyResidualSummary] = []
+    for frequency_index, entries in sorted(residuals_by_frequency.items()):
+        residual_values = [value for _, value in entries]
+        frequency_summaries.append(
             FrequencyResidualSummary(
-                frequency_index=freq_idx,
-                samples=len(values),
+                frequency_index=frequency_index,
+                samples=len(residual_values),
                 satellites=len({slot for slot, _ in entries}),
-                rms_m=rms(values),
-                max_abs_m=max(abs(val) for val in values),
+                rms_m=rms(residual_values),
+                max_abs_m=max(abs(value) for value in residual_values),
             )
         )
     adr_ratios = [
@@ -78,27 +80,28 @@ def analyse_ppp_filter(
     return PppFilterAnalysis(
         epochs=len(ppp_records),
         max_corrected_gps=max(
-            (r.corrected_counts["GPS"] for r in ppp_records), default=None
+            (record.corrected_counts["GPS"] for record in ppp_records), default=None
         ),
         max_corrected_galileo=max(
-            (r.corrected_counts["GALILEO"] for r in ppp_records), default=None
+            (record.corrected_counts["GALILEO"] for record in ppp_records), default=None
         ),
         max_corrected_beidou_b2b=max(
-            (r.corrected_counts["BEIDOU_B2B"] for r in ppp_records), default=None
+            (record.corrected_counts["BEIDOU_B2B"] for record in ppp_records),
+            default=None,
         ),
         max_corrected_beidou=max(
-            (r.corrected_counts["BEIDOU"] for r in ppp_records), default=None
+            (record.corrected_counts["BEIDOU"] for record in ppp_records), default=None
         ),
         max_processed_satellites=max(
             (
-                r.processed_satellites
-                for r in ppp_records
-                if r.processed_satellites is not None
+                record.processed_satellites
+                for record in ppp_records
+                if record.processed_satellites is not None
             ),
             default=None,
         ),
-        step_rms_m=rms(steps) if steps else None,
-        frequency_residuals=tuple(freq_summaries),
+        step_rms_m=rms(position_steps) if position_steps else None,
+        frequency_residuals=tuple(frequency_summaries),
         mean_adr_lock_ratio=fmean(adr_ratios) if adr_ratios else None,
         cpu_load_percent=(
             performance.cpu_load_percent if performance is not None else None

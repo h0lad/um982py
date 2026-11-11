@@ -68,7 +68,7 @@ def frequency_deviation(
 def phase_adev(
     samples: Sequence[float], tau0: float = 1.0
 ) -> list[tuple[float, float]]:
-    """Return tau times frequency ADEV in seconds; this is not TDEV."""
+    """Return tau times frequency ADEV in seconds. This is not TDEV."""
     return [
         (tau, tau * deviation) for tau, deviation in frequency_deviation(samples, tau0)
     ]

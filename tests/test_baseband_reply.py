@@ -1,5 +1,3 @@
-"""Checks the boundary behaviour of diagnostic notice parsing."""
-
 import pytest
 
 from um982py.errors import ProtocolError
@@ -144,7 +142,6 @@ def test_command_notice_mapping_is_consistent() -> None:
     assert BasebandCommand.BBLOGEN.notice == "BBLOGEN"
     assert BasebandCommand.BBMSG2AP.notice is None
     assert BasebandCommand.LOG.notice == "LOG_SWITCH"
-    # Each mapped notice must have a parser pattern.
     for command in BasebandCommand:
         if command.notice is not None:
             assert command.notice in {

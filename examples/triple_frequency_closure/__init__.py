@@ -98,12 +98,12 @@ def frequency_closures(
     if (
         not 0 <= system <= 6
         or len(set(signals)) != 3
-        or any(not 0 <= s <= 31 for s in signals)
+        or any(not 0 <= signal <= 31 for signal in signals)
     ):
         raise ValueError("choose a known system and three distinct native signal IDs")
     if l2c_flag not in (0, 1):
         raise ValueError("L2C flag must be zero or one")
-    if any(not math.isfinite(v) or v <= 0 for v in (max_gap, threshold_m)):
+    if any(not math.isfinite(value) or value <= 0 for value in (max_gap, threshold_m)):
         raise ValueError("gap and experimental threshold must be finite and positive")
     previous: dict[int, tuple[FrequencyClosure, tuple[float, ...]]] = {}
     output = []
@@ -120,10 +120,12 @@ def frequency_closures(
             weights = closure_coefficients(frequencies)
             samples = tuple(item[0] for item in trio)
             code = math.fsum(
-                w * s.code_m for w, s in zip(weights, samples, strict=True)
+                weight * sample.code_m
+                for weight, sample in zip(weights, samples, strict=True)
             )
             phase = math.fsum(
-                w * s.phase_m for w, s in zip(weights, samples, strict=True)
+                weight * sample.phase_m
+                for weight, sample in zip(weights, samples, strict=True)
             )
             old = previous.get(prn)
             reason = "start" if old is None else None
@@ -136,8 +138,8 @@ def frequency_closures(
                 elif frequencies != old[0].frequencies_hz:
                     reason = "frequency_change"
                 elif any(
-                    s.lock_seconds < lock + dt - 0.02
-                    for s, lock in zip(samples, old[1], strict=True)
+                    sample.lock_seconds < lock + dt - 0.02
+                    for sample, lock in zip(samples, old[1], strict=True)
                 ):
                     reason = "lock_reset"
             increment = (
@@ -152,7 +154,7 @@ def frequency_closures(
                 signals,
                 frequencies,
                 weights,
-                math.sqrt(sum(w * w for w in weights)),
+                math.sqrt(sum(weight * weight for weight in weights)),
                 (old[0].arc + int(reason is not None)) if old else 1,
                 reason,
                 code,
@@ -160,12 +162,12 @@ def frequency_closures(
                 increment,
                 math.sqrt(
                     sum(
-                        (w * s.phase_std_m) ** 2
-                        for w, s in zip(weights, samples, strict=True)
+                        (weight * sample.phase_std_m) ** 2
+                        for weight, sample in zip(weights, samples, strict=True)
                     )
                 ),
                 increment is not None and abs(increment) > threshold_m,
             )
-            previous[prn] = row, tuple(s.lock_seconds for s in samples)
+            previous[prn] = row, tuple(sample.lock_seconds for sample in samples)
             output.append(row)
     return tuple(output)

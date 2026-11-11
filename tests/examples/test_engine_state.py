@@ -12,7 +12,7 @@ from tests.test_protocol import binary
 _COVARIANCE = (45.801, 2.914, 9.572, 2.914, 44.613, -18.225, 9.572, -18.225, 111.597)
 
 
-def _payload(
+def _rtk_data_payload(
     entries: tuple[tuple[int, int, int], ...],
     covariance: tuple[float, ...] = _COVARIANCE,
 ) -> bytes:
@@ -25,11 +25,10 @@ def _payload(
 def test_replay_reports_covariance_and_resolved_satellites(
     tmp_path: Path,
 ) -> None:
-    """Synthetic RTKDATA and RTKDATA2 frames decode with system identities."""
     capture, output = tmp_path / "engine.bin", tmp_path / "engine.json"
     capture.write_bytes(
-        binary(_payload(((10, 5, 0), (250, 70, 0))), 215)
-        + binary(_payload(((78, 15, 0),)), 2027)
+        binary(_rtk_data_payload(((10, 5, 0), (250, 70, 0))), 215)
+        + binary(_rtk_data_payload(((78, 15, 0),)), 2027)
     )
     assert main(["--replay", str(capture), "--json", str(output)]) == 0
     result = json.loads(output.read_text())
@@ -49,7 +48,6 @@ def test_replay_reports_covariance_and_resolved_satellites(
 
 
 def test_empty_replay_reports_insufficient_data(tmp_path: Path) -> None:
-    """A capture without engine frames exits nonzero with a status marker."""
     capture, output = tmp_path / "empty.bin", tmp_path / "empty.json"
     capture.write_bytes(b"")
     assert main(["--replay", str(capture), "--json", str(output)]) == 1

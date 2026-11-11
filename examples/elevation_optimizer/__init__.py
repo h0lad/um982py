@@ -39,7 +39,6 @@ class MaskSolution:
     satellites: int
 
     def manifest(self) -> dict[str, object]:
-        """Plain dictionary for the JSON writer."""
         return {
             "mask": self.mask,
             "pdop": self.pdop,

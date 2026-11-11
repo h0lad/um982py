@@ -1,5 +1,3 @@
-"""Test raw session recording and its offline audit."""
-
 import json
 from pathlib import Path
 

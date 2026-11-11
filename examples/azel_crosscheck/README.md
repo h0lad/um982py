@@ -1,11 +1,11 @@
 # Azimuth and elevation cross-check
 
-Checks broadcast-orbit azimuth and elevation against SATVIS2.
+Compare azimuth and elevation from broadcast orbits with the receiver's SATVIS2
+angles.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -25,21 +25,14 @@ python -m examples.azel_crosscheck \
 
 ## Inputs and results
 
-Replay needs a SATVIS2 capture plus the companion `--position` and
-`--ephemeris` captures shown below. The report compares receiver visibility
-angles with angles calculated from the broadcast orbit and observer position.
+Replay needs SATVIS2 data, a position capture passed as `--position` and an
+ephemeris capture passed as `--ephemeris`.
 
 ## Understanding the result
 
-Azimuth is a satellite's compass direction, while elevation is its angle above the
-horizon. This example calculates those angles from a receiver position and
-broadcast satellite orbit, then compares them with the receiver's SATVIS2
-report.
-
-A useful comparison requires position, orbit and visibility data for matching
-times and satellites. Differences can result from mismatched inputs as well as
-model or receiver differences.
+Match position, orbit and visibility data by time and satellite.
 
 ## References
 
-IS-GPS-200N; Unicore N4 R1.4 interface guide.
+- IS-GPS-200N.
+- Unicore N4 R1.4 interface guide.

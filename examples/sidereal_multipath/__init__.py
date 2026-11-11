@@ -91,7 +91,14 @@ def evaluate_repeatability(
         len(predictions),
         len(predictions) / len(validation),
         rms(raw) if raw else None,
-        rms([a - b for a, b in zip(raw, predicted, strict=True)]) if raw else None,
+        rms(
+            [
+                observed - estimate
+                for observed, estimate in zip(raw, predicted, strict=True)
+            ]
+        )
+        if raw
+        else None,
         correlation(raw, predicted),
         predictions,
     )

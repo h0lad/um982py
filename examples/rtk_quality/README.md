@@ -1,12 +1,10 @@
 # RTK quality
 
-Summarizes fix type, correction age, and availability.
-`fresh_fixed_epochs` counts fixed solutions with corrections no older than 10 seconds.
+Summarize fix type, correction age and availability.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -24,8 +22,7 @@ python -m examples.rtk_quality --replay tests/fixtures/captures/BESTPOSB.bin
 ## Inputs and results
 
 The report counts fixed solutions and identifies those with corrections no
-older than 10 seconds as `fresh_fixed_epochs`. The capture duration and interval
-determine the observation window. Class counts distinguish `ppp` and
+older than 10 seconds as `fresh_fixed_epochs`. Class counts distinguish `ppp` and
 `ppp_converging` from float RTK.
 
 Add `--diagnostics` to capture `RTKDOP`, `BESTSATS` and `RTKSTATUS2` alongside
@@ -33,12 +30,6 @@ the position log. The JSON keeps their receiver epochs and raw fields separately
 including the undecoded BESTSATS flags. It does not assume that records at
 different times describe the same solution. Missing logs remain empty, and DOP
 sentinels such as 9999 do not represent measured geometry.
-
-## Understanding the result
-
-The reported solution types and correction ages depend on the observation
-window and receiver configuration. Absolute accuracy also depends on the base
-coordinates.
 
 ## References
 
@@ -57,10 +48,10 @@ python -m examples.rtk_quality.matched_solution --replay /tmp/matched.bin \
 ```
 
 The report lists changes between successive observations within `--max-gap`.
-Codes and values are kept without assigning signal identities, physical units or
-phase conventions. Recognized receiver labels accompany their raw codes, while
-unknown codes remain unlabelled. Capture data alongside independent labels
-before drawing conclusions. Legacy message timestamps are interpreted as GPS time.
+Raw codes and values have no assigned signal identities, physical units or
+phase conventions. Known codes include their receiver labels. Unknown codes
+stay unlabelled. Record independent labels alongside the capture before
+interpreting these fields. Legacy message timestamps use GPS time.
 
 ## Inspect engine covariance and satellite states
 
@@ -74,11 +65,11 @@ python -m examples.rtk_quality.engine_state --replay /tmp/engine.bin \
     --json /tmp/engine-replay.json
 ```
 
-The report lists per-epoch covariance diagonals alongside resolved satellite
-identities with their raw status codes and values. Unmapped identifiers stay
-unresolved rather than guessed. Variances describe the engine state, not
-measured position error. RTKDATA frames only appear while the engine runs on
-corrections; without them the report marks the capture as insufficient data.
+For each epoch, the report lists covariance diagonals and satellite identities
+with their raw status codes and values. Unknown identifiers stay unresolved.
+The variances describe the engine's state and cannot measure position error.
+RTKDATA frames appear only while the engine uses corrections. Without these
+frames, the report marks the capture as insufficient data.
 
 ## Compare environments or positioning campaigns
 
@@ -96,16 +87,22 @@ Labels are optional CSV rows with `start_gps_seconds,end_gps_seconds,environment
 Intervals are non-overlapping and include the start but exclude the end.
 Unlabelled epochs remain visible. Independently calculated position errors can
 be supplied in `gps_seconds,error_m` rows in metres. Match them to the same GPS
-time scale, frame and physical antenna point before use. The report includes
-per-environment counts, sample-based availability, fix classes, correction
-ages for available RTK float and fixed solutions, input hashes, and gaps between
-successive recorded epochs. Nearest error
-samples can be reused. An optional `--cn0` CSV with `gps_seconds,cn0_dbhz`
-adds a nearest-sample C/N₀ summary using the same matching window. Independently
-verify which signal each value represents.
+time scale, frame and physical antenna point before use.
 
-Observed unavailable-to-available intervals start at the first unavailable
-sample, so their actual onset is unknown. A gap, environment change or end of
-data censors a pending interval. A fraction of received samples is not a fraction of
-elapsed time, and unlabelled or differing conditions prevent a controlled
-comparison. The script does not calculate position errors from receiver sigma.
+For each environment, the report gives sample counts, availability, fix classes
+and correction ages for available RTK float and fixed solutions. It also lists
+input hashes and gaps between recorded epochs. More than one epoch can match
+the same error sample.
+
+An optional `--cn0` CSV with `gps_seconds,cn0_dbhz` adds a nearest-sample C/N₀
+summary using the same matching window. Independently verify which signal each
+value represents.
+
+An outage interval starts at the first unavailable sample. Its actual onset
+between observations is unknown. A gap, environment change or end of data
+censors an interval still awaiting recovery.
+
+Availability is a fraction of received samples and does not measure the fraction
+of elapsed time. Unlabelled or differing conditions prevent a controlled
+comparison. Position errors must come from the supplied reference data. The
+script does not derive them from receiver sigma.

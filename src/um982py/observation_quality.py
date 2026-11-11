@@ -35,9 +35,8 @@ def audit_observations(
 ) -> ObservationQuality:
     """Audit a log in GPST order, using the supplied cadence to identify gaps.
 
-    A lock reset is a decrease in receiver-reported lock time. Gaps are
-    identified between observed epochs, and invalid phases are excluded from
-    lock-time comparisons.
+    A decrease in receiver lock time counts as a reset. Invalid phases are
+    excluded from lock-time comparisons.
     """
     names = {record.name for record in records}
     if (

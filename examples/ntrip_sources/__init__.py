@@ -1,1 +1,0 @@
-"""NTRIP sourcetable discovery example."""

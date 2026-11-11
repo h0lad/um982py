@@ -1,5 +1,3 @@
-"""Receiver query commands."""
-
 from um982py.commands.core import Command
 from um982py.commands.logging import request
 from um982py.messages.frames import AsciiMessage, Message, Sentence

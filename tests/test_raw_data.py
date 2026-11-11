@@ -1,5 +1,3 @@
-"""Checks the boundary behaviour of the raw-data dump command surface."""
-
 import pytest
 
 from conftest import SubscriptionTransport, acknowledgement, sentence

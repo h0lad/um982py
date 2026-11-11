@@ -1,8 +1,8 @@
 # NTRIP clients
 
 A client needs a hostname, port, mountpoint and, for private mode, a rover
-username and password. With the wizard defaults the caster is reachable only on
-the same computer at `127.0.0.1:2101`, and the default mountpoint is `BASE01`.
+username and password. With the wizard defaults, the caster is reachable only
+on the same computer at `127.0.0.1:2101`. The default mountpoint is `BASE01`.
 Wait until `/healthz` reports ready before testing the stream.
 
 For a quick local **public mode** connection check, run this in another
@@ -14,12 +14,11 @@ curl --fail --no-buffer --max-time 10 \
   http://127.0.0.1:2101/BASE01 -o corrections.rtcm
 ```
 
-The file contains binary RTCM messages, not human-readable text. This is an
-ongoing stream, so curl stops with a timeout after 10 seconds, and a non-empty file
-indicates data was received, not that a rover achieved an RTK fix. For private
-mode add `--user rover` to prompt for the password. Replace `rover` with the
-configured username. For a remote caster, use its `https://hostname:port/BASE01`
-URL and a trusted certificate matching the hostname.
+The file contains binary RTCM messages. The stream is continuous, so curl stops
+with a timeout after 10 seconds. A non-empty file confirms receipt of data, not
+an RTK fix. In private mode, add `--user rover` to prompt for the password and
+replace `rover` with the configured username. For a remote caster, use its
+`https://hostname:port/BASE01` URL and a trusted certificate matching the host.
 
 These client implementations were exercised with the caster:
 
@@ -32,7 +31,7 @@ These client implementations were exercised with the caster:
 
 For internet access, use a client with TLS and hostname verification enabled.
 
-The listed RTKLIB and BKG versions need a trusted local TLS gateway.
+The RTKLIB and BKG versions listed above need a trusted local TLS gateway.
 
 For pygnssutils guest access, explicitly pass `--ntripuser '' --ntrippassword ''`
 to override its placeholder credentials. Use the host, port and mountpoint from

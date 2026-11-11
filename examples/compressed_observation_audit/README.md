@@ -1,12 +1,11 @@
 # Compressed observation audit
 
-Compares RANGECMP reconstructions with full RANGE observations over shared
-epochs and reports the wire-size ratio.
+Compare reconstructed RANGECMP observations with full RANGE observations at
+shared epochs, and report the ratio of their wire sizes.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -26,13 +25,13 @@ python -m examples.compressed_observation_audit --replay wire.bin \
 
 Live capture subscribes to RANGEB and RANGECMPB at `--interval` for
 `--duration` seconds and restores the previous subscriptions afterward.
-Replay requires wire bytes holding both binary logs. Epochs pair by arrival
-order; observations pair by tracking status.
+Replay requires a capture with both binary logs. The report pairs epochs by
+arrival order and observations by tracking status.
 
-The report lists per-epoch match counts with worst-case pseudorange, Doppler
-and carrier-phase residuals, plus whole-capture totals and the compressed to
-full wire-size ratio. Saturated C/N0 entries count separately because the
-compressed index clips both ends of its range.
+For each epoch, the report gives the match count and largest pseudorange,
+Doppler and carrier-phase residuals. It also gives totals for the capture and
+the ratio of compressed to full wire size. Saturated C/N0 entries count
+separately because the compressed index clips both ends of its range.
 
 ## References
 

@@ -128,13 +128,17 @@ def analyse_outages(
         finite(*truth)
     for item in epochs:
         finite(item.epoch, *item.position, item.correction_age)
-    if any(b.epoch <= a.epoch for a, b in itertools.pairwise(epochs)):
+    if any(
+        later.epoch <= earlier.epoch for earlier, later in itertools.pairwise(epochs)
+    ):
         raise ValueError("position epochs must increase strictly")
     for outage in outages:
         finite(outage.start, outage.end)
         if outage.end <= outage.start:
             raise ValueError("outage end must follow its start")
-    if any(b.start <= a.end for a, b in itertools.pairwise(outages)):
+    if any(
+        later.start <= earlier.end for earlier, later in itertools.pairwise(outages)
+    ):
         raise ValueError("outages must be ordered and nonoverlapping")
     result = []
     for index, outage in enumerate(outages):
@@ -193,8 +197,8 @@ def analyse_outages(
             and through_end
             and all(item.fresh_fixed for item in through_end)
             and all(
-                b.epoch - a.epoch <= max_gap
-                for a, b in itertools.pairwise([before[-1], *through_end])
+                later.epoch - earlier.epoch <= max_gap
+                for earlier, later in itertools.pairwise([before[-1], *through_end])
             )
             and outage.end - through_end[-1].epoch <= max_gap
         )
@@ -207,9 +211,11 @@ def analyse_outages(
             status = "censored"
         step_epochs = ([before[-1]] if before else []) + window
         steps = [
-            norm(subtract(b.position, a.position))
-            for a, b in itertools.pairwise(step_epochs)
-            if a.computed and b.computed and b.epoch - a.epoch <= max_gap
+            norm(subtract(later.position, earlier.position))
+            for earlier, later in itertools.pairwise(step_epochs)
+            if earlier.computed
+            and later.computed
+            and later.epoch - earlier.epoch <= max_gap
         ]
         valid = [item for item in window if item.computed]
         result.append(

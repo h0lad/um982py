@@ -76,7 +76,6 @@ class ContainerSummary:
     message_ids: tuple[int, ...]
 
     def manifest(self) -> dict[str, object]:
-        """Plain dictionary for the JSON writer."""
         return {
             "sequence": self.sequence,
             "major_version": self.major_version,
@@ -104,7 +103,6 @@ class CaptureReport:
     ignored_ids: tuple[int, ...]
 
     def manifest(self) -> dict[str, object]:
-        """Plain dictionary for the JSON writer."""
         return {
             "containers": [container.manifest() for container in self.containers],
             "container_count": len(self.containers),
@@ -135,7 +133,6 @@ class CatalogueSummary:
     undecoded: int
 
     def manifest(self) -> dict[str, object]:
-        """Plain dictionary for the JSON writer."""
         return {
             "first_id": self.first_id,
             "last_id": self.last_id,
@@ -264,9 +261,9 @@ class FieldCoverage:
 def field_coverage() -> FieldCoverage:
     """Count described, verified and unverified fields across the catalogue.
 
-    The receiver debug channel is only partly documented, so a field that is
-    decoded but not verified is kept visible instead of being presented as a
-    measurement.  This census is the progress meter for promoting fields.
+    The receiver debug channel is only partly documented. Decoded fields with
+    unverified meanings stay visible as unverified. The counts track progress
+    toward verified measurements.
     """
     described = verified = unverified = 0
     for spec in BASEBAND_MESSAGE_CATALOGUE.values():

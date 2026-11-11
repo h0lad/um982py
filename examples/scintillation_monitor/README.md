@@ -1,18 +1,17 @@
 # Scintillation monitor
 
-Computes the S4 amplitude scintillation index.
+Estimate an uncalibrated S4-like proxy from receiver C/N₀.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
 ```bash
 python -m examples.scintillation_monitor --port /dev/ttyUSB0 --baud 921600 \
-    --frames 120 --interval 1 --window 60 --record captures/cn0.bin \
-    --json scintillation.json
+    --duration 130 --frames 120 --interval 1 --window 60 \
+    --record captures/cn0.bin --json scintillation.json
 ```
 
 Replay the supplied capture:
@@ -25,18 +24,12 @@ python -m examples.scintillation_monitor \
 
 ## Inputs and results
 
-`--window` is the number of epochs per S4 window, while `--interval` controls the
-epoch spacing for live capture. A useful estimate needs a time series long
-enough to fill the chosen window.
+`--window` sets the maximum number of epochs per calculation. `--interval`
+sets the requested live output interval. Live capture stops at the frame or
+duration limit, whichever comes first. Collect enough epochs to fill the window.
 
-## Understanding the result
-
-Scintillation is rapid variation in signal amplitude or phase. This example
-calculates an S4 amplitude-variation index from a sequence of receiver
-signal-strength observations.
-
-The sampling rate, window length and receiver measurements constrain what can
-be observed.
+The receiver filters C/N₀. The calculation does not remove trends or correct
+for thermal noise.
 
 ## References
 

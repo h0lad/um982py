@@ -37,7 +37,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args(argv)
     inputs = [Path(row[1]) for row in args.report] + [args.events]
-    if args.output.resolve() in {p.resolve() for p in inputs}:
+    if args.output.resolve() in {path.resolve() for path in inputs}:
         parser.error("output must differ from inputs")
     events: list[Event] = []
     with args.events.open(newline="", encoding="utf-8") as stream:
@@ -66,29 +66,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         summaries = []
         for event in events:
             rows = [
-                r
-                for r in timeline
+                sample
+                for sample in timeline
                 if event["start_gps_seconds"]
-                <= float(r["gps_seconds"])
+                <= float(sample["gps_seconds"])
                 < event["end_gps_seconds"]
             ]
             roti = [
-                float(r["code_roti_tecu_per_min"])
-                for r in rows
-                if r.get("code_roti_tecu_per_min") is not None
-                and math.isfinite(float(r["code_roti_tecu_per_min"]))
+                float(sample["code_roti_tecu_per_min"])
+                for sample in rows
+                if sample.get("code_roti_tecu_per_min") is not None
+                and math.isfinite(float(sample["code_roti_tecu_per_min"]))
             ]
             cn0 = [
-                float(r[key])
-                for r in rows
+                float(sample[key])
+                for sample in rows
                 for key in ("cn0_high_dbhz", "cn0_low_dbhz")
-                if r.get(key) is not None and math.isfinite(float(r[key]))
+                if sample.get(key) is not None and math.isfinite(float(sample[key]))
             ]
             summaries.append(
                 {
                     **event,
                     "dual_frequency_samples": len(rows),
-                    "prns": sorted({int(r["prn"]) for r in rows}),
+                    "prns": sorted({int(sample["prn"]) for sample in rows}),
                     "roti_samples": len(roti),
                     "median_code_roti_tecu_per_min": median(roti) if roti else None,
                     "median_cn0_dbhz_both_signals": median(cn0) if cn0 else None,
@@ -105,7 +105,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     result = {
         "stations": stations,
-        "inputs": [{"path": str(p), "sha256": file_sha256(p)} for p in inputs],
+        "inputs": [{"path": str(path), "sha256": file_sha256(path)} for path in inputs],
         "limitations": (
             "Event times and station labels are supplied independently. "
             "Code TEC and code ROTI "

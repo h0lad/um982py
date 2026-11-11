@@ -105,7 +105,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     for tau, phase, frequency in zip(
         report.taus, report.phase_deviation, report.frequency_deviation, strict=True
     ):
-        print(f"  tau {tau:>8.1f} s  tau*adev_y {phase:.3e} s  adev_y {frequency:.3e}")
+        print(
+            f"  tau {tau:>8.1f} s  tau*adev_y {phase:.3e} s  adev_y {frequency:.3e}",
+            file=sys.stderr,
+        )
     write_json(payload_of(report), args.json)
     return 0
 

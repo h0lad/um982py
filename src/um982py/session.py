@@ -35,8 +35,8 @@ class SessionGap:
 class SessionRecorder:
     """Write bounded raw segments through ``capture.RecordingTransport``.
 
-    Choose a new directory for the recording. Completed segments and their
-    hashes are recorded in a journal. An interrupted write leaves a ``.part``
+    Choose a new directory for the recording. The journal records completed
+    segments and their hashes. An interrupted write leaves a ``.part``
     file for inspection. Optional metadata comes from the caller.
     """
 

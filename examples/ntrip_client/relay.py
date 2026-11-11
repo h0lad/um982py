@@ -20,9 +20,7 @@ def _coordinate(value: float, *, latitude: bool) -> tuple[str, str]:
         ("N" if value >= 0 else "S") if latitude else ("E" if value >= 0 else "W")
     )
     magnitude = abs(value)
-    # NMEA coordinates use whole degrees followed by minutes in [0, 60).
-    # Round the total minutes first so a value near the next degree carries
-    # into that degree instead of producing the invalid minute 60.000000.
+    # Round total minutes first to prevent an invalid 60.000000-minute value.
     micro_minutes = round(magnitude * 60_000_000)
     degrees, remainder = divmod(micro_minutes, 60_000_000)
     minutes, fraction = divmod(remainder, 1_000_000)

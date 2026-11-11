@@ -2,9 +2,7 @@
 
 Python 3.12+ library and command-line tools for the Unicore UM982 GNSS receiver.
 
-Some features may also work with the UM960 and UM980.
-Serial access requires the receiver's port and baud rate; its default in this
-library is 115200 baud. The examples below use 921600 as an example setting.
+UM960 and UM980 have not been tested.
 
 ## Install and use
 
@@ -23,26 +21,25 @@ um982py --port tcp://192.0.2.10:4001 doctor
 um982py --port /dev/ttyUSB0 --baud 921600 output-rate --log GPGGA --rate-hz 10
 ```
 
-Queries leave augmentation settings unchanged. Use `--augment` to enable
-augmentation for the current receiver session without saving the configuration.
-If a query times out, check the port, baud rate, power and serial permissions;
-`doctor` can help inspect a reachable receiver. A receiver may respond before
-it has a valid position: check the solution's `valid` flag before using it.
+Set the port and baud rate to match your receiver. The default is 115200 baud.
+The examples use 921600 baud.
+
+Use `--augment` to enable augmentation for the current session without saving
+the setting. Queries otherwise leave augmentation unchanged.
+
+If a query times out, check the port, baud rate, power and serial permissions.
+Use `doctor` to inspect the receiver. Check `valid` before using a position.
 
 ## Choose a workflow
 
 | Goal | Requirements and starting point |
 | --- | --- |
-| Track a vehicle or locate a site | One antenna; [position example](#locate-a-field-site) or [live tracking](examples/live_position/README.md) |
-| Obtain real-time corrected positions | Correction service and coverage; [NTRIP rover](examples/ntrip_client/README.md) or [satellite PPP](#watch-a-precise-position-converge) |
-| Record data for later processing | Suitable observation time and processing products; [RINEX export](#record-observations-for-post-processing) |
-| Determine vehicle orientation | Two fixed antennas and their mounting offset; [heading example](#get-the-direction-of-a-vehicle) |
+| Track a vehicle or locate a site | One antenna. [Position example](#locate-a-field-site) or [live tracking](examples/live_position/README.md) |
+| Obtain real-time corrected positions | Correction service and coverage. [NTRIP rover](examples/ntrip_client/README.md) or [satellite PPP](#watch-a-precise-position-converge) |
+| Record data for later processing | [RINEX export](#record-observations-for-post-processing) |
+| Determine vehicle orientation | Two fixed antennas and their mounting offset. [Heading example](#get-the-direction-of-a-vehicle) |
 | Diagnose signal reception | [Satellite reception](#check-satellite-reception) or [signal quality report](examples/signal_quality_report/README.md) |
-| Work with precise timing | Linux PPS device and a separately verified time reference; [time transfer](examples/time_transfer/README.md) |
-
-Receiver-reported precision and fix type are useful indicators, not independent
-proof of accuracy. Choose correction coverage, observation duration and an
-independent reference according to the application.
+| Work with precise timing | Linux PPS device and a separately verified time reference. [Time transfer](examples/time_transfer/README.md) |
 
 ## Find the right API
 
@@ -70,12 +67,10 @@ independent reference according to the application.
 
 ## Examples
 
-Replace `/dev/ttyUSB0` and the baud rate with your receiver's settings.
-
 ### Use a corrected rover
 
-Configure the receiver as a rover first and provide your caster details. The
-session owns its receiver connection and stops the correction worker on exit.
+Configure rover mode on the receiver and enter your caster details below.
+On exit, the session closes the receiver connection and stops the correction worker.
 
 ```python
 from um982py import Rover
@@ -94,12 +89,11 @@ with Rover.connect(
             )
 ```
 
-Heading and pitch describe the antenna baseline and are `None` if a valid
-heading from a matching receiver epoch is unavailable. Apply the antenna
-mounting offset for vehicle heading. Correction delivery does not by itself
-guarantee an RTK fixed solution; check the position type and correction health.
-See the [API guide](docs/api.md#rover-and-field-workflows) for credentials,
-recording, surveying and waypoint guidance.
+Heading and pitch describe the baseline between the antennas. Both are `None`
+if no valid heading matches the position epoch. Apply the offset between the
+baseline and the vehicle's forward direction to get the vehicle's heading.
+The [API guide](docs/api.md#rover-and-field-workflows) covers credentials,
+recording, surveying and waypoints.
 
 ### Locate a field site
 
@@ -127,7 +121,7 @@ else:
 
 ### Watch a precise position converge
 
-Keep the antenna stationary and stop with Ctrl+C when the results are satisfactory:
+Keep the antenna stationary. Stop with Ctrl+C:
 
 ```python
 from um982py import Receiver, haversine_distance
@@ -153,9 +147,10 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
         print("Stopped")
 ```
 
-Use `service="B2B-PPP"` for BeiDou PPP-B2b. Setup verifies the signal group and
-PPP service, and changes receiver settings for the current session when needed.
-Check the session's `group_changed` and `service_changed` fields for changes.
+Use `service="B2B-PPP"` for BeiDou PPP-B2b. `start_ppp()` checks the signal group
+and PPP service and changes them if needed. These settings apply to the current
+receiver session. The `group_changed` and `service_changed` fields show which
+settings changed.
 
 ### Record observations for post-processing
 
@@ -172,10 +167,9 @@ result.write("field.obs")
 print(f"Saved {result.epochs} epochs; omitted observations: {result.omitted}")
 ```
 
-Choose a recording duration appropriate for your post-processing method.
-`result.write()` replaces an existing file. Captures are held in memory; see the
-[capture guide](docs/api.md#logs-captures-and-rinex) for long recordings and
-recovering data after Ctrl+C.
+`result.write()` replaces an existing file. `capture_live()` stores the decoded
+records in memory. For long recordings and recovery after Ctrl+C, see the
+[capture guide](docs/api.md#logs-captures-and-rinex).
 
 ### Get the direction of a vehicle
 

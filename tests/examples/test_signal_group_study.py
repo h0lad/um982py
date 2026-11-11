@@ -1,5 +1,3 @@
-"""Tests the signal-group trade study against ground truth."""
-
 from __future__ import annotations
 
 import json

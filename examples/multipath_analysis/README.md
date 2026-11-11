@@ -1,11 +1,10 @@
 # Multipath analysis
 
-Measures code-minus-carrier multipath RMS.
+Calculate RMS code-minus-carrier residuals as a multipath proxy.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -24,22 +23,18 @@ python -m examples.multipath_analysis \
 ## Inputs and results
 
 Replay or capture RANGE observations over time. `--frequency` selects the
-carrier frequency and `--frames` bounds the number of epochs. The
-code-minus-carrier statistic is affected by the measurement arc and site.
+carrier frequency and `--frames` bounds the number of epochs.
 
 ## Understanding the result
 
-Multipath occurs when reflected satellite signals reach the antenna alongside
-the direct signal, affecting code and carrier measurements. The example
-summarizes a code-minus-carrier statistic that includes site and measurement
-effects without directly mapping reflectors or providing a calibrated error
-budget.
+Reflected signals affect code and carrier measurements. Code-minus-carrier
+residuals include these site effects along with ionospheric variation and
+receiver noise. Their RMS is a proxy for multipath, without a calibrated error
+budget or a map of reflectors.
 
-The receiver capture is split into carrier arcs using signal identity, lock
-time, cadence and Doppler-phase closure before detrending. Set `--interval` to
-the capture cadence when replaying data. Code-minus-carrier also contains
-ionospheric variation and receiver noise, so its residual is a proxy rather than
-a calibrated multipath measurement.
+Before detrending, the analysis splits carrier arcs by signal identity, lock
+time, cadence and Doppler-phase closure. When replaying data, set `--interval`
+to the capture cadence.
 
 ## References
 

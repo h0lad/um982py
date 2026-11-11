@@ -35,7 +35,7 @@ _PPP_TYPES = frozenset(
 )
 
 
-def _enum[T: IntEnum](value: Value, enum: type[T]) -> T | int | str | None:
+def _enum_or_raw_value[T: IntEnum](value: Value, enum: type[T]) -> T | int | str | None:
     if isinstance(value, str):
         try:
             return enum[value]
@@ -49,7 +49,9 @@ def _enum[T: IntEnum](value: Value, enum: type[T]) -> T | int | str | None:
     return None
 
 
-def _number(record: Record, name: str, *, nonnegative: bool = False) -> float | None:
+def _finite_number(
+    record: Record, name: str, *, nonnegative: bool = False
+) -> float | None:
     value = record.get(name)
     if isinstance(value, bool) or not isinstance(value, (int, float)):
         return None
@@ -57,7 +59,7 @@ def _number(record: Record, name: str, *, nonnegative: bool = False) -> float | 
     return number if isfinite(number) and (not nonnegative or number >= 0) else None
 
 
-def _integer(record: Record, name: str) -> int | None:
+def _nonnegative_integer(record: Record, name: str) -> int | None:
     value = record.get(name)
     return value if type(value) is int and value >= 0 else None
 
@@ -66,10 +68,10 @@ def _integer(record: Record, name: str) -> int | None:
 class PppSolution:
     """One receiver PPPNAV solution and its estimated precision.
 
-    A selected service describes configuration. The receiver's actual correction
-    source requires separate evidence. Check ``valid`` before using coordinates.
-    ``datum`` is the receiver-reported label. The configured PPP datum determines
-    the actual coordinate system and should be checked separately.
+    Check ``valid`` before using the coordinates. Selecting a service does not
+    establish which corrections the receiver used. Check the receiver's output
+    for that evidence. ``datum`` holds the label reported by the receiver.
+    Verify the configured PPP datum to establish the coordinate system.
     """
 
     latitude: float | None
@@ -131,19 +133,21 @@ class PppSolution:
         except ValueError:
             epoch = None
         return cls(
-            latitude=_number(record, "lat"),
-            longitude=_number(record, "lon"),
-            altitude_msl=_number(record, "hgt"),
-            geoid_separation=_number(record, "undulation"),
-            solution_status=_enum(record.get("sol_status"), SolutionStatus),
-            position_type=_enum(record.get("pos_type"), PositionType),
-            latitude_std_m=_number(record, "lat_std", nonnegative=True),
-            longitude_std_m=_number(record, "lon_std", nonnegative=True),
-            height_std_m=_number(record, "hgt_std", nonnegative=True),
-            correction_age_s=_number(record, "diff_age", nonnegative=True),
-            solution_age_s=_number(record, "sol_age", nonnegative=True),
-            satellites_tracked=_integer(record, "count_svs"),
-            satellites_used=_integer(record, "count_solnsvs"),
+            latitude=_finite_number(record, "lat"),
+            longitude=_finite_number(record, "lon"),
+            altitude_msl=_finite_number(record, "hgt"),
+            geoid_separation=_finite_number(record, "undulation"),
+            solution_status=_enum_or_raw_value(
+                record.get("sol_status"), SolutionStatus
+            ),
+            position_type=_enum_or_raw_value(record.get("pos_type"), PositionType),
+            latitude_std_m=_finite_number(record, "lat_std", nonnegative=True),
+            longitude_std_m=_finite_number(record, "lon_std", nonnegative=True),
+            height_std_m=_finite_number(record, "hgt_std", nonnegative=True),
+            correction_age_s=_finite_number(record, "diff_age", nonnegative=True),
+            solution_age_s=_finite_number(record, "sol_age", nonnegative=True),
+            satellites_tracked=_nonnegative_integer(record, "count_svs"),
+            satellites_used=_nonnegative_integer(record, "count_solnsvs"),
             datum=_reported_datum(record.get("datum_id")),
             epoch_gps_seconds=epoch,
             record=record,
@@ -210,11 +214,10 @@ class PppSession:
 def _start_ppp(receiver: Receiver, *, service: PppService = "E6-HAS") -> PppSession:
     """Enable a satellite PPP service and verify the current receiver settings.
 
-    If necessary, the master signal group changes to 3/6, which restarts
-    acquisition. Only the signal group and PPP service are configured. Settings
-    remain active in the receiver session and are not saved or restored. The
-    existing ``ONLY`` setting is retained when the requested service is active.
-    Group 7/0 is retained for B2B-PPP, which is documented for base stations.
+    Changes are limited to signal group and PPP service. Switching to group 3/6
+    restarts acquisition. Group 7/0 remains for B2B-PPP (documented for base
+    stations), and an active service keeps its ``ONLY`` setting. Changes are not
+    saved or restored.
     """
     if not isinstance(service, str):
         raise ValueError("service must be AUTO, E6-HAS, or B2B-PPP")

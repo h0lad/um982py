@@ -1,11 +1,10 @@
 # Telemetry bridge
 
-Streams decoded frames as newline-delimited JSON.
+Stream decoded frames as newline-delimited JSON.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -22,18 +21,10 @@ python -m examples.telemetry_bridge --replay tests/fixtures/versiona.bin
 
 ## Inputs and results
 
-`--seconds` sets the live streaming duration, and `--json` writes
-newline-delimited JSON to a file. Replay reads an existing wire capture instead
-of opening the receiver and decodes it incrementally. Live capture uses a bounded
-queue; if the output cannot keep up, the bridge reports dropped frames and exits
-with status 1. A receiver disconnect also stops the bridge with an error.
-
-## Understanding the result
-
-The bridge decodes receiver messages into newline-delimited JSON for scripts and
-log pipelines, using either a live receiver or a recorded binary capture. Choose
-an appropriate output path and collection time, and protect the telemetry file
-if its messages contain position data.
+`--seconds` sets the live streaming duration, and `--json` writes to a file.
+Replay decodes the capture incrementally. Live capture buffers frames in a
+fixed-size queue. If output cannot keep up, the bridge reports dropped frames
+and exits with status 1. A receiver disconnect also stops the bridge with an error.
 
 ## References
 

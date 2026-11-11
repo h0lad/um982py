@@ -57,7 +57,6 @@ def _budget(
     *,
     swapped: bool = False,
 ) -> AttitudeBudget | None:
-    """Budget of the last baseline and position pair."""
     if not baselines:
         return None
     if all(key in baselines[-1] for key in ("std_1", "std_2", "std_3")):

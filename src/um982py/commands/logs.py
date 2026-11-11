@@ -257,7 +257,7 @@ class Log(StrEnum):
     ) -> Command[CommandResponse]:
         """Build a periodic or ONCHANGED output command for this log.
 
-        ``rate_hz`` uses documented N4 rates; actual support depends on the
+        ``rate_hz`` uses documented N4 rates. Actual support depends on the
         receiver, firmware, signal group and log. ``interval`` is in seconds.
         """
         if isinstance(interval, Trigger):

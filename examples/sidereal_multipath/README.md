@@ -1,11 +1,10 @@
 # Sidereal multipath
 
-Checks whether multipath repeats after one sidereal day.
+Check whether multipath repeats after one sidereal day.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -26,18 +25,13 @@ python -m examples.sidereal_multipath \
 
 ## Inputs and results
 
-`--training` must point to an earlier RANGE and SATVIS2 capture from the same
-stationary site. The live or replay input is the comparison pass, and
-`--cell-degrees` and `--minimum-cell-samples` control the sky bins.
+Set `--training` to an earlier RANGE and SATVIS2 capture from the same
+stationary site. The live or replay input is the comparison pass. Use
+`--cell-degrees` and `--minimum-cell-samples` to control the sky bins.
 
 ## Understanding the result
 
-Satellite geometry can repeat at approximately a sidereal-day interval, making
-some site-dependent reflected-signal patterns repeat. This example compares
-observations from an earlier capture and a later pass at the same site.
-
-Keep the antenna and surroundings comparable and provide enough matched
-samples. A repeated pattern is evidence for investigation.
+Keep the antenna and surroundings comparable between captures.
 
 ## References
 

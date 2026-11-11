@@ -9,10 +9,10 @@ from tests.examples._specialist import sample
 
 
 def test_one_millisecond_step_is_recovered_in_code_and_carrier() -> None:
-    before = [sample(0, prn=p, code=2e7, phase=2e7) for p in range(1, 7)]
+    before = [sample(0, prn=prn, code=2e7, phase=2e7) for prn in range(1, 7)]
     after = [
-        sample(1, prn=p, code=2e7 + 299792.458, phase=2e7 + 299792.458)
-        for p in range(1, 7)
+        sample(1, prn=prn, code=2e7 + 299792.458, phase=2e7 + 299792.458)
+        for prn in range(1, 7)
     ]
     result = detect_clock_jumps(before, after)
     assert result is not None
@@ -22,14 +22,16 @@ def test_one_millisecond_step_is_recovered_in_code_and_carrier() -> None:
 
 
 def test_single_satellite_phase_step_does_not_become_a_clock_jump() -> None:
-    before = [sample(0, prn=p) for p in range(1, 7)]
-    after = [sample(1, prn=p, phase=100 + (1e6 if p == 1 else 0)) for p in range(1, 7)]
+    before = [sample(0, prn=prn) for prn in range(1, 7)]
+    after = [
+        sample(1, prn=prn, phase=100 + (1e6 if prn == 1 else 0)) for prn in range(1, 7)
+    ]
     assert detect_clock_jumps(before, after) is None
 
 
 def test_code_only_receiver_resteering_is_distinguished() -> None:
-    before = [sample(0, prn=p) for p in range(1, 5)]
-    after = [sample(1, prn=p, code=1e6) for p in range(1, 5)]
+    before = [sample(0, prn=prn) for prn in range(1, 5)]
+    after = [sample(1, prn=prn, code=1e6) for prn in range(1, 5)]
     result = detect_clock_jumps(before, after)
     assert result is not None and result.classification == "code_only"
     assert result.phase_jump_m is None
@@ -41,14 +43,14 @@ def test_duplicate_satellites_cannot_manufacture_consensus() -> None:
 
 
 def test_lock_reset_removes_a_satellite_from_consensus() -> None:
-    before = [sample(0, prn=p) for p in range(1, 5)]
-    after = [sample(1, prn=p, code=1e6) for p in range(1, 5)]
+    before = [sample(0, prn=prn) for prn in range(1, 5)]
+    after = [sample(1, prn=prn, code=1e6) for prn in range(1, 5)]
     after[0] = replace(after[0], lock_seconds=0.01)
     assert detect_clock_jumps(before, after) is None
     assert len(clock_residuals(before, after)[0]) == 3
 
 
 def test_four_unshared_satellites_do_not_count_as_a_tested_clock_interval() -> None:
-    before = [sample(0, prn=p) for p in range(1, 5)]
-    after = [sample(1, prn=p) for p in range(5, 9)]
+    before = [sample(0, prn=prn) for prn in range(1, 5)]
+    after = [sample(1, prn=prn) for prn in range(5, 9)]
     assert clock_residuals(before, after) == ((), ())

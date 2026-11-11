@@ -1,11 +1,10 @@
 # Baseband command conformance
 
-Sends baseband commands and records ACKs, rejects, and state changes.
+Send baseband commands and record acknowledgements, rejections and state changes.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -22,19 +21,14 @@ python -m examples.baseband_conformance --replay notices.bin --json out.json
 
 ## Inputs and results
 
-Use `--command` to restrict a live probe and `--window-seconds` to control the
-notice window. `--include-destructive` also probes disruptive commands and
-commands with unverified effects, so use it only when those state changes are
-intended.
-The JSON `status` reports `insufficient_data` if a command has no baseband
-reply, even if its application-level request was acknowledged.
+Use `--command` to select commands for a live probe. `--window-seconds` sets how
+long to wait for notices. `--include-destructive` also sends disruptive commands
+and commands with unverified effects. Use it only if you intend those changes.
 
-## Understanding the result
-
-The baseband is the receiver subsystem that processes radio signals. This
-diagnostic sends selected baseband commands and compares application
-acknowledgements with observed baseband replies or state changes.
+Without a baseband reply, the JSON `status` is `insufficient_data`. An
+application-level acknowledgement alone does not count as a baseband reply.
 
 ## References
 
-Unicore UM982 user manual; observed receiver replies.
+- Unicore UM982 user manual.
+- observed receiver replies.

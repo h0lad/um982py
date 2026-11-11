@@ -1,5 +1,3 @@
-"""Tests the baseband notice state console against ground truth."""
-
 from __future__ import annotations
 
 from dataclasses import fields as dataclass_fields

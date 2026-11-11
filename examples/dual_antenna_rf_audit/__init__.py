@@ -94,8 +94,10 @@ def paired_observation_details(
 ) -> tuple[dict[str, object], ...]:
     """Pair valid code-locked rows whose raw phase differences include ambiguities."""
 
-    def index(records: Sequence[Record]) -> dict[tuple[float, ReceptionKey], Record]:
-        result: dict[tuple[float, ReceptionKey], Record] = {}
+    def index_by_epoch_and_signal(
+        records: Sequence[Record],
+    ) -> dict[tuple[float, ReceptionKey], Record]:
+        observations: dict[tuple[float, ReceptionKey], Record] = {}
         for record in records:
             epoch = record_epoch(record)
             for row in record.records("observations"):
@@ -114,17 +116,21 @@ def paired_observation_details(
                     row.integer("frequency_channel") if system == 1 else 0,
                 )
                 identity = (epoch, key)
-                old = result.get(identity)
-                if old is None or cn0 > old.real("cn0"):
-                    result[identity] = row
-        return result
+                previous = observations.get(identity)
+                if previous is None or cn0 > previous.real("cn0"):
+                    observations[identity] = row
+        return observations
 
-    first, second = index(selected), index(other)
+    selected_observations = index_by_epoch_and_signal(selected)
+    other_observations = index_by_epoch_and_signal(other)
     output: list[dict[str, object]] = []
-    for epoch, key in sorted(first.keys() & second.keys()):
-        a, b = first[(epoch, key)], second[(epoch, key)]
-        phase_ok = bool(
-            a.integer("tracking_status") & b.integer("tracking_status") & 0x400
+    for epoch, key in sorted(selected_observations.keys() & other_observations.keys()):
+        selected_row = selected_observations[(epoch, key)]
+        other_row = other_observations[(epoch, key)]
+        valid_phase = bool(
+            selected_row.integer("tracking_status")
+            & other_row.integer("tracking_status")
+            & 0x400
         )
         output.append(
             {
@@ -134,18 +140,19 @@ def paired_observation_details(
                 "signal": key.signal,
                 "l2c_flag": key.l2c_flag,
                 "frequency_channel": key.frequency_channel,
-                "cn0_difference_db": a.real("cn0") - b.real("cn0"),
-                "pseudorange_difference_m": a.real("pseudorange")
-                - b.real("pseudorange"),
-                "raw_phase_difference_cycles": a.real("carrier_phase")
-                - b.real("carrier_phase")
-                if phase_ok
+                "cn0_difference_db": selected_row.real("cn0") - other_row.real("cn0"),
+                "pseudorange_difference_m": selected_row.real("pseudorange")
+                - other_row.real("pseudorange"),
+                "raw_phase_difference_cycles": selected_row.real("carrier_phase")
+                - other_row.real("carrier_phase")
+                if valid_phase
                 else None,
-                "doppler_difference_hz": a.real("doppler") - b.real("doppler")
-                if phase_ok
+                "doppler_difference_hz": selected_row.real("doppler")
+                - other_row.real("doppler")
+                if valid_phase
                 else None,
-                "selected_lock_seconds": a.real("lock_time"),
-                "other_lock_seconds": b.real("lock_time"),
+                "selected_lock_seconds": selected_row.real("lock_time"),
+                "other_lock_seconds": other_row.real("lock_time"),
             }
         )
     return tuple(output)
@@ -183,16 +190,23 @@ def compare_antennas(
     selected: Sequence[Record], other: Sequence[Record]
 ) -> AntennaComparison:
     """Pair identical epochs and signals without imputing absent measurements."""
-    first, second = _receptions(selected), _receptions(other)
+    selected_epochs, other_epochs = _receptions(selected), _receptions(other)
     pairs: list[ReceptionPair] = []
     selected_only = other_only = 0
-    for epoch in sorted(first.keys() | second.keys()):
-        a, b = first.get(epoch, {}), second.get(epoch, {})
-        selected_only += len(a.keys() - b.keys())
-        other_only += len(b.keys() - a.keys())
+    for epoch in sorted(selected_epochs.keys() | other_epochs.keys()):
+        selected_signals = selected_epochs.get(epoch, {})
+        other_signals = other_epochs.get(epoch, {})
+        selected_only += len(selected_signals.keys() - other_signals.keys())
+        other_only += len(other_signals.keys() - selected_signals.keys())
         pairs.extend(
-            ReceptionPair(epoch, key, a[key], b[key], a[key] - b[key])
-            for key in sorted(a.keys() & b.keys())
+            ReceptionPair(
+                epoch,
+                key,
+                selected_signals[key],
+                other_signals[key],
+                selected_signals[key] - other_signals[key],
+            )
+            for key in sorted(selected_signals.keys() & other_signals.keys())
         )
     groups: dict[ReceptionKey, list[float]] = defaultdict(list)
     for pair in pairs:
@@ -213,9 +227,9 @@ def compare_antennas(
             )
         )
     return AntennaComparison(
-        len(first),
-        len(second),
-        len(first.keys() & second.keys()),
+        len(selected_epochs),
+        len(other_epochs),
+        len(selected_epochs.keys() & other_epochs.keys()),
         selected_only,
         other_only,
         tuple(pairs),

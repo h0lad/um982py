@@ -1,11 +1,10 @@
 # Dilution of precision
 
-Computes DOP values from satellite geometry.
+Calculate DOP values from satellite geometry.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -22,19 +21,13 @@ python -m examples.dop_geometry --replay tests/fixtures/captures/SATVIS2A.bin
 
 ## Inputs and results
 
-The example uses SATVIS2 satellite geometry and compares the computed DOP with
-the receiver-reported values. `--mask` excludes satellites below the specified
-elevation in degrees.
+The calculation uses SATVIS2 geometry and compares DOP with receiver-reported
+values. `--mask` excludes satellites below the given elevation in degrees.
 
-## Understanding the result
-
-Dilution of precision (DOP) describes how satellite geometry can amplify
-measurement errors. Lower DOP generally indicates better geometry, but says
-nothing by itself about the size of the underlying measurement errors.
-
-The calculated values can be compared with receiver reports, but differences
-may reflect which satellites each calculation includes.
+DOP does not measure the underlying errors. Differences from receiver reports
+may reflect different satellite selections.
 
 ## References
 
-Milliken & Zoller (1978); Kaplan & Hegarty (2017).
+- Milliken & Zoller (1978).
+- Kaplan & Hegarty (2017).

@@ -262,12 +262,11 @@ def _mad(values: Sequence[float]) -> float:
 def clip_outliers(
     samples: Sequence[FixSample], *, k: float = 4.0
 ) -> tuple[tuple[FixSample, ...], tuple[FixRejection, ...]]:
-    """Drop epochs that deviate from a running median beyond ``k`` robust sigmas.
+    """Drop epochs more than ``k`` robust sigmas from the median.
 
-    The median and its scaled absolute deviation are used because a single
-    gross outlier must not inflate the scale that is meant to detect it.  At
-    least half of the epochs are always retained, so a noisy occupation still
-    yields a fix instead of failing.  A non-positive ``k`` disables clipping.
+    The scale is the scaled median absolute deviation. A pass is discarded if fewer
+    than ``max(3, len(samples) // 2)`` samples remain. Zero ``k`` disables
+    clipping. Negative ``k`` raises an error.
     """
     if k < 0:
         raise ValueError("sigma_k must be non-negative")
@@ -342,11 +341,11 @@ def estimate(
 ) -> FixEstimate:
     """Average the whole occupation, rejecting only gross outliers.
 
-    Every epoch that carries a computed solution enters the average, whatever
-    its fix class, so a static occupation always yields a position.  The fix
-    classes are reported next to the average, ``converged`` only states whether
-    the requested epoch count and mean sigmas were reached, and only epochs that
-    are gross outliers against the running median are dropped.
+    Every epoch with a computed solution enters the average, whatever its fix
+    class, so a static occupation always yields a position. The report includes
+    the fix classes. ``converged`` states only whether the requested epoch count
+    and mean sigmas were reached. The filter drops only gross outliers against
+    the running median.
     """
     if not samples:
         raise ValueError("at least one sample is required")

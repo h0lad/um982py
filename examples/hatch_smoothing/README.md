@@ -1,11 +1,10 @@
 # Hatch smoothing
 
-Smooths code with carrier phase and resets on cycle slips.
+Smooth code range with carrier-phase changes.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -25,15 +24,11 @@ python -m examples.hatch_smoothing \
 ## Inputs and results
 
 `--window` sets the smoothing window. Replay needs RANGE observations with
-continuous carrier-phase arcs, and the filter resets when its cycle-slip checks
-break an arc.
+continuous carrier-phase arcs.
 
 ## Understanding the result
 
-A Hatch filter uses carrier-phase changes to smooth noisier code-range
-measurements over continuous signal arcs. The filter resets when a cycle slip or
-gap breaks an arc, and smoothing does not remove every source of measurement
-bias.
+The filter resets when a cycle slip or gap breaks an arc.
 
 ## References
 

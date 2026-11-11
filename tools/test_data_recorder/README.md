@@ -1,35 +1,35 @@
 # Receiver test recordings
 
-Record the receiver's unmodified serial output directly to disk for replay and
-decoder, RINEX, orbit and measurement tests. The recorder temporarily configures
-the receiver's log output. It writes incoming bytes before decoding them for
-live statistics.
+Record serial output for replay and tests of decoders, RINEX, orbits and
+measurements. The recorder writes received bytes before decoding them for live
+statistics.
 
-The recorder does not interpolate, fill gaps or repeat measurements. It keeps
-the received bytes even if the receiver sends the same epoch more than once;
-frame counts are not counts of independent epochs. Check receiver timestamps
-for duplicates and gaps before using a recording as a time series.
+The recording preserves receiver bytes without interpolation, gap filling or
+duplication, including repeated epochs. Check timestamps for distinct epochs
+and gaps.
 
-The default run is 24 hours at 921600 baud, with 30-minute segments. Ensure at
-least 10 GB is free and run a short trial first to measure the actual data
-rate. Use two fixed antennas and document the receiver, firmware, configuration,
-each antenna and its reference point, mounting, cable and correction source in
-a JSON file. Record the baseline and setup needed to interpret both inputs.
+The default is 24 hours at 921600 baud in 30-minute segments. Keep at least
+10 GB free and measure the data rate in a short trial first.
+
+Use two fixed antennas. Record the receiver model, firmware, configuration and
+correction source in a JSON file. For each antenna, record its model, reference
+point, mount and cable. Include the baseline and which antenna uses each input.
 
 ## Receiver setup
 
-The recorder reads the current log subscriptions, enables the core profile on
-the selected receiver COM port, and restores the affected subscriptions after
-the run. Specify the receiver port connected to the host serial device with
-`--receiver-port COM1`, `COM2` or `COM3`. Close any serial console before
-starting. To inspect the commands without changing the receiver:
+Close any serial console that uses the receiver. Select the receiver port
+connected to the host with `--receiver-port COM1`, `COM2` or `COM3`. The recorder
+reads the current subscriptions, enables the core profile on that port and
+restores the affected subscriptions when the run ends.
+
+To inspect the commands without changing the receiver:
 
 ```bash
 python -m tools.test_data_recorder.profile
 ```
 
-This profile tool only prints commands. Add `--port COM1` (or COM2/COM3) to
-see commands for that receiver output. The core profile includes:
+Use `--port COM1` (or COM2/COM3) to select the receiver output. The core
+profile includes:
 
 | Data | Test coverage |
 | --- | --- |
@@ -47,7 +47,7 @@ To request 10 Hz for observation and position logs, first inspect the commands:
 python -m tools.test_data_recorder.profile --port COM1 --rate-hz 10
 ```
 
-Then record a short trial, substituting the host device and receiver port:
+Replace the host device and receiver port, then make a short recording:
 
 ```bash
 python -m tools.test_data_recorder.record /dev/ttyUSB0 /tmp/um982-trial \
@@ -55,18 +55,21 @@ python -m tools.test_data_recorder.record /dev/ttyUSB0 /tmp/um982-trial \
 python -m tools.test_data_recorder.audit /tmp/um982-trial
 ```
 
-The output directory must be new. `--rate-hz` requests that rate for OBSVM,
-OBSVH, RANGE, RANGEH, BESTNAV and BESTNAVH, plus compressed observations or PPP
-position logs when their optional profiles are selected. Ephemerides, baseline
-and correction blocks retain their event triggers; satellite visibility, timing
-and diagnostic logs retain their own intervals. Omit the option for the original
-profile. The requested rate and exact commands are recorded in session metadata.
+Choose a new output directory. `--rate-hz` sets the requested rate for OBSVM,
+OBSVH, RANGE, RANGEH, BESTNAV and BESTNAVH. It also applies to compressed
+observations and PPP position logs if you enable those optional profiles.
+Ephemerides, baseline and correction blocks keep their event triggers. Satellite
+visibility, timing and diagnostic logs keep their profile intervals. Without
+`--rate-hz`, all logs use the original profile.
 
-The supported command values are 1, 2, 5, 10, 20 and 50 Hz, but actual support
-depends on the receiver, firmware, signal group and individual logs. The UM982
-is specified for up to 20 Hz RTK and heading; 50 Hz is documented only for
-specific N4 products. An accepted command does not prove the requested cadence
-was delivered. High-rate dual-antenna raw observations can exceed serial or host
-capacity and increase disk use considerably: measure a short trial, check counts
-and timestamps, and verify the chosen baud rate before a long recording. See the
+The session metadata records the requested rate and commands.
+
+The tool accepts 1, 2, 5, 10, 20 and 50 Hz. The rates the receiver can deliver
+depend on its model, firmware, signal group and selected logs. Unicore specifies
+up to 20 Hz for UM982 RTK and heading. The N4 documentation lists 50 Hz only for
+specific products. Check the recorded timestamps to measure the delivered rate.
+
+High-rate observations from both antennas can exceed serial or host capacity
+and consume more disk space. Check the trial recording's counts and timestamps
+against the requested rate and baud rate. See the
 [output-rate guide](../../docs/api.md#receiver-output-rates).

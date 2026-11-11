@@ -34,7 +34,6 @@ def _attitude(record: Record, *, swapped: bool) -> Attitude:
 
 
 def _payload(records: Sequence[Record], *, swapped: bool = False) -> dict[str, object]:
-    """Build the attitude payload from the decoded baselines."""
     attitudes = [
         {
             **_attitude_payload(_attitude(record, swapped=swapped)),

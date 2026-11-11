@@ -58,8 +58,9 @@ class RtkData:
     satellites: tuple[RtkDataSatellite, ...]
 
 
-def _identity(satellite_id: int) -> tuple[MessageSatelliteSystem | None, int | None]:
-    """Resolve the system and PRN, leaving unmapped identifiers unresolved."""
+def _satellite_system_and_prn(
+    satellite_id: int,
+) -> tuple[MessageSatelliteSystem | None, int | None]:
     for system, first, last, offset in _SYSTEM_OFFSETS:
         if first <= satellite_id <= last:
             return system, satellite_id - offset
@@ -87,7 +88,7 @@ def decode_rtk_data(message: Message) -> RtkData:
         satellite_id, status, value = _ENTRY.unpack_from(
             payload, _HEADER_SIZE + index * _ENTRY.size
         )
-        system, prn = _identity(satellite_id)
+        system, prn = _satellite_system_and_prn(satellite_id)
         satellites.append(RtkDataSatellite(satellite_id, system, prn, status, value))
     return RtkData(
         message,
@@ -99,18 +100,15 @@ def decode_rtk_data(message: Message) -> RtkData:
 
 
 def _read(name: str, message_id: int, port: Port | None) -> Command[RtkData]:
-    """Request one binary RTKDATA frame."""
     request = logging.request(name, port=port, message_id=message_id)
     return Command(request.text, request.matches, decode_rtk_data)
 
 
 def _output(name: str, port: Port | None) -> Command[CommandResponse]:
-    """Subscribe to changes in a binary RTKDATA report."""
     return logging.output(name, Trigger.ON_CHANGED, port=port)
 
 
 def _stop(name: str, port: Port | None) -> Command[CommandResponse]:
-    """Stop a previously started RTKDATA subscription."""
     return logging.stop(name, port=port)
 
 

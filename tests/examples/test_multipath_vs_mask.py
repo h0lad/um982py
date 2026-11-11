@@ -1,5 +1,3 @@
-"""Tests the elevation-mask multipath sweep against ground truth."""
-
 from __future__ import annotations
 
 import itertools

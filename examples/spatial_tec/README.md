@@ -10,20 +10,23 @@ From the repository root, run the **synthetic demonstration**:
 python -m examples.spatial_tec --input examples/spatial_tec/sample.csv
 ```
 
-Supply your own matched observations with `--input` and add `--json result.json`
-to save the report. No receiver connection is required.
+Use your CSV with `--input` and `--json result.json` to save the report.
 
 ## Input
 
-Each row is one matched satellite and epoch interval at both stations. Supply the same two carrier frequencies in Hz and range-increasing carrier phases in metres for both ends of the interval. Phases must remain on continuous, slip-free arcs at each station. Join records by constellation, satellite, signal and epoch before preparing the CSV because the program cannot verify that join.
+Each row describes one satellite over an epoch interval at both stations.
+Use the same two carrier frequencies, in Hz, and range-increasing carrier
+phases, in metres, at each end of the interval. The phase arcs at each station
+must be continuous and slip-free. Join records by constellation, satellite,
+signal and epoch before preparing the CSV. The program cannot verify the join.
 
 ## Explanation and interpretation
 
 The ionosphere delays code and advances carrier phase. Dividing the change in
 `(high phase - low phase)` by `40.3 × 10^16 × (1/f_low² - 1/f_high²)` gives the
 change in slant TEC units (TECU), with initial ambiguities cancelling within
-continuous arcs. The report gives paired differences and Pearson correlation, but
-it neither maps them to vertical TEC nor attributes them to a particular
+continuous arcs. The report gives paired differences and Pearson correlation.
+It does not map them to vertical TEC or attribute them to a particular
 ionospheric structure.
 
 Compare the result with an independently processed RINEX pair and labelled

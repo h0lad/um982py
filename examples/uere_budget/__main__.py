@@ -46,7 +46,6 @@ def _payload(
     *,
     assume_matched_geometry: bool = False,
 ) -> dict[str, object]:
-    """Build the UERE budget from the decoded logs."""
     by_epoch = {record_epoch(record): record for record in dilutions}
     paired = [
         (position, by_epoch[record_epoch(position)])

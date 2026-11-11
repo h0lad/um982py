@@ -1,5 +1,3 @@
-"""Ensure each example entry point can be discovered without hardware."""
-
 import subprocess
 import sys
 from pathlib import Path

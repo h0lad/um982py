@@ -1,12 +1,12 @@
 # Base station survey
 
-Averages repeated fixes until a base-station position converges.
-Differential and RTK positions with corrections older than 10 seconds are skipped.
+Average repeated fixes until the base position meets the convergence criteria.
+The survey skips differential and RTK positions with corrections older than
+10 seconds.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -22,31 +22,28 @@ python -m examples.base_station_survey \
     --replay tests/fixtures/captures/BESTXYZB.bin
 ```
 
-The survey mean is ECEF (ellipsoidal height), while BESTNAV `hgt` is MSL height.
+The survey averages ECEF coordinates and derives ellipsoidal height. BESTNAV
+`hgt` is height above mean sea level.
 
 ## Inputs and results
 
-The survey uses BESTXYZ epochs. Use `--minimum-samples`,
-`--horizontal-tolerance` and `--vertical-tolerance` to set the convergence
-criteria, while `--frames` and `--duration` bound a live collection.
-The JSON `status` is `not_converged` until the criteria are met.
-Duplicate epochs are removed. Convergence requires at least three distinct
-positions and at least half of all positions to be distinct. It uses a clipped
-lag-one correlation adjustment to the standard
-error. This screening estimate does not fully model long-memory correlation,
+The survey uses BESTXYZ epochs and removes duplicates. Set the convergence
+criteria with `--minimum-samples`, `--horizontal-tolerance` and
+`--vertical-tolerance`. Use `--frames` and `--duration` to limit a live capture.
+The JSON `status` stays `not_converged` until the criteria are met.
+
+Convergence requires at least three distinct positions, and at least half of
+the positions must be distinct. A clipped lag-one correlation adjusts the
+standard error but does not fully account for long-memory correlation,
 quantization or systematic errors.
 
 ## Understanding the result
 
-This example averages repeated positions while the antenna remains stationary
-and reports the variation and a convergence check. ECEF means Earth-centred
-X/Y/Z coordinates in metres, and the reported geodetic height is above the
-reference ellipsoid.
-
-A stable average can still have a systematic position error. For a base
-station intended to provide RTK observations, follow the longer [station
-survey guide](../ntrip_server/SURVEY.md) and review an independent position
-solution before using it as a surveyed base.
+Keep the antenna stationary during the survey. A stable average can still have
+a systematic position error. ECEF coordinates are Earth-centred X/Y/Z in metres.
+Geodetic height is above the reference ellipsoid. Before using the result for
+an RTK base station, follow the [station survey guide](../ntrip_server/SURVEY.md)
+and review an independent position solution.
 
 ## References
 

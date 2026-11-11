@@ -532,20 +532,20 @@ def parse_pos_debug(raw: bytes | str) -> PosDebugData | None:
             continue
         sq_tail_match = _POS_SQ_TAIL.match(token)
         if sq_tail_match is not None and pending_satellite is not None:
-            s = pending_satellite
+            satellite = pending_satellite
             qualities.append(
                 PosDebugSatelliteQuality(
-                    s[0],
-                    s[1],
-                    s[2],
-                    s[3],
+                    satellite[0],
+                    satellite[1],
+                    satellite[2],
+                    satellite[3],
                     None,
                     None,
-                    s[4],
-                    s[5],
-                    s[6],
-                    s[7],
-                    s[8],
+                    satellite[4],
+                    satellite[5],
+                    satellite[6],
+                    satellite[7],
+                    satellite[8],
                     int(sq_tail_match.group(1)),
                     int(sq_tail_match.group(2)),
                     int(sq_tail_match.group(3), 16),

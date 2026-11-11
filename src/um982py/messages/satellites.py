@@ -1,5 +1,3 @@
-"""Satellite information decoding."""
-
 from um982py.errors import ProtocolError
 from um982py.messages.reader import BodyReader
 from um982py.messages.record import Record, Value

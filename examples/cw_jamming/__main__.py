@@ -99,10 +99,9 @@ def _fingerprint_payload(item: BandFingerprint) -> dict[str, object]:
     }
 
 
-def _payload(
+def _jamming_payload(
     summary_records: Sequence[Record], band_records: Sequence[Record]
 ) -> dict[str, object]:
-    """Build the jamming report from the decoded logs."""
     samples = band_samples(band_records)
     by_epoch: dict[int, dict[Band, CwState]] = {}
     for sample in samples:
@@ -150,7 +149,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         interval=args.interval,
         on_progress=progress_printer("cw_jamming") if args.debug else None,
     )
-    payload = _payload(captured["JAMSTATUS"], captured["FREQJAMSTATUS"])
+    payload = _jamming_payload(captured["JAMSTATUS"], captured["FREQJAMSTATUS"])
     if not payload["bands"] and payload["summary"] is None:
         write_json({"status": "insufficient_data", "payload": payload}, args.json)
         return 1

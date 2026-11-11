@@ -117,9 +117,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
         return 1
     gpst = gpst_from_utc(utc)
-    print(f"gpst {gpst.isoformat()} utc {utc.isoformat()}")
-    print(f"day of year {day_of_year(utc.date())} leap seconds {leap_seconds(utc)}")
-    print(f"receiver utc_offset {reported:+.0f} s table {table_offset:+.0f} s")
+    print(f"gpst {gpst.isoformat()} utc {utc.isoformat()}", file=sys.stderr)
+    print(
+        f"day of year {day_of_year(utc.date())} leap seconds {leap_seconds(utc)}",
+        file=sys.stderr,
+    )
+    print(
+        f"receiver utc_offset {reported:+.0f} s table {table_offset:+.0f} s",
+        file=sys.stderr,
+    )
     print(
         f"Time transfer: {utc.isoformat()} UTC, leap seconds {leap_seconds(utc)}, "
         f"receiver offset {reported:+.0f} s vs table {table_offset:+.0f} s",

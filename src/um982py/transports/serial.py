@@ -1,5 +1,3 @@
-"""Receiver byte transport over a serial port."""
-
 from time import monotonic
 
 import serial

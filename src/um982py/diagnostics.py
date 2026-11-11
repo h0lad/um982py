@@ -144,14 +144,18 @@ def signal_inventory(records: Sequence[Record]) -> list[dict[str, object]]:
     """Describe every wire signal, retaining unknown identifiers and raw channels."""
     groups: dict[tuple[int, int, bool], list[Record]] = {}
     for record in records:
-        for obs in record.records("observations"):
-            status = obs.integer("tracking_status")
+        for observation in record.records("observations"):
+            status = observation.integer("tracking_status")
             key = (status >> 16 & 7, status >> 21 & 31, bool(status & (1 << 26)))
-            groups.setdefault(key, []).append(obs)
+            groups.setdefault(key, []).append(observation)
     result: list[dict[str, object]] = []
     for (system, signal, l2c), observations in sorted(groups.items()):
         identified = tracking_signal(observations[0].integer("tracking_status"))
-        cn0 = [o.real("cn0") for o in observations if isfinite(o.real("cn0"))]
+        cn0 = [
+            observation.real("cn0")
+            for observation in observations
+            if isfinite(observation.real("cn0"))
+        ]
         result.append(
             {
                 "system": system,
@@ -159,14 +163,19 @@ def signal_inventory(records: Sequence[Record]) -> list[dict[str, object]]:
                 "l2c_flag": l2c,
                 "identification": asdict(identified) if identified else None,
                 "observations": len(observations),
-                "satellites": len({o.integer("prn") for o in observations}),
+                "satellites": len(
+                    {observation.integer("prn") for observation in observations}
+                ),
                 "code_and_phase_valid": sum(
-                    o.integer("tracking_status") & 0x1400 == 0x1400
-                    for o in observations
+                    observation.integer("tracking_status") & 0x1400 == 0x1400
+                    for observation in observations
                 ),
                 "median_cn0_db_hz": median(cn0) if cn0 else None,
                 "wire_frequency_channels": sorted(
-                    {o.integer("frequency_channel") for o in observations}
+                    {
+                        observation.integer("frequency_channel")
+                        for observation in observations
+                    }
                 ),
             }
         )
@@ -236,19 +245,21 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
     records = capture.arrival_order or tuple(
         sorted(
             (
-                r
+                record
                 for name, rows in capture.records.items()
                 if name.startswith(("PPPB2BINFO", "E6"))
-                for r in rows
+                for record in rows
             ),
-            key=lambda r: gps_epoch(r.message) if r.message is not None else 0,
+            key=lambda record: (
+                gps_epoch(record.message) if record.message is not None else 0
+            ),
         )
     )
-    events = [r for r in records if r.name.startswith("PPPB2BINFO")]
+    events = [record for record in records if record.name.startswith("PPPB2BINFO")]
     checks = audit_corrections(
         [event for record in events for event in correction_events(record)]
     )
-    has_records = [r for r in records if r.name.startswith("E6")]
+    has_records = [record for record in records if record.name.startswith("E6")]
     navigation = _latest(capture, "PPPNAV")
     position_label = solution_label = None
     if navigation is not None:
@@ -272,9 +283,9 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
         "status": "correction_telemetry_observed"
         if (events or has_records)
         else "no_correction_telemetry_observed",
-        "correction_records": dict(Counter(r.name for r in events)),
+        "correction_records": dict(Counter(record.name for record in events)),
         "correction_receive_gps_epochs": [
-            gps_epoch(r.message) for r in events if r.message is not None
+            gps_epoch(record.message) for record in events if record.message is not None
         ],
         "navigation": navigation,
         "position_type_label": position_label,
@@ -286,7 +297,7 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
         "dop": _latest(capture, "PPPDOP"),
         "correction_application_verified": False,
         "coherence_checks": [asdict(check) for check in checks],
-        "has_records": dict(Counter(r.name for r in has_records)),
+        "has_records": dict(Counter(record.name for record in has_records)),
         "has_coherence_checks": audit_has(has_records),
         "subscriptions_restored": capture.subscriptions_restored,
         "configuration_restored": capture.configuration_restored,

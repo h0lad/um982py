@@ -119,7 +119,7 @@ def phase_tec(observations: Sequence[Observation]) -> float | None:
 
 
 def level_tec(code: Sequence[float], phase: Sequence[float]) -> tuple[float, ...]:
-    """Level an uninterrupted carrier arc; code biases remain in the result."""
+    """Level an uninterrupted carrier arc. Code biases remain in the result."""
     if len(code) != len(phase):
         raise ValueError("code and phase must have equal length")
     if not code:

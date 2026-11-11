@@ -1,11 +1,10 @@
 # Heading and attitude
 
-Turns a dual-antenna baseline into heading and pitch.
+Calculate heading and pitch from a dual-antenna baseline.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -32,16 +31,9 @@ python -m examples.heading_attitude --port /dev/ttyUSB0 --swap-antennas \
 
 The example requires a dual-antenna baseline. If the antenna roles are reversed,
 `--swap-antennas` changes the baseline interpretation without changing RF power.
-BSLNENUHD is requested with `ONCHANGED`; `--interval` does not set a periodic
-baseline output rate. For periodic heading output, configure a supported log such
-as UNIHEADING as described in the [output-rate guide](../../docs/api.md#receiver-output-rates).
-
-## Understanding the result
-
-Heading and pitch are derived from the baseline vector between the antennas, so
-their interpretation depends on antenna placement and which antenna is primary.
-Connect both antennas or replay baseline records. Swapping roles changes the
-interpreted vector, not the physical wiring.
+The example requests BSLNENUHD with `ONCHANGED`, so `--interval` does not set a
+periodic baseline rate. For periodic heading output, configure a supported log
+such as UNIHEADING. See the [output-rate guide](../../docs/api.md#receiver-output-rates).
 
 ## References
 

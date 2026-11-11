@@ -1,5 +1,3 @@
-"""Enumerations used by decoded messages."""
-
 from enum import IntEnum, IntFlag
 
 

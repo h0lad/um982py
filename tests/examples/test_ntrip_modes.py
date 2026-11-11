@@ -125,8 +125,9 @@ def test_public_caster_fans_out_to_128_concurrent_clients(station: Station) -> N
             message = observation_frame(station).raw
             hub.publish(observation_frame(station))
             for reader, _ in connections:
-                # Each client receives RTCM 1005 before the observation frame.
-                await asyncio.wait_for(reader.readexactly(25), 3)
+                _reference_station_frame = await asyncio.wait_for(
+                    reader.readexactly(25), 3
+                )
                 assert (
                     await asyncio.wait_for(reader.readexactly(len(message)), 3)
                     == message

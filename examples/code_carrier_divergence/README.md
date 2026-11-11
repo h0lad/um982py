@@ -1,11 +1,10 @@
 # Code-carrier divergence
 
-Tracks code-carrier divergence and resets after cycle slips.
+Track code-carrier divergence with a filter that resets after cycle slips.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -29,15 +28,8 @@ python -m examples.code_carrier_divergence \
 sets the rate threshold in metres per second. `--truth-code` accepts an
 independently known constant pseudorange in metres for comparison.
 
-## Understanding the result
-
-GNSS receivers measure both a code-based range and a carrier-phase quantity.
-This example tracks how those measurements diverge over a continuous signal
-arc and flags rates exceeding a chosen threshold.
-
-A cycle slip is a loss or change in carrier-phase continuity, and the filter
-resets when an arc breaks. A divergence alert does not identify a unique
-physical cause.
+The filter also resets after other breaks in signal continuity. An alert does
+not identify a unique physical cause.
 
 ## References
 

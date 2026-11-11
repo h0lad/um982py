@@ -32,7 +32,7 @@ def smooth_code(
     output = []
     previous: RangeSample | None = None
     smoothed = 0.0
-    count = 0
+    window_samples = 0
     for sample in samples:
         if previous is not None and sample.epoch <= previous.epoch:
             raise ValueError("sample epochs must increase strictly")
@@ -40,16 +40,17 @@ def smooth_code(
             previous, sample, max_gap=max_gap, phase_tolerance=phase_tolerance
         )
         if reset:
-            smoothed, count = sample.code_m, 1
+            smoothed, window_samples = sample.code_m, 1
         else:
             if previous is None:
                 raise RuntimeError("missing previous sample in continuous arc")
-            count = min(window, count + 1)
-            # Cap the count so the filter keeps responding to new measurements.
-            smoothed = sample.code_m / count + (1 - 1 / count) * (
+            window_samples = min(window, window_samples + 1)
+            smoothed = sample.code_m / window_samples + (1 - 1 / window_samples) * (
                 smoothed + sample.phase_m - previous.phase_m
             )
-        output.append(SmoothedCode(sample.epoch, sample.code_m, smoothed, count, reset))
+        output.append(
+            SmoothedCode(sample.epoch, sample.code_m, smoothed, window_samples, reset)
+        )
         previous = sample
     return tuple(output)
 

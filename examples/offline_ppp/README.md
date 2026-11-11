@@ -3,37 +3,35 @@
 For relative post-processing with a base station, see the
 [post-processed RTK example](../postprocessed_rtk/README.md).
 
-Record raw UM982 observations at a stationary point, download precise IGS
-products later, and process the occupation with CSSRlib's Python static PPP
-solver. The result is an experimental float PPP estimate in the reference frame
-of the selected products. The script does not resolve ambiguities or certify the
-estimate's accuracy.
+Record raw UM982 observations with a stationary antenna. Then download precise
+IGS products and process the recording with CSSRlib's Python static PPP solver.
+The result is an experimental float PPP position in the products' reference
+frame. The script does not resolve ambiguities or certify accuracy.
 
-The steps below run from the repository root after [installing the package](../README.md#running-the-examples).
-Install the optional Python PPP dependencies:
+After [installing the package](../README.md#running-the-examples), run these
+steps from the repository root. Install the optional Python PPP dependencies:
 
 ```bash
 python -m pip install -r examples/offline_ppp/requirements.txt
 ```
 
-This installs CSSRlib's development revision
-`df0f26332498f1d581109f2ab1caffd68748e18c` directly from GitHub, so installation
-requires Git. The revision is pinned because the development API can change.
-CSSRlib implements the solver in Python and uses numerical packages including
-NumPy, SciPy and Numba, which include native compiled components. You also need an internet connection for
-product downloads and an ANTEX file with satellite and receiver calibrations.
-See [CSSRlib](https://github.com/hirokawa/cssrlib) and
-[IGS products](https://igs.org/products/). CSSRlib is based on RTKLIB code but
-does not require RTKLIB to be installed or run.
+Installation requires Git because it downloads CSSRlib revision
+`df0f26332498f1d581109f2ab1caffd68748e18c` from GitHub. This revision is pinned
+because the development API can change. The solver uses Python with numerical
+packages such as NumPy, SciPy and Numba. These packages include compiled
+components. CSSRlib is based on RTKLIB code and runs without an RTKLIB installation.
+
+You also need internet access to download products and an ANTEX file with
+satellite and receiver calibrations. See [CSSRlib](https://github.com/hirokawa/cssrlib)
+and [IGS products](https://igs.org/products/).
 
 ## 1. Set up and record
 
 Mount the antenna securely with a clear sky view and leave it still throughout
 the occupation. Record the antenna model and radome, antenna serial number,
 marker and antenna reference point (ARP), and the measured ARP offset from the
-marker in metres. Use a calibrated antenna suitable for GPS L1 and L2, then
-inspect the capture for gaps, cycle slips and multipath before interpreting the
-result.
+marker in metres. Use a calibrated antenna suitable for GPS L1 and L2. Before
+interpreting the result, inspect the capture for gaps, cycle slips and multipath.
 
 These recording times are rough planning guidance for a stationary antenna:
 
@@ -41,13 +39,11 @@ These recording times are rough planning guidance for a stationary antenna:
 | --- | --- |
 | 1–2 hours | Check the setup and obtain an initial estimate. |
 | 4–6 hours | Collect a longer occupation for a first PPP analysis. |
-| 12–24 hours | Start a serious static survey with more satellite geometry. |
+| 12–24 hours | Record a static survey over a wider range of satellite geometry. |
 | Multiple days | Compare independent occupations and investigate repeatability. |
 
-Antenna calibration, sky view, multipath, correction products and processing
-models all affect the result. The current exporter also has unverified
-inter-signal phase alignment, as described below. Compare results with an
-independently surveyed point before assigning an accuracy.
+The exporter does not verify phase alignment between signals. See the phase
+alignment requirements in step 3 before using the phases for precise work.
 
 Create a metadata JSON file using your actual antenna and measured offset. The
 antenna type must match the 20-character model and radome field in the ANTEX
@@ -74,23 +70,24 @@ python -m examples.offline_ppp record --port /dev/ttyUSB0 --baud 921600 \
   --duration 14400 --interval 5 --metadata station.json --output-dir occupation
 ```
 
-For a documented higher receiver output rate, use `--rate-hz 10` in place of
-`--interval 5`. Actual observation cadence depends on the receiver and selected
-signal group; recordings do not interpolate or fill missing epochs.
+To request a documented higher output rate, replace `--interval 5` with
+`--rate-hz 10`. The receiver and signal group determine the actual cadence.
+Recordings preserve native epochs without interpolation or gap filling.
 
 This creates `capture.bin` with the original stream, `observation.obs` in RINEX
-3.05, and `capture.json` with capture details, omissions and hashes. The recording
-and its decoded observations are held in memory during export, so check memory
-and storage before a long session. Keep the raw file and metadata for later
-reprocessing. The receiver's actual signal configuration is not independently
-verified by the export. Inspect the RINEX GPS observation types and check that
-usable L1 and L2 code and carrier-phase observations are present. The exporter
-omits an L2C component when its RINEX code is unverified. Only supply
+3.05, and `capture.json` with capture details, omissions and hashes. The
+exporter holds the recording and decoded observations in memory, so check
+memory and storage before a long session. Keep the raw file and metadata for
+later reprocessing.
+
+The export does not verify the receiver's signal configuration. Inspect the
+RINEX GPS observation types for usable L1 and L2 code and carrier phase. The
+exporter omits an L2C component if its RINEX code is unverified. Only supply
 `--l2c-code 2S`, `2L` or `2X` if you have independently established the correct
 component. See the [RINEX export guide](../rinex_export/README.md).
 
-To regenerate an observation file from the saved raw capture, use the exporter
-with the same metadata and any independently established L2C setting:
+To regenerate an observation file, use the saved raw capture and the same
+metadata. Include any independently established L2C setting:
 
 ```bash
 python -m examples.rinex_export --replay occupation/capture.bin \
@@ -109,14 +106,17 @@ python -m examples.offline_ppp record --port /dev/ttyUSB0 --baud 921600 \
 Each segment has its own raw capture, RINEX file and capture report. The session
 journal records incomplete segments and hashes completed ones. Restart the same
 command with `--resume` to continue without overwriting them. The recording
-options and metadata must match the original session. Free disk space is checked before
-each segment, with `--min-free-mib` controlling the threshold. Receiver
-reconnection and export between segments can leave observation gaps.
-The recorder fingerprints the receiver identity and configuration before and
-after each segment and stops if either changes. Snapshots cannot rule out changes
-between those checks. Transient connection failures are retried up to three times
-with bounded exponential delays. Use `--max-retries`, `--retry-seconds` and
-`--retry-max-seconds` to adjust the policy. Failed and incomplete segments remain
+options and metadata must match the original session. The recorder checks free
+disk space before each segment. `--min-free-mib` controls the threshold.
+
+Reconnection and export between segments can leave gaps in the observations.
+The recorder compares fingerprints of the receiver identity and configuration
+before and after each segment. It stops if either changes. Changes between
+those checks may go undetected.
+
+After a transient connection failure, the recorder retries up to three times
+with bounded exponential delays. Adjust this policy with `--max-retries`,
+`--retry-seconds` and `--retry-max-seconds`. Failed and incomplete segments stay
 on disk for inspection.
 
 To process completed segments as one GPS-only occupation:
@@ -126,11 +126,11 @@ python -m examples.offline_ppp merge --session occupation-segments \
   --output occupation-gps.obs
 ```
 
-The merge verifies capture and RINEX hashes, retains GPS observables, and writes
-an adjacent JSON provenance report. It rejects overlapping or out-of-order
-epochs and differing station metadata. Carrier arcs are marked as interrupted
-at segment boundaries because continuity has not been verified. Observations
-from other constellations remain in the individual segment files.
+The merge checks capture and RINEX hashes, keeps GPS observables and writes a
+JSON provenance report alongside the output. It rejects overlapping epochs,
+epochs out of order and differing station metadata. Each segment boundary
+marks an interruption in carrier arcs because continuity is unverified.
+Observations from other constellations stay in the individual segment files.
 
 ## 2. Download products
 
@@ -140,8 +140,10 @@ python -m examples.offline_ppp download --observation occupation/observation.obs
 ```
 
 The script downloads matching CODE rapid SP3 orbits, CLK clocks, observable
-signal biases and broadcast navigation files from BKG for the observation dates,
-plus the preceding and following days for interpolation near day boundaries.
+signal biases and broadcast navigation files from BKG. It includes the days
+before and after each observation date to support interpolation of products
+near midnight.
+
 `--quality final` requests a matching final set, which may not be available for
 every date in this archive. `--adjacent-days 0` restricts downloads to the
 observation dates, which can reduce product coverage at their boundaries. Product
@@ -150,8 +152,8 @@ records the source URLs and SHA-256 hashes of the decompressed files.
 
 Download an ANTEX calibration file separately. For example, the IGS provides
 [igs20.atx](https://files.igs.org/pub/station/general/igs20.atx). Select a file
-consistent with the orbit/clock product frame and with a valid calibration for
-your actual antenna, radome, satellites and observation date. A model match does
+that matches the orbit/clock product frame. It must include a valid calibration
+for your antenna, radome, satellites and observation date. A model match does
 not establish the validity of the calibration for a particular installation.
 
 ## 3. Solve offline
@@ -161,31 +163,33 @@ python -m examples.offline_ppp solve --observation occupation/observation.obs \
   --products products --antex igs20.atx --output-dir solution
 ```
 
-Each output directory must be empty. The solve checks product hashes and that
-the antenna type appears in ANTEX, then writes `solution.csv` and `report.json`.
-The report includes the first and last PPP epochs, selected signals, accepted and
-rejected epoch counts, satellites used, product provenance, input hashes and the
-GPS phase-alignment declaration. The position uses geodetic latitude, longitude
-and ellipsoidal height. Interpret it with the product reference frame and the
-marker/ARP convention. Times in the report are GPS time.
-Position uncertainty is currently unavailable in the CSV and report because the
-export does not extract and validate solver covariance.
+Choose an empty output directory. Before solving, the script checks product
+hashes and looks for the antenna type in ANTEX. It writes `solution.csv` and
+`report.json`.
+
+The report gives the first and last PPP epochs, selected signals, accepted and
+rejected epoch counts and satellites used. It also records product provenance,
+input hashes and the GPS phase-alignment declaration. Positions use geodetic
+latitude, longitude and ellipsoidal height in the products' reference frame.
+Check the marker/ARP convention when interpreting them. Reported times use GPS
+time.
+
+The CSV and report have no position uncertainty because the export does not
+extract and validate the solver's covariance.
 
 The solver rejects orbit or clock products with missing epochs and skips
 observations outside their coverage, allowing a one-second margin at the start
 for signal transmission time. The report counts the skipped observations.
 Supplying adjacent days improves coverage at midnight.
 
-The solver uses GPS L1/L2 code, carrier phase and signal strength, precise
-orbits and clocks, CODE signal biases, estimated ionosphere and troposphere,
-antenna corrections, phase wind-up and an approximate solid Earth tide model.
-It estimates float ambiguities and fixes the receiver position over the session.
-It does not model ocean loading or pole tides. RINEX event epochs and carrier
-phase LLI flags other than 0 or 1 are rejected because this CSSRlib revision does
-not fully handle them. Inspect the capture and repeat occupations against an
-independent surveyed point before assigning uncertainty or claiming accuracy.
-Multipath, phase slips, antenna calibration and atmospheric modelling can bias
-the result.
+The solver uses GPS L1/L2 code, carrier phase and signal strength with precise
+orbits, clocks and CODE signal biases. It estimates ionosphere, troposphere and
+float ambiguities while holding the receiver position constant over the session.
+Antenna corrections, phase wind-up and an approximate solid Earth tide model
+are included. Ocean loading and pole tides are not modelled.
+
+This CSSRlib revision does not fully handle RINEX event epochs or carrier phase
+LLI flags other than 0 or 1. The solver rejects them.
 
 The UM982 exporter currently records inter-signal phase alignment as unknown.
 Establish that alignment independently before using the exported phases for

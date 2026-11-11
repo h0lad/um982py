@@ -1,5 +1,3 @@
-"""Receiver state restoration and verification."""
-
 from unittest.mock import MagicMock, patch
 
 from um982py.commands.types import Port, Trigger

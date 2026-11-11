@@ -1,11 +1,10 @@
 # Baseband notice console
 
-Rebuilds baseband configuration from diagnostic notices.
+Reconstruct the baseband configuration from diagnostic notices.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -24,20 +23,14 @@ python -m examples.baseband_notice_console --replay /tmp/notices.txt \
 ## Inputs and results
 
 `--seconds` sets the listening time. `--enable-gate` enables BBMSG2AP for the
-capture and disables it afterward. Because the prior gate state cannot be
-queried, the example cannot restore an earlier enabled state. Replay requires
-previously captured notice data.
+capture and disables it afterward, even if it was already enabled. The previous
+state cannot be queried. Replay requires captured notice data.
 
 ## Understanding the result
 
-The tool reconstructs configuration information from baseband notices received
-during the selected capture window. The optional gate changes receiver state as
-described below.
-
-The `solutions` payload entry summarises the baseband position lines: how many
-NAVPOS lines arrived, their worst self-consistency residual against the ECEF
-triple printed on the same line, and the largest jump between consecutive
-solutions, all in metres.
+`solutions` counts NAVPOS lines. The report gives the worst residual between
+the printed solutions and their ECEF coordinates, and the largest jump between
+solutions. Distances are in metres.
 
 ## References
 

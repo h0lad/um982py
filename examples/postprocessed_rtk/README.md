@@ -10,9 +10,9 @@ python -m examples.postprocessed_rtk rover.obs base.obs navigation.nav \
 ```
 
 Replace the base ECEF coordinates with the surveyed antenna reference point in
-metres, and identify its reference frame and coordinate epoch. The directory
-must not already exist. It receives the RTKLIB solution and logs, plus a run
-manifest containing input and executable hashes, the command and result counts.
+metres, and identify its reference frame and coordinate epoch. Use a new output
+directory. It will contain the RTKLIB solution and logs, plus a manifest with
+input and executable hashes, the command and result counts.
 
 Rover and base observations must overlap and contain compatible signals. Check
 antenna offsets, time systems, signal mappings and the base coordinates before

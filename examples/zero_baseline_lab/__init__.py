@@ -68,7 +68,7 @@ def double_differences(
             epochs[sample.epoch][sample.key] = sample
         by_epoch.append(epochs)
     first_epochs, second_epochs = by_epoch
-    right_times = sorted(second_epochs)
+    second_times = sorted(second_epochs)
     cursor = 0
     output = []
     previous: dict[
@@ -76,35 +76,43 @@ def double_differences(
     ] = {}
     arcs: dict[SignalKey, int] = defaultdict(int)
     for epoch in sorted(first_epochs):
-        while cursor < len(right_times) and right_times[cursor] < epoch - tolerance:
+        while cursor < len(second_times) and second_times[cursor] < epoch - tolerance:
             cursor += 1
-        if cursor >= len(right_times) or abs(right_times[cursor] - epoch) > tolerance:
+        if cursor >= len(second_times) or abs(second_times[cursor] - epoch) > tolerance:
             continue
-        a, b = first_epochs[epoch], second_epochs[right_times[cursor]]
+        first_signals = first_epochs[epoch]
+        second_signals = second_epochs[second_times[cursor]]
         cursor += 1
-        for key in sorted(a.keys() & b.keys()):
+        for key in sorted(first_signals.keys() & second_signals.keys()):
             if key.prn == reference_prn:
                 continue
             reference = SignalKey(key.system, reference_prn, key.signal)
-            if reference not in a or reference not in b:
+            if reference not in first_signals or reference not in second_signals:
                 continue
-            samples = a[key], b[key], a[reference], b[reference]
-            old = previous.get(key)
-            if old is None or any(
+            samples = (
+                first_signals[key],
+                second_signals[key],
+                first_signals[reference],
+                second_signals[reference],
+            )
+            previous_samples = previous.get(key)
+            if previous_samples is None or any(
                 not is_continuous(
                     before, after, max_gap=max_gap, phase_tolerance=phase_tolerance
                 )
-                for before, after in zip(old, samples, strict=True)
+                for before, after in zip(previous_samples, samples, strict=True)
             ):
                 arcs[key] += 1
-            sa, sb, ra, rb = samples
+            first_signal, second_signal, first_reference, second_reference = samples
             output.append(
                 DoubleDifference(
                     epoch,
                     key,
                     reference,
-                    (sa.code_m - sb.code_m) - (ra.code_m - rb.code_m),
-                    (sa.phase_m - sb.phase_m) - (ra.phase_m - rb.phase_m),
+                    (first_signal.code_m - second_signal.code_m)
+                    - (first_reference.code_m - second_reference.code_m),
+                    (first_signal.phase_m - second_signal.phase_m)
+                    - (first_reference.phase_m - second_reference.phase_m),
                     math.sqrt(sum(item.code_std_m**2 for item in samples)),
                     math.sqrt(sum(item.phase_std_m**2 for item in samples)),
                     arcs[key],

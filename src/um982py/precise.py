@@ -9,6 +9,7 @@ from itertools import pairwise
 __all__ = ["PrecisePoint", "Sp3Product", "interpolate_sp3", "parse_sp3"]
 
 GPS_ORIGIN = datetime(1980, 1, 6, tzinfo=UTC)
+_MISSING_CLOCK_MICROSECONDS = 999999.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,20 +89,23 @@ def parse_sp3(text: str) -> Sp3Product:
             if key in seen:
                 raise ValueError("duplicate SP3 satellite epoch")
             seen.add(key)
-            x, y, z, clock = (
+            x_km, y_km, z_km, clock_microseconds = (
                 float(line[start : start + 14]) for start in (4, 18, 32, 46)
             )
-            if not all(math.isfinite(value) for value in (x, y, z, clock)):
+            if not all(
+                math.isfinite(value) for value in (x_km, y_km, z_km, clock_microseconds)
+            ):
                 raise ValueError("SP3 values must be finite")
-            if x == y == z == 0:
+            if x_km == y_km == z_km == 0:
                 continue
-            # SP3 positions are in kilometres, and missing clocks use a sentinel.
             points.append(
                 PrecisePoint(
                     satellite,
                     epoch,
-                    (x * 1000, y * 1000, z * 1000),
-                    None if clock >= 999999 else clock * 1e-6,
+                    (x_km * 1000, y_km * 1000, z_km * 1000),
+                    None
+                    if clock_microseconds >= _MISSING_CLOCK_MICROSECONDS
+                    else clock_microseconds * 1e-6,
                     len(line) > 79 and line[79] == "P",
                     len(line) > 75 and line[75] == "P",
                     len(line) > 74 and line[74] == "E",
@@ -133,19 +137,22 @@ def interpolate_sp3(
     series = sorted(points, key=lambda point: point.epoch)
     if not series or len({point.satellite for point in series}) != 1:
         raise ValueError("interpolation requires one satellite")
-    if any(b.epoch <= a.epoch for a, b in pairwise(series)):
+    if any(later.epoch <= earlier.epoch for earlier, later in pairwise(series)):
         raise ValueError("duplicate precise epochs")
     for point in series:
         if point.epoch == epoch:
             return point
     if not series[0].epoch < epoch < series[-1].epoch:
         raise ValueError("precise orbit extrapolation is not allowed")
-    right = next(i for i, point in enumerate(series) if point.epoch > epoch)
-    count = min(order + 1, len(series))
-    # Centre the interpolation window and keep it within the available samples.
-    start = min(max(right - count // 2, 0), len(series) - count)
-    window = series[start : start + count]
-    if any(b.epoch - a.epoch > max_gap for a, b in pairwise(window)):
+    right_index = next(i for i, point in enumerate(series) if point.epoch > epoch)
+    window_size = min(order + 1, len(series))
+    window_start = min(
+        max(right_index - window_size // 2, 0), len(series) - window_size
+    )
+    window = series[window_start : window_start + window_size]
+    if any(
+        later.epoch - earlier.epoch > max_gap for earlier, later in pairwise(window)
+    ):
         raise ValueError("precise orbit interpolation crosses a data gap")
     if any(point.maneuver for point in window):
         raise ValueError("precise orbit interpolation crosses a maneuver flag")
@@ -164,7 +171,7 @@ def interpolate_sp3(
         )
         for axis in range(3)
     )
-    before, after = series[right - 1], series[right]
+    before, after = series[right_index - 1], series[right_index]
     clock = None
     if (
         before.clock_seconds is not None

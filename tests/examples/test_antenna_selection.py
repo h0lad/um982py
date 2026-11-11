@@ -73,7 +73,6 @@ def test_secondary_navigation_query_matches_real_wire_identity() -> None:
         )
         if queries.best_navigation(binary=True).matches(frame)
     )
-    # The same body with a secondary ID must not make the primary frame match.
     secondary = replace(primary, header=replace(primary.header, message_id=2119))
     command = queries.best_navigation(binary=True, antenna=2)
     assert not command.matches(primary)

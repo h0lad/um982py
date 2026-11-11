@@ -3,16 +3,14 @@
 Use the [sourcetable discovery example](../ntrip_sources/README.md) to inspect
 advertised mountpoints before selecting a caster URL.
 
-For a minimal relay using the reusable `RtkSession` and `ReceiverStream` APIs,
-run `python -m examples.ntrip_client.managed --help`. Configure rover mode on
-the receiver first; this relay does not change or persist receiver settings.
-The longer walkthrough below includes additional receiver diagnostics.
+Connect a UM982 rover to an NTRIP caster and forward RTCM corrections to the
+receiver. The client reports the position and RTK solution computed by the
+receiver.
 
-This example connects a UM982 **rover** receiver to an NTRIP caster and sends
-the received RTCM data to the receiver. The receiver combines that data with
-its own satellite observations and computes the position and RTK solution.
-The Python client transports data and reports the receiver's results without
-calculating the RTK solution itself.
+For a minimal relay using `RtkSession` and `ReceiverStream`, run
+`python -m examples.ntrip_client.managed --help`. Configure rover mode on the
+receiver first. That relay does not change or persist receiver settings. The
+walkthrough below uses the full client, which includes receiver diagnostics.
 
 Run commands from the repository root after following
 [the example installation instructions](../README.md#running-the-examples).
@@ -44,29 +42,30 @@ Get the following from your correction provider or base-station operator:
 | Transport | `https` uses TLS and checks the hostname and certificate, while `http` is unencrypted. |
 | Position requirement | Some networks need a GGA sentence containing the rover's approximate position before they send corrections. Ask the provider if unsure. |
 
-You do **not** enter base-station coordinates or antenna H/E/N offsets into this
-rover example. If GGA is enabled, the client gets an approximate fix from the
-receiver and sends it to the caster, waiting for a valid fix if none is
-available initially. GGA is updated approximately every 10 seconds. The
-caster can see that position, and with HTTP, the position and any credentials are
-sent without encryption. Use HTTPS when available and appropriate for the
-provider. `--no-gga` disables this, but streams requiring GGA may not work.
+This rover example needs no base-station coordinates or antenna H/E/N offsets.
+With GGA enabled, the client waits for a valid approximate fix and sends it to
+the caster. It updates GGA approximately every 10 seconds.
+
+The caster can see that position. With HTTP, the client sends the position and
+any credentials without encryption. Use HTTPS when available.
+
+`--no-gga` disables GGA, but streams requiring it may not work.
 
 ### 2. Configure the connection
 
 The guided setup writes a reusable start script without connecting to the
-receiver or caster during setup:
+receiver or caster:
 
 ```bash
 python -m examples.ntrip_client.setup
 ```
 
 Enter the full URL, including mountpoint, such as
-`http://rtk2go.com:2101/Weinstadt`, then select the protocol, access method,
-serial port, baud rate, observation duration and whether to send GGA. For
-RTK2go use your **own real email address**, not a placeholder. For a separate
-password account the script asks for the password when started unless
-`NTRIP_PASSWORD` is already set. It does not write the password to disk.
+`http://rtk2go.com:2101/Weinstadt`. Select the protocol, access method, serial
+port, baud rate, observation duration and whether to send GGA. For RTK2go, use
+your **own real email address**, not a placeholder. For a separate password
+account, the script asks for the password when started unless `NTRIP_PASSWORD`
+is already set. It does not write the password to disk.
 
 The wizard creates `ntrip-rover/start.sh` with owner-only permissions and
 refuses to overwrite an existing directory. Use `--directory NAME` to create
@@ -81,17 +80,19 @@ approximately 60 seconds. The client exits after the configured session and
 does not run as a background service.
 
 If the caster disconnects or stops sending corrections, the client retries
-within the original session duration. Delays start at one second and double up
-to 30 seconds. Use `--reconnect-delay` and `--reconnect-max-delay` to change
-those limits. Each connection starts a fresh RTCM decoder and sends a fresh GGA when
-available. Authentication and TLS failures stop the run, as do receiver errors.
-The reported reconnect count does not measure the complete correction outage.
+until the original session ends. Delays start at one second and double up to
+30 seconds. Adjust these limits with `--reconnect-delay` and
+`--reconnect-max-delay`. Each connection starts a fresh RTCM decoder and sends
+a fresh GGA if available.
 
-Add `--reference-check` to query the documented `BASEINFO` log and compare its
-valid ECEF position with the most recently received RTCM 1005 or 1006 station
-coordinates. The distance is available only while the RTCM station and receiver
-query are recent. A change of RTCM station clears the previous result. The query
-does not establish when the receiver last updated its reference coordinates.
+Authentication, TLS and receiver errors stop the run. The reconnect count alone
+cannot measure the full correction outage.
+
+Add `--reference-check` to query `BASEINFO`. The client compares the valid ECEF
+position from that log with the latest RTCM 1005 or 1006 station coordinates.
+It reports distance only while both the RTCM station data and receiver query
+are recent. A station change clears the result. The query does not reveal when
+the receiver last updated its reference coordinates.
 
 ### Run directly
 
@@ -104,7 +105,7 @@ python -m examples.ntrip_client --port /dev/ttyUSB0 --baud 921600 \
   --no-gga --baseline-seconds 0 --duration 60 --debug
 ```
 
-The local base and rover need separate receiver connections because they cannot share
+The local base and rover need separate receiver connections. They cannot share
 one serial port. Replace the URL and protocol with the provider's details. If
 the provider uses a password, provide it without placing it in shell history:
 
@@ -141,11 +142,8 @@ stream contains RTCM 1005 or 1006. Treat debug logs as location-sensitive.
 | `Precision estimate` | Comparison of average **SPPNAV-reported** sigmas before and after connection. A pre-existing augmented baseline or changing conditions can affect it. |
 | `RTK: fixed solution observed` | At least one accepted ADRNAV sample was reported as a fixed type during this run. |
 
-The process exits successfully when at least one RTCM frame was forwarded, while
-success does **not** mean an RTK fixed solution was obtained. Verify actual
-accuracy against a known point when it matters. Base survey errors, frame and
-epoch differences, sky view, multipath and the distance to the base affect the
-result. The reported height is ellipsoidal, not height above mean sea level.
+Forwarding at least one RTCM frame counts as a successful run, even without an
+RTK fixed solution. Reported heights are above the ellipsoid.
 
 ## Options
 

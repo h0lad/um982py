@@ -24,7 +24,7 @@ from um982py.signals import tracking_signal
 CSV_HEADER = "elevation_deg,relative_cn0_db,cn0_db_hz"
 
 
-def _payload(
+def _gain_pattern_payload(
     samples: Sequence[SkySample],
     fit: GainFit,
     epochs: int,
@@ -33,7 +33,6 @@ def _payload(
     system: int = 0,
     signal: int = 0,
 ) -> dict[str, object]:
-    """Serialise the fit and the curve it predicts."""
     identified = tracking_signal((system << 16) | (signal << 21))
     label = (
         f"{identified.constellation} {identified.name}"
@@ -167,7 +166,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 1
     fit = fit_gain_pattern(samples)
     _write_csv(fit, args.step, args.csv)
-    payload = _payload(
+    payload = _gain_pattern_payload(
         samples,
         fit,
         len(observations),

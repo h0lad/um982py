@@ -1,46 +1,38 @@
 # Measure snow or water with GNSS reflectometry
 
-A fixed GNSS antenna receives satellite signals directly and after reflection
-from a nearby surface. As a satellite rises or sets, the combined signal
-strength changes. This example looks for that pattern and estimates the
-vertical distance from the antenna to the reflecting surface, called the
-**reflector height**.
+A fixed GNSS antenna receives signals directly and as reflections from nearby
+surfaces. As a satellite rises or sets, the combined signal strength changes.
+This example uses that pattern to estimate the **reflector height**: the
+vertical distance from the antenna to an effective reflecting surface.
 
-Use the estimated height in two ways:
+Use the height to estimate either snow depth or water level:
 
-- **Snow:** compare it with a measured snow-free antenna-to-ground height.
-  If the reflecting surface rises as snow accumulates, the estimated reflector
-  height becomes smaller.
-- **Water:** subtract it from the surveyed antenna elevation in a specified
-  vertical datum to estimate water level in that datum.
+- For snow, compare it with the measured snow-free antenna-to-ground height.
+  As snow accumulates, the reflector height becomes smaller.
+- For water, subtract it from the surveyed antenna elevation to estimate the
+  water level in that elevation's vertical datum.
 
-These are estimates of an effective reflecting surface, not direct depth or
-water-level measurements. The method assumes a fixed antenna and an
-approximately horizontal surface. Site geometry, snow properties, waves,
-other reflecting objects and signal quality can affect the result. Validate
-against independent measurements before using the estimates for research.
+The model assumes a fixed antenna above an approximately horizontal surface.
 
 ## What you need
 
 - A UM982, a supported antenna with a clear view of the sky and a computer
   running Python 3.12 or later. One antenna is enough for the workflows below.
-- A stable mounting position and a sufficiently open reflecting area in the
-  satellite directions you will analyze. Nearby buildings, vegetation or other
-  surfaces can contribute reflections. The relevant area is not necessarily
-  directly below the antenna.
+- A stable mount and an open reflecting area in the satellite directions you
+  plan to analyze. Buildings, vegetation and other surfaces can also reflect
+  signals. The reflecting area is not necessarily directly below the antenna.
 - For snow, a measured snow-free antenna-to-ground height and a way to record
   snow depths independently, such as a snow stake.
 - For water, the antenna elevation relative to a known vertical datum. A gauge
   in that same datum is strongly recommended for validation.
 
-The effective GNSS antenna phase centre and the physical point used for a tape
-or survey measurement may differ. Record how the height was established and
-use a consistent antenna reference. Do not assume a hardware calibration or
-position accuracy that you have not established.
+The effective antenna phase centre may differ from the physical point used for
+a tape or survey measurement. Record how you measured the height and use the
+same antenna reference throughout.
 
-Run the commands from the repository root in a source checkout after following the
-[installation instructions](../README.md#running-the-examples). Choose paths
-for your data and replace `/dev/ttyUSB0` if your receiver uses another port.
+Run the commands from the repository root after following the
+[installation instructions](../README.md#running-the-examples). Choose paths for
+your data and replace `/dev/ttyUSB0` if your receiver uses another port.
 
 ## 1. Record and estimate reflector heights
 
@@ -55,34 +47,32 @@ python -m examples.gnss_reflectometry --port /dev/ttyUSB0 --baud 921600 \
     --csv day1-arcs.csv --json day1-report.json --debug
 ```
 
-`--min-height` and `--max-height` define the search range in metres, not the
-expected snow depth or water level. Choose a range that covers the possible
-**antenna-to-reflector distance** throughout your experiment. The values above
-are examples and may not suit your site. Use a new capture filename for each
-session because the program will not overwrite an existing file.
+`--min-height` and `--max-height` bound the antenna-to-reflector distance in
+metres, not snow depth or water level. Choose bounds for your site that cover
+the distance throughout the experiment. Use a new capture filename for each
+session. The program will not overwrite an existing file.
 
-The program records RANGE observations and SATVIS2 satellite geometry, groups
-observations into satellite arcs, then screens those arcs for sufficient data
-and a usable spectral peak. The two primary outputs are:
+The program records RANGE observations and SATVIS2 satellite geometry. It
+groups observations into satellite arcs and screens them for sufficient data and
+a usable spectral peak. The two primary outputs are:
 
 | Output | Use |
 | --- | --- |
 | `day1-arcs.csv` | One row per arc, including antenna, GPS times, `height_m` and `rejection`. This is the input to the snow and water commands below. |
 | `day1-report.json` | Capture settings, counts, quality information and detailed arc results. Keep it with the raw capture and field notes. |
 
-An empty `rejection` field means the arc passed the configured checks. A
-rejected arc has a reason and should not be treated as a height estimate. If no
-heights are accepted, the program writes its report and exits with a nonzero status.
+An empty `rejection` field means the arc passed the configured checks. Rejected
+arcs include a reason. Do not use them as height estimates. If no heights are
+accepted, the program writes its report and exits with a nonzero status.
 
-The report counts distinct combinations of constellation, satellite and pass
-direction in `automatic_height.distinct_tracks` and
-`observed_sectors[].accepted_distinct_tracks`. Different tracks can share
-environmental and model errors. Multiple frequencies of the same track count
-once, and passes with the same satellite and direction are grouped together.
+The report counts distinct constellation, satellite and pass direction
+combinations in `automatic_height.distinct_tracks` and
+`observed_sectors[].accepted_distinct_tracks`. Frequencies from the same track
+count once, and passes with the same satellite and direction are grouped.
+Different tracks can still share environmental and model errors.
 
-Repeat the recording at the same site as needed, using new filenames such as
-`captures/day2.bin`, `day2-arcs.csv` and `day2-report.json`. A longer capture
-may include more useful arcs.
+Use new filenames such as `captures/day2.bin`, `day2-arcs.csv` and
+`day2-report.json` for another recording.
 
 To reprocess a recorded capture without connecting to the receiver, use:
 
@@ -99,10 +89,10 @@ does not create missing measurements or resample them.
 
 ## Identify the possible reflecting surface
 
-The receiver does not label a reflection as snow, water or ground. For each
-satellite arc, the report estimates where a reflection *could* come from under
-the horizontal-surface model. Compare that modeled area with a current aerial
-image, site map and field observations before assigning it to a surface.
+For each satellite arc, the horizontal-surface model estimates where a
+reflection could originate. The receiver cannot identify the surface as snow,
+water or ground. Compare the modeled area with a current aerial image, site map
+and field observations before assigning a surface type.
 
 For a horizontal reflector, the modeled specular point is on the same side of
 the antenna as the satellite. Its approximate horizontal distance is:
@@ -112,11 +102,11 @@ distance = antenna-to-surface height / tan(satellite elevation)
 ```
 
 For an antenna 2 m above the surface, the point is roughly 23 m away at 5°
-elevation, 11 m at 10° and 3.5 m at 30°. The signal is affected by an area
-around that point, not just one point. The size and shape of the modeled first
-Fresnel zone also depend on the signal frequency and change as the satellite
-moves. [PSMSL's footprint viewer](https://psmsl.org/data/gnssir/seaviewer.php)
-can help visualize approximate zones on a map.
+elevation, 11 m at 10° and 3.5 m at 30°. An area around that point affects the
+signal. The size and shape of the modeled first Fresnel zone depend on signal
+frequency and change as the satellite moves.
+[PSMSL's footprint viewer](https://psmsl.org/data/gnssir/seaviewer.php) can
+help visualize approximate zones on a map.
 
 Map the antenna position and the surrounding snow, water, land and structures.
 If the sea lies to the southeast, for example, you can reprocess a capture
@@ -130,7 +120,7 @@ python -m examples.gnss_reflectometry --replay captures/day1.bin \
 ```
 
 Azimuth is clockwise from geographic north: north is 0°, east 90°, south 180°
-and west 270°. The example sector is only appropriate if it matches your site.
+and west 270°.
 Use separate sector outputs for snow and water when their reflecting areas are
 in different directions. An azimuth filter selects satellite directions, but it
 does not guarantee that the whole reflection area stays within that sector or
@@ -175,11 +165,12 @@ for arc in report["antennas"]["ANT1"]["arcs"]:
 PY
 ```
 
-These footprints are geometric estimates. Mixed snow, water, land and
-structures within a footprint make attribution ambiguous. Shorelines and water
-levels can move, and slopes, waves, snow layering and changing antenna-to-surface
-height violate or complicate the simple model. Reject or investigate ambiguous
-arcs and compare the selected area with independent field measurements.
+These footprints are geometric estimates. If a footprint covers a mix of snow,
+water, land or structures, the source of the reflection is ambiguous. Moving
+shorelines, changing water levels, slopes, waves and snow layering can violate
+or complicate the model. Changes in antenna-to-surface height also affect it. Reject or
+investigate ambiguous arcs and compare the selected area with independent field
+measurements.
 
 ## 2a. Estimate snow-depth change
 
@@ -202,10 +193,9 @@ python -m examples.gnss_reflectometry.snow_series \
     --baseline-height-m 2.5 --output snow.json
 ```
 
-The JSON contains `accepted_arcs`, their `snow_height_proxy_m` values and a
-separate `rejected_arcs` list. Negative proxies are retained for review rather
-than forced to zero. `height_resolution_m` describes spectral resolution, not
-measurement uncertainty.
+The JSON contains `accepted_arcs` with their `snow_height_proxy_m` values and a
+separate `rejected_arcs` list. Negative proxies are retained for review.
+`height_resolution_m` describes spectral resolution, not measurement uncertainty.
 
 To compare with field observations, add `--field snow-stake.csv` and choose a
 `--field-window-s` appropriate for your experiment. The CSV must have these
@@ -217,22 +207,17 @@ gps_seconds,snow_depth_m
 1450000900,0.48
 ```
 
-The closest field reading is matched to the midpoint of each arc within the
-specified window. The default window is 3600 seconds, so select a smaller or
-larger value deliberately if conditions change on a different timescale.
-Unmatched observations remain without a field comparison. A field reading can
-be reused by multiple arcs, and a point measurement may not represent the
-whole reflecting area.
-
-Snow density, layering, surface conditions and the ground beneath can affect
-the effective reflection. Treat the output as a proxy until you have compared
-it with independent, spatially representative snow measurements.
+The program matches the closest field reading to each arc midpoint within the
+specified window, which defaults to 3600 seconds. Choose a window suited to
+how quickly conditions change. Unmatched observations have no field comparison.
+Multiple arcs can reuse a reading, and a point measurement may not represent
+the whole reflecting area.
 
 ## 2b. Estimate water level
 
 Establish the antenna elevation in metres relative to a named vertical datum.
 If using a gauge, its water levels must use the **same datum**. Record the
-survey method and antenna reference point, which the tool cannot verify.
+survey method and antenna reference point.
 
 For example, an antenna elevation of **4.2 m** and a reflector height of
 **2.1 m** give an estimated water level of **2.1 m** in that datum:
@@ -267,13 +252,14 @@ python -m examples.gnss_reflectometry.water_level \
     --gauge gauge.csv --match-window-s 60 --output water-with-gauge.json
 ```
 
-The matching window is a maximum difference between an arc midpoint and a
-gauge timestamp. Choose it for the changing water level and gauge cadence. The
-60 seconds above is an example, not a universal limit. The report includes each
-time offset, matched and reused gauge counts, residuals, and rejected arcs. A
-reused gauge value or several arcs from similar geometry are not independent
-measurements. The report does not correct tides during an arc, waves, vertical
-land motion or differences between the gauge and reflecting area.
+The matching window limits the time between an arc midpoint and a gauge reading.
+Choose it for the rate of water-level change and the gauge cadence. The example
+uses 60 seconds. The report lists time offsets, counts of matched and reused
+gauge values, residuals and rejected arcs.
+
+Reused gauge values and arcs with similar geometry cannot count as independent
+measurements. The report applies no correction for tides during an arc, waves,
+vertical land motion or differences between the gauge and reflecting area.
 
 Add `--plot water.png` to create a water-level and residual figure. Plotting
 requires a separate `matplotlib` installation.
@@ -297,10 +283,8 @@ python -m examples.gnss_reflectometry.water_level \
     --match-window-s 60 --output /tmp/synthetic-water.json
 ```
 
-For the first accepted arc, the snow proxy is 0.4 m and the water-level
-estimate is 2.1 m. Both reports also retain one deliberately rejected arc. The
-same synthetic arc heights demonstrate both calculations. They do not represent
-a single site with both snow and water.
+For the first accepted arc, the snow proxy is 0.4 m and the water-level estimate
+is 2.1 m. Both reports retain one deliberately rejected arc.
 
 ## Times, quality checks and troubleshooting
 

@@ -1,11 +1,10 @@
 # Baseband epoch audit
 
-Audits diagnostic counters and PTOBSINFO tracking slots.
+Inspect diagnostic counters and PTOBSINFO tracking slots.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -24,20 +23,13 @@ python -m examples.baseband_epoch_audit --replay /tmp/bb-audit.bin \
 
 ## Inputs and results
 
-`--enable-gate` enables BBMSG2AP for the capture and disables it afterward. Its
-previous state cannot be queried, so the example cannot restore an earlier
-enabled state. The report audits native counters and tracking slots without
-assigning unverified meanings.
+`--enable-gate` enables BBMSG2AP for the capture and disables it afterward, even
+if it was already enabled. The previous state cannot be queried.
 
 ## Understanding the result
 
-An epoch is a receiver measurement time. This diagnostic groups available
-baseband counters and PTOBSINFO tracking-slot records around those epochs to
-help inspect their behaviour.
-
-The report preserves fields whose meaning is not verified rather than treating
-them as established measurements. The optional live gate changes receiver
-state as described below.
+The report groups counters and tracking slots by receiver epoch. Fields with
+unverified meanings remain in their raw form.
 
 ## References
 

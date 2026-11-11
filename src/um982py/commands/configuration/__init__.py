@@ -1,5 +1,3 @@
-"""Groups configuration command builders by receiver subsystem."""
-
 from um982py.commands.configuration.antenna import (
     antenna_delta,
     authorization,

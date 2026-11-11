@@ -148,16 +148,15 @@ def solution_label(solution_status: int) -> str:
 
 def position_type_code(record: Record) -> int:
     """Return a record's numeric position type, accepting an ASCII label."""
-    return _code(record["pos_type"], PositionType, "pos_type")
+    return _numeric_code(record["pos_type"], PositionType, "pos_type")
 
 
 def solution_status_code(record: Record) -> int:
     """Return a record's numeric solution status, accepting an ASCII label."""
-    return _code(record["p_sol_status"], SolutionStatus, "p_sol_status")
+    return _numeric_code(record["p_sol_status"], SolutionStatus, "p_sol_status")
 
 
-def _code(value: Value, enum: type[IntEnum], field: str) -> int:
-    """Reduce a binary code or an ASCII label to the numeric code."""
+def _numeric_code(value: Value, enum: type[IntEnum], field: str) -> int:
     if isinstance(value, int):
         return value
     if isinstance(value, str):

@@ -23,10 +23,10 @@ def wave_spectrum(
 ) -> tuple[tuple[float, float], ...]:
     """Displacement spectral density of a detrended vertical velocity series.
 
-    The vertical velocity of a harmonic wave scales the displacement by its
-    angular frequency, so the velocity periodogram is divided by ``omega^2``
-    to recover the displacement density.  The mean current is removed because
-    a constant vertical velocity carries no wave energy.
+    The vertical velocity of a harmonic wave scales displacement by its angular
+    frequency. Displacement density is the velocity periodogram divided by
+    ``omega^2``. The mean current is removed first, because a constant vertical
+    velocity carries no wave energy.
     """
     if len(velocity) < 8:
         raise ValueError("at least eight samples are required")

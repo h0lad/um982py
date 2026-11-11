@@ -150,8 +150,7 @@ def mirror(log: Log) -> Log:
 def swap_antenna(log: Log | AntennaLog) -> Log | AntennaLog:
     """Measure the same quantity through the other antenna input.
 
-    The logical key of an :class:`AntennaLog` is retained, so an example that
-    asks for ``RANGE`` keeps that key while the wire command switches inputs.
+    An :class:`AntennaLog` keeps its logical key when the wire input changes.
     """
     logical = log.logical if isinstance(log, AntennaLog) else log
     wire = log.wire if isinstance(log, AntennaLog) else log

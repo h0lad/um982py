@@ -1,5 +1,3 @@
-"""Tests the navigation message figures against ground truth."""
-
 from __future__ import annotations
 
 import math

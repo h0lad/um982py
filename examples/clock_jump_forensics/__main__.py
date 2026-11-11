@@ -20,7 +20,7 @@ from um982py.measurement import range_samples
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Report common jumps without labelling them independent timing accuracy."""
+    """Report common code and carrier jumps across satellites."""
     parser = experiment_parser(
         "clock_jump_forensics", "Common-mode code and carrier jump candidates"
     )

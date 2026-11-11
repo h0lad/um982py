@@ -10,8 +10,8 @@ from um982py.quality import EpochSolution, FixClass
 class PositionLimits:
     """Limits selected by the application, in seconds and metres.
 
-    Each configured limit requires a finite, non-negative measurement. If a
-    limit is omitted, its measurement is left unchecked.
+    A measurement must be finite and non-negative to pass a configured limit.
+    Omit a limit to skip that check.
     """
 
     max_epoch_age_s: float | None = None

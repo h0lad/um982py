@@ -36,6 +36,26 @@ def test_distance_rejects_out_of_range_coordinates() -> None:
         haversine_distance(0, 0, 0, 181)
 
 
+@pytest.mark.parametrize(
+    ("coordinates", "error"),
+    [
+        ((91, 0, 0, float("nan")), "coordinates must be finite"),
+        ((0, 181, float("inf"), 0), "coordinates must be finite"),
+        ((91, 181, 0, 0), "latitude must be"),
+        ((0, 181, 91, 0), "latitude must be"),
+    ],
+)
+def test_distance_validation_error_precedence(
+    coordinates: tuple[float, float, float, float], error: str
+) -> None:
+    with pytest.raises(ValueError, match=error):
+        haversine_distance(*coordinates)
+
+
+def test_distance_accepts_boolean_coordinates() -> None:
+    assert haversine_distance(True, False, 0, 0) == haversine_distance(1, 0, 0, 0)
+
+
 def test_distance_handles_antipodes() -> None:
     assert haversine_distance(0, 0, 0, 180) == pytest.approx(20015114.442, abs=0.001)
 

@@ -36,12 +36,11 @@ def _alert_payload(alert: Alert) -> dict[str, object]:
         "kind": str(alert.kind),
         "severity": str(alert.severity),
         "satellites": list(alert.satellites),
-        "z_score": _finite(alert.z_score),
+        "z_score": _finite_or_none(alert.z_score),
     }
 
 
-def _finite(z_score: float | None) -> float | None:
-    """Drop an unbounded score so the payload stays valid JSON."""
+def _finite_or_none(z_score: float | None) -> float | None:
     if z_score is None or not math.isfinite(z_score):
         return None
     return z_score
@@ -73,7 +72,6 @@ def _payload(
     range_records: Sequence[Record],
     threshold: float,
 ) -> dict[str, object]:
-    """Build the monitoring payload from the decoded logs."""
     spoof = spoof_report(spoof_records[0]) if spoof_records else None
     antenna = antenna_report(antenna_records[0]) if antenna_records else None
     samples = cn0_samples(range_records)
@@ -88,12 +86,11 @@ def _payload(
         "satellites": len({sample.satellite for sample in samples}),
         "spoof": _spoof_payload(spoof),
         "antenna": _antenna_payload(antenna),
-        "alerts": [_alert_payload(alert) for alert in sorted(alerts, key=_order)],
+        "alerts": [_alert_payload(alert) for alert in sorted(alerts, key=_alert_order)],
     }
 
 
-def _order(alert: Alert) -> tuple[int, str]:
-    """Sort alerts by epoch and kind."""
+def _alert_order(alert: Alert) -> tuple[int, str]:
     return (alert.epoch, str(alert.kind))
 
 

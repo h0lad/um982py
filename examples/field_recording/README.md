@@ -10,21 +10,22 @@ python -m examples.field_recording record /dev/ttyUSB0 session \
 python -m examples.field_recording replay session
 ```
 
-The destination must not already exist. The session contains bounded raw byte
-segments and a journal with their sizes, hashes and host timestamps. The
-recorder reconnects after transport failures and records each interruption as a
-gap. Replay reports gaps and the number of bytes in any unfinished frame before
-the gap; it does not join frames across disconnected streams. Segments may
-split a frame. An interruption can
-leave a `.part` file or an unjournalled segment. `--allow-incomplete` replays
-only verified journalled segments, which may end in a partial frame and cause a
-decode error. Preserve the other files for recovery and inspection.
-The journal's close marker means the sink was closed, not that a requested
-occupation duration was reached.
+Choose a new destination directory. The recorder writes raw bytes in bounded
+segments and journals their sizes, hashes and host timestamps. After a
+transport failure, it reconnects and records the interruption as a gap.
 
-The receiver's enabled logs must be restored by the device after reconnecting;
-this example does not configure them. The recorder cannot measure bytes lost
-before they reach the process. Protect recordings and metadata as appropriate
-for their location and contents.
+Replay reports each gap and the size of any unfinished frame before it. It does
+not join frames across a disconnection. Segment boundaries can fall inside a
+frame.
+
+An interruption can leave a `.part` file or a segment with no journal entry.
+With `--allow-incomplete`, replay reads only journalled segments that pass
+verification. The last segment may end inside a frame and cause a decode error.
+Keep the other files for recovery and inspection. The journal's close marker
+records that the sink closed, but does not confirm the requested duration.
+
+The receiver must resume its enabled logs after reconnection. This example does
+not configure them. Bytes lost before they reach the process cannot appear in
+the recorder's loss counts.
 
 See the [Unicore receiver reference](https://en.unicore.com/uploads/file/20241219/Unicore_Reference_Commands_Manual_For_N4_High_Precision_Products_V2_EN_R1.4.pdf) for available log formats.

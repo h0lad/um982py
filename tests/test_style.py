@@ -1,5 +1,3 @@
-"""Enforces the style invariants of the library source."""
-
 import ast
 from pathlib import Path
 
@@ -29,16 +27,6 @@ def _all_key(name: str) -> tuple[int, str]:
     if name[:1].isupper():
         return (1, name)
     return (2, name)
-
-
-def test_every_module_has_one_line_docstring() -> None:
-    for path in MODULES:
-        docstring = ast.get_docstring(_tree(path))
-        assert docstring is not None, path
-        lines = docstring.strip().splitlines()
-        assert len(lines) == 1, path
-        assert lines[0].endswith("."), path
-        assert len(lines[0]) <= 88, path
 
 
 def test_package_initializers_publish_a_sorted_unique_all() -> None:

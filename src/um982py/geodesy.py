@@ -49,6 +49,15 @@ def dms_to_degrees(value: float) -> float:
     return sign * (degrees + minutes / 60)
 
 
+def _validate_positions(*positions: tuple[float, float]) -> None:
+    if not all(math.isfinite(value) for position in positions for value in position):
+        raise ValueError("coordinates must be finite")
+    if not all(-90 <= latitude <= 90 for latitude, _ in positions):
+        raise ValueError("latitude must be in -90..90 degrees")
+    if not all(-180 <= longitude <= 180 for _, longitude in positions):
+        raise ValueError("longitude must be in -180..180 degrees")
+
+
 def haversine_distance(
     latitude_a: float, longitude_a: float, latitude_b: float, longitude_b: float
 ) -> float:
@@ -56,13 +65,7 @@ def haversine_distance(
 
     The calculation uses a spherical Earth with the mean Earth radius.
     """
-    coordinates = (latitude_a, longitude_a, latitude_b, longitude_b)
-    if not all(math.isfinite(value) for value in coordinates):
-        raise ValueError("coordinates must be finite")
-    if not (-90 <= latitude_a <= 90 and -90 <= latitude_b <= 90):
-        raise ValueError("latitude must be in -90..90 degrees")
-    if not (-180 <= longitude_a <= 180 and -180 <= longitude_b <= 180):
-        raise ValueError("longitude must be in -180..180 degrees")
+    _validate_positions((latitude_a, longitude_a), (latitude_b, longitude_b))
     phi_a, phi_b = math.radians(latitude_a), math.radians(latitude_b)
     delta_phi = phi_b - phi_a
     delta_lambda = math.radians(longitude_b - longitude_a)

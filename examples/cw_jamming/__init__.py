@@ -223,10 +223,10 @@ class BandFingerprint:
 def fingerprint(epoch: int, states: Mapping[Band, CwState]) -> BandFingerprint:
     """Classify an epoch as narrowband or wideband from the bands it reports.
 
-    The receiver reports one class word and one strength per band, so the
-    occupancy pattern separates a single-band source from a source that covers
-    L1, L2 and L5 at once.  Contradictions between the class word and the
-    strength are reported as evidence faults instead of being averaged away.
+    The receiver reports one class word and one strength per band. The occupancy
+    pattern separates a single-band source from one that covers L1, L2 and L5 at
+    once. A contradiction between the class word and strength counts as an
+    evidence fault. Contradictory values are not averaged.
     """
     if not states:
         raise ValueError("at least one band state is required")

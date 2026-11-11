@@ -1,11 +1,10 @@
 # Ionospheric TEC
 
-Computes slant TEC, ROT, and ROTI from dual-frequency ranges.
+Calculate slant TEC, ROT and ROTI from dual-frequency ranges.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -23,22 +22,18 @@ python -m examples.ionosphere_tec --replay tests/fixtures/captures/RANGEB.bin
 ## Inputs and results
 
 The calculation needs dual-frequency RANGE observations. `--frequency` and
-`--secondary-frequency` select carrier frequencies, while ROT and ROTI require a time
-series, not just one epoch.
+`--secondary-frequency` select the carrier frequencies. ROT and ROTI summarize
+TEC change over time and require continuous observations.
 
 ## Understanding the result
 
-Charged particles in the ionosphere delay satellite signals. Comparing two
-frequencies estimates variation in total electron content (TEC) along a signal
-path, while ROT and ROTI summarize its change over time and therefore need
-sufficient continuous observations. The result depends on the selected
-frequencies and processing assumptions.
+Code and levelled-phase TEC values still contain receiver and satellite
+differential code biases. They estimate TEC variation, not calibrated absolute
+TEC. Signal or lock changes, gaps and failed Doppler-phase closure split the
+carrier arcs.
 
-The reported code and levelled-phase TEC values are uncalibrated proxies: they
-retain receiver and satellite differential code biases and are not absolute
-TEC. Carrier arcs are split on signal or lock changes, gaps and failed
-Doppler-phase closure. ROTI is emitted only for a complete, regularly sampled
-five-minute arc. Set `--interval` to the capture cadence when replaying data.
+ROTI needs a complete five-minute arc with regular samples. When replaying
+data, set `--interval` to the recorded cadence.
 
 ## References
 

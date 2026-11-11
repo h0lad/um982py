@@ -8,7 +8,7 @@ from um982py.geodesy import haversine_distance
 
 @dataclass(frozen=True, slots=True)
 class WaypointDirection:
-    """Distance and true bearing; turn is clockwise from the supplied heading."""
+    """Distance and true bearing. Turn is clockwise from the supplied heading."""
 
     distance_m: float
     bearing_deg: float | None
@@ -23,7 +23,7 @@ def waypoint_direction(
     *,
     heading_deg: float | None = None,
 ) -> WaypointDirection:
-    """Calculate spherical distance and initial bearing; no route is planned.
+    """Calculate spherical distance and initial bearing. It does not plan a route.
 
     Bearing is undefined for coincident or antipodal points. Heading must be
     the vehicle's true heading, including any antenna mounting correction.

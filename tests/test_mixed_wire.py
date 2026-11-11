@@ -20,22 +20,27 @@ def test_real_mixed_notices_do_not_steal_binary_bytes(chunk: int) -> None:
         messages.extend(decoder.feed(raw[offset : offset + chunk]))
     decoder.finish()
     assert not decoder.errors and decoder.discarded_bytes == 0
-    binaries = [m for m in messages if isinstance(m, BinaryMessage)]
-    assert [m.header.message_id for m in binaries] == [221] * 5
-    text = [m for m in messages if isinstance(m, TextLine)]
+    binaries = [message for message in messages if isinstance(message, BinaryMessage)]
+    assert [message.header.message_id for message in binaries] == [221] * 5
+    text = [message for message in messages if isinstance(message, TextLine)]
     assert len(text) == 28
-    assert all(not m.checksum_verified for m in text)
+    assert all(not message.checksum_verified for message in text)
     notices = scan_notices(raw)
-    headers = [n.decode() for n in notices if n.name == "BBNOTICE"]
-    assert [h.integer("string_size") for h in headers] == [552, 552, 216, 216]
-    assert [h.integer("tag_count") for h in headers] == [12113, 12114, 12115, 12116]
+    headers = [notice.decode() for notice in notices if notice.name == "BBNOTICE"]
+    assert [header.integer("string_size") for header in headers] == [552, 552, 216, 216]
+    assert [header.integer("tag_count") for header in headers] == [
+        12113,
+        12114,
+        12115,
+        12116,
+    ]
     assert all(
-        h.integer("total_length") == h.integer("string_size") + 12
-        and h.integer("board_type") == 35
-        for h in headers
+        header.integer("total_length") == header.integer("string_size") + 12
+        and header.integer("board_type") == 35
+        for header in headers
     )
     for header, expected_length in zip(
-        (n for n in notices if n.name == "BBNOTICE"),
+        (notice for notice in notices if notice.name == "BBNOTICE"),
         (543, 542, 211, 211),
         strict=True,
     ):

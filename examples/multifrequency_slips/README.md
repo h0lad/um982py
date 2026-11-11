@@ -10,20 +10,25 @@ From the repository root, run the **synthetic demonstration**:
 python -m examples.multifrequency_slips --input examples/multifrequency_slips/sample.csv
 ```
 
-Supply your own frequency combinations with `--input` and add
-`--json result.json` to save the report. No receiver connection is required.
+Use your CSV with `--input` and `--json result.json` to save the report.
 
 ## Input
 
-One row supplies three distinct carrier frequencies in Hz. `--max-cycles` enumerates nonzero signed slip triples from minus to plus that value. `--gf-threshold-m` and `--closure-threshold-m` set explicit experimental thresholds in metres.
+Each row supplies three distinct carrier frequencies in Hz. For each signal,
+`--max-cycles N` tests slip values from −N to +N cycles, excluding the all-zero
+combination. `--gf-threshold-m` and `--closure-threshold-m` set experimental
+thresholds in metres.
 
 ## Explanation and interpretation
 
 For each candidate slip, the example converts cycles to distance using the
-wavelength and calculates two ideal responses: the phase difference between
-frequencies 1 and 2, and a three-frequency closure that removes geometry and
-first-order ionosphere. It reports whether either response crosses its threshold, but
-the experiment studies observability rather than detecting slips in receiver data.
+wavelength. It calculates two ideal responses. The first is the phase difference
+between frequencies 1 and 2. The second is a three-frequency closure that
+removes geometry and first-order ionosphere. The report shows whether either
+response crosses its threshold.
+
+These ideal responses show which injected slips the combinations can
+distinguish. The example does not detect slips in receiver data.
 
 Verify signs and wavelength conventions against labelled injected phase jumps.
 The enumeration does not model noise, ionospheric evolution, Doppler, real arcs,

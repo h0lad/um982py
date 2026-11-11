@@ -7,7 +7,7 @@ from collections.abc import Sequence
 from itertools import pairwise
 from pathlib import Path
 
-from examples.research_session.compare_reference import _read
+from examples.research_session.compare_reference import _read_ecef_positions
 from um982py.capture import load_records, record_epoch
 from um982py.commands import Log
 from um982py.field_data import file_sha256
@@ -86,7 +86,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             raise ValueError("position epochs must be strictly increasing")
     else:
         observations = [
-            (row[0], (row[1], row[2], row[3])) for row in _read(source_path)
+            (row[0], (row[1], row[2], row[3]))
+            for row in _read_ecef_positions(source_path)
         ]
     origin = next((xyz for _, xyz in observations if xyz is not None), None)
     if origin is None:

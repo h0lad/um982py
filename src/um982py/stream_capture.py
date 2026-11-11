@@ -6,7 +6,7 @@ from math import isfinite
 from time import monotonic
 
 from um982py.antenna import AntennaLog
-from um982py.capture import DataLog, _matching_requests, subscription_plan
+from um982py.capture import DataLog, _log_matchers, subscription_plan
 from um982py.commands import logging
 from um982py.errors import ResponseTimeout
 from um982py.messages import Message, Record
@@ -53,7 +53,7 @@ def iter_decoded_records(
     messages: Iterable[Message], logs: Sequence[DataLog]
 ) -> Iterator[tuple[str, Record]]:
     """Yield matching records in arrival order as input arrives."""
-    requests = [(log, _matching_requests(log)) for log in logs]
+    requests = [(log, _log_matchers(log)) for log in logs]
     for message in messages:
         for log, matchers in requests:
             if any(request.matches(message) for request in matchers):
@@ -71,10 +71,10 @@ def iter_live_records(
 ) -> Iterator[tuple[str, Record]]:
     """Temporarily subscribe and yield records until the duration elapses.
 
-    Close the iterator if you stop early, so the receiver's subscriptions can
-    be restored. Processing happens in the reader thread, so a slow consumer
-    can cause data loss at the transport. Use RecordingTransport separately if
-    you need to preserve the raw bytes.
+    If you stop early, close the iterator so the receiver's subscriptions can be
+    restored. Processing happens in the reader thread, so a slow consumer can
+    cause data loss at the transport. Use RecordingTransport separately if you
+    need to preserve the raw bytes.
     """
     interval = logging.output_interval(interval, rate_hz)
     if not isfinite(duration) or duration <= 0:

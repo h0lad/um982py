@@ -96,9 +96,9 @@ def torsion(
 ) -> Torsion:
     """Twist of a second baseline relative to a reference on the same structure.
 
-    A rigid body keeps its baseline length, so a length change outside
-    ``length_tolerance`` marks the observation as non-rigid rather than as
-    structural torsion.  Angles are compared after wrapping.
+    A rigid body keeps its baseline length. A change outside ``length_tolerance``
+    marks the observation as non-rigid, so it cannot establish structural
+    torsion. The heading comparison wraps the angular difference.
     """
     if reference.baseline_length <= 0 or other.baseline_length <= 0:
         raise ValueError("both baselines must have positive length")

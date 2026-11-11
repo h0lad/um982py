@@ -1,11 +1,10 @@
 # Attitude uncertainty
 
-Turns baseline noise into heading and pitch uncertainty.
+Estimate heading and pitch uncertainty from baseline noise.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -23,13 +22,7 @@ python -m examples.attitude_budget \
 
 ## Inputs and results
 
-Use a dual-antenna baseline capture for replay. The report estimates heading
-and pitch uncertainty from the measured baseline variation.
-
-## Understanding the result
-
-A baseline is the vector between the two antennas. Its geometry and measured
-variation determine the estimated uncertainty in heading and pitch.
+Replay requires a dual-antenna baseline capture.
 
 ## References
 

@@ -12,7 +12,7 @@ from pathlib import Path
 from um982py.field_data import file_sha256
 
 
-def _read(path: Path) -> list[tuple[float, float, float, float]]:
+def _read_ecef_positions(path: Path) -> list[tuple[float, float, float, float]]:
     with path.open(newline="", encoding="utf-8") as stream:
         result = [
             (
@@ -23,7 +23,7 @@ def _read(path: Path) -> list[tuple[float, float, float, float]]:
             )
             for row in csv.DictReader(stream)
         ]
-    if any(not all(math.isfinite(x) for x in row) for row in result):
+    if any(not all(math.isfinite(value) for value in row) for row in result):
         raise ValueError("position epochs and coordinates must be finite")
     if any(b[0] <= a[0] for a, b in pairwise(result)):
         raise ValueError("position epochs must be strictly increasing")
@@ -53,7 +53,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("reference frame must be supplied")
     if args.output.resolve() in (args.observed.resolve(), args.reference.resolve()):
         parser.error("output must differ from inputs")
-    observed, reference = _read(args.observed), _read(args.reference)
+    observed = _read_ecef_positions(args.observed)
+    reference = _read_ecef_positions(args.reference)
     times = [item[0] for item in reference]
     matches, unmatched = [], []
     for epoch, x, y, z in observed:

@@ -1,11 +1,10 @@
 # Klobuchar model and TEC
 
-Compares Klobuchar delay with dual-frequency TEC.
+Compare Klobuchar delay with dual-frequency TEC.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -26,19 +25,17 @@ python -m examples.klobuchar_vs_tec \
 
 ## Inputs and results
 
-Replay requires RANGE observations and companion ionosphere,
-satellite-visibility and position captures, supplied by `--ionosphere`,
-`--satvis` and `--position`.
+Replay needs RANGE observations and companion ionosphere, satellite-visibility
+and position captures. Supply these with `--ionosphere`, `--satvis` and
+`--position`.
 
 ## Understanding the result
 
-The Klobuchar model estimates ionospheric delay from parameters broadcast by
-GPS. This example compares that estimate with one derived from two-frequency
-observations. Match the position, visibility, model and observation epochs.
+Match the position, visibility, model and observation epochs.
 
 The code-derived delay retains uncalibrated receiver and satellite biases.
-The report omits relative differences when that delay is at or below 0.01 m;
-the signed and absolute differences remain available in metres.
+The report omits relative differences when that delay is at or below 0.01 m.
+The signed and absolute differences remain available in metres.
 
 ## References
 

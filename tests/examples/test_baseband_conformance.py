@@ -1,5 +1,3 @@
-"""Tests the baseband conformance matrix against ground truth."""
-
 from __future__ import annotations
 
 import argparse

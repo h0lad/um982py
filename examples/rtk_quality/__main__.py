@@ -79,8 +79,7 @@ def _summary_payload(summary: QualitySummary) -> dict[str, object]:
     }
 
 
-def _payload(records: Sequence[Record]) -> dict[str, object]:
-    """Build the quality payload from the decoded position records."""
+def _rtk_quality_payload(records: Sequence[Record]) -> dict[str, object]:
     solutions = timeline(records)
     return {
         "epochs": [_epoch_payload(solution) for solution in solutions],
@@ -149,7 +148,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     if not records:
         parser.error("capture contains no position solution records")
-    payload = _payload(records)
+    payload = _rtk_quality_payload(records)
     if args.diagnostics:
         payload["receiver_diagnostics"] = _diagnostic_rows(captured)
     summary = payload["summary"]

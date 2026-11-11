@@ -1,1 +1,0 @@
-"""Coordinate reference transformation example."""

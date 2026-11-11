@@ -9,8 +9,7 @@ Use `--plot` to save C/N₀ differences when `matplotlib` is installed.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -29,24 +28,17 @@ python -m examples.dual_antenna_rf_audit --replay /tmp/dual-rf.bin --antenna 2 \
     --json /tmp/dual-rf-ant2.json
 ```
 
-Results include cable and site effects, so swap antennas to compare contributions.
-
 ## Inputs and results
 
-The paired CSV contains shared-epoch observations, and the elevation CSV
+The paired CSV contains observations from shared epochs. The elevation CSV
 summarizes differences by signal and elevation bin. Antenna type and cable
-length options record the setup. The measurements also reflect the receiver
-inputs and local environment.
+length options record the setup.
 
 ## Understanding the result
 
-This compares signal strength reported for the same satellites and signals at
-the two antenna inputs. C/N₀ is the receiver's carrier-to-noise-density
-estimate, and the output groups paired differences by signal and elevation.
-
-Differences include antennas, cables, receiver inputs and surroundings.
-Swapping the antennas and repeating the measurement helps separate some of
-those effects, but the report is not a calibrated antenna-gain test.
+Differences include the antennas, cables, receiver inputs and surroundings.
+Swapping antennas helps separate some of those effects. This is not a
+calibrated antenna-gain test.
 
 ## References
 

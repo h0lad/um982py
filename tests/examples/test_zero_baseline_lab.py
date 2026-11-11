@@ -28,27 +28,27 @@ def test_dd_statistics_match_hand_computed_three_sample_errors() -> None:
 
 
 def test_common_receiver_clocks_cancel_in_the_double_difference() -> None:
-    a = [sample(0, prn=p, code=100 + 1234, phase=100 + 1234) for p in (1, 2)]
-    b = [sample(0, prn=p, code=100 - 9876, phase=100 - 9876) for p in (1, 2)]
-    result = double_differences(a, b, reference_prn=1)[0]
+    first = [sample(0, prn=prn, code=100 + 1234, phase=100 + 1234) for prn in (1, 2)]
+    second = [sample(0, prn=prn, code=100 - 9876, phase=100 - 9876) for prn in (1, 2)]
+    result = double_differences(first, second, reference_prn=1)[0]
     assert result.code_m == result.phase_m == 0
 
 
 def test_disjoint_receiver_times_are_not_joined() -> None:
-    a = [sample(0, prn=p) for p in (1, 2)]
-    b = [sample(0.1, prn=p) for p in (1, 2)]
-    assert not double_differences(a, b, reference_prn=1)
+    first = [sample(0, prn=prn) for prn in (1, 2)]
+    second = [sample(0.1, prn=prn) for prn in (1, 2)]
+    assert not double_differences(first, second, reference_prn=1)
 
 
 def test_asynchronous_receiver_epochs_cannot_be_used_as_noise() -> None:
-    a = [sample(0, prn=p) for p in (1, 2)]
-    b = [sample(0.1, prn=p) for p in (1, 2)]
+    first = [sample(0, prn=prn) for prn in (1, 2)]
+    second = [sample(0.1, prn=prn) for prn in (1, 2)]
     with pytest.raises(ValueError, match="exactly synchronized"):
-        double_differences(a, b, reference_prn=1, tolerance=0.2)
+        double_differences(first, second, reference_prn=1, tolerance=0.2)
 
 
 def test_reference_phase_reset_breaks_every_dependent_arc() -> None:
-    a = [sample(t, prn=p) for t in (0.0, 1.0, 2.0) for p in (1, 2)]
-    a[2] = replace(a[2], lock_seconds=0.1)
-    result = double_differences(a, a, reference_prn=1)
+    first = [sample(epoch, prn=prn) for epoch in (0.0, 1.0, 2.0) for prn in (1, 2)]
+    first[2] = replace(first[2], lock_seconds=0.1)
+    result = double_differences(first, first, reference_prn=1)
     assert [item.arc for item in result] == [1, 2, 2]

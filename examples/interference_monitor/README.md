@@ -1,11 +1,10 @@
 # Interference monitor
 
-Alerts on jamming, spoofing, and C/N0 dropouts.
+Monitor jamming, spoofing and C/N₀ dropout alerts.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -23,15 +22,14 @@ python -m examples.interference_monitor \
 
 ## Inputs and results
 
-The example combines receiver jamming and spoofing indicators with C/N₀
-observations. Use `--threshold` to set the C/N₀ alert threshold.
+Use `--threshold` to set the C/N₀ alert threshold.
 
 ## Understanding the result
 
-Investigate alerts against other evidence. A low C/N₀ or receiver alert can have several
-causes, including obstruction or equipment changes, so neither identifies the
-source on its own.
+Low C/N₀ and receiver alerts can also result from obstructions or equipment
+changes.
 
 ## References
 
-Iglewicz & Hoaglin (1993); Unicore UM982 manual.
+- Iglewicz & Hoaglin (1993).
+- Unicore UM982 manual.

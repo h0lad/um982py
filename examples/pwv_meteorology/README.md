@@ -1,11 +1,10 @@
 # Precipitable water vapour
 
-Derives precipitable water vapour from zenith wet delay.
+Estimate precipitable water vapour from zenith wet delay.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -24,14 +23,6 @@ python -m examples.pwv_meteorology --manual
 
 `--tm` sets the water-vapour-weighted mean temperature in kelvin. The
 `--manual` option uses published demonstration values instead of receiver data.
-
-## Understanding the result
-
-Water vapour delays GNSS signals travelling through the atmosphere. This
-example derives an estimate of precipitable water vapour from a zenith wet
-delay and an assumed water-vapour-weighted temperature.
-
-The estimate depends on the input delay and temperature model.
 
 ## References
 

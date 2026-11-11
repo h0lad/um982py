@@ -76,14 +76,12 @@ class CompressedRange:
     observations: tuple[CompressedObservation, ...]
 
 
-def _unsigned(raw: int, offset: int, width: int) -> int:
-    """Extract an unsigned bit field starting at the low bit offset."""
+def _unsigned_bits(raw: int, offset: int, width: int) -> int:
     return (raw >> offset) & ((1 << width) - 1)
 
 
-def _signed(raw: int, offset: int, width: int) -> int:
-    """Extract a signed bit field starting at the low bit offset."""
-    value = _unsigned(raw, offset, width)
+def _signed_bits(raw: int, offset: int, width: int) -> int:
+    value = _unsigned_bits(raw, offset, width)
     return value - (1 << width) if value >= (1 << (width - 1)) else value
 
 
@@ -115,28 +113,27 @@ def _reconstruct_phase(
 
 
 def _decode_entry(raw: int) -> CompressedObservation:
-    """Decode one packed entry into its fields."""
-    status = _unsigned(raw, 0, 32)
-    pseudorange = _unsigned(raw, 60, 36) / 128
-    glonass_channel = _unsigned(raw, 170, 6)
+    status = _unsigned_bits(raw, 0, 32)
+    pseudorange = _unsigned_bits(raw, 60, 36) / 128
+    glonass_channel = _unsigned_bits(raw, 170, 6)
     frequency = _frequency_hz(status, glonass_channel)
-    cn0 = 20 + _unsigned(raw, 165, 5)
+    cn0 = 20 + _unsigned_bits(raw, 165, 5)
     if frequency is None:
         phase = None
         divergence = None
     else:
         phase, divergence = _reconstruct_phase(
-            _signed(raw, 96, 32), pseudorange, frequency
+            _signed_bits(raw, 96, 32), pseudorange, frequency
         )
     return CompressedObservation(
         tracking_status=status,
-        prn=_unsigned(raw, 136, 8),
-        doppler_hz=_signed(raw, 32, 28) / 256,
+        prn=_unsigned_bits(raw, 136, 8),
+        doppler_hz=_signed_bits(raw, 32, 28) / 256,
         pseudorange_m=pseudorange,
         carrier_phase_cycles=phase,
-        pseudorange_std_m=_PSRSTD[_unsigned(raw, 128, 4)],
-        carrier_phase_std_cycles=(_unsigned(raw, 132, 4) + 1) / 512,
-        lock_time_s=_unsigned(raw, 144, 21) / 32,
+        pseudorange_std_m=_PSRSTD[_unsigned_bits(raw, 128, 4)],
+        carrier_phase_std_cycles=(_unsigned_bits(raw, 132, 4) + 1) / 512,
+        lock_time_s=_unsigned_bits(raw, 144, 21) / 32,
         cn0_db_hz=cn0,
         cn0_saturated=cn0 in (20, 51),
         glonass_channel=glonass_channel,
@@ -144,8 +141,7 @@ def _decode_entry(raw: int) -> CompressedObservation:
     )
 
 
-def _decode_binary(payload: bytes) -> tuple[int, ...]:
-    """Unpack binary entries after validating the frame length."""
+def _decode_binary_entries(payload: bytes) -> tuple[int, ...]:
     if len(payload) < 4:
         raise ProtocolError("Truncated RANGECMP header")
     count = unpack_from("<I", payload, 0)[0]
@@ -159,8 +155,7 @@ def _decode_binary(payload: bytes) -> tuple[int, ...]:
     )
 
 
-def _decode_ascii(fields: tuple[str, ...]) -> tuple[int, ...]:
-    """Unpack hexadecimal entries after validating the field count."""
+def _decode_ascii_entries(fields: tuple[str, ...]) -> tuple[int, ...]:
     if not fields:
         raise ProtocolError("Truncated RANGECMP header")
     try:
@@ -187,9 +182,9 @@ def decode_rangecmp(message: Message) -> CompressedRange:
     if isinstance(message, BinaryMessage):
         if message.header.message_id != _MESSAGE_ID:
             raise ProtocolError("Expected RANGECMPB message ID 140")
-        raws = _decode_binary(message.payload)
+        raws = _decode_binary_entries(message.payload)
     elif isinstance(message, AsciiMessage) and message.name == "RANGECMPA":
-        raws = _decode_ascii(message.fields)
+        raws = _decode_ascii_entries(message.fields)
     else:
         raise ProtocolError("Expected a RANGECMP frame")
     return CompressedRange(message, tuple(_decode_entry(raw) for raw in raws))

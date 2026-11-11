@@ -52,7 +52,7 @@ ANTENNA_STATES: Mapping[int, AntennaState] = MappingProxyType(
 
 @dataclass(frozen=True, slots=True)
 class Alert:
-    """One monitoring alert tied to a capture epoch."""
+    """A monitoring alert with its capture epoch."""
 
     epoch: int
     kind: AlertKind

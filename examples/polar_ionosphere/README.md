@@ -1,28 +1,30 @@
 # Polar ionosphere tracking timeline
 
-Combine GPS dual-frequency code-derived slant TEC proxy, ROT, rolling ROTI,
-C/N₀ and lock times with receiver position status and tracking-quality events.
-The rate history resets at gaps, missing frequency pairs, falling lock times or
-signal changes. ROTI uses the sample standard deviation of code-derived rates.
-By default, it is reported only when continuous accepted rate intervals cover
-the entire `--roti-window-s` and at least five rates are available. Adjust these
-requirements explicitly with `--min-roti-coverage` and `--min-roti-samples`.
-Coverage is elapsed interval duration, not a count of expected samples. Each
-report includes both coverage and sample count.
+Build a timeline of GPS dual-frequency code TEC, ROT, rolling ROTI, C/N₀ and
+lock times alongside receiver position status and tracking-quality events.
+Gaps, missing frequency pairs, decreases in lock time and signal changes reset
+the rate history.
+
+ROTI is the sample standard deviation of code-derived rates. By default, it
+needs at least five rates and continuous accepted intervals spanning the full
+`--roti-window-s`. Adjust these requirements with `--min-roti-coverage` and
+`--min-roti-samples`. The report gives coverage as elapsed interval duration
+and lists the sample count separately.
 
 ```bash
 python -m examples.polar_ionosphere --port /dev/ttyUSB0 --duration 600 --json /tmp/polar.json
 python -m examples.polar_ionosphere --replay tests/fixtures/captures-extra/RANGEB.bin --json /tmp/polar-replay.json
 ```
 
-Code-derived TEC includes hardware biases and multipath, making it a proxy rather than
-calibrated absolute TEC or a scintillation index. The receiver can miss cycle
-slips, and these low-rate measurements cannot resolve variations above their
-sampling bandwidth.
+Hardware biases and multipath remain in code-derived TEC. These values indicate
+TEC variation but are not calibrated absolute TEC or a scintillation index. The
+receiver can miss cycle slips. Low-rate measurements cannot resolve variations
+above their sampling bandwidth.
 
 ## References
 
-Unicore N4 R1.15 observation tracking status; IGS ionosphere monitoring.
+- Unicore N4 R1.15 observation tracking status.
+- IGS ionosphere monitoring.
 
 ## Compare a space-weather campaign
 

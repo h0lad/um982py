@@ -76,9 +76,9 @@ class AugmentationState:
 def augmentation_plan(current: SignalGroup) -> tuple[AugmentationStep, ...]:
     """Build the commands that enable SBAS, E6-HAS, B2b-PPP, and other refinements.
 
-    Switching to signal group 3/6 restarts acquisition, so the plan changes
-    groups only when another group is active. The remaining settings are
-    idempotent and are reasserted on each run.
+    A switch to signal group 3/6 restarts acquisition. The plan changes groups
+    only if the receiver uses another group. Each run reapplies the remaining
+    settings, which are idempotent.
     """
     steps: list[AugmentationStep] = []
     if current != HIGH_ACCURACY_SIGNAL_GROUP:
@@ -109,10 +109,10 @@ def enable_augmentation(
 ) -> AugmentationState:
     """Apply augmentation features, optionally saving a verified group change.
 
-    Rejected commands are recorded and the remaining features are attempted.
-    A transport or response failure stops the plan, but earlier changes may
-    already be active. The configuration is saved only when requested and the
-    signal-group readback confirms the change.
+    Command rejections appear in the report without stopping later features.
+    A transport or response failure stops execution. Earlier changes may still
+    be active. To save the configuration, the caller must request it and the
+    signal-group readback must confirm the change.
     """
     previous = receiver.execute(current_signal_group())
     applied: list[str] = []

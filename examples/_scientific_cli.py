@@ -21,9 +21,9 @@ from um982py.science_experiments import (
 )
 
 
-def read_rows(path: str) -> list[dict[str, str]]:
-    with Path(path).open(encoding="utf-8", newline="") as f:
-        reader = csv.DictReader(f)
+def read_csv_rows(path: str) -> list[dict[str, str]]:
+    with Path(path).open(encoding="utf-8", newline="") as stream:
+        reader = csv.DictReader(stream)
         if not reader.fieldnames or len(set(reader.fieldnames)) != len(
             reader.fieldnames
         ):
@@ -34,48 +34,62 @@ def read_rows(path: str) -> list[dict[str, str]]:
     return rows
 
 
-def num(row: dict[str, str], name: str) -> float:
-    v = float(row[name])
-    if not math.isfinite(v):
+def read_finite_number(row: dict[str, str], name: str) -> float:
+    value = float(row[name])
+    if not math.isfinite(value):
         raise ValueError(f"{name} must be finite")
-    return v
+    return value
 
 
-def analyze(name: str, rows: list[dict[str, str]], args: argparse.Namespace) -> object:
+def analyze_rows(
+    name: str, rows: list[dict[str, str]], args: argparse.Namespace
+) -> object:
     if name == "spatial_tec":
-        a: list[float] = []
-        b: list[float] = []
+        station_a_changes: list[float] = []
+        station_b_changes: list[float] = []
         for row in rows:
-            f1, f2 = num(row, "high_hz"), num(row, "low_hz")
-            for station, result in (("a", a), ("b", b)):
-                result.append(
+            high_frequency = read_finite_number(row, "high_hz")
+            low_frequency = read_finite_number(row, "low_hz")
+            for station, changes in (
+                ("a", station_a_changes),
+                ("b", station_b_changes),
+            ):
+                changes.append(
                     tec_phase_change(
-                        num(row, f"{station}_high_before_m"),
-                        num(row, f"{station}_low_before_m"),
-                        num(row, f"{station}_high_after_m"),
-                        num(row, f"{station}_low_after_m"),
-                        f1,
-                        f2,
+                        read_finite_number(row, f"{station}_high_before_m"),
+                        read_finite_number(row, f"{station}_low_before_m"),
+                        read_finite_number(row, f"{station}_high_after_m"),
+                        read_finite_number(row, f"{station}_low_after_m"),
+                        high_frequency,
+                        low_frequency,
                     )
                 )
-        return tec_spatial_summary(a, b)
+        return tec_spatial_summary(station_a_changes, station_b_changes)
     if name == "noise_multipath":
-        shared = [num(r, "difference_m") for r in rows if r["kind"] == "shared"]
-        separate = [num(r, "difference_m") for r in rows if r["kind"] == "separate"]
-        repeat = [r for r in rows if r["kind"] == "repeat"]
-        if any(r["kind"] not in ("shared", "separate", "repeat") for r in rows):
+        shared = [
+            read_finite_number(row, "difference_m")
+            for row in rows
+            if row["kind"] == "shared"
+        ]
+        separate = [
+            read_finite_number(row, "difference_m")
+            for row in rows
+            if row["kind"] == "separate"
+        ]
+        repeat = [row for row in rows if row["kind"] == "repeat"]
+        if any(row["kind"] not in ("shared", "separate", "repeat") for row in rows):
             raise ValueError("kind must be shared, separate or repeat")
         return noise_multipath_summary(
             shared,
             separate,
-            [num(r, "day1_m") for r in repeat],
-            [num(r, "day2_m") for r in repeat],
+            [read_finite_number(row, "day1_m") for row in repeat],
+            [read_finite_number(row, "day2_m") for row in repeat],
         )
     if name == "multifrequency_slips":
         if len(rows) != 1:
             raise ValueError("one frequency row is required")
         return slip_detection_matrix(
-            [num(rows[0], f"f{i}_hz") for i in (1, 2, 3)],
+            [read_finite_number(rows[0], f"f{i}_hz") for i in (1, 2, 3)],
             args.max_cycles,
             args.gf_threshold_m,
             args.closure_threshold_m,
@@ -83,33 +97,33 @@ def analyze(name: str, rows: list[dict[str, str]], args: argparse.Namespace) -> 
     if name == "uncertainty_coverage":
         return {
             axis: uncertainty_coverage(
-                [num(r, f"{axis}_error_m") for r in rows],
-                [num(r, f"{axis}_sigma_m") for r in rows],
+                [read_finite_number(row, f"{axis}_error_m") for row in rows],
+                [read_finite_number(row, f"{axis}_sigma_m") for row in rows],
                 args.multiplier,
             )
             for axis in ("east", "north", "up")
         }
     if name == "phase_fluctuations":
         arcs: dict[str, list[dict[str, str]]] = {}
-        for r in rows:
-            key = r["arc"]
-            if not key:
+        for row in rows:
+            arc_id = row["arc"]
+            if not arc_id:
                 raise ValueError("arc identifiers must not be empty")
-            arcs.setdefault(key, []).append(r)
+            arcs.setdefault(arc_id, []).append(row)
         return {
-            key: phase_detrended(
-                [num(r, "time_s") for r in values],
-                [num(r, "phase_m") for r in values],
+            arc_id: phase_detrended(
+                [read_finite_number(row, "time_s") for row in arc_rows],
+                [read_finite_number(row, "phase_m") for row in arc_rows],
                 args.max_gap_s,
             )
-            for key, values in arcs.items()
+            for arc_id, arc_rows in arcs.items()
         }
     if name == "orbit_position_effect":
         return orbit_position_effect(
-            [[num(r, f"u_{axis}") for axis in "xyz"] for r in rows],
-            [[num(r, f"d{axis}_m") for axis in "xyz"] for r in rows],
-            [num(r, "clock_delta_s") for r in rows],
-            [num(r, "weight") for r in rows],
+            [[read_finite_number(row, f"u_{axis}") for axis in "xyz"] for row in rows],
+            [[read_finite_number(row, f"d{axis}_m") for axis in "xyz"] for row in rows],
+            [read_finite_number(row, "clock_delta_s") for row in rows],
+            [read_finite_number(row, "weight") for row in rows],
         )
     raise ValueError("unknown experiment")
 
@@ -130,7 +144,7 @@ def main(name: str) -> int:
         parser.add_argument("--max-gap-s", type=float, default=2.0)
     args = parser.parse_args()
     try:
-        result = analyze(name, read_rows(args.input), args)
+        result = analyze_rows(name, read_csv_rows(args.input), args)
         output = (
             json.dumps(
                 {

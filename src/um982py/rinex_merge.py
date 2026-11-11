@@ -141,12 +141,9 @@ def merge_gps_observations(
 ) -> MergeResult:
     """Merge um982py RANGE exports with unknown phase alignment into GPS RINEX.
 
-    Input files must be in strict time order and agree on station metadata,
-    including whether zero coordinates or antenna offsets are placeholders.
-    The output is created only after they have been validated. Each carrier's
-    first observation after a segment boundary gets a loss-of-lock flag because
-    continuity through the interruption is unknown. Other constellations are
-    omitted.
+    Inputs must be in time order and agree on station metadata, including
+    placeholders. Validation precedes output. Each carrier's first observation
+    after a segment boundary gets a loss-of-lock flag. Output contains only GPS.
     """
     if not inputs:
         raise ValueError("at least one segment is required")

@@ -59,8 +59,8 @@ def pair_base_rover_observations(
     """Pair unique epochs and native signal identities.
 
     Verify receiver epochs and signal identifiers before using the pairs.
-    Multiple candidates for an epoch raise an error. Observations are paired
-    as received, with no interpolation or phase alignment.
+    Multiple candidates for an epoch raise an error. Pairing uses the received
+    observations without interpolation or phase alignment.
     """
     if not math.isfinite(tolerance) or tolerance < 0:
         raise ValueError("epoch tolerance must be finite and nonnegative")

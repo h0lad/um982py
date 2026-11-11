@@ -1,11 +1,10 @@
 # Navigation messages in hex
 
-Dumps navigation messages as annotated hex.
+Display navigation messages as annotated hex.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -23,15 +22,8 @@ python -m examples.navigation_message_hex \
 
 ## Inputs and results
 
-Use `--family` or `--log` to restrict the messages of interest and `--seconds`
-to set the live collection time. The annotated hex is useful for inspecting
-captured wire messages.
-
-## Understanding the result
-
-This diagnostic displays selected navigation messages as annotated hexadecimal
-wire data. The available messages depend on the families received during the
-selected capture window.
+Use `--family` or `--log` to select messages and `--seconds` to set the live
+collection time.
 
 ## References
 

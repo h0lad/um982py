@@ -1,5 +1,3 @@
-"""Practical rover, track, survey and waypoint workflows."""
-
 import csv
 import json
 from dataclasses import replace
@@ -169,6 +167,28 @@ def test_track_writer_streams_valid_positions_without_overwriting(
         pass
 
 
+@pytest.mark.parametrize(
+    ("latitude", "longitude", "error"),
+    [
+        (float("nan"), 0, "coordinates must be finite"),
+        (91, float("inf"), "coordinates must be finite"),
+        (91, 181, "latitude must be"),
+        (0, 181, "longitude must be"),
+    ],
+)
+def test_track_writer_rejects_invalid_manual_coordinates(
+    tmp_path: Path, latitude: float, longitude: float, error: str
+) -> None:
+    sample = replace(fix(gga("120000")), latitude=latitude, longitude=longitude)
+    with (
+        TrackWriter(
+            tmp_path / "track.csv", format="csv", reference_frame="WGS84"
+        ) as writer,
+        pytest.raises(ValueError, match=error),
+    ):
+        writer.write(sample)
+
+
 def test_rover_pairs_only_matching_heading_epochs() -> None:
     raw_nav = (FIXTURES / "bodies/BESTNAVA.bin").read_bytes()
     parsed = parse_ascii(raw_nav)
@@ -195,12 +215,15 @@ def test_rover_pairs_only_matching_heading_epochs() -> None:
         transport.responses[b"UNIHEADINGA\r\n"] = raw_heading.replace(
             b"2400,123000", b"2400,124000"
         )
-        # Replace with a valid checksum at a different epoch.
-        body = transport.responses[b"UNIHEADINGA\r\n"].split(b"*")[0][1:]
+        different_epoch_body = transport.responses[b"UNIHEADINGA\r\n"].split(b"*")[0][
+            1:
+        ]
         from um982py.protocol.checksums import unicore_crc32
 
         transport.responses[b"UNIHEADINGA\r\n"] = (
-            b"#" + body + f"*{unicore_crc32(body):08x}\r\n".encode()
+            b"#"
+            + different_epoch_body
+            + f"*{unicore_crc32(different_epoch_body):08x}\r\n".encode()
         )
         assert rover.position().heading_deg is None
     assert not transport.closed

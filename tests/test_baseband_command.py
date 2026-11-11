@@ -1,5 +1,3 @@
-"""Checks the boundary behaviour of the baseband command builders."""
-
 import pytest
 
 from conftest import ReplayTransport, acknowledgement
@@ -43,8 +41,7 @@ from um982py.protocol import StreamDecoder
 
 def test_catalogue_is_complete_and_categorised() -> None:
     assert len(BasebandCommand) == 41
-    # Keep the table in catalogue order.
-    table = [
+    commands_in_catalogue_order = [
         "RESET",
         "BBMSG2AP",
         "LOG",
@@ -86,7 +83,9 @@ def test_catalogue_is_complete_and_categorised() -> None:
         "ONESATTRK",
         "ANTISPOOFENA",
     ]
-    assert [BasebandCommand(name).value for name in table] == table
+    assert [BasebandCommand(name).value for name in commands_in_catalogue_order] == (
+        commands_in_catalogue_order
+    )
     assert BasebandCommand.BBLOGEN.value == "BBLOGEN"
     assert BasebandCommand.RESET.category == "DESTRUCTIVE"
     assert BasebandCommand.RFSPIREAD.category == "QUERY"

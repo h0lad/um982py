@@ -1,5 +1,3 @@
-"""The enumerations shared by command builders."""
-
 from enum import StrEnum
 
 

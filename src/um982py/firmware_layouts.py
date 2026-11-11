@@ -239,8 +239,7 @@ BESTSATS = Layout(
 ALIGNDOP = replace(DOCUMENTED["DOPHD2"], name="ALIGNDOP", table="extended")
 
 
-def _baseline(name: str) -> Layout:
-    """Describes a baseline vector with three deltas, three sigmas and status."""
+def _baseline_layout(name: str) -> Layout:
     return Layout(
         name,
         "extended",
@@ -292,7 +291,7 @@ LAYOUTS.update(
         "ANT1GROUP": ANTENNA_GROUP,
         "ANT2GROUP": replace(ANTENNA_GROUP, name="ANT2GROUP"),
         **{
-            name: _baseline(name)
+            name: _baseline_layout(name)
             for name in ("BSLNENUHD", "BSLNXYZHD", "ALIGNBSLNENU", "ALIGNBSLNXYZ")
         },
     }

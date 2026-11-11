@@ -73,10 +73,10 @@ class KeplerElements:
             mean_anomaly=record.real("m0"),
             argument_of_perigee=record.real("omega"),
             inclination=record.real("i0"),
-            right_ascension=_first(record, "omega_0", "omega0"),
-            delta_n=_first(record, "delta_n", "deltan"),
+            right_ascension=_first_present_field(record, "omega_0", "omega0"),
+            delta_n=_first_present_field(record, "delta_n", "deltan"),
             idot=record.real("idot"),
-            omega_dot=_first(record, "omega_dot", "omegadot"),
+            omega_dot=_first_present_field(record, "omega_dot", "omegadot"),
             cuc=record.real("cuc"),
             cus=record.real("cus"),
             crc=record.real("crc"),
@@ -84,10 +84,10 @@ class KeplerElements:
             cic=record.real("cic"),
             cis=record.real("cis"),
             toe=record.real("toe"),
-            af0=_first(record, "af0", "fnavaf0", "inavaf0"),
-            af1=_first(record, "af1", "fnavaf1", "inavaf1"),
-            af2=_first(record, "af2", "fnavaf2", "inavaf2"),
-            tgd=_first(record, "tgd", "tgd1", "e1e5abgd"),
+            af0=_first_present_field(record, "af0", "fnavaf0", "inavaf0"),
+            af1=_first_present_field(record, "af1", "fnavaf1", "inavaf1"),
+            af2=_first_present_field(record, "af2", "fnavaf2", "inavaf2"),
+            tgd=_first_present_field(record, "tgd", "tgd1", "e1e5abgd"),
             toc=record.real("toc") if "toc" in record else None,
         )
 
@@ -103,8 +103,7 @@ class SatelliteState:
     radius: float
 
 
-def _first(record: Record, *names: str, default: float = 0.0) -> float:
-    """Return the first field present in ``names``, or ``default`` if none exist."""
+def _first_present_field(record: Record, *names: str, default: float = 0.0) -> float:
     for name in names:
         if name in record:
             return record.real(name)

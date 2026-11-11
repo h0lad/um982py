@@ -16,7 +16,6 @@ from examples._console import (
 )
 from examples._console_capture import open_receiver
 from examples.spoof_dual_antenna import (
-    Alarm,
     EcefBaseline,
     EnuBaseline,
     HeadingAgreement,
@@ -48,8 +47,7 @@ class Capture:
     sky: tuple[Record, ...] = ()
 
 
-def _records(paths: Sequence[Path], log: Log) -> tuple[Record, ...]:
-    """Decode one log from every captured transcript given."""
+def _decode_captured_records(paths: Sequence[Path], log: Log) -> tuple[Record, ...]:
     decoded = []
     for path in paths:
         for message in iter_frames(path):
@@ -60,15 +58,14 @@ def _records(paths: Sequence[Path], log: Log) -> tuple[Record, ...]:
     return tuple(decoded)
 
 
-def _captured(paths: Sequence[Path]) -> Capture:
-    """Decode the single-value logs and the sky views from transcripts."""
+def _capture_from_transcripts(paths: Sequence[Path]) -> Capture:
     return Capture(
-        enu=_records(paths, Log.BSLNENUHD),
-        ecef=_records(paths, Log.BSLNXYZHD),
-        position=_records(paths, Log.BESTPOS),
-        offset=_records(paths, Log.HEADINGOFFSET),
-        spoof=_records(paths, Log.SPOOFINFO),
-        sky=_records(paths, Log.SATVIS2),
+        enu=_decode_captured_records(paths, Log.BSLNENUHD),
+        ecef=_decode_captured_records(paths, Log.BSLNXYZHD),
+        position=_decode_captured_records(paths, Log.BESTPOS),
+        offset=_decode_captured_records(paths, Log.HEADINGOFFSET),
+        spoof=_decode_captured_records(paths, Log.SPOOFINFO),
+        sky=_decode_captured_records(paths, Log.SATVIS2),
     )
 
 
@@ -82,8 +79,7 @@ _FIELDS: dict[str, Log] = {
 }
 
 
-def _queried(receiver: Receiver) -> Capture:
-    """Query every log once, taking the sky view from two consecutive frames."""
+def _query_capture(receiver: Receiver) -> Capture:
     collected: dict[str, tuple[Record, ...]] = {}
     for field, log in _FIELDS.items():
         print(f"Querying {log.value}...", file=sys.stderr, flush=True)
@@ -91,7 +87,7 @@ def _queried(receiver: Receiver) -> Capture:
             collected[field] = receiver.collect(log.read(binary=False))
         except ResponseTimeout:
             collected[field] = ()
-    collected["sky"] = (*collected["sky"], *_sky_again(receiver))
+    collected["sky"] = (*collected["sky"], *_collect_binary_sky(receiver))
     return Capture(
         enu=collected["enu"],
         ecef=collected["ecef"],
@@ -102,8 +98,7 @@ def _queried(receiver: Receiver) -> Capture:
     )
 
 
-def _sky_again(receiver: Receiver) -> tuple[Record, ...]:
-    """Collect the second SATVIS2 view, which the binary form provides."""
+def _collect_binary_sky(receiver: Receiver) -> tuple[Record, ...]:
     try:
         return receiver.collect(Log.SATVIS2.read(binary=True))
     except ResponseTimeout:
@@ -150,24 +145,21 @@ def _offset_payload(
     return payload
 
 
-def _sky_pairs(capture: Capture) -> tuple[SkyComparison, ...]:
-    """Compare the two most recent SATVIS2 snapshots constellation by constellation."""
+def _compare_latest_sky_snapshots(capture: Capture) -> tuple[SkyComparison, ...]:
     snapshots = sky_snapshots(capture.sky)
     if len(snapshots) < 2:
         return ()
     return compare_snapshots(snapshots[-2], snapshots[-1])
 
 
-def _spoof_status(capture: Capture) -> SpoofStatus | None:
-    """Spoofing indicator of the last SPOOFINFO record."""
+def _latest_spoof_status(capture: Capture) -> SpoofStatus | None:
     return None if not capture.spoof else SpoofStatus.from_record(capture.spoof[-1])
 
 
 def _payload(capture: Capture, *, swapped: bool = False) -> dict[str, object]:
-    """Report of the heading, sky-view and spoof-indicator checks."""
     heading = _heading_agreement(capture, swapped=swapped)
-    skies = _sky_pairs(capture)
-    spoof = _spoof_status(capture)
+    skies = _compare_latest_sky_snapshots(capture)
+    spoof = _latest_spoof_status(capture)
     return {
         "status": "checks_available"
         if heading is not None and spoof is not None
@@ -178,17 +170,8 @@ def _payload(capture: Capture, *, swapped: bool = False) -> dict[str, object]:
         "antenna_roles": "swapped" if swapped else "documented",
         "sky": [_sky_payload(comparison) for comparison in skies],
         "spoof": _spoof_payload(spoof),
-        "alarms": [alarm.value for alarm in _alarms(heading, skies, spoof)],
+        "alarms": [alarm.value for alarm in alarms(heading, skies, spoof)],
     }
-
-
-def _alarms(
-    heading: HeadingAgreement | None,
-    skies: Sequence[SkyComparison],
-    spoof: SpoofStatus | None,
-) -> tuple[Alarm, ...]:
-    """Alarms over whichever checks the capture allowed."""
-    return alarms(heading, skies, spoof)
 
 
 def _heading_payload(agreement: HeadingAgreement | None) -> dict[str, object] | None:
@@ -209,18 +192,17 @@ def _sky_payload(comparison: SkyComparison) -> dict[str, object]:
     return {
         "shared": len(comparison.shared),
         "absent": list(comparison.absent),
-        "max_elevation_difference": _maximum(
+        "max_elevation_difference": _max_absolute(
             [item.elevation_difference for item in comparison.disagreements]
         ),
-        "max_azimuth_difference": _maximum(
+        "max_azimuth_difference": _max_absolute(
             [item.azimuth_difference for item in comparison.disagreements]
         ),
         "consistent": comparison.consistent,
     }
 
 
-def _maximum(values: Sequence[float]) -> float | None:
-    """Largest absolute value, or ``None`` when the sequence is empty."""
+def _max_absolute(values: Sequence[float]) -> float | None:
     return max((abs(value) for value in values), default=None)
 
 
@@ -254,13 +236,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     debug_header(args, "spoof_dual_antenna")
     if args.replay is not None:
-        capture = _captured([Path(args.replay)])
+        capture = _capture_from_transcripts([Path(args.replay)])
     elif args.transcripts is not None:
-        capture = _captured(sorted(Path(args.transcripts).glob("*.bin")))
+        capture = _capture_from_transcripts(
+            sorted(Path(args.transcripts).glob("*.bin"))
+        )
     else:
         receiver = open_receiver(args)
         try:
-            capture = _queried(receiver)
+            capture = _query_capture(receiver)
         finally:
             receiver.close()
     payload = _payload(capture, swapped=args.swap_antennas)

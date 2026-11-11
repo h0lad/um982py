@@ -1,12 +1,11 @@
 # Settings
 
 For a guided first setup, run `python -m examples.ntrip_server.setup`. It
-creates a station manifest, any needed account files, and a start script. Use
-the settings below when you want to configure or tune the server manually.
+creates a station manifest, any needed account files and a start script.
 
-Every option with its default and requirement level. `required` means the
-process or the survey refuses to start without it, `conditional` names the mode
-that requires it, `optional` always has the listed default.
+For manual configuration, `required` options must be set before the process or
+survey can start. A `conditional` option is required in the named mode. An
+`optional` option uses the listed default when omitted.
 
 ## Receiver and capture
 
@@ -38,8 +37,6 @@ that requires it, `optional` always has the listed default.
 | `--listen-port` | `2101` | optional | `1..65535`. |
 | `--tls-cert` | none | conditional | Required for a non-loopback `--bind`, together with `--tls-key`. |
 | `--tls-key` | none | conditional | Required with `--tls-cert`. |
-
-A non-loopback listener without both files is an error, not a warning.
 
 ## Connection budgets
 
@@ -73,8 +70,8 @@ A non-loopback listener without both files is an error, not a warning.
 
 ## Station survey
 
-`--survey-output` switches the process to survey mode, and the metadata rows below
-are then required, because a RINEX header without them would be ambiguous.
+`--survey-output` enables survey mode. Supply the metadata marked as required
+below so the RINEX header identifies the station unambiguously.
 
 | Option | Default | Level | Note |
 | --- | --- | --- | --- |
@@ -82,7 +79,7 @@ are then required, because a RINEX header without them would be ambiguous.
 | `--seconds` | `86400` | optional | At most `172800` (48 h). |
 | `--interval` | `30` | optional | At least 15 s. |
 | `--marker-name` | `UM982` | optional | RINEX marker name. |
-| `--antenna-type` | none | required in survey mode | IGS antenna and radome code, 1..20 ASCII characters. Use an honest `UNKNOWN ... NONE` when the antenna is not calibrated rather than inventing a code. |
+| `--antenna-type` | none | required in survey mode | IGS antenna and radome code, 1..20 ASCII characters. If the antenna is not calibrated, use `UNKNOWN ... NONE`. |
 | `--antenna-serial` | none | required in survey mode | 1..20 ASCII characters. |
 | `--receiver-serial` | none | required in survey mode | 1..20 ASCII characters. |
 | `--receiver-firmware` | none | required in survey mode | 1..20 ASCII characters. |
@@ -114,4 +111,4 @@ Optional fields:
 | `carrier` | `2` | Sourcetable carrier profile: `0` no carrier phase, `1` single-frequency, `2` dual-frequency. Set from the actual receiver configuration. |
 | `bitrate` | `9600` | Estimated sourcetable data rate in bits per second, so measure the stream and update this value for your station. |
 
-No other field is accepted: unknown keys fail the load with a `ValueError`.
+Unknown fields raise a `ValueError` when the manifest loads.

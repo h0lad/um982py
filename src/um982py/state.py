@@ -181,8 +181,8 @@ def restore_receiver_state(
     """Restore supported settings and report any remaining differences.
 
     Restore the signal group and reconnect after a reboot before calling this
-    function. Other configuration and masks are checked and reported for the
-    caller to handle.
+    function. The report lists differences in other configuration and masks.
+    The caller must handle these settings.
     """
     current = snapshot_receiver_state(receiver)
     saved = expected.settings
@@ -228,7 +228,6 @@ def restore_receiver_state(
     except Exception as error:
         errors.append(f"PPP datum: {error}")
     current = snapshot_receiver_state(receiver)
-    # Stop only changed subscriptions before restoring the saved entries.
     expected_logs = set(expected.logs)
     current_logs = set(current.logs)
     for entry in current.logs:

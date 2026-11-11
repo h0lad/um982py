@@ -1,11 +1,10 @@
 # Elevation mask optimizer
 
-Finds the elevation mask with the best satellite geometry.
+Find the elevation mask with the best satellite geometry.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -23,17 +22,10 @@ python -m examples.elevation_optimizer \
 
 ## Inputs and results
 
-`--minimum-satellites` sets the minimum satellite count for candidate masks,
-and `--ceiling` bounds the mask search. The selected geometry depends on the
-observed sky.
+`--minimum-satellites` sets the minimum satellite count for candidate masks.
+`--ceiling` sets the highest mask to consider, in degrees.
 
-## Understanding the result
-
-An elevation mask sets the minimum angle above the horizon for including a
-satellite. Raising it excludes more low-elevation satellites and can reduce
-their number and geometric spread. The example compares candidate masks against
-the captured geometry and a minimum satellite count. The selected mask applies
-to that observation.
+The selected mask applies to the captured sky geometry.
 
 ## References
 

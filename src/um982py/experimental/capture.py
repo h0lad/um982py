@@ -26,7 +26,7 @@ __all__ = [
 
 
 class BoundedRecordingTransport:
-    """Retain up to ``limit`` received bytes in memory."""
+    """Keep up to ``limit`` received bytes in memory."""
 
     def __init__(self, transport: Transport, limit: int) -> None:
         if type(limit) is not int or limit < 1:
@@ -50,7 +50,7 @@ class BoundedRecordingTransport:
 
     @property
     def limit_reached(self) -> bool:
-        """Return true once ``limit`` bytes have been recorded."""
+        """Return true once the capture contains ``limit`` bytes."""
         return len(self.raw) >= self.limit
 
 

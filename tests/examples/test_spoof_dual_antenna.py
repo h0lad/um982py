@@ -1,5 +1,3 @@
-"""Tests the dual-antenna spoofing checks against ground truth."""
-
 from __future__ import annotations
 
 import math

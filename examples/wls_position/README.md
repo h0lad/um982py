@@ -1,11 +1,10 @@
 # Weighted least-squares position
 
-Solves a position from pseudoranges with weighted least squares.
+Estimate a position from pseudoranges with weighted least squares.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -26,19 +25,11 @@ python -m examples.wls_position \
 ## Inputs and results
 
 Replay needs RANGE, GPS ephemeris and an initial position, supplied in the
-three captures shown.
-The receiver position must be computed and within `--position-tolerance`
-(default one second) of the RANGE epoch. GPS ephemerides must be healthy,
-have matching issue numbers and have a reference time within two hours of
-transmission. The output compares against the receiver position, not surveyed
-truth; formal covariance excludes unmodelled errors.
-
-## Understanding the result
-
-Weighted least squares fits satellite pseudoranges using observation weights.
-The measurements also contain clock and other errors. The solution depends on
-the available satellites, broadcast data, weights and model. Compare it with
-independent truth when accuracy matters.
+three captures shown. The receiver position must be computed and within
+`--position-tolerance` (default one second) of the RANGE epoch. GPS ephemerides
+must be healthy, have matching issue numbers and have a reference time within
+two hours of transmission. The output compares against the receiver position,
+not surveyed truth. Formal covariance excludes unmodelled errors.
 
 ## References
 

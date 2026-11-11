@@ -226,15 +226,14 @@ class Receiver:
     ) -> tuple[CommandResponse, ...]:
         """Configure the periodic output rate of one or more logs.
 
-        ``port=None`` selects the receiver's current port. The default wire
-        format prefers binary when available, otherwise ASCII. With an explicit
-        port, ``verify=True`` also checks LOGLIST after all acknowledgements.
-        Neither acknowledgement nor readback proves the actual emitted rate.
-        The signal group and persistent configuration are not changed.
+        ``port=None`` uses the current port. By default, binary is preferred.
+        With an explicit port, ``verify=True`` checks LOGLIST after acknowledgements.
+        Neither confirms the emitted rate. Signal group and saved settings
+        do not change.
 
-        All commands are validated before the first write. If a command fails,
-        earlier changes remain in effect, and a timed-out command may have been
-        applied. An exception note identifies the completed commands.
+        Commands are validated before writing. A failure leaves earlier changes
+        active, and a timed-out command may have applied. An exception note lists
+        completed commands.
         """
         interval = logging.interval_from_rate(rate_hz)
         if binary is not None and not isinstance(binary, bool):
@@ -330,11 +329,13 @@ class Receiver:
     ) -> Iterator[Fix]:
         """Poll GGA positions until the caller stops iterating.
 
-        Each query uses the receiver timeout. The interval is the pause between
-        queries, and the receiver remains open when iteration stops. Other
-        messages received during a query go to ``on_message`` or are discarded.
-        Messages already queued before the query remain available to ``receive``.
-        The callback runs within the transaction and must not use the receiver.
+        Each query uses the receiver timeout. ``interval`` sets the pause
+        between queries. The receiver stays open when iteration stops.
+
+        Other messages received during a query go to ``on_message``. Without
+        this callback, they are discarded. Messages queued before the query
+        remain available through ``receive``. The callback runs within the
+        transaction and must not use the receiver.
         """
         if isinstance(interval, bool) or not isfinite(interval) or interval <= 0:
             raise ValueError("interval must be finite and positive")
@@ -370,7 +371,7 @@ class Receiver:
     def start_ppp(self, *, service: PppService = "E6-HAS") -> PppSession:
         """Configure a satellite PPP service and read its solutions.
 
-        An active ONLY setting for the requested service is retained.
+        If the requested service is active, its ONLY setting stays in effect.
         """
         return _start_ppp(self, service=service)
 

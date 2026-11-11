@@ -13,7 +13,7 @@ from um982py.capture import (
     DataLog,
     InterruptedCapture,
     RecordingTransport,
-    _matching_requests,
+    _log_matchers,
     capture_live,
     iter_frames,
     replay_receiver,
@@ -87,7 +87,7 @@ def capture_records(
         raise ValueError("interval must be positive")
     if args.replay is not None:
         collected: dict[str, list[Record]] = {log.value: [] for log in logs}
-        requests = [(log, _matching_requests(log)) for log in logs]
+        requests = [(log, _log_matchers(log)) for log in logs]
         for message in iter_frames(args.replay):
             for log, matchers in requests:
                 values = collected[log.value]

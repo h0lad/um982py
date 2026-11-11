@@ -54,15 +54,13 @@ HAS_LOGS = (
 )
 
 
-def _signal_name(key: SignalKey) -> str:
-    """Compact system/prn/signal tag for one divergence arc."""
+def _divergence_signal_label(key: SignalKey) -> str:
     return f"sys{key.system}-prn{key.prn:02d}-sig{key.signal:02d}"
 
 
-def _divergence_lines(
+def _divergence_by_signal(
     range_records: Sequence[Record], *, tau: float, threshold: float, max_gap: float
 ) -> tuple[tuple[str, int, int, int, float | None], ...]:
-    """Per-signal divergence summary used by both the log and the report."""
     series: dict[SignalKey, list[RangeSample]] = defaultdict(list)
     for record in range_records:
         for sample in range_samples(record, epoch=record_epoch(record)):
@@ -81,7 +79,13 @@ def _divergence_lines(
             if item.filtered_mps is not None and math.isfinite(item.filtered_mps)
         ]
         summary.append(
-            (_signal_name(key), usable, resets, exceeds, max(peaks) if peaks else None)
+            (
+                _divergence_signal_label(key),
+                usable,
+                resets,
+                exceeds,
+                max(peaks) if peaks else None,
+            )
         )
     return tuple(summary)
 
@@ -105,7 +109,7 @@ def _progress(
         len(rows) for log_name, rows in captured.items() if log_name.startswith("E6")
     )
     tally = divergence_tally(
-        _divergence_lines(
+        _divergence_by_signal(
             captured.get("RANGE", ()), tau=tau, threshold=threshold, max_gap=max_gap
         )
     )
@@ -281,7 +285,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         on_progress=on_progress if args.debug else None,
     )
     epochs = ppp_epochs(captured.get("PPPNAV", ()))
-    per_signal = _divergence_lines(
+    per_signal = _divergence_by_signal(
         captured.get("RANGE", ()),
         tau=args.tau,
         threshold=args.threshold,

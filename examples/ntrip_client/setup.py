@@ -26,8 +26,8 @@ def main() -> int:
     print(
         "NTRIP rover setup: obtain the caster address and mountpoint from the provider."
     )
-    print("Use https when the provider supports TLS; include the port and mountpoint.")
-    print("Example only: http://rtk2go.com:2101/Weinstadt")
+    print("Use HTTPS when available. Include the port and mountpoint.")
+    print("Example: http://rtk2go.com:2101/Weinstadt")
     while True:
         caster = ask("Caster URL (including /mountpoint)")
         try:

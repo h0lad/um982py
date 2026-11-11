@@ -107,10 +107,9 @@ def service_census(
 ) -> tuple[ServiceAudit, ServiceAudit]:
     """Summarise both free correction services from their computed checks.
 
-    The two services use different block grammars, so the census only reports
-    delivery and flag counts.  It makes no statement about which service is
-    more accurate, and an empty service is reported as ``no_blocks`` rather
-    than as clean.
+    The services use different block formats. The summary counts delivered and
+    flagged blocks without comparing accuracy. A service with no blocks has
+    status ``no_blocks`` and cannot count as clean.
     """
     has_flags = [check.get("flags") for check in has_checks]
     for flags in has_flags:

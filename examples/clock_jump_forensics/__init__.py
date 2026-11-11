@@ -51,12 +51,12 @@ def clock_residuals(
         return (), ()
     code, phase = [], []
     for key in sorted(first.keys() & last.keys()):
-        a, b = first[key], last[key]
-        if b.lock_seconds < a.lock_seconds + dt - 0.02:
+        earlier, later = first[key], last[key]
+        if later.lock_seconds < earlier.lock_seconds + dt - 0.02:
             continue
-        predicted = (a.rate_mps + b.rate_mps) * dt / 2
-        code.append(b.code_m - a.code_m - predicted)
-        phase.append(b.phase_m - a.phase_m - predicted)
+        predicted = (earlier.rate_mps + later.rate_mps) * dt / 2
+        code.append(later.code_m - earlier.code_m - predicted)
+        phase.append(later.phase_m - earlier.phase_m - predicted)
     return tuple(code), tuple(phase)
 
 

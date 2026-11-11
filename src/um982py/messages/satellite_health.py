@@ -1,7 +1,7 @@
 """Interpret ephemeris health reported by the receiver."""
 # Sources include the Unicore R1.15 BD3EPH, BDSEPH, GALEPH and GLOEPH log
-# descriptions, Galileo OS SIS ICD 2.1 tables 79 and 82, and BDS B1I SIS ICD
-# section 5.2.4.6.
+# descriptions. See also Galileo OS SIS ICD 2.1 tables 79 and 82, and BDS B1I
+# SIS ICD section 5.2.4.6.
 
 from dataclasses import dataclass
 from enum import IntEnum

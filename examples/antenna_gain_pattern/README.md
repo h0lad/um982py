@@ -1,12 +1,11 @@
 # Empirical C/N₀ elevation pattern
 
-Fits a range-normalized C/N₀ curve for one signal, including site and RF-path
-effects. For a helix/patch comparison, use `dual_antenna_rf_audit`.
+Fit a range-normalized C/N₀ curve for one signal. To compare helix and patch
+antennas, use `dual_antenna_rf_audit`.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -25,17 +24,14 @@ python -m examples.antenna_gain_pattern --replay /tmp/sky.bin \
 
 ## Inputs and results
 
-Select the RANGE system and signal with `--system` and `--signal`, which default
-to GPS L1 C/A. `--csv` writes the fitted elevation curve, while `--json`
-writes the report. The curve describes received signal strength at this site,
-not calibrated antenna gain.
+Select the RANGE system and signal with `--system` and `--signal` (default:
+GPS L1 C/A). Use `--csv` to write the fitted elevation curve and `--json` to
+write the report.
 
 ## Understanding the result
 
-The example groups receiver-reported C/N₀ observations by satellite signal and
-elevation, then fits a curve to the recorded data. Because the curve includes the
-antenna, cable, receiver and surroundings, it helps compare a particular setup
-but does not provide a calibrated antenna gain measurement.
+Antenna, cable, receiver and surroundings affect the measured C/N₀. The curve
+is not a calibrated antenna gain measurement.
 
 ## References
 

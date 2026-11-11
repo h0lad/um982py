@@ -181,10 +181,9 @@ def range_samples(
 ) -> tuple[RangeSample, ...]:
     """Convert supported GNSS observations to range-increasing SI measurements.
 
-    Accepts RANGE, RANGEH, OBSVM, OBSVH and OBSVBASE records. Compressed
-    observations require phase reconstruction before conversion. Optional
-    filters select receiver constellation and signal codes. Unknown carrier
-    frequencies and observations without usable code or phase are omitted.
+    Accepts RANGE, RANGEH, OBSVM, OBSVH and OBSVBASE. Reconstruct compressed
+    phases first. Filters use receiver constellation and signal codes. Entries
+    without a known frequency or without both usable code and phase are omitted.
     """
     if record.name not in ("RANGE", "RANGEH", "OBSVM", "OBSVH", "OBSVBASE"):
         raise ValueError("expected an uncompressed RANGE or OBSV observation log")

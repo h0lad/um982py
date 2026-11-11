@@ -26,7 +26,7 @@ from um982py.survey import SurveyPoint, survey_point, wait_for_fix
 
 @dataclass(frozen=True, slots=True)
 class RoverPosition:
-    """Position and a receiver-time-matched antenna baseline attitude.
+    """A position paired with antenna heading and pitch by receiver epoch.
 
     Heading is clockwise from true north. Apply the installation's antenna
     offset to obtain the vehicle's forward heading. ``heading_offset_s`` is the
@@ -86,10 +86,11 @@ class Rover:
     """Own a receiver stream and optionally relay NTRIP in the background.
 
     Configure the receiver as a rover first. This session polls BESTNAV and,
-    optionally, UNIHEADING; it does not change the receiver configuration.
+    optionally, UNIHEADING. It does not change the receiver configuration.
     The supplied receiver remains open unless ``close_receiver`` is true.
-    Fatal correction errors are raised on the next position query and are also
-    available through ``correction_health``. Closing waits for in-flight I/O.
+
+    The next position query raises any fatal correction error. These errors
+    also appear in ``correction_health``. Closing waits for pending I/O.
     """
 
     def __init__(
@@ -188,7 +189,7 @@ class Rover:
             raise RuntimeError("NTRIP correction relay failed") from self._failure
 
     def correction_health(self) -> RtkHealth | None:
-        """Return relay status; None means corrections were not requested."""
+        """Return relay status. None means corrections were not requested."""
         return self._rtk.health() if self._rtk is not None else None
 
     def set_output_rate(

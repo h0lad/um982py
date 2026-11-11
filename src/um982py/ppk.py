@@ -94,10 +94,9 @@ def run_ppk(
 ) -> PpkResult:
     """Run RTKLIB on RINEX observations with an explicit base ECEF position.
 
-    A new output directory receives the solver output, logs, and a manifest of
-    input hashes and options. The solver quality codes, reference frame, and
-    epoch are recorded as supplied. The caller is responsible for matching the
-    reference frame and epoch to the observation metadata.
+    Write the solver output and logs to a new directory. The manifest records
+    input hashes and options. Solver quality codes, reference frame and epoch
+    stay as supplied. Match the frame and epoch to the observation metadata.
     """
     if len(base_ecef) != 3 or not all(math.isfinite(v) for v in base_ecef):
         raise ValueError("base_ecef must contain three finite coordinates")

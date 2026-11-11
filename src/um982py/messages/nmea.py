@@ -1,5 +1,3 @@
-"""NMEA sentence decoding."""
-
 from typing import cast
 
 from um982py.errors import ProtocolError

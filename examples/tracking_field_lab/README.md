@@ -1,11 +1,10 @@
 # Tracking field lab
 
-Correlates unknown tracking fields with your own labels.
+Correlate tracking fields of unknown meaning with your own labels.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -25,23 +24,14 @@ python -m examples.tracking_field_lab \
 
 ## Inputs and results
 
-`--labels` accepts an independent CSV with `epoch,value` columns, where epoch
-is absolute GPS time in seconds. `--join-tolerance` bounds the time match, and
-the selector options filter repeated epochs by a neutral field.
+`--labels` accepts an independent CSV with `epoch,value` columns. The epoch is
+absolute GPS time in seconds. `--join-tolerance` limits the time difference,
+and the selector options filter repeated epochs by a neutral field.
 
 The report includes the written slot indices for each selected frame. It
-excludes slot fields whose write-mask bits are clear, including when a selector
-targets an unwritten slot. A written slot can still contain an invalid or
-overwritten value and does not establish a physical unit or signal identity.
-
-## Understanding the result
-
-This research tool compares receiver tracking fields whose meanings are not
-yet established with independently supplied labels. It helps identify
-candidate relationships in captured data.
-
-Labels and epochs must align, and results should be checked on independent
-captures.
+excludes fields whose write-mask bits are clear, even if a selector targets an
+unwritten slot. A written slot may still contain an invalid or overwritten
+value. Its physical unit and signal identity remain unknown.
 
 ## References
 

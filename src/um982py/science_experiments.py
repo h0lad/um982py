@@ -152,17 +152,20 @@ def uncertainty_coverage(
     if len(errors_m) != len(sigmas_m) or not errors_m:
         raise ValueError("at least one paired error and sigma required")
     _finite(*errors_m, *sigmas_m, multiplier)
-    if multiplier <= 0 or any(x <= 0 for x in sigmas_m):
+    if multiplier <= 0 or any(sigma <= 0 for sigma in sigmas_m):
         raise ValueError("sigmas and multiplier must be positive")
     covered = sum(
-        abs(e) <= multiplier * s for e, s in zip(errors_m, sigmas_m, strict=True)
+        abs(error) <= multiplier * sigma
+        for error, sigma in zip(errors_m, sigmas_m, strict=True)
     )
     return {
         "samples": len(errors_m),
         "covered": covered,
         "fraction": covered / len(errors_m),
         "mean_error_m": math.fsum(errors_m) / len(errors_m),
-        "rms_error_m": math.sqrt(math.fsum(e * e for e in errors_m) / len(errors_m)),
+        "rms_error_m": math.sqrt(
+            math.fsum(error * error for error in errors_m) / len(errors_m)
+        ),
     }
 
 
@@ -177,23 +180,33 @@ def phase_detrended(
         raise ValueError("at least three paired samples required")
     _finite(*times_s, *phases_m, max_gap_s)
     if max_gap_s <= 0 or any(
-        not 0 < b - a <= max_gap_s for a, b in itertools.pairwise(times_s)
+        not 0 < later - earlier <= max_gap_s
+        for earlier, later in itertools.pairwise(times_s)
     ):
         raise ValueError("times must increase without gaps exceeding max_gap_s")
-    t0, p0 = times_s[0], phases_m[0]
-    ts = [t - t0 for t in times_s]
-    ps = [p - p0 for p in phases_m]
-    mt, mp = math.fsum(ts) / len(ts), math.fsum(ps) / len(ps)
+    first_time, first_phase = times_s[0], phases_m[0]
+    time_offsets = [time - first_time for time in times_s]
+    phase_offsets = [phase - first_phase for phase in phases_m]
+    mean_time = math.fsum(time_offsets) / len(time_offsets)
+    mean_phase = math.fsum(phase_offsets) / len(phase_offsets)
     slope = math.fsum(
-        (t - mt) * (p - mp) for t, p in zip(ts, ps, strict=True)
-    ) / math.fsum((t - mt) ** 2 for t in ts)
-    residuals = [p - mp - slope * (t - mt) for t, p in zip(ts, ps, strict=True)]
+        (time - mean_time) * (phase - mean_phase)
+        for time, phase in zip(time_offsets, phase_offsets, strict=True)
+    ) / math.fsum((time - mean_time) ** 2 for time in time_offsets)
+    residuals = [
+        phase - mean_phase - slope * (time - mean_time)
+        for time, phase in zip(time_offsets, phase_offsets, strict=True)
+    ]
     return {
-        "samples": len(ts),
-        "duration_s": ts[-1],
+        "samples": len(time_offsets),
+        "duration_s": time_offsets[-1],
         "slope_m_per_s": slope,
-        "residual_rms_m": math.sqrt(math.fsum(x * x for x in residuals) / len(ts)),
-        "maximum_gap_s": max(b - a for a, b in itertools.pairwise(times_s)),
+        "residual_rms_m": math.sqrt(
+            math.fsum(value * value for value in residuals) / len(time_offsets)
+        ),
+        "maximum_gap_s": max(
+            later - earlier for earlier, later in itertools.pairwise(times_s)
+        ),
     }
 
 

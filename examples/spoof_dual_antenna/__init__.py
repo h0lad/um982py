@@ -449,10 +449,10 @@ def bearing_candidates(
     """Bearings of a source from the inter-antenna phase, without resolving the cone.
 
     A single baseline measures ``cos`` of the angle between the baseline axis
-    and the source direction, so every measurement yields two mirror bearings
-    about the baseline heading.  ``leverage`` is the sine of that separation:
-    it vanishes when the source lies on the baseline axis, where the two
-    candidates coincide and the geometry carries no bearing information.
+    and the source direction. Each measurement yields two mirror bearings about
+    the baseline heading. ``leverage`` is the sine of that separation. It
+    vanishes when the source lies on the baseline axis. There the two candidates
+    coincide, and the geometry carries no bearing information.
     """
     for name, value in (
         ("phase difference", phase_difference_cycles),

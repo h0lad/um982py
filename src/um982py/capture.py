@@ -87,8 +87,7 @@ def matcher(log: DataLog, binary: bool) -> Command[Message]:
     )
 
 
-def _matching_requests(log: DataLog) -> tuple[Command[Message], ...]:
-    """Prepare matchers for the supported wire forms of a log."""
+def _log_matchers(log: DataLog) -> tuple[Command[Message], ...]:
     requests = [matcher(log, False)]
     with suppress(ValueError):
         requests.append(matcher(log, True))
@@ -97,7 +96,7 @@ def _matching_requests(log: DataLog) -> tuple[Command[Message], ...]:
 
 def decode_records(frames: Iterable[Message], log: DataLog) -> tuple[Record, ...]:
     """Decode matching ASCII and binary frames, raising on malformed bodies."""
-    requests = _matching_requests(log)
+    requests = _log_matchers(log)
     return tuple(
         log.decode(frame)
         for frame in frames
@@ -137,8 +136,8 @@ def uniform_interval(records: Sequence[Record], fallback: float) -> float:
     """Measure regular sampling cadence, rejecting gaps and duplicates."""
     if len(records) < 2:
         return fallback
-    times = [record_epoch(record) for record in records]
-    intervals = [b - a for a, b in pairwise(times)]
+    epochs = [record_epoch(record) for record in records]
+    intervals = [later - earlier for earlier, later in pairwise(epochs)]
     interval = intervals[0]
     if interval <= 0 or any(abs(value - interval) > 1e-4 for value in intervals):
         raise ValueError("time series has gaps, duplicate epochs or irregular sampling")
@@ -149,18 +148,18 @@ def subscription_plan(
     logs: Sequence[DataLog], *, interval: float, binary: bool
 ) -> list[tuple[str, Command[CommandResponse]]]:
     """Select supported wire forms and triggers for temporary capture."""
-    planned = []
+    subscriptions = []
     for log in logs:
-        form = binary
+        binary_output = binary
         try:
-            matcher(log, form)
+            matcher(log, binary_output)
         except ValueError:
-            form = False
-        wire = log.wire if isinstance(log, AntennaLog) else log
-        trigger = Trigger.ON_CHANGED if wire.onchanged_only else interval
-        start = log.output(trigger, binary=form)
-        planned.append((log.wire_name(binary=form), start))
-    return planned
+            binary_output = False
+        wire_log = log.wire if isinstance(log, AntennaLog) else log
+        trigger = Trigger.ON_CHANGED if wire_log.onchanged_only else interval
+        output_command = log.output(trigger, binary=binary_output)
+        subscriptions.append((log.wire_name(binary=binary_output), output_command))
+    return subscriptions
 
 
 # Log enums inherit from str. Treat a single enum as one log in this overload.
@@ -211,15 +210,13 @@ def capture_live(
 ) -> tuple[Record, ...] | dict[str, tuple[Record, ...]]:
     """Capture one log or multiple logs and restore previous subscriptions.
 
-    Pass one log to receive its records as a tuple, or pass a sequence of logs
-    to receive a dictionary keyed by log name. Progress callbacks and
-    interrupted captures always use the dictionary form. ``duration`` bounds
-    the collection time in seconds. For a single log other than SATVIS2,
-    ``frames`` can stop collection early; it does not limit multiple logs or
-    SATVIS2, whose epochs can span multiple frames. Records are held in memory.
-    Supply ``rate_hz`` for a documented N4 rate or ``interval`` in seconds.
-    Event-only logs cannot use ``rate_hz``. Actual output depends on the
-    receiver, signal group, log and firmware.
+    A log returns a tuple. A sequence returns a dictionary by log name, as do
+    progress callbacks and interrupted captures. Records stay in memory.
+    ``duration`` limits seconds. ``frames`` can stop a single-log capture early,
+    except SATVIS2 epochs may span multiple frames.
+
+    Use ``interval`` in seconds or a documented N4 ``rate_hz``. Event-only logs
+    cannot use ``rate_hz``. Actual rates depend on receiver, log, group and firmware.
     """
     interval = logging.output_interval(interval, rate_hz)
     if not math.isfinite(duration) or duration <= 0:
@@ -275,7 +272,7 @@ def receive_records(
     if not math.isfinite(duration) or duration <= 0:
         raise ValueError("duration must be finite and positive")
     collected: dict[str, list[Record]] = {log.value: [] for log in logs}
-    requests = [(log, _matching_requests(log)) for log in logs]
+    requests = [(log, _log_matchers(log)) for log in logs]
     deadline = monotonic() + duration
     next_progress = monotonic() + 5
     try:

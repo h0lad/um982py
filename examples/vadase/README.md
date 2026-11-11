@@ -1,11 +1,10 @@
 # VADASE motion estimates
 
-Solves displacement and velocity from time-differenced carrier phase.
+Estimate displacement and velocity from time-differenced carrier phase.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -29,12 +28,7 @@ metres per second for comparison. Continuous carrier-phase arcs are needed.
 
 ## Understanding the result
 
-This experiment estimates motion from changes in carrier phase between
-observation epochs. Continuous signal tracking and satellite geometry are
-necessary to estimate displacement and velocity.
-
-A cycle slip or gap can invalidate an arc. An optional independently known
-ECEF velocity permits comparison.
+A cycle slip or gap can invalidate an arc.
 
 ## References
 
@@ -53,10 +47,10 @@ python -m examples.vadase.event_replay --doppler /tmp/doppler.json \
 ```
 
 The optional independent CSV uses `gps_seconds,vx_mps,vy_mps,vz_mps` in the
-same ECEF frame and metres per second. Nearest epochs are paired only within
-`--match-window-s`, and unmatched phase epochs and solver rejections are
-retained. Doppler velocity is an epoch estimate, while TDCP velocity is an average
-over its reported start and end epochs. The comparison does not align those
-temporal responses or integrate through gaps. Establish sensor timing, sample
-rate, frame and antenna point independently before interpreting a real event.
-This analysis is not an earthquake warning system.
+same ECEF frame, with velocities in metres per second. Epochs are paired only
+within `--match-window-s`. Unmatched phase epochs and solver rejections remain
+in the report. Doppler velocity is an epoch estimate, while TDCP velocity is an
+average between its reported start and end epochs. The comparison does not
+align those time spans or integrate through gaps. Establish sensor timing,
+sample rate, frame and antenna point independently before interpreting a real
+event. This analysis is not an earthquake warning system.

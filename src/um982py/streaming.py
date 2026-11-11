@@ -114,9 +114,8 @@ class ReceiverStream:
     """Dispatch receiver data and serialize commands in one background thread.
 
     Add subscriptions before calling ``start()``. The worker owns the receiver
-    while it is running. Commands delay delivery until they finish, so short
-    timeouts are useful. Closing waits for the current operation and can also
-    close the receiver.
+    while it is running. Commands delay delivery until they finish. Closing
+    waits for the current operation and can also close the receiver.
     """
 
     def __init__(

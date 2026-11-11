@@ -34,7 +34,6 @@ def test_mt48_candidates_from_documented_example() -> None:
     # QZSS mask 7200 selects four of the nine J-slots.
     qzss = [c for c in candidates if c.system == "QZSS"]
     assert [c.name for c in qzss] == ["J02", "J03", "J04", "J07"]
-    # Zero masks select nothing.
     assert not [c for c in candidates if c.system == "GLONASS"]
     assert not [c for c in candidates if c.system == "BEIDOU"]
     assert len(candidates) == 16 <= 23

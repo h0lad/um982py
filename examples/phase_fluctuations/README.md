@@ -1,6 +1,6 @@
 # Low-rate carrier phase fluctuations
 
-Measure linearly detrended phase variability on explicitly selected continuous carrier arcs.
+Measure linearly detrended phase variability on selected continuous carrier arcs.
 
 ## Run
 
@@ -10,12 +10,14 @@ From the repository root, run the **synthetic demonstration**:
 python -m examples.phase_fluctuations --input examples/phase_fluctuations/sample.csv
 ```
 
-Supply your own carrier-phase arcs with `--input` and add `--json result.json`
-to save the report. No receiver connection is required.
+Use your CSV with `--input` and `--json result.json` to save the report.
 
 ## Input
 
-Each row has an `arc` identifier, strictly increasing time in seconds within the arc, and range-increasing `phase_m` in metres. Split arcs at every cycle slip, loss of lock, signal change and gap. `--max-gap-s` rejects gaps above the selected limit.
+Each row has an `arc` identifier, time in seconds and range-increasing `phase_m`
+in metres. Time must increase within each arc. Split arcs at every cycle slip,
+loss of lock, signal change and gap. `--max-gap-s` rejects gaps above the
+selected limit.
 
 ## Explanation and interpretation
 
@@ -24,9 +26,8 @@ residual RMS, fitted slope, duration and maximum gap. The statistic depends on
 arc duration, detrending and sample rate, so it is not automatically a phase
 scintillation index.
 
-Compare the results with independently validated phase measurements and
-controlled injected signals: a gap check cannot identify an unmarked slip, and
-low-rate observations cannot resolve variations above their sampling bandwidth.
+Checking for gaps cannot identify an unmarked slip. Low-rate observations cannot
+resolve variations above their sampling bandwidth.
 
 ## References
 

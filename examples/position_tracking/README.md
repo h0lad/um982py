@@ -1,12 +1,11 @@
 # Position tracking
 
-Collects position fixes with precision statistics. Correction-dependent fixes
-older than 10 seconds are reported as stale rather than current.
+Collect position fixes and precision statistics. Fixes that depend on
+corrections older than 10 seconds appear as stale.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -22,17 +21,10 @@ python -m examples.position_tracking --port /dev/ttyUSB0 --duration 30 \
 ## Inputs and results
 
 `--duration` and `--interval` control the capture. Use `--rate-hz` instead of
-`--interval` to request a periodic output rate in Hertz. This example subscribes
-to several logs; whether each supports the requested rate depends on the
-receiver, firmware and signal group. `--csv` writes tabular
-fixes, and `--geojson` writes a track. Use `--help` for precision service and
-geofence options.
-
-## Understanding the result
-
-The example selects receiver solutions using their type and correction age.
-Check the correction service, reference frame and age, and compare with surveyed
-positions when accuracy matters.
+`--interval` to request a periodic output rate in Hertz. The example subscribes
+to several logs. Each log's supported rates depend on the receiver, firmware
+and signal group. `--csv` writes tabular fixes, and `--geojson` writes a track.
+Use `--help` for precision service and geofence options.
 
 ## References
 

@@ -1,11 +1,10 @@
 # Clock stability
 
-Computes Allan deviation from receiver clock offsets.
+Calculate Allan deviation from receiver clock offsets.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -22,16 +21,14 @@ python -m examples.clock_stability --replay /tmp/time.bin
 
 ## Inputs and results
 
-The analysis needs at least 128 valid TIME samples at a regular cadence, so set
-`--duration` and `--interval` to collect enough epochs. Short or invalid captures
-produce an `insufficient_data` report and exit status 1.
+The analysis needs at least 128 valid TIME samples at regular intervals. Short
+or invalid captures produce an `insufficient_data` report and exit status 1.
 
 ## Understanding the result
 
-Allan deviation describes how clock frequency varies over different averaging
-times. The result characterizes the captured receiver clock under the analysis
-assumptions. The seconds-valued `phase_deviation` is tau multiplied by frequency
-Allan deviation; it is not time deviation (TDEV), which requires modified Allan
+Allan deviation describes clock frequency variation over different averaging
+times. `phase_deviation` is tau multiplied by frequency Allan deviation, in
+seconds. It is not time deviation (TDEV), which requires modified Allan
 deviation.
 
 ## References

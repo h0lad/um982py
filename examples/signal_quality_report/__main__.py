@@ -17,8 +17,7 @@ from um982py.commands import Log
 from um982py.messages import Record
 
 
-def _payload(records: Sequence[Record]) -> dict[str, object]:
-    """Build the signal quality payload from the decoded RANGE records."""
+def _signal_quality_payload(records: Sequence[Record]) -> dict[str, object]:
     per_epoch = [observations_from_record(record) for record in records]
     observations = [observation for epoch in per_epoch for observation in epoch]
     return {
@@ -95,7 +94,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )["RANGE"]
     if not records:
         parser.error("capture contains no RANGE records")
-    payload = _payload(records)
+    payload = _signal_quality_payload(records)
     print(
         f"Signal quality: {payload['observation_count']} observations in "
         f"{len(records)} RANGE epochs",

@@ -63,7 +63,7 @@ def multipath_series(
     order: int = DETREND_ORDER,
     max_gap: float | None = None,
 ) -> tuple[MultipathSeries, ...]:
-    """Detrend verified continuous arcs; missing lock metadata breaks an arc."""
+    """Detrend verified continuous arcs. Missing lock metadata breaks an arc."""
     if max_gap is not None and (not math.isfinite(max_gap) or max_gap <= 0):
         raise ValueError("maximum gap must be finite and positive")
     groups: dict[tuple[int, float], list[Observation]] = {}

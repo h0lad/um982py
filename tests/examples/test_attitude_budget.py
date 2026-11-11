@@ -1,5 +1,3 @@
-"""Tests the heading accuracy budget against ground truth."""
-
 from __future__ import annotations
 
 import math

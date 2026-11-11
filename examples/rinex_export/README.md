@@ -18,8 +18,7 @@ missing flags are receiver-reported indicators.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -36,7 +35,7 @@ python -m examples.rinex_export --port /dev/ttyUSB0 --baud 921600 --rate-hz 10 \
 ```
 
 `--rate-hz` and `--interval` are alternatives. The receiver may reject the rate
-or deliver observations more slowly; check the exported epochs and report.
+or deliver observations more slowly. Check the exported epochs and report.
 
 Export both antenna inputs:
 
@@ -92,4 +91,5 @@ alignment independently before publishing or using the phases for precise work.
 
 ## References
 
-IGS/RTCM RINEX 3.05; Unicore N4 R1.4.
+- IGS/RTCM RINEX 3.05.
+- Unicore N4 R1.4.

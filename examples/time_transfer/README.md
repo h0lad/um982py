@@ -1,11 +1,10 @@
 # Time transfer
 
-Converts between GPST and UTC using leap seconds.
+Convert receiver UTC to GPST using leap seconds.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -27,8 +26,8 @@ PPS device:
 python -m examples.time_transfer.pps --device /dev/pps0 --count 5
 ```
 
-The device must be connected to the receiver's pulse output and configured by
-the operating system. See the [Linux PPS documentation](https://docs.kernel.org/driver-api/pps.html).
+Connect the device to the receiver's pulse output and configure it in the
+operating system. See the [Linux PPS documentation](https://docs.kernel.org/driver-api/pps.html).
 
 ## Inputs and results
 
@@ -37,18 +36,17 @@ Live capture requests binary TIME by default. Use `--ascii` to request ASCII.
 
 ## Understanding the result
 
-GPS time (GPST) is a continuous GNSS time scale, while UTC is civil time and
-differs by leap seconds. The conversion uses the leap-second information in
-the bundled table and checks it against the receiver's TIME offset. A mismatch
-returns `offset_disagreement` with no GPST result; update or independently check
-the table and receiver. Python datetime cannot represent an inserted leap second,
-so these instants are rejected.
+The conversion checks the bundled leap-second table against the receiver's
+TIME offset. If they disagree, it returns `offset_disagreement` without a GPST
+result. Check the receiver and update or independently verify the table. Python
+datetime cannot represent an inserted leap second, so these instants are rejected.
 
-The PPS example reports host `CLOCK_REALTIME` timestamps. It does not associate
-the pulse with a receiver TIME message, compensate for pulse delay, or establish
-timestamp accuracy. The host clock can step. Establish the association and
-measure the timing path before comparing a pulse with receiver UTC.
+The PPS example reports host `CLOCK_REALTIME` timestamps. It does not match
+pulses to receiver TIME messages, compensate for pulse delay or establish
+timestamp accuracy. The host clock can step. Match the pulses and measure the
+timing path before comparing them with receiver UTC.
 
 ## References
 
-Kaplan & Hegarty (2017); IERS leap seconds.
+- Kaplan & Hegarty (2017).
+- IERS leap seconds.

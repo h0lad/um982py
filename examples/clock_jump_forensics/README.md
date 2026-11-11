@@ -1,11 +1,10 @@
 # Clock jump analysis
 
-Flags code and carrier jumps that appear together across satellites.
+Find code and carrier jumps that appear together across satellites.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -25,15 +24,7 @@ python -m examples.clock_jump_forensics \
 ## Inputs and results
 
 `--threshold` sets the minimum common range jump in metres, and `--agreement`
-sets the consensus half-width in metres. A flag identifies a common
-discontinuity in the observations.
-
-## Understanding the result
-
-The example looks for range changes occurring together across several
-satellites, which can indicate a receiver clock discontinuity or another shared
-effect. Provide a sufficiently long capture and review flagged times against
-other logs before attributing a cause.
+sets the consensus half-width in metres.
 
 ## References
 

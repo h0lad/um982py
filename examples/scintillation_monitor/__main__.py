@@ -141,12 +141,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"{len(summaries)} signals",
         file=sys.stderr,
     )
-    print(f"epochs {len(records)} observations {observations} signals {len(summaries)}")
+    print(
+        f"epochs {len(records)} observations {observations} signals {len(summaries)}",
+        file=sys.stderr,
+    )
     for summary in summaries:
         print(
             f"  prn {summary.prn:>3} ch {summary.frequency_channel:>2}"
             f"  cn0 {summary.mean_cn0_db_hz:6.2f} dB-Hz"
-            f"  s4 proxy {summary.s4:.3f}  s4-rate std {summary.roti_proxy:.4f} per s"
+            f"  s4 proxy {summary.s4:.3f}  s4-rate std {summary.roti_proxy:.4f} per s",
+            file=sys.stderr,
         )
     write_json([payload_of(summary) for summary in summaries], args.json)
     return 0

@@ -1,11 +1,10 @@
 # Coordinate frames
 
-Converts between ECEF, geodetic, ENU, and baselines.
+Convert positions and baselines between ECEF, geodetic and local ENU coordinates.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -22,16 +21,10 @@ python -m examples.coordinate_frames --replay /tmp/coordinates.bin
 
 ## Inputs and results
 
-The example uses BESTXYZ for the antenna position and BSLNENUHD for the
-baseline. Replay requires both logs to compare the receiver baseline with the
-converted coordinates.
+BESTXYZ supplies the antenna position and BSLNENUHD supplies the baseline.
+Replay requires both logs for the comparison.
 
-## Understanding the result
-
-The example compares geodetic latitude, longitude and ellipsoidal height with
-Earth-centred ECEF coordinates and a local east/north/up vector. These
-calculations change the coordinate representation without changing the
-reference-frame realization or epoch.
+The conversions preserve the reference-frame realization and coordinate epoch.
 
 ## References
 

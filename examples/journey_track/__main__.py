@@ -188,8 +188,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if (
         any(
-            not math.isfinite(v) or v < 0
-            for v in (
+            not math.isfinite(value) or value < 0
+            for value in (
                 args.moving_threshold_mps,
                 args.course_threshold_mps,
                 args.heading_tolerance_s,
@@ -201,11 +201,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error(
             "thresholds must be finite and non-negative; maximum gap must be positive"
         )
-    paths = [p for p in (args.replay, args.record, args.json) if p is not None]
-    if len({p.resolve() for p in paths}) != len(paths):
+    paths = [path for path in (args.replay, args.record, args.json) if path is not None]
+    if len({path.resolve() for path in paths}) != len(paths):
         parser.error("replay, recording and report paths must be distinct")
     if args.waypoint is not None and (
-        not all(math.isfinite(v) for v in args.waypoint)
+        not all(math.isfinite(value) for value in args.waypoint)
         or not -90 <= args.waypoint[0] <= 90
         or not -180 <= args.waypoint[1] <= 180
     ):

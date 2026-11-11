@@ -21,7 +21,6 @@ from um982py.experimental import BasebandNotice, capture_baseband_notices, scan_
 
 
 def _payload(notices: Sequence[BasebandNotice]) -> dict[str, object]:
-    """State payload for one replayed notice stream."""
     return {
         "notices": [notice.name for notice in notices],
         "state": asdict(apply_notices(notices)),

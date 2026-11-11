@@ -55,11 +55,8 @@ def test_example_directory_is_complete(name: str) -> None:
 
 
 @pytest.mark.parametrize("name", NAMES)
-def test_example_module_imports_and_documents_itself(name: str) -> None:
-    module = importlib.import_module(f"examples.{name}")
-    docstring = (module.__doc__ or "").strip()
-    assert docstring, f"examples.{name} has no module docstring"
-    assert len(docstring.splitlines()) == 1
+def test_example_module_imports(name: str) -> None:
+    importlib.import_module(f"examples.{name}")
 
 
 @pytest.mark.parametrize("name", NAMES)

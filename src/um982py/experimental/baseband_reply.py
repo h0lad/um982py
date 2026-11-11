@@ -555,8 +555,7 @@ def parse_baseband_notice(raw: bytes) -> BasebandNotice | None:
     return None
 
 
-def _search_notice(line: bytes) -> BasebandNotice | None:
-    """Frame the earliest notice anywhere inside ``line``."""
+def _find_earliest_notice(line: bytes) -> BasebandNotice | None:
     best: tuple[int, BasebandNotice] | None = None
     for name, pattern, _ in _PATTERNS:
         match = pattern.search(line)
@@ -604,8 +603,7 @@ class BasebandNoticeStream:
         self._buffer.clear()
         self.discarded = 0
 
-    def _keep_possible_partial_line(self) -> None:
-        """Keep the most recent bytes of an oversized partial line."""
+    def _trim_oversized_partial_line(self) -> None:
         if len(self._buffer) > MAX_PARTIAL_LINE:
             del self._buffer[:-MAX_PARTIAL_LINE]
 
@@ -620,13 +618,13 @@ class BasebandNoticeStream:
         while True:
             newline = self._buffer.find(b"\n")
             if newline < 0:
-                self._keep_possible_partial_line()
+                self._trim_oversized_partial_line()
                 return tuple(notices)
             raw = bytes(self._buffer[: newline + 1])
             del self._buffer[: newline + 1]
             notice = parse_baseband_notice(raw)
             if notice is None:
-                notice = _search_notice(raw.rstrip(b"\r\n"))
+                notice = _find_earliest_notice(raw.rstrip(b"\r\n"))
             if notice is not None:
                 notices.append(notice)
             else:

@@ -12,7 +12,7 @@ from um982py.field_data import file_sha256
 _KEYS = ("system", "signal", "l2c_flag", "elevation_min_deg", "elevation_max_deg")
 
 
-def _load(path: Path) -> dict[tuple[str, ...], dict[str, str]]:
+def _load_signal_bins(path: Path) -> dict[tuple[str, ...], dict[str, str]]:
     with path.open(newline="", encoding="utf-8") as stream:
         rows = list(csv.DictReader(stream))
     result: dict[tuple[str, ...], dict[str, str]] = {}
@@ -36,30 +36,35 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     if args.output.resolve() in (args.earlier.resolve(), args.later.resolve()):
         parser.error("output must differ from inputs")
-    first, second = _load(args.earlier), _load(args.later)
+    earlier_bins = _load_signal_bins(args.earlier)
+    later_bins = _load_signal_bins(args.later)
     rows = []
-    for key in sorted(first.keys() & second.keys()):
-        a, b = first[key], second[key]
+    for key in sorted(earlier_bins.keys() & later_bins.keys()):
+        earlier, later = earlier_bins[key], later_bins[key]
         rows.append(
             {
                 **dict(zip(_KEYS, key, strict=True)),
-                "earlier_median_db": float(a["median_difference_db"]),
-                "later_median_db": float(b["median_difference_db"]),
-                "change_db": float(b["median_difference_db"])
-                - float(a["median_difference_db"]),
-                "earlier_satellites": int(a["satellites"]),
-                "later_satellites": int(b["satellites"]),
+                "earlier_median_db": float(earlier["median_difference_db"]),
+                "later_median_db": float(later["median_difference_db"]),
+                "change_db": float(later["median_difference_db"])
+                - float(earlier["median_difference_db"]),
+                "earlier_satellites": int(earlier["satellites"]),
+                "later_satellites": int(later["satellites"]),
             }
         )
     report = {
         "earlier_note": args.earlier_note,
         "later_note": args.later_note,
         "matched_bins": rows,
-        "unmatched_earlier": [list(k) for k in sorted(first.keys() - second.keys())],
-        "unmatched_later": [list(k) for k in sorted(second.keys() - first.keys())],
+        "unmatched_earlier": [
+            list(key) for key in sorted(earlier_bins.keys() - later_bins.keys())
+        ],
+        "unmatched_later": [
+            list(key) for key in sorted(later_bins.keys() - earlier_bins.keys())
+        ],
         "inputs": [
-            {"path": str(p), "sha256": file_sha256(p)}
-            for p in (args.earlier, args.later)
+            {"path": str(path), "sha256": file_sha256(path)}
+            for path in (args.earlier, args.later)
         ],
         "limitations": (
             "Signal/elevation bins do not establish matched satellites, azimuths "

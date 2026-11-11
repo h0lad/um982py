@@ -245,15 +245,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"V {metres(result.adjusted_vertical_standard_error)}",
         file=sys.stderr,
     )
-    print(f"samples {result.count} converged {result.converged}")
-    print(f"ecef {x:.4f} {y:.4f} {z:.4f}")
-    print(f"geodetic {result.latitude:.9f} {result.longitude:.9f} {result.height:.4f}")
-    print(f"horizontal standard error {metres(result.horizontal_standard_error)}")
-    print(f"vertical standard error {metres(result.up.standard_error)}")
+    print(f"samples {result.count} converged {result.converged}", file=sys.stderr)
+    print(f"ecef {x:.4f} {y:.4f} {z:.4f}", file=sys.stderr)
+    print(
+        f"geodetic {result.latitude:.9f} {result.longitude:.9f} {result.height:.4f}",
+        file=sys.stderr,
+    )
+    print(
+        f"horizontal standard error {metres(result.horizontal_standard_error)}",
+        file=sys.stderr,
+    )
+    print(
+        f"vertical standard error {metres(result.up.standard_error)}", file=sys.stderr
+    )
     print(
         f"correlation-adjusted standard error H "
         f"{metres(result.adjusted_horizontal_standard_error)} / "
-        f"V {metres(result.adjusted_vertical_standard_error)}"
+        f"V {metres(result.adjusted_vertical_standard_error)}",
+        file=sys.stderr,
     )
     write_json(payload_of(result, crosscheck), args.json)
     return 0

@@ -1,5 +1,3 @@
-"""Tests the time-to-first-fix profile against ground truth."""
-
 from __future__ import annotations
 
 import json

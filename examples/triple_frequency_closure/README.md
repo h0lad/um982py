@@ -1,11 +1,10 @@
 # Triple-frequency closure
 
-Tests triple-frequency combinations that cancel geometry and ionosphere.
+Test triple-frequency combinations that cancel geometry and ionosphere.
 
 ## Run
 
-After [installing the package](../README.md#running-the-examples), run these
-commands from the repository root.
+Run from the repository root after [installation](../README.md#running-the-examples).
 
 Connect to a receiver:
 
@@ -28,13 +27,9 @@ IDs. `--threshold` sets the experimental phase-increment threshold in metres.
 
 ## Understanding the result
 
-The selected three-frequency combination cancels common effects under the
-chosen model. This experiment examines its phase changes over continuous
-tracking arcs.
-
-It requires three suitable signals and enough matching observations. Gaps or
-cycle slips break continuity, and a threshold crossing is not automatically
-proof of a specific fault.
+The test needs matching observations over continuous tracking arcs. Gaps or
+cycle slips break continuity, and a threshold crossing does not identify a
+specific fault.
 
 ## References
 

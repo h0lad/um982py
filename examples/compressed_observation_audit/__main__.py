@@ -39,10 +39,9 @@ def _parser() -> ExampleParser:
     return parser
 
 
-def _collect_live(
+def _collect_live_range_frames(
     args: argparse.Namespace,
 ) -> tuple[list[BinaryMessage], list[BinaryMessage]]:
-    """Subscribe to RANGE and RANGECMP and collect both streams."""
     receiver = open_receiver(args)
     range_frames: list[BinaryMessage] = []
     compressed_frames: list[BinaryMessage] = []
@@ -82,8 +81,9 @@ def _collect_live(
     return range_frames, compressed_frames
 
 
-def _split_replay(path: Path) -> tuple[list[BinaryMessage], list[BinaryMessage]]:
-    """Split replayed wire frames into RANGE and RANGECMP streams."""
+def _split_replayed_range_frames(
+    path: Path,
+) -> tuple[list[BinaryMessage], list[BinaryMessage]]:
     range_frames: list[BinaryMessage] = []
     compressed_frames: list[BinaryMessage] = []
     for message in iter_frames(path):
@@ -96,8 +96,7 @@ def _split_replay(path: Path) -> tuple[list[BinaryMessage], list[BinaryMessage]]
     return range_frames, compressed_frames
 
 
-def _lookup(record: Record) -> dict[int, Record]:
-    """Index RANGE observations by tracking status."""
+def _observations_by_tracking_status(record: Record) -> dict[int, Record]:
     return {
         observation.integer("tracking_status"): observation
         for observation in record.records("observations")
@@ -110,11 +109,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     debug_header(args, "compressed_observation_audit")
     if args.replay is not None:
-        range_frames, compressed_frames = _split_replay(args.replay)
+        range_frames, compressed_frames = _split_replayed_range_frames(args.replay)
     else:
         if args.record is not None and args.record.exists():
             parser.error("record path must not exist")
-        range_frames, compressed_frames = _collect_live(args)
+        range_frames, compressed_frames = _collect_live_range_frames(args)
     if not range_frames or not compressed_frames:
         parser.error("capture contains no shared RANGE and RANGECMP epochs")
     epochs = []
@@ -125,7 +124,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         compressed = decode_rangecmp(compressed_frame)
         epochs.append(
             agree_epoch(
-                _lookup(reference),
+                _observations_by_tracking_status(reference),
                 compressed.observations,
                 range_bytes=len(range_frame.raw),
                 compressed_bytes=len(compressed_frame.raw),

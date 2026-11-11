@@ -1,5 +1,3 @@
-"""Extended configuration commands."""
-
 from enum import StrEnum
 from typing import Literal
 

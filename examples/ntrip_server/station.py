@@ -119,11 +119,7 @@ class Station:
             if math.dist(actual, expected) > 0.02:
                 raise ValueError("RTCM 1005 ARP differs from the manifest by > 2 cm")
         else:
-            # MSM4 identifies satellites and signals with bit masks. Each set
-            # bit in their product-sized cell mask identifies one observation.
-            # The payload then needs 18 bits per satellite and 48 per active
-            # cell, after the 169-bit header. This checks length, not whether
-            # the measured ranges or carrier phases are physically correct.
+            # MSM4: 169-bit header, cell mask, 18 bits/satellite, 48 bits/cell.
             bits = len(payload) * 8
             if bits < 169:
                 raise ProtocolError("RTCM MSM4 header is truncated")

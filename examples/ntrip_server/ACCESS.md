@@ -1,33 +1,31 @@
 # Access and TLS
 
-Choose who can read the correction stream and how clients connect securely.
-A **rover** is a receiver consuming the stream. A **source** is the local base
-receiver or a separate program uploading the base data. These are different
-roles with separate credentials. The [setup wizard](README.md#run) asks the
-questions and writes the necessary files.
+Choose who can read the correction stream and how clients connect. A rover
+reads the stream. A source supplies base data, either from the local receiver
+or through an upload. Rover and source accounts use separate credentials.
 
 ## Accounts
 
 The [setup wizard](README.md#run) creates the account files and hashes for you.
 
-Use `--mode public` for guest access and omit `--users` when there are no accounts.
-Guests leave username and password empty. Wrong non-empty credentials are
-rejected even with public access. Guests are subject to the same connection and
-buffer limits. Public describes access to the corrections, while network exposure
-still depends on the bind address and firewall.
+Use `--mode public` for guest access. If there are no accounts, omit `--users`.
+Guests leave the username and password empty. The caster rejects incorrect
+non-empty credentials even in public mode. Connection and buffer limits also
+apply to guests. The bind address and firewall control network access in both
+modes.
 
 Use `--mode private --users users.json` for an authenticated service, including
 access to the sourcetable. Private mode binds the unauthenticated status site to
 loopback only, so protect any proxy used to expose it. Both modes allow non-loopback
 caster listeners with TLS. Private mode is the default.
 
-Private mode allows remote users if you expose the TLS listener, but does not
-automatically set up a VPN or IP allowlist. Create a distinct account for each
-rover where practical. A rover connects using its username and password, the
-caster hostname and port, and the mountpoint. Keep the account file readable by
-the service user only. Its JSON values are password hashes, not plaintext
-passwords, and adding or removing accounts requires updating the file and restarting
-the server. The wizard creates the first private rover account and its hash.
+Private mode does not create a VPN or IP allowlist. Where practical, create a
+separate account for each rover. Each rover needs its username, password,
+caster hostname, port and mountpoint.
+
+Only the service user may read the account file. Its JSON values contain
+password hashes. To add or remove an account, edit the file and restart the
+server. The wizard creates the first private rover account and its hash.
 
 To add an account to an existing wizard setup:
 
@@ -35,18 +33,19 @@ To add an account to an existing wizard setup:
    password at the hidden prompt. The password must be 16–256 UTF-8 bytes.
 2. Add the username and complete printed hash as another JSON entry in
    `ntrip-station/users.json`, for example `"rover2": "scrypt$..."`. Preserve
-   existing entries, JSON commas and the complete hash, replacing the placeholder `...`.
+   existing entries and JSON commas. Replace `...` with the complete hash.
 3. Keep permissions at `0600`, restart the caster, and give the new user their
    username and password through an appropriate secure channel. The caster
    stores only the hash and cannot recover a forgotten password.
 
-To accept a source upload instead of connecting to the serial receiver, supply
-`--source-users source-users.json`. This file has the same protected JSON and
-scrypt-hash format as `--users`, but is a separate set of credentials. NTRIP v2
-sources authenticate with a username and password from the source file, whereas NTRIP v1
-uses the password belonging to the `source` account. Only one source may be
-connected at a time. An upload must match the configured mountpoint, station ID
-and surveyed ARP, and a disconnect invalidates the source and closes rover streams.
+To accept uploads in place of a serial receiver, pass
+`--source-users source-users.json`. This file uses the same protected JSON and
+scrypt-hash format as `--users`, with separate credentials. NTRIP v2 sources
+use a username and password from the source file. NTRIP v1 uses the password of
+the `source` account. Only one source can connect at a time.
+
+An upload must match the configured mountpoint, station ID and surveyed ARP.
+When the source disconnects, the caster invalidates it and closes rover streams.
 Use TLS for remote source connections, or a trusted local TLS gateway for a
 source tool that lacks TLS. `--source-users` and `--upstream-host` are mutually
 exclusive. Do not reuse rover credentials for source access.
@@ -61,8 +60,8 @@ python -m examples.ntrip_server --station station.json --mode public \
     --source-users source-users.json --bind 127.0.0.1 --listen-port 2101
 ```
 
-The external source must be configured to emit the profile and ARP recorded in
-the station manifest. This mode does not configure a receiver itself.
+Configure the external source to emit the profile and ARP in the station
+manifest. Upload mode does not configure a receiver.
 
 ## Transport security
 
@@ -72,19 +71,18 @@ without TLS need a local TLS/VPN gateway. Protect key and user file with mode
 0600 and run the service without root privileges. Changes to certificates, users
 or coordinates require a restart, after which rovers reconnect.
 
-For example, `--bind 127.0.0.1` listens only on this computer. `--bind 0.0.0.0`
-listens on all IPv4 interfaces and therefore requires `--tls-cert` and
-`--tls-key`. The certificate must match the DNS name that clients use because merely
-enabling TLS does not create DNS, open a firewall, or set up port forwarding.
-The wizard validates that the certificate and private key can be loaded, but
-you must arrange their issuance, renewal and permissions.
+`--bind 127.0.0.1` listens only on this computer. `--bind 0.0.0.0` listens on
+all IPv4 interfaces and requires `--tls-cert` and `--tls-key`. Configure DNS,
+the firewall and port forwarding separately. The wizard checks that it can load
+the certificate and key. You must arrange their issuance, renewal and
+permissions.
 
 ## Exposure
 
-Public streams carry the precise base coordinate. Even with private access the
-sourcetable at `/` shows a rounded position unless private mode is selected.
-`/healthz` returns 200 for current
-observations and a matching reference position, otherwise 503, and for private
-access it requires credentials.
+Correction streams carry the precise base coordinate. The sourcetable at `/`
+contains a rounded position. In private mode, reading it requires credentials.
+`/healthz` returns 200 for current observations and a matching reference
+position, or 503 if the source is not ready. Private mode also requires
+credentials for this endpoint.
 
 Continue with [internet operation and relays](OPERATIONS.md).
