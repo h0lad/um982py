@@ -28,7 +28,7 @@ class RinexNavigationExport:
     unknown_fields: tuple[str, ...]
 
     def write(self, path: str | PathLike[str]) -> Path:
-        """Write the RINEX navigation file and return its path."""
+        """Write the RINEX navigation file, replacing an existing file."""
         destination = Path(path)
         destination.write_text(self.text, encoding="ascii", newline="\n")
         return destination

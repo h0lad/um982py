@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 __all__ = ["PppService", "PppSession", "PppSolution"]
 
-PppService = Literal["AUTO", "E6-HAS", "B2B-PPP"]
+PppService = Literal["AUTO", "E6-HAS", "B2B-PPP", "L6MDCPPP"]
 _PPP_TYPES = frozenset(
     (
         PositionType.PPP_CONVERGING,
@@ -161,7 +161,8 @@ class PppSession:
     The caller owns the receiver. Configuration remains active when iteration
     ends and is not saved to nonvolatile memory.
     If the requested service is already active, an existing ``ONLY`` setting
-    remains in effect.
+    remains in effect. Selecting a service does not establish which corrections
+    the receiver used; check its output for that evidence.
     """
 
     receiver: Receiver
@@ -220,10 +221,10 @@ def _start_ppp(receiver: Receiver, *, service: PppService = "E6-HAS") -> PppSess
     saved or restored.
     """
     if not isinstance(service, str):
-        raise ValueError("service must be AUTO, E6-HAS, or B2B-PPP")
+        raise ValueError("service must be AUTO, E6-HAS, B2B-PPP, or L6MDCPPP")
     requested = service.upper()
-    if requested not in ("AUTO", "E6-HAS", "B2B-PPP"):
-        raise ValueError("service must be AUTO, E6-HAS, or B2B-PPP")
+    if requested not in ("AUTO", "E6-HAS", "B2B-PPP", "L6MDCPPP"):
+        raise ValueError("service must be AUTO, E6-HAS, B2B-PPP, or L6MDCPPP")
     service = cast(PppService, requested)
     command = ppp(service=service)
     initial = receiver.configuration()

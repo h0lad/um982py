@@ -48,7 +48,7 @@ type DataLog = Log | AntennaLog
 
 
 class InterruptedCapture(KeyboardInterrupt):
-    """A cancelled read with the data received before cancellation."""
+    """A cancelled capture; ``records`` maps log names to collected records."""
 
     def __init__(self, records: dict[str, tuple[Record, ...]]) -> None:
         super().__init__()
@@ -217,6 +217,9 @@ def capture_live(
 
     Use ``interval`` in seconds or a documented N4 ``rate_hz``. Event-only logs
     cannot use ``rate_hz``. Actual rates depend on receiver, log, group and firmware.
+    Capture preserves received epochs, including repeats and gaps; it does not
+    resample. Subscription restoration can fail after a disconnect. For longer
+    recordings use ``SessionRecorder`` or stream with ``iter_live_records``.
     """
     interval = logging.output_interval(interval, rate_hz)
     if not math.isfinite(duration) or duration <= 0:

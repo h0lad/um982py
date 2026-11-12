@@ -72,4 +72,4 @@ specific products. Check the recorded timestamps to measure the delivered rate.
 High-rate observations from both antennas can exceed serial or host capacity
 and consume more disk space. Check the trial recording's counts and timestamps
 against the requested rate and baud rate. See the
-[output-rate guide](../../docs/api.md#receiver-output-rates).
+[output-rate guide](../../README.md#receiver-output-rates).

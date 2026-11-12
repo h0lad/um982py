@@ -2,8 +2,14 @@
 
 from __future__ import annotations
 
+import asyncio
+from collections.abc import Callable
+from unittest.mock import patch
+
 import pytest
 
+from conftest import ReplayTransport
+from um982py import AsyncReceiver, Receiver
 from um982py.augmentation import (
     HIGH_ACCURACY_SIGNAL_GROUP,
     AugmentationState,
@@ -20,8 +26,7 @@ FEATURES = (
     "sbas",
     "ppp",
     "mmp",
-    "anti_jam",
-    "doppler_prediction",
+    "disable_doppler_prediction",
     "rtk_assists_ppp",
 )
 
@@ -97,7 +102,70 @@ def test_a_refused_feature_does_not_block_the_remaining_features() -> None:
     result = enable_augmentation(Scripted(HIGH_ACCURACY_SIGNAL_GROUP, ("MMP",)))
     assert ("mmp", "CONFIG MMP ENABLE: ERROR") in result.rejected
     assert not result.complete
-    assert {"sbas", "ppp", "anti_jam"} <= set(result.applied)
+    assert {"sbas", "ppp", "rtk_assists_ppp"} <= set(result.applied)
+
+
+def test_qzss_slas_is_selected_explicitly_and_prediction_is_disabled() -> None:
+    receiver = Scripted(HIGH_ACCURACY_SIGNAL_GROUP)
+    result = enable_augmentation(receiver, sbas_service="QZSS")
+    assert "CONFIG SBAS ENABLE QZSS" in receiver.commands
+    assert "CONFIG PSRVELDRPOS DISABLE" in receiver.commands
+    assert "disable_doppler_prediction" in result.applied
+    assert not any(
+        command.startswith("CONFIG ANTIJAM") for command in receiver.commands
+    )
+
+
+def test_async_receiver_passes_augmentation_options() -> None:
+    receiver = Receiver(ReplayTransport())
+    expected = state(HIGH_ACCURACY_SIGNAL_GROUP)
+
+    async def run() -> None:
+        async def invoke(
+            receiver: AsyncReceiver, operation: Callable[[], object]
+        ) -> object:
+            del receiver
+            return operation()
+
+        with (
+            patch.object(AsyncReceiver, "_run", invoke),
+            patch.object(
+                Receiver, "enable_augmentation", return_value=expected
+            ) as call,
+        ):
+            result = await AsyncReceiver(receiver).enable_augmentation(
+                persist=True, sbas_service="QZSS"
+            )
+        assert result is expected
+        call.assert_called_once_with(persist=True, sbas_service="QZSS")
+
+    asyncio.run(run())
+
+
+def test_refused_prediction_disable_is_reported() -> None:
+    receiver = Scripted(HIGH_ACCURACY_SIGNAL_GROUP, ("PSRVELDRPOS",))
+    result = enable_augmentation(receiver, persist=True)
+    assert not result.complete
+    assert (
+        "disable_doppler_prediction",
+        "CONFIG PSRVELDRPOS DISABLE: ERROR",
+    ) in result.rejected
+    assert not result.saved
+    assert "SAVECONFIG" not in receiver.commands
+
+
+def test_persist_saves_settings_with_an_unchanged_signal_group() -> None:
+    receiver = Scripted(HIGH_ACCURACY_SIGNAL_GROUP)
+    result = enable_augmentation(receiver, persist=True, sbas_service="QZSS")
+    assert not result.changed and result.saved
+    assert receiver.commands.count("SAVECONFIG") == 1
+
+
+def test_invalid_service_does_not_change_settings() -> None:
+    receiver = Scripted(SignalGroup(4, 5))
+    with pytest.raises(ValueError):
+        enable_augmentation(receiver, sbas_service="invalid")
+    assert not receiver.commands
 
 
 def test_a_refused_group_change_keeps_the_previous_group_unsaved() -> None:

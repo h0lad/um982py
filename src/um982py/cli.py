@@ -145,6 +145,12 @@ def _parser() -> argparse.ArgumentParser:
         help="enable augmentation for this receiver session without saving settings",
     )
     parser.add_argument(
+        "--sbas-service",
+        type=str.upper,
+        metavar="SERVICE",
+        help="select the SBAS service with --augment; use QZSS for SLAS",
+    )
+    parser.add_argument(
         "--antenna",
         choices=("primary", "secondary", "1", "2"),
         default="primary",
@@ -358,6 +364,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--count must be positive")
     if not isfinite(args.duration) or args.duration <= 0:
         parser.error("--duration must be finite and positive")
+    if args.sbas_service is not None and not args.augment:
+        parser.error("--sbas-service requires --augment")
     if args.action == "output-rate":
         if not args.log or args.rate_hz is None:
             parser.error("output-rate requires --log and --rate-hz")
@@ -375,7 +383,11 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with Receiver.connect(args.port, args.baud, timeout=args.timeout) as receiver:
             if args.augment:
-                state = enable_augmentation(receiver)
+                state = (
+                    enable_augmentation(receiver)
+                    if args.sbas_service is None
+                    else enable_augmentation(receiver, sbas_service=args.sbas_service)
+                )
                 if state.rejected:
                     refused = ", ".join(name for name, _ in state.rejected)
                     print(f"warning: augmentation refused: {refused}", file=sys.stderr)

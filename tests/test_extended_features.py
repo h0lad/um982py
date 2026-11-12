@@ -25,19 +25,11 @@ def test_firmware_switches(setting: FirmwareSwitch) -> None:
             setting.configure(enabled=cast(bool, value))
 
 
-@pytest.mark.parametrize("level", [1, 2, 3, 4])
-def test_antispoof_levels(level: int) -> None:
-    assert config.anti_spoof(level=level).text == f"CONFIG ANTISPOOF ENABLE {level}"
+def test_antispoof() -> None:
     assert config.anti_spoof().text == "CONFIG ANTISPOOF ENABLE"
     assert config.anti_spoof(enabled=False).text == "CONFIG ANTISPOOF DISABLE"
-    with pytest.raises(ValueError):
-        config.anti_spoof(enabled=False, level=level)
-
-
-@pytest.mark.parametrize("level", [0, 5, True, 1.5])
-def test_antispoof_bad_levels(level: int) -> None:
-    with pytest.raises(ValueError):
-        config.anti_spoof(level=level)
+    with pytest.raises(TypeError):
+        config.anti_spoof(level=1)  # type: ignore[call-arg]
 
 
 def test_msm_is_discrete_not_a_range() -> None:

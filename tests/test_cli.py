@@ -89,6 +89,23 @@ def test_augmentation_is_explicit_and_reports_refusals(
     assert "augmentation refused: sbas" in capsys.readouterr().err
 
 
+def test_cli_selects_qzss_sbas_for_augmentation() -> None:
+    state = SimpleNamespace(rejected=())
+    receiver = Receiver(ReplayTransport())
+    with (
+        patch.object(Receiver, "connect", return_value=receiver),
+        patch("um982py.cli.enable_augmentation", return_value=state) as augmentation,
+        patch("um982py.cli._run_action", return_value={}),
+    ):
+        assert main(["--augment", "--sbas-service", "qzss", "version"]) == 0
+    augmentation.assert_called_once_with(receiver, sbas_service="QZSS")
+
+
+def test_cli_sbas_service_requires_augmentation() -> None:
+    with pytest.raises(SystemExit):
+        main(["--sbas-service", "QZSS", "version"])
+
+
 def test_cli_recording_is_flushed_before_a_failed_action(tmp_path: Path) -> None:
     path = tmp_path / "capture.bin"
     transport = ReplayTransport(chunk=100)

@@ -191,6 +191,8 @@ def test_ppp_services_and_exclusive_mode() -> None:
     with pytest.raises(ValueError):
         configuration.ppp(service="AUTO", only=True)
     with pytest.raises(ValueError):
+        configuration.ppp(service="SSR-RX")  # type: ignore[arg-type]
+    with pytest.raises(ValueError):
         configuration.ppp(enabled=False, only=True)
 
 

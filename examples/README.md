@@ -50,7 +50,7 @@ bandwidth determine the actual rate.
 Replay preserves the recorded cadence. An interval option used during replay
 sets the expected spacing for analysis. It does not resample the data.
 Polling-only and event-only examples do not accept `--rate-hz`. See the
-[output-rate guide](../docs/api.md#receiver-output-rates) for supported rates and
+[output-rate guide](../README.md#receiver-output-rates) for supported rates and
 measurement of the delivered rate.
 
 ## Antennas

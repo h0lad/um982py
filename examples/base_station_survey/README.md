@@ -25,6 +25,22 @@ python -m examples.base_station_survey \
 The survey averages ECEF coordinates and derives ellipsoidal height. BESTNAV
 `hgt` is height above mean sea level.
 
+To collect a point with the library's GGA survey instead:
+
+```python
+from um982py import Receiver, survey_point, wait_for_fix
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    wait_for_fix(receiver, timeout=120, rtk_fixed=True, max_correction_age=5)
+    point = survey_point(receiver, duration=60, rtk_fixed=True, max_correction_age=5)
+    print(point.latitude, point.longitude, point.ellipsoidal_height_m)
+    point.write_csv("survey-point.csv")
+```
+
+This survey rejects repeated GGA epochs and requires two distinct fixes with
+height. Scatter describes repeatability; it does not account for base-position
+or other systematic errors. CSV export requires a new file.
+
 ## Inputs and results
 
 The survey uses BESTXYZ epochs and removes duplicates. Set the convergence

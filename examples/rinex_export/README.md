@@ -55,6 +55,25 @@ python -m examples.rinex_export --port /dev/ttyUSB0 --source obsv \
 The library also accepts OBSVBASE records. The exporter excludes compressed
 OBSVMCMP and OBSVHCMP records, whose phase values are modulo encoded.
 
+For an in-memory capture with the library, an interruption retains the records
+received so far:
+
+```python
+from um982py import InterruptedCapture, Log, Receiver, capture_live
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    try:
+        observations = capture_live(receiver, Log.RANGE, duration=60)
+    except InterruptedCapture as interrupted:
+        observations = interrupted.records[Log.RANGE.value]
+
+print(f"Collected {len(observations)} observation records")
+```
+
+Capture attempts to restore the previous subscriptions, including after an
+interruption. Restoration can fail if the receiver disconnects. Check partial
+captures for missing observations before processing them.
+
 Replay the supplied capture:
 
 ```bash

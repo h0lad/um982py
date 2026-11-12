@@ -31,6 +31,10 @@ class RoverPosition:
     Heading is clockwise from true north. Apply the installation's antenna
     offset to obtain the vehicle's forward heading. ``heading_offset_s`` is the
     heading epoch minus the position epoch, not transport latency.
+
+    Heading and pitch require a computed float or fixed heading within the
+    requested tolerance. ``correction_age_s`` is the receiver-reported age of a
+    differential or RTK solution, not the relay's last forwarding time.
     """
 
     position: BestNavigation

@@ -27,7 +27,7 @@ class RinexExport:
     omitted: dict[str, int]
 
     def write(self, path: str | PathLike[str]) -> Path:
-        """Write the RINEX observation file and return its path."""
+        """Write the RINEX observation file, replacing an existing file."""
         destination = Path(path)
         destination.write_text(self.text, encoding="ascii", newline="\n")
         return destination

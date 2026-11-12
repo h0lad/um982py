@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING, Protocol
 
 from um982py.commands.configuration import (
     SignalGroup,
-    anti_jam,
     current_signal_group,
     doppler_prediction,
     mmp,
@@ -33,7 +32,7 @@ __all__ = [
 ]
 
 HIGH_ACCURACY_SIGNAL_GROUP = SignalGroup(3, 6)
-"""Master group 3 tracks E6-HAS and B2b-PPP while slave group 6 keeps 20 Hz."""
+"""Master group 3 tracks E6-HAS and B2b-PPP; rates depend on firmware and log."""
 
 
 class CommandExecutor(Protocol):
@@ -73,7 +72,9 @@ class AugmentationState:
         return not self.rejected
 
 
-def augmentation_plan(current: SignalGroup) -> tuple[AugmentationStep, ...]:
+def augmentation_plan(
+    current: SignalGroup, *, sbas_service: str = "AUTO"
+) -> tuple[AugmentationStep, ...]:
     """Build the commands that enable SBAS, E6-HAS, B2b-PPP, and other refinements.
 
     A switch to signal group 3/6 restarts acquisition. The plan changes groups
@@ -93,11 +94,12 @@ def augmentation_plan(current: SignalGroup) -> tuple[AugmentationStep, ...]:
         )
     steps.extend(
         (
-            AugmentationStep("sbas", sbas(enabled=True, service="AUTO")),
+            AugmentationStep("sbas", sbas(enabled=True, service=sbas_service)),
             AugmentationStep("ppp", ppp(enabled=True, service="AUTO")),
             AugmentationStep("mmp", mmp(enabled=True)),
-            AugmentationStep("anti_jam", anti_jam("AUTO")),
-            AugmentationStep("doppler_prediction", doppler_prediction(enabled=True)),
+            AugmentationStep(
+                "disable_doppler_prediction", doppler_prediction(enabled=False)
+            ),
             AugmentationStep("rtk_assists_ppp", rtk_assists_ppp(enabled=True)),
         )
     )
@@ -105,19 +107,20 @@ def augmentation_plan(current: SignalGroup) -> tuple[AugmentationStep, ...]:
 
 
 def enable_augmentation(
-    receiver: CommandExecutor, *, persist: bool = False
+    receiver: CommandExecutor, *, persist: bool = False, sbas_service: str = "AUTO"
 ) -> AugmentationState:
-    """Apply augmentation features, optionally saving a verified group change.
+    """Apply augmentation features, optionally saving the configuration.
 
     Command rejections appear in the report without stopping later features.
-    A transport or response failure stops execution. Earlier changes may still
-    be active. To save the configuration, the caller must request it and the
-    signal-group readback must confirm the change.
+    A transport or response failure stops execution; earlier changes may remain
+    active. Saving requires every command to succeed and the signal-group
+    readback to match. Prediction may remain active if disabling it is rejected.
     """
+    sbas(enabled=True, service=sbas_service)
     previous = receiver.execute(current_signal_group())
     applied: list[str] = []
     rejected: list[tuple[str, str]] = []
-    for step in augmentation_plan(previous):
+    for step in augmentation_plan(previous, sbas_service=sbas_service):
         try:
             receiver.execute(step.command)
         except CommandRejected as error:
@@ -129,14 +132,10 @@ def enable_augmentation(
     except (UM982Error, OSError, ValueError) as error:
         rejected.append(("read_signal_group", str(error)))
         active = None
-    if (
-        active is not None
-        and active != HIGH_ACCURACY_SIGNAL_GROUP
-        and "signal_group" in applied
-    ):
+    if active is not None and active != HIGH_ACCURACY_SIGNAL_GROUP:
         rejected.append(("verify_signal_group", "receiver reports a different group"))
     saved = False
-    if active == HIGH_ACCURACY_SIGNAL_GROUP and active != previous and persist:
+    if active == HIGH_ACCURACY_SIGNAL_GROUP and persist and not rejected:
         try:
             receiver.execute(save_configuration())
         except (UM982Error, OSError, ValueError) as error:

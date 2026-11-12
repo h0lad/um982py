@@ -95,6 +95,7 @@ class Receiver:
     def connect(
         cls, target: str, baudrate: int = 115200, *, timeout: float = 3
     ) -> Self:
+        """Connect to a serial device or a transparent ``tcp://host:port`` gateway."""
         if target.lower().startswith("tcp://"):
             try:
                 address = urlsplit(target)
@@ -234,6 +235,12 @@ class Receiver:
         Commands are validated before writing. A failure leaves earlier changes
         active, and a timed-out command may have applied. An exception note lists
         completed commands.
+
+        Documented N4 rates are 1, 2, 5, 10, 20 and 50 Hz; 50 Hz requires
+        specific hardware and firmware. UM982 RTK and heading are specified at
+        up to 20 Hz. Actual rates depend on the log, group, firmware and port
+        bandwidth. Measure delivered epochs rather than assuming the requested
+        rate. Use ``antenna_log(log, "secondary")`` for secondary antenna logs.
         """
         interval = logging.interval_from_rate(rate_hz)
         if binary is not None and not isinstance(binary, bool):
@@ -330,7 +337,8 @@ class Receiver:
         """Poll GGA positions until the caller stops iterating.
 
         Each query uses the receiver timeout. ``interval`` sets the pause
-        between queries. The receiver stays open when iteration stops.
+        between queries, not the receiver output rate. Repeated queries can
+        return the same epoch. The receiver stays open when iteration stops.
 
         Other messages received during a query go to ``on_message``. Without
         this callback, they are discarded. Messages queued before the query
@@ -371,6 +379,11 @@ class Receiver:
     def start_ppp(self, *, service: PppService = "E6-HAS") -> PppSession:
         """Configure a satellite PPP service and read its solutions.
 
+        Choose ``E6-HAS``, ``B2B-PPP``, ``L6MDCPPP`` (QZSS MADOCA) or
+        ``AUTO``. Availability depends on firmware and satellite coverage.
+        A signal-group change restarts acquisition. Changes are not saved or
+        restored; the session reports which settings changed.
+
         If the requested service is active, its ONLY setting stays in effect.
         """
         return _start_ppp(self, service=service)
@@ -403,13 +416,25 @@ class Receiver:
         systems: tuple[int, ...] | None = None,
         signals: tuple[int, ...] | None = None,
     ) -> tuple[RangeSample, ...]:
-        """Read one RANGE or RANGEH epoch and return observations in SI units."""
+        """Read one RANGE or RANGEH epoch and return observations in SI units.
+
+        Filters use receiver tracking-status IDs. Measurements without known
+        frequency or usable code and phase are omitted.
+        """
         record = self.read_log(Log.RANGE, binary=True, antenna=antenna)
         return range_samples(record, systems=systems, signals=signals)
 
-    def enable_augmentation(self, *, persist: bool = False) -> AugmentationState:
-        """Enable high-accuracy signal group, SBAS, E6-HAS, B2b-PPP and MMP."""
-        return enable_augmentation(self, persist=persist)
+    def enable_augmentation(
+        self, *, persist: bool = False, sbas_service: str = "AUTO"
+    ) -> AugmentationState:
+        """Enable high-accuracy signal group, SBAS, PPP and MMP.
+
+        Select ``sbas_service="QZSS"`` for SLAS; ``AUTO`` excludes it. The plan
+        disables Doppler position prediction. Check ``rejected`` for commands
+        that failed: previous settings can remain active. ``persist=True`` saves
+        only after all commands succeed and the signal group is verified.
+        """
+        return enable_augmentation(self, persist=persist, sbas_service=sbas_service)
 
     def send_correction(self, message: RtcmMessage) -> None:
         with self._lock:

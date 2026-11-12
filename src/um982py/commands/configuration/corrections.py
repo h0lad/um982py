@@ -68,7 +68,7 @@ def agnss(*, enabled: bool = True) -> Command[CommandResponse]:
 def ppp(
     *,
     enabled: bool = True,
-    service: Literal["B2B-PPP", "E6-HAS", "AUTO", "SSR-RX", "L6MDCPPP"] = "B2B-PPP",
+    service: Literal["B2B-PPP", "E6-HAS", "AUTO", "L6MDCPPP"] = "B2B-PPP",
     only: bool = False,
 ) -> Command[CommandResponse]:
     """Configure a PPP service, using ONLY with a specific satellite service."""
@@ -76,7 +76,7 @@ def ppp(
         if only:
             raise ValueError("ONLY requires an enabled PPP service")
         return config("PPP DISABLE")
-    selected = option(service, ("B2B-PPP", "E6-HAS", "AUTO", "SSR-RX", "L6MDCPPP"))
+    selected = option(service, ("B2B-PPP", "E6-HAS", "AUTO", "L6MDCPPP"))
     if only and selected not in ("B2B-PPP", "E6-HAS", "L6MDCPPP"):
         raise ValueError("ONLY requires B2B-PPP, E6-HAS, or L6MDCPPP")
     return config("PPP ENABLE", selected, *(["ONLY"] if only else []))
@@ -133,16 +133,8 @@ def rtk_assists_ppp(*, enabled: bool = True) -> Command[CommandResponse]:
     return switch("RTKASITPPP", enabled)
 
 
-def anti_spoof(
-    *, enabled: bool = True, level: int | None = None
-) -> Command[CommandResponse]:
-    """Configure ANTISPOOF with an optional level 1..4, level 1 by default."""
-    command = switch("ANTISPOOF", enabled)
-    if level is None:
-        return command
-    if not enabled:
-        raise ValueError("Disabled ANTISPOOF takes no level")
-    return config("ANTISPOOF ENABLE", integer(level, 1, 4))
+def anti_spoof(*, enabled: bool = True) -> Command[CommandResponse]:
+    return switch("ANTISPOOF", enabled)
 
 
 def rtcm_output_mode(mode: Literal["AUTO", "BASE"]) -> Command[CommandResponse]:

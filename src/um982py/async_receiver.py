@@ -203,10 +203,14 @@ class AsyncReceiver:
                     continue
                 return
 
-    async def enable_augmentation(self, *, persist: bool = False) -> AugmentationState:
+    async def enable_augmentation(
+        self, *, persist: bool = False, sbas_service: str = "AUTO"
+    ) -> AugmentationState:
         """Enable the receiver's augmentation plan and report each result."""
         return await self._run(
-            lambda: self.receiver.enable_augmentation(persist=persist)
+            lambda: self.receiver.enable_augmentation(
+                persist=persist, sbas_service=sbas_service
+            )
         )
 
     async def start_ppp(self, *, service: PppService = "E6-HAS") -> AsyncPppSession:

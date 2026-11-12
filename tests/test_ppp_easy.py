@@ -84,9 +84,22 @@ def test_setup_changes_only_group_and_requested_service_and_reports_both() -> No
     assert session.service == "B2B-PPP"
 
 
+def test_madoca_setup_selects_signal_group_and_verifies_service() -> None:
+    receiver = FakeReceiver(Config(SignalGroup(4, 5), False, None))
+    session = _start_ppp(_receiver(receiver), service="L6MDCPPP")
+    assert receiver.commands == ["CONFIG SIGNALGROUP 3 6", "CONFIG PPP ENABLE L6MDCPPP"]
+    assert session.active_group == SignalGroup(3, 6)
+    assert session.service == "L6MDCPPP"
+    assert session.group_changed and session.service_changed
+
+
 @pytest.mark.parametrize(
     ("group", "service"),
-    [(SignalGroup(3, 6), "E6-HAS"), (SignalGroup(7, 0), "B2B-PPP")],
+    [
+        (SignalGroup(3, 6), "E6-HAS"),
+        (SignalGroup(3, 6), "L6MDCPPP"),
+        (SignalGroup(7, 0), "B2B-PPP"),
+    ],
 )
 def test_setup_leaves_matching_configuration_unchanged(
     group: SignalGroup, service: str
@@ -97,7 +110,7 @@ def test_setup_leaves_matching_configuration_unchanged(
     assert not session.group_changed and not session.service_changed
 
 
-@pytest.mark.parametrize("service", ["E6-HAS", "AUTO"])
+@pytest.mark.parametrize("service", ["E6-HAS", "AUTO", "L6MDCPPP"])
 def test_base_station_signal_group_is_changed_for_other_services(service: str) -> None:
     receiver = FakeReceiver(Config(SignalGroup(7, 0), True, service))
     session = _start_ppp(_receiver(receiver), service=service)  # type: ignore[arg-type]
@@ -114,7 +127,7 @@ def test_lowercase_service_is_normalized_before_setting_and_readback() -> None:
     assert session.service == "E6-HAS"
 
 
-@pytest.mark.parametrize("service", ["INVALID", "SSR-RX", "L6MDCPPP", "", None, 3])
+@pytest.mark.parametrize("service", ["INVALID", "SSR-RX", "", None, 3])
 def test_unsupported_services_leave_receiver_untouched(service: object) -> None:
     receiver = FakeReceiver(Config(SignalGroup(4, 5), False, None))
     with pytest.raises(ValueError):
@@ -264,7 +277,10 @@ def test_polling_can_stop_after_a_read_and_propagates_errors() -> None:
         next(_start_ppp(_receiver(failing)).positions())
 
 
-def test_receiver_start_ppp_queries_and_verifies_real_configuration() -> None:
+@pytest.mark.parametrize("service", ["E6-HAS", "L6MDCPPP"])
+def test_receiver_start_ppp_queries_and_verifies_real_configuration(
+    service: str,
+) -> None:
     from conftest import ReplayTransport, acknowledgement
     from um982py import Receiver
     from um982py.protocol.checksums import nmea_checksum
@@ -297,8 +313,8 @@ def test_receiver_start_ppp_queries_and_verifies_real_configuration() -> None:
             elif command == "CONFIG SIGNALGROUP 3 6":
                 self.group = (3, 6)
                 self.pending.extend(acknowledgement(command))
-            elif command == "CONFIG PPP ENABLE E6-HAS":
-                self.service = "E6-HAS"
+            elif command == f"CONFIG PPP ENABLE {service}":
+                self.service = service
                 self.pending.extend(acknowledgement(command))
             elif command == "PPPNAVB":
                 fixture = Path(__file__).parent / "fixtures/captures-extra/PPPNAVB.bin"
@@ -310,7 +326,7 @@ def test_receiver_start_ppp_queries_and_verifies_real_configuration() -> None:
 
     transport = ConfigTransport()
     with Receiver(transport, timeout=1) as receiver:
-        ppp = receiver.start_ppp(service="E6-HAS")
+        ppp = receiver.start_ppp(service=service)  # type: ignore[arg-type]
         solution = ppp.position()
         assert ppp.group_changed and ppp.service_changed
         assert solution.valid and solution.position_type is PositionType.PPP_CONVERGING
@@ -319,7 +335,7 @@ def test_receiver_start_ppp_queries_and_verifies_real_configuration() -> None:
         b"CONFIG\r\n",
         b"CONFIG SIGNALGROUP 3 6\r\n",
         b"CONFIG\r\n",
-        b"CONFIG PPP ENABLE E6-HAS\r\n",
+        f"CONFIG PPP ENABLE {service}\r\n".encode(),
         b"CONFIG\r\n",
         b"PPPNAVB\r\n",
     ]

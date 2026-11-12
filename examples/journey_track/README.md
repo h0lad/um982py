@@ -12,6 +12,22 @@ python -m examples.journey_track --profile aviation --replay /tmp/passage.bin --
 python -m examples.journey_track --profile sport --replay /tmp/passage.bin --moving-threshold-mps 1 --json /tmp/sport.json
 ```
 
+To write a GPX track directly from GGA fixes:
+
+```python
+from um982py import Receiver, TrackWriter
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    with TrackWriter("walk.gpx", format="gpx", reference_frame="WGS84") as track:
+        for fix in receiver.positions(interval=1):
+            if fix.valid:
+                track.write(fix)
+```
+
+GPX uses mean-sea-level height; GeoJSON uses ellipsoidal height. GGA has no
+date, so pass a verified timezone-aware `timestamp` to `write()` when needed.
+The writer requires a new file. Start a new track after a data gap.
+
 `--dual-heading` requests BSLNENUHD. Each position pairs with a computed baseline
 within `--heading-tolerance-s`, and the report records the time offset. This
 heading follows the antenna baseline. Establish the mounting orientation before

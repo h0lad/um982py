@@ -17,11 +17,16 @@ class PppReceiver(FakeReceiver):
         return _start_ppp(_receiver(self), service=service)
 
 
-def test_async_ppp_setup_and_positions() -> None:
+@pytest.mark.parametrize("service", ["B2B-PPP", "L6MDCPPP"])
+def test_async_ppp_setup_and_positions(service: PppService) -> None:
     async def run() -> None:
         receiver = PppReceiver(Config(SignalGroup(4, 5), False, None))
-        session = await AsyncReceiver(_receiver(receiver)).start_ppp(service="B2B-PPP")
-        assert session.service == "B2B-PPP"
+        session = await AsyncReceiver(_receiver(receiver)).start_ppp(service=service)
+        assert session.service == service
+        assert receiver.commands == [
+            "CONFIG SIGNALGROUP 3 6",
+            f"CONFIG PPP ENABLE {service}",
+        ]
         assert session.previous_group == SignalGroup(4, 5)
         assert session.active_group == SignalGroup(3, 6)
         assert session.previous_enabled is False and session.previous_service is None

@@ -33,7 +33,7 @@ The example requires a dual-antenna baseline. If the antenna roles are reversed,
 `--swap-antennas` changes the baseline interpretation without changing RF power.
 The example requests BSLNENUHD with `ONCHANGED`, so `--interval` does not set a
 periodic baseline rate. For periodic heading output, configure a supported log
-such as UNIHEADING. See the [output-rate guide](../../docs/api.md#receiver-output-rates).
+such as UNIHEADING. See the [output-rate guide](../../README.md#receiver-output-rates).
 
 ## References
 

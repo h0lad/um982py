@@ -68,7 +68,8 @@ def wait_for_fix(
 ) -> Fix:
     """Poll until a GGA fix meets the requested conditions or the deadline expires.
 
-    A correction-age limit rejects missing or invalid ages.
+    A correction-age limit rejects missing or invalid ages. Raises
+    ``ResponseTimeout`` if no fix meets the conditions before the deadline.
     """
     _options(timeout, interval, max_correction_age)
     command = queries.fix(antenna=antenna)
@@ -148,7 +149,8 @@ def survey_point(
     """Average acceptable GGA fixes over a bounded stationary occupation.
 
     Ellipsoidal height requires both MSL height and geoid separation. The
-    receiver's positions must be in WGS 84. The survey needs at least two fixes.
+    receiver's positions must be in WGS 84. The survey rejects repeated GGA
+    epochs and needs at least two distinct fixes.
     """
     _options(duration, interval, max_correction_age)
     command = queries.fix(antenna=antenna)
