@@ -5,7 +5,7 @@ from typing import cast
 
 import pytest
 
-from conftest import FIXTURES, ascii_message, rtcm
+from conftest import FIXTURES, ReplayTransport, ascii_message, rtcm
 from test_protocol import binary
 from um982py.commands import Log, assistance, masking, modes, queries
 from um982py.commands import configuration as config
@@ -23,6 +23,7 @@ from um982py.messages import CommandResponse, LogListMessage
 from um982py.protocol import StreamDecoder
 from um982py.protocol.ascii import parse_ascii
 from um982py.protocol.binary import parse_binary, parse_rtcm
+from um982py.receiver import Receiver
 
 CASES: list[tuple[str, Callable[[], Command[CommandResponse]], str]] = [
     ("4.2", lambda: config.serial_port(Port.COM1, 115200), "CONFIG COM1 115200 8 N 1"),
@@ -170,6 +171,24 @@ def test_catalog_matches_manual_inventory() -> None:
     assert sum(d.section == "Appendix 2" for d in LOGS.values()) == 29
     assert Log.EVENTFLAG.definition.message_id == 312
     assert Log.EVENTSLN.definition.message_id == 311
+
+
+def test_galileo_msm4_request_matches_only_rtcm_frames() -> None:
+    frame = rtcm((1094 << 4).to_bytes(2, "big") + b"\x12\x34")
+    other = parse_rtcm(rtcm((1074 << 4).to_bytes(2, "big")))
+    ascii_log = parse_ascii(ascii_message("RTCM1094", "1"))
+    proprietary = parse_binary(binary(b"", 1094))
+    request = Log.RTCM1094.request(port=Port.COM2)
+    assert request.text == "RTCM1094 COM2"
+    assert Log.RTCM1094.output(1, port=Port.COM2).text == "RTCM1094 COM2 1"
+    assert Log.RTCM1094.output(rate_hz=5).text == "RTCM1094 0.2"
+    assert request.matches(parse_rtcm(frame))
+    assert not any(
+        request.matches(message) for message in (other, ascii_log, proprietary)
+    )
+    with Receiver(ReplayTransport({b"RTCM1094 COM2\r\n": frame})) as receiver:
+        received = receiver.execute(request)
+    assert received.raw == frame
 
 
 def test_mode_mask_and_assistance_examples() -> None:

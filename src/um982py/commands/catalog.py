@@ -317,6 +317,9 @@ RTCM_LOGS: Mapping[str, LogDefinition] = MappingProxyType(
         "RTCM1085": LogDefinition(
             "RTCM1085", 1085, "Appendix 2", "RTCM1085", "RTCM1085", False
         ),
+        "RTCM1094": LogDefinition(
+            "RTCM1094", 1094, "1.1", "RTCM1094", "RTCM1094", False
+        ),
         "RTCM1104": LogDefinition(
             "RTCM1104", 1104, "Appendix 2", "RTCM1104", "RTCM1104", False
         ),

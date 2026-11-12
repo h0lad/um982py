@@ -76,8 +76,12 @@ def request(
         message_id = WIRE_LOGS[name].message_id
 
     def matches(message: Message) -> bool:
+        if name in RTCM_LOGS:
+            return (
+                isinstance(message, RtcmMessage) and message.message_type == message_id
+            )
         if isinstance(message, RtcmMessage):
-            return name in RTCM_LOGS and message.message_type == message_id
+            return False
         if isinstance(message, LogListMessage):
             return name == "UNILOGLIST"
         if isinstance(message, BinaryMessage):
