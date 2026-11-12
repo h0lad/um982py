@@ -43,7 +43,7 @@ RTK_LOGS: tuple[DiagnosticLog, ...] = (
 PPP_LOGS: tuple[DiagnosticLog, ...] = (
     Log.PPPNAV,
     Log.PPPDOP,
-    *(Log[f"PPPB2BINFO{i}"] for i in range(1, 8)),
+    *(Log[f"PPPB2BINFO{i}"] for i in range(1, 6)),
     Log.E6MASKBLOCK,
     Log.E6ORBITBLOCK,
     Log.E6CLOCKFULLBLOCK,
@@ -291,7 +291,8 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
         "position_type_label": position_label,
         "solution_status_label": solution_label,
         "signal_group": signal_group,
-        "b2b_documented_signal_group_met": signal_group == ["3", "6"],
+        "b2b_documented_signal_group_met": signal_group
+        in (["3", "6"], ["7", "0"], ["7"]),
         "receiver_reports_ppp": position_label
         in ("PPP_CONVERGING", "PPP", "PPP_AR", "PPP_RTK"),
         "dop": _latest(capture, "PPPDOP"),
