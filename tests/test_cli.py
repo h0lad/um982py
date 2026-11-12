@@ -116,6 +116,26 @@ def test_cli_sbas_service_requires_augmentation() -> None:
         main(["--sbas-service", "QZSS", "version"])
 
 
+def test_cli_madoca_diagnostics_requests_correction_logs() -> None:
+    from um982py.diagnostics import MADOCA_LOGS, PPP_LOGS
+
+    receiver = Receiver(ReplayTransport())
+    capture = object()
+    with (
+        patch.object(Receiver, "connect", return_value=receiver),
+        patch("um982py.cli.collect_diagnostics", return_value=capture) as collect,
+        patch("um982py.cli.ppp_diagnostics", return_value={}) as report,
+    ):
+        assert main(["--madoca", "--duration", "2", "ppp-diagnostics"]) == 0
+    collect.assert_called_once_with(receiver, (*PPP_LOGS, *MADOCA_LOGS), seconds=2.0)
+    report.assert_called_once_with(capture)
+
+
+def test_cli_madoca_requires_ppp_diagnostics() -> None:
+    with pytest.raises(SystemExit):
+        main(["--madoca", "version"])
+
+
 def test_cli_recording_is_flushed_before_a_failed_action(tmp_path: Path) -> None:
     path = tmp_path / "capture.bin"
     transport = ReplayTransport(chunk=100)

@@ -199,6 +199,14 @@ and PPP service and changes them if needed. These settings apply to the current
 receiver session. The `group_changed` and `service_changed` fields show which
 settings changed.
 
+For QZSS MADOCA correction telemetry, run:
+
+```bash
+um982py --port /dev/ttyUSB0 --baud 921600 --madoca ppp-diagnostics
+```
+
+Receiving correction messages does not confirm that the receiver applied them.
+
 ### Record observations for post-processing
 
 Collect one minute of observations and save them as a RINEX file:

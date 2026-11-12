@@ -51,6 +51,14 @@ PPP_LOGS: tuple[DiagnosticLog, ...] = (
     Log.E6CBIASBLOCK,
     Log.E6PBIASBLOCK,
 )
+MADOCA_LOGS: tuple[DiagnosticLog, ...] = (
+    Log.L6MDCTYPE1,
+    Log.L6MDCTYPE2,
+    Log.L6MDCTYPE3,
+    Log.L6MDCTYPE4,
+    Log.L6MDCTYPE5,
+    Log.L6MDCTYPE7,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -247,7 +255,7 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
             (
                 record
                 for name, rows in capture.records.items()
-                if name.startswith(("PPPB2BINFO", "E6"))
+                if name.startswith(("PPPB2BINFO", "E6", "L6MDCTYPE"))
                 for record in rows
             ),
             key=lambda record: (
@@ -260,6 +268,9 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
         [event for record in events for event in correction_events(record)]
     )
     has_records = [record for record in records if record.name.startswith("E6")]
+    madoca_records = [
+        record for record in records if record.name.startswith("L6MDCTYPE")
+    ]
     navigation = _latest(capture, "PPPNAV")
     position_label = solution_label = None
     if navigation is not None:
@@ -281,7 +292,7 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
     )
     return {
         "status": "correction_telemetry_observed"
-        if (events or has_records)
+        if (events or has_records or madoca_records)
         else "no_correction_telemetry_observed",
         "correction_records": dict(Counter(record.name for record in events)),
         "correction_receive_gps_epochs": [
@@ -300,6 +311,7 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
         "coherence_checks": [asdict(check) for check in checks],
         "has_records": dict(Counter(record.name for record in has_records)),
         "has_coherence_checks": audit_has(has_records),
+        "madoca_records": dict(Counter(record.name for record in madoca_records)),
         "subscriptions_restored": capture.subscriptions_restored,
         "configuration_restored": capture.configuration_restored,
     }

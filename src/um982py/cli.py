@@ -15,6 +15,7 @@ from um982py.commands import Log, logging, queries
 from um982py.commands.types import Port
 from um982py.diagnostics import (
     DOCTOR_LOGS,
+    MADOCA_LOGS,
     PPP_LOGS,
     RTK_LOGS,
     collect_diagnostics,
@@ -141,6 +142,11 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument("--timeout", type=float, default=3)
     parser.add_argument("--binary", action="store_true")
+    parser.add_argument(
+        "--madoca",
+        action="store_true",
+        help="include QZSS MADOCA correction logs in PPP diagnostics",
+    )
     parser.add_argument(
         "--augment",
         action="store_true",
@@ -291,6 +297,8 @@ def _run_action(receiver: Receiver, args: argparse.Namespace, antenna: int) -> o
                 "rtk-diagnostics": RTK_LOGS,
                 "ppp-diagnostics": PPP_LOGS,
             }[args.action]
+            if args.action == "ppp-diagnostics" and args.madoca:
+                logs = (*logs, *MADOCA_LOGS)
             capture = collect_diagnostics(receiver, logs, seconds=args.duration)
             if args.action == "doctor":
                 return doctor(capture, antenna=antenna)
@@ -368,6 +376,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("--duration must be finite and positive")
     if args.sbas_service is not None and not args.augment:
         parser.error("--sbas-service requires --augment")
+    if args.madoca and args.action != "ppp-diagnostics":
+        parser.error("--madoca requires ppp-diagnostics")
     if args.action == "output-rate":
         if not args.log or args.rate_hz is None:
             parser.error("output-rate requires --log and --rate-hz")
