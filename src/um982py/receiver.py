@@ -381,8 +381,10 @@ class Receiver:
 
         Choose ``E6-HAS``, ``B2B-PPP``, ``L6MDCPPP`` (QZSS MADOCA) or
         ``AUTO``. Availability depends on firmware and satellite coverage.
-        A signal-group change restarts acquisition. Changes are not saved or
-        restored; the session reports which settings changed.
+        A signal-group change is saved by the receiver and causes a reset that
+        can discard other unsaved settings. PPP service changes are not
+        explicitly saved. Previous settings are not restored. If group 7/0 is
+        active, B2B-PPP requires a verified base-station mode.
 
         If the requested service is active, its ONLY setting stays in effect.
         """
@@ -431,8 +433,10 @@ class Receiver:
 
         Select ``sbas_service="QZSS"`` for SLAS; ``AUTO`` excludes it. The plan
         disables Doppler position prediction. Check ``rejected`` for commands
-        that failed: previous settings can remain active. ``persist=True`` saves
-        only after all commands succeed and the signal group is verified.
+        that failed: previous settings can remain active. A changed signal group
+        is saved automatically and resets the receiver, even with
+        ``persist=False``. ``persist=True`` explicitly saves other settings only
+        after all commands succeed and the signal group is verified.
         """
         return enable_augmentation(self, persist=persist, sbas_service=sbas_service)
 

@@ -11,12 +11,12 @@ from time import sleep
 from typing import TYPE_CHECKING, Literal, cast
 
 from um982py.augmentation import HIGH_ACCURACY_SIGNAL_GROUP
-from um982py.commands import Log
+from um982py.commands import Log, queries
 from um982py.commands.configuration import SignalGroup, ppp, signal_group
 from um982py.errors import ProtocolError
 from um982py.measurement import gps_epoch
 from um982py.messages.enums import PositionType, SolutionStatus, _reported_datum
-from um982py.messages.frames import Message
+from um982py.messages.frames import AsciiMessage, Message
 from um982py.messages.record import Record, Value
 
 if TYPE_CHECKING:
@@ -159,7 +159,8 @@ class PppSession:
     """Active PPP configuration and a receiver used for polling solutions.
 
     The caller owns the receiver. Configuration remains active when iteration
-    ends and is not saved to nonvolatile memory.
+    ends. A changed signal group is saved automatically by the receiver; the
+    PPP service is not explicitly saved.
     If the requested service is already active, an existing ``ONLY`` setting
     remains in effect. Selecting a service does not establish which corrections
     the receiver used; check its output for that evidence.
@@ -216,9 +217,10 @@ def _start_ppp(receiver: Receiver, *, service: PppService = "E6-HAS") -> PppSess
     """Enable a satellite PPP service and verify the current receiver settings.
 
     Changes are limited to signal group and PPP service. Switching to group 3/6
-    restarts acquisition. Group 7/0 remains for B2B-PPP (documented for base
-    stations), and an active service keeps its ``ONLY`` setting. Changes are not
-    saved or restored.
+    resets the receiver and is saved automatically. The reset can discard other
+    unsaved settings. Group 7/0 remains for B2B-PPP only after base mode is
+    verified, and an active service keeps its ``ONLY`` setting. PPP service
+    changes are not explicitly saved. Previous settings are not restored.
     """
     if not isinstance(service, str):
         raise ValueError("service must be AUTO, E6-HAS, B2B-PPP, or L6MDCPPP")
@@ -231,6 +233,14 @@ def _start_ppp(receiver: Receiver, *, service: PppService = "E6-HAS") -> PppSess
     previous = initial.signal_group
     if previous is None:
         raise ProtocolError("receiver did not report its signal group")
+    if previous == SignalGroup(7, 0) and service == "B2B-PPP":
+        mode = receiver.execute(queries.mode())
+        fields = mode.fields if isinstance(mode, AsciiMessage) else ()
+        parts = fields[0].upper().split() if fields else []
+        if parts[:2] in (["MODE", "ROVER"], ["MODE", "HEADING"], ["MODE", "HEADING2"]):
+            raise ProtocolError("B2B-PPP in signal group 7/0 requires base mode")
+        if parts[:2] != ["MODE", "BASE"]:
+            raise ProtocolError("cannot verify receiver mode for B2B-PPP in group 7/0")
     current = initial
     active = previous
     attempted: list[str] = []

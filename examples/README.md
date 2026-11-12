@@ -66,7 +66,8 @@ corrections or uses PPP.
 For orbit comparisons, supply a matching precise product. Sidereal analysis
 needs a second day of data. Accuracy checks need independent reference data.
 Live examples change receiver settings only through their documented options.
-For example, `--augment` enables augmentation without saving the configuration.
+`--augment` may change the signal group, which the receiver saves automatically
+before rebooting. Other augmentation settings are not explicitly saved.
 
 ## Projects
 

@@ -30,8 +30,9 @@ python -m examples.has_b2b_ppp_fix.cyclic --port /dev/ttyUSB0 --cycles 12 \
 ```
 
 `--augment` requests signal group 3/6 and PPP `AUTO`, the receiver's automatic
-service selection. The `cyclic` example subscribes to PPPNAV once and passes
-each pushed fix and its running mean to a callback without polling the receiver.
+service selection. The receiver saves a changed signal group and reboots.
+The `cyclic` example subscribes to PPPNAV once and passes each pushed fix and
+its running mean to a callback without polling the receiver.
 
 ## Inputs and results
 

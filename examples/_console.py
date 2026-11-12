@@ -222,7 +222,7 @@ def add_receiver_arguments(
     parser.add_argument(
         "--augment",
         action="store_true",
-        help="enable satellite augmentation for the current receiver configuration",
+        help="enable augmentation; signal group changes are saved by the receiver",
     )
     parser.add_argument(
         "--replay",

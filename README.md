@@ -24,9 +24,11 @@ um982py --port /dev/ttyUSB0 --baud 921600 output-rate --log GPGGA --rate-hz 10
 Set the port and baud rate to match your receiver. The default is 115200 baud.
 The examples use 921600 baud.
 
-Use `--augment` to enable augmentation for the current session without saving
-the settings. Use `--augment --sbas-service QZSS` for QZSS SLAS; `AUTO` does
-not select SLAS. Queries otherwise leave augmentation unchanged.
+Use `--augment` to enable augmentation. If the signal group changes, the
+receiver saves it and reboots; other augmentation settings are not explicitly
+saved. The reboot can discard other unsaved receiver settings. Use
+`--augment --sbas-service QZSS` for QZSS SLAS; `AUTO` does not select SLAS.
+Queries otherwise leave augmentation unchanged.
 
 If a query times out, check the port, baud rate, power and serial permissions.
 Use `doctor` to inspect the receiver. Check `valid` before using a position.
@@ -194,10 +196,10 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
 ```
 
 Use `service="B2B-PPP"` for BeiDou PPP-B2b or `service="L6MDCPPP"` for QZSS
-MADOCA PPP. `start_ppp()` checks the signal group
-and PPP service and changes them if needed. These settings apply to the current
-receiver session. The `group_changed` and `service_changed` fields show which
-settings changed.
+MADOCA PPP. `start_ppp()` changes the signal group and PPP service if needed.
+The receiver saves a changed signal group and reboots; PPP service changes are
+not explicitly saved. The session reports which settings changed. Group 7/0
+supports B2b in base mode; `start_ppp()` checks the mode before using it.
 
 For QZSS MADOCA correction telemetry, run:
 

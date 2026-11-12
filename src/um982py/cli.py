@@ -150,7 +150,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--augment",
         action="store_true",
-        help="enable augmentation for this receiver session without saving settings",
+        help="enable augmentation; signal group changes are saved by the receiver",
     )
     parser.add_argument(
         "--sbas-service",

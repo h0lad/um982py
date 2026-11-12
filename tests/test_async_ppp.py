@@ -8,7 +8,7 @@ import pytest
 from test_ppp_easy import Config, FakeReceiver, _receiver
 from um982py import AsyncReceiver
 from um982py.commands.configuration import SignalGroup
-from um982py.errors import CommandRejected
+from um982py.errors import CommandRejected, ProtocolError
 from um982py.ppp import PppService, PppSession, _start_ppp
 
 
@@ -58,6 +58,23 @@ def test_async_setup_reports_rejection_and_partial_changes() -> None:
         assert any(
             "settings may have changed" in note for note in caught.value.__notes__
         )
+
+    asyncio.run(run())
+
+
+@pytest.mark.parametrize("mode", ["MODE BASE", "MODE ROVER SURVEY"])
+def test_async_b2b_base_group_checks_mode(mode: str) -> None:
+    async def run() -> None:
+        receiver = PppReceiver(Config(SignalGroup(7, 0), True, "B2B-PPP"))
+        receiver.mode_body = mode
+        asynchronous = AsyncReceiver(_receiver(receiver))
+        if mode == "MODE BASE":
+            session = await asynchronous.start_ppp(service="B2B-PPP")
+            assert session.active_group == SignalGroup(7, 0)
+        else:
+            with pytest.raises(ProtocolError, match="requires base mode"):
+                await asynchronous.start_ppp(service="B2B-PPP")
+        assert receiver.commands == ["MODE"]
 
     asyncio.run(run())
 

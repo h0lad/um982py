@@ -51,7 +51,10 @@ class AugmentationStep:
 
 @dataclass(frozen=True, slots=True)
 class AugmentationState:
-    """The settings applied, refused, and saved during one session."""
+    """Applied and refused settings; ``saved`` records an explicit save command.
+
+    The receiver saves a changed signal group even when ``saved`` is false.
+    """
 
     previous_group: SignalGroup
     active_group: SignalGroup | None
@@ -77,9 +80,9 @@ def augmentation_plan(
 ) -> tuple[AugmentationStep, ...]:
     """Build the commands that enable SBAS, E6-HAS, B2b-PPP, and other refinements.
 
-    A switch to signal group 3/6 restarts acquisition. The plan changes groups
-    only if the receiver uses another group. Each run reapplies the remaining
-    settings, which are idempotent.
+    A switch to signal group 3/6 is saved by the receiver and causes a reset.
+    The reset can discard other unsaved settings. The plan changes groups only
+    if the receiver uses another group. Each run reapplies the remaining settings.
     """
     steps: list[AugmentationStep] = []
     if current != HIGH_ACCURACY_SIGNAL_GROUP:
@@ -111,10 +114,12 @@ def enable_augmentation(
 ) -> AugmentationState:
     """Apply augmentation features, optionally saving the configuration.
 
-    Command rejections appear in the report without stopping later features.
-    A transport or response failure stops execution; earlier changes may remain
-    active. Saving requires every command to succeed and the signal-group
-    readback to match. Prediction may remain active if disabling it is rejected.
+    A changed signal group is saved automatically and resets the receiver,
+    regardless of ``persist``. The reset can discard other unsaved settings.
+    ``persist=True`` explicitly saves the other settings after every command
+    succeeds and signal-group readback matches. Command rejections appear in the
+    report; a transport or response failure stops execution. Prediction may
+    remain active if disabling it is rejected.
     """
     sbas(enabled=True, service=sbas_service)
     previous = receiver.execute(current_signal_group())

@@ -91,6 +91,11 @@ def signal_group(
     *,
     product: Literal["UM982", "UM980", "UB9A0"] = "UM982",
 ) -> Command[CommandResponse]:
+    """Set signal groups; the receiver saves a change and resets automatically.
+
+    UM982 group 7/0 is documented for base-station mode only. This command
+    builder does not check the receiver's operating mode.
+    """
     if type(master) is not int or (slave is not None and type(slave) is not int):
         raise ValueError("Signal group numbers must be integers")
     if product != "UM982":

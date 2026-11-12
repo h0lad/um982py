@@ -5,10 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, replace
 from struct import pack_into
 from threading import Event
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import pytest
 
+from conftest import ascii_message
 from test_bodies import binary_message, manual_message
 from um982py.commands import Log
 from um982py.commands.configuration import SignalGroup
@@ -16,6 +17,7 @@ from um982py.errors import CommandRejected, ProtocolError, ResponseTimeout
 from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.messages.record import Record
 from um982py.ppp import PppSession, PppSolution, _start_ppp
+from um982py.protocol.ascii import parse_ascii
 
 if TYPE_CHECKING:
     from um982py.commands.core import Command
@@ -37,6 +39,8 @@ class FakeReceiver:
         self.fail: str | None = None
         self.bad_readback: Config | None = None
         self.reads = 0
+        self.mode_body = "MODE BASE"
+        self.mode_timeout = False
 
     def configuration(self) -> Config:
         self.queries += 1
@@ -49,6 +53,10 @@ class FakeReceiver:
         self.commands.append(command.text)
         if command.text == self.fail:
             raise CommandRejected(command.text, "refused")
+        if command.text == "MODE":
+            if self.mode_timeout:
+                raise ResponseTimeout("mode query timed out")
+            return cast("T", parse_ascii(ascii_message("MODE", self.mode_body)))
         if command.text.startswith("CONFIG SIGNALGROUP"):
             self.config = replace(self.config, signal_group=SignalGroup(3, 6))
         elif command.text.startswith("CONFIG PPP ENABLE"):
@@ -106,8 +114,82 @@ def test_setup_leaves_matching_configuration_unchanged(
 ) -> None:
     receiver = FakeReceiver(Config(group, True, service))
     session = _start_ppp(_receiver(receiver), service=service)  # type: ignore[arg-type]
-    assert receiver.commands == []
+    assert receiver.commands == (["MODE"] if group == SignalGroup(7, 0) else [])
     assert not session.group_changed and not session.service_changed
+
+
+def test_b2b_base_group_checks_mode_before_configuring_service() -> None:
+    receiver = FakeReceiver(Config(SignalGroup(7, 0), False, None))
+    session = _start_ppp(_receiver(receiver), service="B2B-PPP")
+    assert receiver.commands == ["MODE", "CONFIG PPP ENABLE B2B-PPP"]
+    assert session.active_group == SignalGroup(7, 0)
+
+
+@pytest.mark.parametrize("mode", ["MODE ROVER SURVEY", "MODE HEADING2"])
+def test_b2b_base_group_rejects_non_base_mode_without_config_changes(mode: str) -> None:
+    initial = Config(SignalGroup(7, 0), False, None)
+    receiver = FakeReceiver(initial)
+    receiver.mode_body = mode
+    with pytest.raises(ProtocolError, match="requires base mode"):
+        _start_ppp(_receiver(receiver), service="B2B-PPP")
+    assert receiver.commands == ["MODE"] and receiver.config == initial
+
+
+@pytest.mark.parametrize("mode", ["", "MODE", "MODE UNKNOWN", "BASE"])
+def test_b2b_base_group_requires_verifiable_mode(mode: str) -> None:
+    initial = Config(SignalGroup(7, 0), False, None)
+    receiver = FakeReceiver(initial)
+    receiver.mode_body = mode
+    with pytest.raises(ProtocolError, match="cannot verify receiver mode"):
+        _start_ppp(_receiver(receiver), service="B2B-PPP")
+    assert receiver.commands == ["MODE"] and receiver.config == initial
+
+
+def test_b2b_base_group_propagates_mode_timeout_without_config_changes() -> None:
+    initial = Config(SignalGroup(7, 0), False, None)
+    receiver = FakeReceiver(initial)
+    receiver.mode_timeout = True
+    with pytest.raises(ResponseTimeout, match="mode query timed out"):
+        _start_ppp(_receiver(receiver), service="B2B-PPP")
+    assert receiver.commands == ["MODE"] and receiver.config == initial
+
+
+@pytest.mark.parametrize(
+    ("mode", "error"),
+    [
+        ("MODE BASE TIME 60", None),
+        ("MODE ROVER SURVEY", "requires base mode"),
+        ("MODE UNKNOWN", "cannot verify receiver mode"),
+    ],
+)
+def test_b2b_base_group_queries_receiver_mode_on_wire(
+    mode: str, error: str | None
+) -> None:
+    from conftest import ReplayTransport
+    from um982py import Receiver
+    from um982py.protocol.checksums import nmea_checksum
+
+    def config_line(text: str) -> bytes:
+        body = b"$" + text.encode("ascii")
+        return body + f"*{nmea_checksum(body):02X}\r\n".encode("ascii")
+
+    transport = ReplayTransport(
+        {
+            b"CONFIG\r\n": config_line("CONFIG,SIGNALGROUP,CONFIG SIGNALGROUP 7 0")
+            + config_line("CONFIG,PPP,CONFIG PPP ENABLE B2B-PPP"),
+            b"MODE\r\n": ascii_message("MODE", mode),
+        },
+        chunk=4096,
+    )
+    with Receiver(transport, timeout=1) as receiver:
+        if error is None:
+            session = receiver.start_ppp(service="B2B-PPP")
+            assert session.active_group == SignalGroup(7, 0)
+            assert not session.group_changed and not session.service_changed
+        else:
+            with pytest.raises(ProtocolError, match=error):
+                receiver.start_ppp(service="B2B-PPP")
+    assert transport.writes == [b"CONFIG\r\n", b"MODE\r\n"]
 
 
 @pytest.mark.parametrize("service", ["E6-HAS", "AUTO", "L6MDCPPP"])

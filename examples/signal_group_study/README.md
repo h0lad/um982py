@@ -24,6 +24,9 @@ python -m examples.signal_group_study --replay live.bin --json out.json
 Each `--settings` pair selects master and slave signal-group numbers. A live
 study changes the groups and waits for the receiver to reboot. For replay,
 `--replay-master` and `--replay-slave` identify the group used in the recording.
+The receiver saves each changed group automatically. The study attempts to
+restore the original group on exit; interruption or connection failure can
+leave another group saved.
 
 ## References
 
