@@ -30,6 +30,8 @@ not select SLAS. Queries otherwise leave augmentation unchanged.
 
 If a query times out, check the port, baud rate, power and serial permissions.
 Use `doctor` to inspect the receiver. Check `valid` before using a position.
+`Fix.possibly_predicted` flags the receiver's GGA signature for Doppler position
+prediction; the signature alone does not prove prediction.
 
 ## Choose a workflow
 

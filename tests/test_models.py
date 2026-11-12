@@ -1,3 +1,5 @@
+from dataclasses import replace
+
 import pytest
 
 from conftest import ascii_message, sentence
@@ -50,6 +52,48 @@ def test_valid_and_missing_gga() -> None:
     )
     assert south.latitude is not None and south.latitude < 0
     assert south.longitude is not None and south.longitude < 0
+
+
+@pytest.mark.parametrize(
+    ("quality", "satellites", "expected"),
+    [
+        ("1", "0", True),
+        ("1", "00", True),
+        ("1", "8", False),
+        ("1", "", None),
+        ("4", "0", False),
+        ("0", "0", False),
+        ("", "0", None),
+        ("", "8", False),
+        ("", "", None),
+    ],
+)
+def test_gga_doppler_prediction_signature(
+    quality: str, satellites: str, expected: bool | None
+) -> None:
+    body = f"GNGGA,120001,4807.038,N,01131.000,E,{quality},{satellites},1,1,M,1,M,,"
+    fix = Fix.from_message(parse_ascii(sentence(body.encode())))
+
+    assert fix.possibly_predicted is expected
+    assert fix.quality_known is bool(quality)
+    assert fix.satellites_known is bool(satellites)
+    assert fix.valid is (bool(quality) and int(quality) > 0)
+
+
+def test_prediction_signature_requires_coordinates() -> None:
+    fix = Fix.from_message(parse_ascii(sentence(b"GNGGA,120001,,,,,1,0,1,1,M,1,M,,")))
+    assert not fix.valid
+    assert not fix.possibly_predicted
+
+
+def test_gga_presence_metadata_affects_equality_but_not_repr() -> None:
+    fix = Fix.from_message(
+        parse_ascii(sentence(b"GNGGA,120001,4807.038,N,01131.000,E,1,0,1,1,M,1,M,,"))
+    )
+    unknown = replace(fix, satellites_known=False, quality_known=False)
+    assert unknown != fix
+    assert repr(unknown) == repr(fix)
+    assert unknown.possibly_predicted is None
 
 
 @pytest.mark.parametrize(

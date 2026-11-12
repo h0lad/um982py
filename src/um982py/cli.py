@@ -33,7 +33,7 @@ from um982py.experimental import (
 from um982py.experimental.configuration import antenna_power_on
 from um982py.experimental.raw_data import capture_baseband
 from um982py.experimental.tracking import tracking_fields, tracking_slots
-from um982py.messages.navigation import BestNavigation
+from um982py.messages.navigation import BestNavigation, Fix
 from um982py.receiver import Receiver
 from um982py.receiver_queries import (
     firmware_info,
@@ -79,6 +79,8 @@ _EXTENDED_ACTIONS = {
 def _json(value: object) -> object:
     if isinstance(value, bytes):
         return value.hex()
+    if isinstance(value, Fix):
+        return {**asdict(value), "possibly_predicted": value.possibly_predicted}
     if isinstance(value, BestNavigation):
         return {
             item.name: (

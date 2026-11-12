@@ -6,11 +6,11 @@ from unittest.mock import patch
 
 import pytest
 
-from conftest import ReplayTransport
+from conftest import ReplayTransport, sentence
 from um982py import Receiver
 from um982py.cli import _json, main
 from um982py.errors import TransportError
-from um982py.messages.navigation import BestNavigation
+from um982py.messages.navigation import BestNavigation, Fix
 from um982py.protocol.ascii import parse_ascii
 
 
@@ -42,6 +42,16 @@ def test_cli_navigation_uses_readable_status_and_omits_raw_frame() -> None:
     assert result["position_type"] == "SINGLE"
     assert result["solution_status"] == "SOL_COMPUTED"
     assert "message" not in result
+
+
+def test_cli_fix_reports_possible_doppler_prediction() -> None:
+    message = parse_ascii(
+        sentence(b"GNGGA,120001,4807.038,N,01131.000,E,1,0,1,1,M,1,M,,")
+    )
+    fix = Fix.from_message(message)
+    result = json.loads(json.dumps(fix, default=_json))
+    assert result["possibly_predicted"] is True
+    assert result["satellites_known"] is True
 
 
 def test_cli_satellites_shows_names(capsys: pytest.CaptureFixture[str]) -> None:

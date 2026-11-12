@@ -69,6 +69,8 @@ class Fix:
     geoid_separation: float | None
     differential_age: float | None
     station_id: str
+    quality_known: bool = field(default=True, kw_only=True, repr=False)
+    satellites_known: bool = field(default=True, kw_only=True, repr=False)
 
     @property
     def valid(self) -> bool:
@@ -77,6 +79,24 @@ class Fix:
             and self.latitude is not None
             and self.longitude is not None
         )
+
+    @property
+    def possibly_predicted(self) -> bool | None:
+        """Whether the GGA fix has the receiver's Doppler-prediction signature.
+
+        R1.15 documents quality 1 and zero satellites for Doppler-predicted
+        positions. This combination does not prove prediction. Return None when
+        a missing quality or satellite count prevents checking the signature.
+        """
+        if self.latitude is None or self.longitude is None:
+            return False
+        if self.quality_known and self.quality != 1:
+            return False
+        if self.satellites_known and self.satellites != 0:
+            return False
+        if not self.quality_known or not self.satellites_known:
+            return None
+        return True
 
     @property
     def rtk_fixed(self) -> bool:
@@ -109,6 +129,8 @@ class Fix:
                 _number(fields[10]),
                 _number(fields[12]),
                 fields[13],
+                quality_known=bool(fields[5]),
+                satellites_known=bool(fields[6]),
             )
         except ValueError as error:
             raise ProtocolError("Invalid GGA value") from error
