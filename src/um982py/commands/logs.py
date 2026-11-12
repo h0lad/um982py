@@ -260,12 +260,19 @@ class Log(StrEnum):
 
         ``rate_hz`` uses documented N4 rates. Actual support depends on the
         receiver, firmware, signal group and log. ``interval`` is in seconds.
+        FREQJAMSTATUS, HWSTATUS, JAMSTATUS and RTCSTATUS are limited to 1 Hz.
         """
         if isinstance(interval, Trigger):
             if rate_hz is not None:
                 raise ValueError("specify interval or rate_hz, not both")
         else:
             interval = logging.output_interval(interval, rate_hz)
+        if (
+            self in (Log.FREQJAMSTATUS, Log.HWSTATUS, Log.JAMSTATUS, Log.RTCSTATUS)
+            and not isinstance(interval, Trigger)
+            and interval < 1
+        ):
+            raise ValueError(f"{self.value} supports at most 1 Hz output")
         if self.value in {"HEADINGOFFSET", "RXSTATUS"}:
             raise ValueError(f"{self.value} only has verified one-shot queries")
         if self.definition.changed_only and interval != Trigger.ON_CHANGED:

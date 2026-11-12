@@ -83,6 +83,7 @@ The documented N4 rates are 1, 2, 5, 10, 20 and 50 Hz. Unicore specifies
 firmware. Available rates depend on the signal group and log. The API does not
 change the signal group or save settings. If a command fails, earlier changes
 can remain active. [Unicore UM982 specifications](https://en.unicorecomm.com/products/um982/)
+`FREQJAMSTATUS`, `HWSTATUS`, `JAMSTATUS` and `RTCSTATUS` output at up to 1 Hz.
 
 `verify=True` requires a port and checks `LOGLIST`, not the delivered rate.
 Check the receiver's time status, then measure the rate from distinct receiver

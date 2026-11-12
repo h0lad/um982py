@@ -11,6 +11,7 @@ from um982py import AsyncReceiver, Log, Receiver, ReceiverStream, Rover, capture
 from um982py.antenna import AntennaLog, antenna_log
 from um982py.capture import subscription_plan
 from um982py.cli import main
+from um982py.commands.core import action
 from um982py.commands.types import Port, Trigger
 from um982py.errors import CommandRejected, ProtocolError
 from um982py.receiver_models import LogEntry
@@ -35,6 +36,34 @@ def test_rate_commands_for_all_log_families(log: Log, rate: float, period: str) 
 def test_unsupported_rates_are_rejected(rate: float) -> None:
     with pytest.raises(ValueError, match="rate_hz"):
         Log.GPGGA.output(rate_hz=rate)
+
+
+@pytest.mark.parametrize(
+    "log", [Log.FREQJAMSTATUS, Log.HWSTATUS, Log.JAMSTATUS, Log.RTCSTATUS]
+)
+def test_status_logs_limit_periodic_output_to_at_most_one_hertz(log: Log) -> None:
+    for interval in (0.05, 0.5, 0.999):
+        with pytest.raises(ValueError, match="at most 1 Hz"):
+            log.output(interval)
+    for rate in (2, 5, 10, 20, 50):
+        with pytest.raises(ValueError, match="at most 1 Hz"):
+            log.output(rate_hz=rate, binary=True)
+    assert log.output(rate_hz=1).text == f"{log.wire_name()} 1"
+    assert log.output(5, binary=True).text == f"{log.wire_name(binary=True)} 5"
+    assert log.request().text == log.wire_name()
+    assert action(f"{log.wire_name()} 0.1").text.endswith(" 0.1")
+
+
+def test_status_rate_limit_prevalidates_batches_and_capture_plans() -> None:
+    transport = SubscriptionTransport()
+    with Receiver(transport) as receiver:
+        with pytest.raises(ValueError, match="HWSTATUS supports at most 1 Hz"):
+            receiver.set_output_rate([Log.GPGGA, Log.HWSTATUS], 10)
+        with pytest.raises(ValueError, match="JAMSTATUS supports at most 1 Hz"):
+            capture_live(receiver, [Log.BESTNAV, Log.JAMSTATUS], duration=1, rate_hz=10)
+        with pytest.raises(ValueError, match="RTCSTATUS supports at most 1 Hz"):
+            subscription_plan([Log.BESTNAV, Log.RTCSTATUS], interval=0.1, binary=True)
+    assert transport.writes == []
 
 
 def test_output_options_and_event_logs_are_not_silently_rewritten() -> None:
