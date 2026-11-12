@@ -21,13 +21,17 @@ def heading_mode(mode: HeadingMode) -> Command[CommandResponse]:
 def heading_length(
     length_cm: float | None = None, tolerance_cm: float | None = None
 ) -> Command[CommandResponse]:
-    if length_cm is None and tolerance_cm is None:
+    """Set baseline length and optional tolerance in centimetres; zero resets it."""
+    if length_cm is None:
+        if tolerance_cm is not None:
+            raise ValueError("Baseline tolerance requires a length")
         return config("HEADING LENGTH")
-    if length_cm is None or tolerance_cm is None:
-        raise ValueError("Both baseline length and tolerance are required")
+    length = positive(length_cm)
+    if tolerance_cm is None:
+        return config("HEADING LENGTH", length)
     if tolerance_cm <= 0:
         raise ValueError("Baseline tolerance must be greater than zero")
-    return config("HEADING LENGTH", positive(length_cm), positive(tolerance_cm))
+    return config("HEADING LENGTH", length, positive(tolerance_cm))
 
 
 def heading_reliability(threshold: int = 3) -> Command[CommandResponse]:

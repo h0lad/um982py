@@ -275,6 +275,21 @@ def test_r115_configuration_bounds() -> None:
         configuration.ionosphere_model("GALNTCM")  # type: ignore[arg-type]
 
 
+def test_heading_baseline_length_and_tolerance() -> None:
+    assert configuration.heading_length().text == "CONFIG HEADING LENGTH"
+    assert configuration.heading_length(20).text == "CONFIG HEADING LENGTH 20"
+    assert configuration.heading_length(0).text == "CONFIG HEADING LENGTH 0"
+    assert configuration.heading_length(20, 3).text == "CONFIG HEADING LENGTH 20 3"
+    for length in (-1, float("nan"), float("inf"), True):
+        with pytest.raises(ValueError):
+            configuration.heading_length(length)
+    for tolerance in (-1, 0, float("nan"), float("inf"), True):
+        with pytest.raises(ValueError):
+            configuration.heading_length(20, tolerance)
+    with pytest.raises(ValueError):
+        configuration.heading_length(tolerance_cm=3)
+
+
 def test_signal_group_descriptions_match_r115() -> None:
     bands = configuration.SIGNAL_GROUP_BANDS
     assert "L1S" in bands[1]

@@ -253,7 +253,6 @@ def test_configuration_variants() -> None:
         lambda: config.standalone(wait_seconds=2),
         lambda: config.standalone(coordinates=(0, 0, 0), wait_seconds=5),
         lambda: config.standalone(enabled=False, wait_seconds=5),
-        lambda: config.heading_length(10),
         lambda: config.heading_length(tolerance_cm=10),
         lambda: config.heading_offset(181, 0),
         lambda: config.sbas_timeout(1),
