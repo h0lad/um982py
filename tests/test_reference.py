@@ -222,7 +222,9 @@ def test_mode_mask_and_assistance_examples() -> None:
         == b"$AIDPOS,4002.229934,N,11618.096855,E,37.254\r\n"
     )
     assert (
-        assistance.time(datetime(2021, 12, 3, 15, 2, 36, 400000, tzinfo=UTC)).encode()
+        assistance.time(
+            datetime(2021, 12, 3, 15, 2, 36, 400000, tzinfo=UTC), leap_seconds=18
+        ).encode()
         == b"$AIDTIME,2021,12,3,15,2,36,400,18\r\n"
     )
     assert (
@@ -231,8 +233,12 @@ def test_mode_mask_and_assistance_examples() -> None:
         .startswith(b"$AIDPOS,9000.000000,S,18000.000000,W")
     )
     local = datetime(2021, 12, 3, 16, 2, 36, tzinfo=timezone(timedelta(hours=1)))
-    assert assistance.time(local).text == "AIDTIME,2021,12,3,15,2,36,0,18"
-    assert assistance.time_fields(2016, 12, 31, 23, 59, 60, 0).text.endswith(",60,0,18")
+    assert (
+        assistance.time(local, leap_seconds=18).text == "AIDTIME,2021,12,3,15,2,36,0,18"
+    )
+    assert assistance.time_fields(2016, 12, 31, 23, 59, 60, 0, 17).text.endswith(
+        ",60,0,17"
+    )
 
 
 def test_configuration_variants() -> None:
@@ -286,8 +292,8 @@ def test_configuration_variants() -> None:
         lambda: modes.base_ecef(0, 1, 2),
         lambda: modes.rover(RoverDynamics.UAV, profile="MOW"),
         lambda: masking.satellite(Constellation.GPS, 33),
-        lambda: assistance.time(datetime(2021, 1, 1)),
-        lambda: assistance.time_fields(2021, 2, 30, 0, 0, 0, 0),
+        lambda: assistance.time(datetime(2021, 1, 1), leap_seconds=18),
+        lambda: assistance.time_fields(2021, 2, 30, 0, 0, 0, 0, 18),
         lambda: config.signal_group(1, 1, product="UM980"),
         lambda: config.signal_group(7, True),
     ],

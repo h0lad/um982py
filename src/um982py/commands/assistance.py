@@ -18,6 +18,10 @@ def _coordinate(value: float, limit: int, width: int) -> str:
 def position(
     latitude: float, longitude: float, altitude: float
 ) -> Command[CommandResponse]:
+    """Build an assisted position in degrees and ellipsoidal metres.
+
+    The receiver requires the position to be within 10 km of its actual position.
+    """
     lat = _coordinate(latitude, 90, 2)
     lon = _coordinate(longitude, 180, 3)
     height = number(altitude, -float("inf"), float("inf"))
@@ -37,8 +41,12 @@ def time_fields(
     minute: int,
     second: int,
     millisecond: int,
-    leap_seconds: int = 18,
+    leap_seconds: int,
 ) -> Command[CommandResponse]:
+    """Set assisted UTC time using the verified GPS-UTC offset for the epoch.
+
+    The receiver requires the supplied UTC time to be within three seconds.
+    """
     integer(year, 1, 9999)
     integer(month, 1, 12)
     integer(day, 1, 31)
@@ -59,7 +67,8 @@ def time_fields(
     return action("AIDTIME," + ",".join(map(str, values)), dollar_prefixed=True)
 
 
-def time(moment: datetime, *, leap_seconds: int = 18) -> Command[CommandResponse]:
+def time(moment: datetime, *, leap_seconds: int) -> Command[CommandResponse]:
+    """Set assisted time from an aware datetime and a verified GPS-UTC offset."""
     if moment.utcoffset() is None:
         raise ValueError("Assisted time requires a timezone-aware datetime")
     moment = moment.astimezone(UTC)
