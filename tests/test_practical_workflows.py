@@ -4,6 +4,7 @@ from dataclasses import replace
 from datetime import UTC, datetime
 from pathlib import Path
 from threading import Event
+from time import monotonic, sleep
 from xml.etree import ElementTree
 
 import pytest
@@ -261,7 +262,14 @@ def test_rover_relays_ntrip_while_reading_positions(
         assert rover.position(heading=False).position.valid
         assert rover.wait_for_fix(timeout=2, rtk_fixed=True).rtk_fixed
         assert frame in transport.writes
-        assert rover.correction_health().frames_forwarded >= 1
+        deadline = monotonic() + 3
+        while True:
+            health = rover.correction_health()
+            assert health is not None
+            if health.frames_forwarded >= 1:
+                break
+            assert monotonic() < deadline
+            sleep(0.005)
     assert b"Ntrip-GGA: $GPGGA," in socket.sent[0]
     assert not transport.closed
     receiver.close()
