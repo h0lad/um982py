@@ -66,6 +66,12 @@ def base(station_id: int | None = None) -> Command[CommandResponse]:
 def base_survey(
     seconds: float = 60, *, distance: float | None = None, station_id: int | None = None
 ) -> Command[CommandResponse]:
+    """Start a receiver survey in base mode.
+
+    The receiver saves the optimized position to flash when ``distance`` is
+    configured and may reuse it after a restart if it remains within that
+    distance in metres. A zero distance selects the newly optimized position.
+    """
     parts = [base(station_id).text, "TIME", number(seconds, 0, 3600)]
     if distance is not None:
         parts.append(number(distance, 0, 10))
@@ -75,11 +81,20 @@ def base_survey(
 def base_ecef(
     x: float, y: float, z: float, *, station_id: int | None = None
 ) -> Command[CommandResponse]:
-    if -90 <= x <= 90:
+    """Set a base in ECEF metres using the documented coordinate ranges.
+
+    Use ``base_position`` with geodetic coordinates if an ECEF axis is within
+    the receiver's latitude, longitude or height range.
+    """
+    coordinates = tuple(
+        number(value, -float("inf"), float("inf")) for value in (x, y, z)
+    )
+    wire_x, wire_y, wire_z = (float(value) for value in coordinates)
+    if abs(wire_x) <= 90 or abs(wire_y) <= 180 or abs(wire_z) <= 30000:
         raise ValueError(
-            "The receiver interprets X within -90..90 as geodetic latitude"
+            "ECEF axes must satisfy |x| > 90, |y| > 180 and |z| > 30000; "
+            "use base_position with geodetic coordinates"
         )
-    coordinates = (number(value, -float("inf"), float("inf")) for value in (x, y, z))
     return action(" ".join((base(station_id).text, *coordinates)))
 
 

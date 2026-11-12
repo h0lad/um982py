@@ -170,6 +170,32 @@ def test_station_uses_fixed_coordinates_without_survey_or_flash_writes(
     assert b";B;N;9600;" in station.build_sourcetable(public=False)
 
 
+@pytest.mark.parametrize(
+    ("latitude", "longitude"),
+    [
+        (0, 45),
+        (-0.1, -120),
+        (50, 0),
+        (-50, 180),
+        (50, 90),
+        (90, 30),
+        (-90, -120),
+    ],
+)
+def test_station_uses_geodetic_coordinates_for_restricted_ecef_axes(
+    station: Station, latitude: float, longitude: float
+) -> None:
+    located = replace(station, latitude=latitude, longitude=longitude)
+    command = located.build_commands()[0]
+    assert (
+        command.text
+        == modes.base_position(
+            latitude, longitude, station.height, station_id=station.station_id
+        ).text
+    )
+    assert located.validate_frame(coordinate_frame(located))
+
+
 def test_reference_identity_and_negative_ecef_coordinates(station: Station) -> None:
     for longitude in (8, -70, 170):
         located = replace(station, longitude=longitude)

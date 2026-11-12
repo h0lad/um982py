@@ -76,10 +76,16 @@ class Station:
             raise ValueError("station manifest has invalid fields or types") from error
 
     def build_commands(self) -> tuple[Command[CommandResponse], ...]:
-        """Configure ECEF base coordinates so RTCM 1005 keeps the reviewed ARP."""
+        """Configure reviewed ARP coordinates and RTCM output."""
         x, y, z = ecef_from_geodetic(self.latitude, self.longitude, self.height)
+        try:
+            base = modes.base_ecef(x, y, z, station_id=self.station_id)
+        except ValueError:
+            base = modes.base_position(
+                self.latitude, self.longitude, self.height, station_id=self.station_id
+            )
         return (
-            modes.base_ecef(x, y, z, station_id=self.station_id),
+            base,
             antenna_delta(0, 0, 0),
             *(logging.output(f"RTCM{kind}", rate) for kind, rate in RTCM_INTERVALS),
         )
