@@ -73,7 +73,7 @@ class LogEntry:
 
     @property
     def rate_hz(self) -> float | None:
-        """Return the configured periodic rate, or None for ONCHANGED output."""
+        """Return the configured periodic rate, or None for event triggers."""
         if isinstance(self.interval, Trigger):
             return None
         if not isfinite(self.interval) or self.interval <= 0:
@@ -81,6 +81,7 @@ class LogEntry:
         return 1 / self.interval
 
     def command(self) -> Command[CommandResponse]:
+        """Build a request; ONCE starts a new one-shot rather than restoring it."""
         return output(self.name, self.interval, port=self.port)
 
 
@@ -104,7 +105,9 @@ class LogList:
             for record in records:
                 name, port, trigger = record.split()
                 interval = (
-                    Trigger(trigger) if trigger == "ONCHANGED" else float(trigger)
+                    Trigger(trigger)
+                    if trigger in ("ONCHANGED", "ONCE")
+                    else float(trigger)
                 )
                 if isinstance(interval, float) and (
                     not isfinite(interval) or interval <= 0

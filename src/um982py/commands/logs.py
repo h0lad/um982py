@@ -261,6 +261,7 @@ class Log(StrEnum):
         ``rate_hz`` uses documented N4 rates. Actual support depends on the
         receiver, firmware, signal group and log. ``interval`` is in seconds.
         FREQJAMSTATUS, HWSTATUS, JAMSTATUS and RTCSTATUS are limited to 1 Hz.
+        EVENTFLAG also supports ``Trigger.ONCE``; enable GGA output alongside it.
         """
         if isinstance(interval, Trigger):
             if rate_hz is not None:
@@ -275,7 +276,13 @@ class Log(StrEnum):
             raise ValueError(f"{self.value} supports at most 1 Hz output")
         if self.value in {"HEADINGOFFSET", "RXSTATUS"}:
             raise ValueError(f"{self.value} only has verified one-shot queries")
-        if self.definition.changed_only and interval != Trigger.ON_CHANGED:
+        if interval is Trigger.ONCE and self is not Log.EVENTFLAG:
+            raise ValueError(f"{self.value} does not have documented ONCE support")
+        if (
+            self.definition.changed_only
+            and interval != Trigger.ON_CHANGED
+            and not (self is Log.EVENTFLAG and interval is Trigger.ONCE)
+        ):
             raise ValueError(f"{self.value} requires ONCHANGED output")
         return logging.output(self.wire_name(binary=binary), interval, port=port)
 

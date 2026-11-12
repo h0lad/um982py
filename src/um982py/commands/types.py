@@ -14,6 +14,7 @@ class Parity(StrEnum):
 
 
 class Trigger(StrEnum):
+    ONCE = "ONCE"
     ON_CHANGED = "ONCHANGED"
 
 

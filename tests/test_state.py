@@ -90,6 +90,59 @@ def test_changed_interval_is_stopped_before_original_is_reinstalled() -> None:
     ]
 
 
+def test_restore_does_not_rearm_consumed_one_shot() -> None:
+    once = LogEntry("EVENTFLAGB", Port.COM1, Trigger.ONCE)
+    expected = state(logs=(once,))
+    current = state()
+    receiver = MagicMock()
+    with patch("um982py.state.snapshot_receiver_state", return_value=current):
+        result = restore_receiver_state(receiver, expected)
+    assert not result.restored
+    assert result.differences == ("logs",)
+    assert result.errors == ("cannot restore one-shot subscription EVENTFLAGB on COM1",)
+    receiver.execute.assert_not_called()
+
+
+def test_restore_leaves_new_pending_one_shot_and_restores_other_logs() -> None:
+    once = LogEntry("EVENTFLAGB", Port.COM1, Trigger.ONCE)
+    periodic = LogEntry("EVENTFLAGB", Port.COM1, 1.0)
+    saved = LogEntry("RANGEB", Port.COM2, 1.0)
+    expected = state(logs=(periodic, saved))
+    current = state(logs=(once,))
+    after = state(logs=(once, saved))
+    receiver = MagicMock()
+    with patch(
+        "um982py.state.snapshot_receiver_state",
+        side_effect=[current, current, current, after],
+    ):
+        result = restore_receiver_state(receiver, expected)
+    assert not result.restored
+    assert result.errors == ("cannot restore one-shot subscription EVENTFLAGB on COM1",)
+    assert [call.args[0].text for call in receiver.execute.call_args_list] == [
+        "RANGEB COM2 1"
+    ]
+
+
+def test_restore_leaves_current_periodic_log_when_one_shot_is_missing() -> None:
+    expected = state(logs=(LogEntry("EVENTFLAGB", Port.COM1, Trigger.ONCE),))
+    current = state(logs=(LogEntry("EVENTFLAGB", Port.COM1, 1.0),))
+    receiver = MagicMock()
+    with patch("um982py.state.snapshot_receiver_state", return_value=current):
+        result = restore_receiver_state(receiver, expected)
+    assert not result.restored
+    assert result.errors == ("cannot restore one-shot subscription EVENTFLAGB on COM1",)
+    receiver.execute.assert_not_called()
+
+
+def test_unchanged_one_shot_needs_no_restoration() -> None:
+    expected = state(logs=(LogEntry("EVENTFLAGB", Port.COM1, Trigger.ONCE),))
+    receiver = MagicMock()
+    with patch("um982py.state.snapshot_receiver_state", return_value=expected):
+        result = restore_receiver_state(receiver, expected)
+    assert result.restored
+    receiver.execute.assert_not_called()
+
+
 def test_unknown_mode_is_not_sent_and_remains_a_difference() -> None:
     expected = state(mode="MODE UNKNOWN")
     current = state()

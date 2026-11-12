@@ -6,7 +6,8 @@ from sys import exception
 
 from um982py.commands import logging
 from um982py.commands.core import Command
-from um982py.commands.types import Port
+from um982py.commands.types import Port, Trigger
+from um982py.errors import ProtocolError
 from um982py.messages import CommandResponse
 from um982py.receiver import Receiver
 from um982py.receiver_queries import log_list
@@ -18,6 +19,16 @@ def temporary_subscriptions(
 ) -> Iterator[None]:
     """Install output temporarily, also cleaning up rejected/partial starts."""
     existing = receiver.execute(log_list()).entries
+    for name, command in planned:
+        parts = command.text.split()
+        port = Port(parts[1]) if len(parts) == 3 else None
+        if any(
+            entry.name == name
+            and (port is None or entry.port == port)
+            and entry.interval == Trigger.ONCE
+            for entry in existing
+        ):
+            raise ProtocolError(f"Cannot temporarily replace pending ONCE log {name}")
     started: list[tuple[str, Port | None]] = []
     try:
         for name, command in planned:

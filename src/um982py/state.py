@@ -11,7 +11,7 @@ from um982py.commands.configuration.corrections import (
     ppp_datum,
     rtk_assists_ppp,
 )
-from um982py.commands.types import RoverDynamics
+from um982py.commands.types import RoverDynamics, Trigger
 from um982py.messages import Sentence
 from um982py.protocol import StreamDecoder
 from um982py.receiver import Receiver
@@ -182,7 +182,8 @@ def restore_receiver_state(
 
     Restore the signal group and reconnect after a reboot before calling this
     function. The report lists differences in other configuration and masks.
-    The caller must handle these settings.
+    The caller must handle these settings. A changed ONCE subscription cannot
+    be reconstructed without knowing whether it has already fired.
     """
     current = snapshot_receiver_state(receiver)
     saved = expected.settings
@@ -230,14 +231,27 @@ def restore_receiver_state(
     current = snapshot_receiver_state(receiver)
     expected_logs = set(expected.logs)
     current_logs = set(current.logs)
+    once_keys = {
+        (entry.name, entry.port)
+        for entry in (*expected.logs, *current.logs)
+        if entry.interval == Trigger.ONCE
+    }
+    blocked_keys = {
+        key
+        for key in once_keys
+        if {entry for entry in expected_logs if (entry.name, entry.port) == key}
+        != {entry for entry in current_logs if (entry.name, entry.port) == key}
+    }
+    for name, port in sorted(blocked_keys):
+        errors.append(f"cannot restore one-shot subscription {name} on {port}")
     for entry in current.logs:
-        if entry not in expected_logs:
+        if entry not in expected_logs and (entry.name, entry.port) not in blocked_keys:
             try:
                 receiver.execute(logging.stop(entry.name, port=entry.port))
             except Exception as error:
                 errors.append(f"stop {entry.name} on {entry.port}: {error}")
     for entry in expected.logs:
-        if entry not in current_logs:
+        if entry not in current_logs and (entry.name, entry.port) not in blocked_keys:
             try:
                 receiver.execute(entry.command())
             except Exception as error:
