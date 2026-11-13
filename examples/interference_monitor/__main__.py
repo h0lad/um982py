@@ -19,15 +19,13 @@ from examples.interference_monitor import (
     COLLAPSE_THRESHOLD,
     Alert,
     AntennaReport,
-    SpoofReport,
     antenna_report,
     cn0_samples,
     detect_cn0_collapse,
-    spoof_report,
     status_alerts,
 )
 from um982py.commands import Log
-from um982py.messages import Record
+from um982py.messages import Record, SpoofInfo
 
 
 def _alert_payload(alert: Alert) -> dict[str, object]:
@@ -46,14 +44,21 @@ def _finite_or_none(z_score: float | None) -> float | None:
     return z_score
 
 
-def _spoof_payload(report: SpoofReport | None) -> dict[str, object] | None:
+def _spoof_payload(report: SpoofInfo | None) -> dict[str, object] | None:
     if report is None:
         return None
     return {
         "position_type": report.position_type,
         "position_type_label": report.position_type_label,
-        "spoof_indicator": report.spoof_indicator,
+        "spoof_indicator": report.indicator,
         "suspect": report.is_suspect,
+        "notice_mask": int(report.notices),
+        "time_notice_mask": int(report.time_notices),
+        "signal_mask": int(report.signals),
+        "gps_satellites": list(report.gps_satellites),
+        "bds_satellites": list(report.bds_satellites),
+        "galileo_satellites": list(report.galileo_satellites),
+        "glonass_satellites": list(report.glonass_satellites),
     }
 
 
@@ -72,7 +77,7 @@ def _payload(
     range_records: Sequence[Record],
     threshold: float,
 ) -> dict[str, object]:
-    spoof = spoof_report(spoof_records[0]) if spoof_records else None
+    spoof = SpoofInfo.from_record(spoof_records[0]) if spoof_records else None
     antenna = antenna_report(antenna_records[0]) if antenna_records else None
     samples = cn0_samples(range_records)
     alerts = (

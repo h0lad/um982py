@@ -20,6 +20,10 @@ python -m examples.spoof_dual_antenna \
     --replay tests/fixtures/captures/BSLNENUHDA.bin
 ```
 
+SPOOFINFO results include anomaly and signal masks and the satellite numbers
+reported for each constellation. The sky comparison uses successive receiver
+snapshots, so it is not a comparison between separate antenna feeds.
+
 ## References
 
 - Kaplan & Hegarty (2017).

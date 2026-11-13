@@ -24,8 +24,10 @@ def test_r115_inventory_covers_all_log_sections() -> None:
     names = {item["name"] for item in entries}
     assert len(names) == len(entries)
     assert names == (
-        LOGS.keys() - RTCM_LOGS.keys() - {"PPPB2BINFO6", "PPPB2BINFO7"}
-    ) | {"ENVINFO"}
+        LOGS.keys()
+        - RTCM_LOGS.keys()
+        - {"PPPB2BINFO6", "PPPB2BINFO7", "PPSSTATUS", "SPOOFINFO"}
+    )
     sections = {item["section"] for item in entries}
     assert {f"7.5.{n}" for n in range(2, 102)} - {"7.5.10", "7.5.84"} == {
         section for section in sections if section.startswith("7.5.")

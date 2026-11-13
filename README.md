@@ -70,6 +70,7 @@ prediction; the signature alone does not prove prediction.
 | Export observations | `export_rinex()` |
 | Convert coordinates and measure distance | `ecef_from_geodetic()`, `geodetic_from_ecef()`, `haversine_distance()` |
 | Read a Linux PPS timestamp | `with PpsDevice(path) as device: device.fetch()` |
+| Interpret receiver PPS or spoofing status | `PpsStatus.from_record(record)` or `SpoofInfo.from_record(record)` |
 | Use asyncio | `AsyncReceiver.connect()` |
 
 ## Read RTCM correction fields
@@ -97,6 +98,27 @@ Every result retains its raw `payload` and `message_type`. Its `status` is
 remain raw, including Unicore's nonstandard use of the latter two IDs. Malformed
 supported bodies raise `ProtocolError`; frame-only streaming and correction
 forwarding continue to preserve raw data.
+
+## Inspect receiver timing and spoofing status
+
+The PPSSTATUS and SPOOFINFO logs expose their raw fields and documented
+bit masks. For example, with an open receiver:
+
+```python
+from um982py import Log
+from um982py.messages import PpsStatus, SpoofInfo, SpoofSignal
+
+pps = PpsStatus.from_record(receiver.read_log(Log.PPSSTATUS))
+spoof = SpoofInfo.from_record(receiver.read_log(Log.SPOOFINFO))
+print(pps.gps_week, pps.milliseconds_of_week, pps.pulse_error_ns)
+print(spoof.gps_satellites, bool(spoof.signals & SpoofSignal.GPS_L1CA))
+```
+
+The reported satellite numbers are one-based mask positions; the raw masks
+retain reserved bits. Receiver and firmware support determine availability.
+For C-series L-band receivers, `Log.LBANDBEAM.read(table=True)` and
+`Log.LBANDTRACKSTATUS.output(table=True)` use the documented table format. Table
+frames expose `checksum_verified = False`; the receiver sends no checksum.
 
 ## Mask a sky sector
 
@@ -128,7 +150,8 @@ The documented N4 rates are 1, 2, 5, 10, 20 and 50 Hz. Unicore specifies
 firmware. Available rates depend on the signal group and log. The API does not
 change the signal group or save settings. If a command fails, earlier changes
 can remain active. [Unicore UM982 specifications](https://en.unicorecomm.com/products/um982/)
-`FREQJAMSTATUS`, `HWSTATUS`, `JAMSTATUS` and `RTCSTATUS` output at up to 1 Hz.
+`FREQJAMSTATUS`, `HWSTATUS`, `JAMSTATUS`, `PPSSTATUS` and `RTCSTATUS` output at
+up to 1 Hz.
 
 `verify=True` requires a port and checks `LOGLIST`, not the delivered rate.
 Check the receiver's time status, then measure the rate from distinct receiver

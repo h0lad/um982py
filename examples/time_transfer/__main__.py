@@ -16,6 +16,7 @@ from examples.time_transfer import (
     leap_seconds,
 )
 from um982py.commands import Log
+from um982py.messages import PpsStatus
 from um982py.messages.record import Record
 
 
@@ -41,7 +42,10 @@ def _parser() -> ExampleParser:
     parser.add_argument(
         "--interval", type=float, default=1.0, help="TIME output interval in seconds"
     )
-    parser.add_argument("--ascii", action="store_true", help="request ASCII TIME")
+    parser.add_argument("--ascii", action="store_true", help="request ASCII logs")
+    parser.add_argument(
+        "--pps-status", action="store_true", help="also capture receiver PPS status"
+    )
     parser.add_argument(
         "--debug",
         action="store_true",
@@ -75,15 +79,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
             flush=True,
         )
-    records = capture_records(
+    captured = capture_records(
         args,
-        [Log.TIME],
+        [Log.TIME, Log.PPSSTATUS] if args.pps_status else [Log.TIME],
         duration=args.duration,
         frames=1,
         interval=args.interval,
         binary=not args.ascii,
         on_progress=_progress_callback() if args.debug else None,
-    )["TIME"]
+    )
+    records = captured["TIME"]
     if not records:
         parser.error("capture contains no TIME record")
     record = records[0]
@@ -143,6 +148,21 @@ def main(argv: Sequence[str] | None = None) -> int:
             for entry in LEAP_SECONDS
         ],
     }
+    if args.pps_status:
+        statuses = captured["PPSSTATUS"]
+        if statuses:
+            pps = PpsStatus.from_record(statuses[0])
+            payload["pps_status"] = {
+                "status": pps.status,
+                "gps_week": pps.gps_week,
+                "milliseconds_of_week": pps.milliseconds_of_week,
+                "pulse_error_ns": pps.pulse_error_ns,
+                "observation_offset_0_01_ns": pps.observation_offset_0_01_ns,
+                "config": pps.config.raw,
+                "inner_quality": pps.quality.raw,
+            }
+        else:
+            payload["pps_status"] = None
     write_json(payload, args.json)
     return 0
 

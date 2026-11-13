@@ -23,6 +23,8 @@ python -m examples.interference_monitor \
 ## Inputs and results
 
 Use `--threshold` to set the C/N₀ alert threshold.
+The spoof report includes anomaly and frequency masks and the satellite numbers
+reported for each constellation. Unknown mask bits remain visible in the masks.
 
 ## Understanding the result
 

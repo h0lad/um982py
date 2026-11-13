@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import math
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -14,7 +15,6 @@ from examples.spoof_dual_antenna import (
     HeadingOffset,
     SkyEntry,
     SkyView,
-    SpoofStatus,
     alarms,
     apply_heading_offset,
     bearing_candidates,
@@ -27,7 +27,7 @@ from examples.spoof_dual_antenna import (
 )
 
 from um982py.commands import Log
-from um982py.messages import Record
+from um982py.messages import Record, SpoofInfo
 from um982py.protocol import StreamDecoder
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "captures"
@@ -79,7 +79,7 @@ def test_injected_heading_inconsistency_is_flagged() -> None:
         math.degrees(math.hypot(1e-5, 1e-5)), rel=1e-9
     )
     assert agreement.consistent is False
-    assert alarms(agreement, (), SpoofStatus("NARROW_INT", 0)) == (
+    assert alarms(agreement, (), SpoofInfo.from_record(first("SPOOFINFOA"))) == (
         Alarm.BASELINE_HEADING,
     )
 
@@ -146,20 +146,20 @@ def test_injected_sky_inconsistency_is_flagged() -> None:
     assert alarms(
         compare_headings(tight_baseline(0.0, 1.0, 0.0), tight_baseline(0.0, 1.0, 0.0)),
         [comparison],
-        SpoofStatus("NARROW_INT", 0),
+        SpoofInfo.from_record(first("SPOOFINFOA")),
     ) == (Alarm.SKY_VIEW,)
 
 
 def test_real_spoof_info_reports_no_indicator() -> None:
-    status = SpoofStatus.from_record(first("SPOOFINFOA"))
-    assert status.position_type == "SINGLE"
+    status = SpoofInfo.from_record(first("SPOOFINFOA"))
+    assert status.position_type_label == "SINGLE"
     assert status.indicator == pytest.approx(0, abs=0)
-    assert status.spoofed is False
+    assert status.is_suspect is False
 
 
 def test_injected_spoof_indicator_is_flagged() -> None:
-    status = SpoofStatus("SINGLE", 1)
-    assert status.spoofed is True
+    status = replace(SpoofInfo.from_record(first("SPOOFINFOA")), indicator=1)
+    assert status.is_suspect is True
     assert alarms(
         compare_headings(tight_baseline(0.0, 1.0, 0.0), tight_baseline(0.0, 1.0, 0.0)),
         (),

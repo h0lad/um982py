@@ -33,6 +33,11 @@ operating system. See the [Linux PPS documentation](https://docs.kernel.org/driv
 
 The report uses receiver TIME messages and their leap-second information.
 Live capture requests binary TIME by default. Use `--ascii` to request ASCII.
+Add `--pps-status` to also report the receiver's PPS status, GPS week,
+millisecond of week, pulse error, observation offset, and raw configuration
+and quality words. This is receiver status, not a timestamp from the host PPS
+device. The PPS status may be absent if the receiver or firmware does not
+provide the log.
 
 ## Understanding the result
 

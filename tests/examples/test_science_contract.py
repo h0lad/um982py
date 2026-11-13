@@ -123,7 +123,25 @@ def test_unexpected_programming_errors_are_not_hidden() -> None:
 def test_missing_baseline_does_not_suppress_receiver_spoof_indicator() -> None:
     from examples.spoof_dual_antenna.__main__ import Capture, _payload
 
-    record = Record("SPOOFINFO", (("position_type", "SINGLE"), ("spoof_indicator", 1)))
+    record = Record(
+        "SPOOFINFO",
+        (
+            ("position_type", "SINGLE"),
+            ("spoof_indicator", 1),
+            *(
+                (name, 0)
+                for name in (
+                    "spoof_notice_mask",
+                    "time_notice_mask",
+                    "spoof_frequency_mask",
+                    "gps_satellite_notice_mask",
+                    "bds_satellite_notice_mask",
+                    "galileo_satellite_notice_mask",
+                    "glonass_satellite_notice_mask",
+                )
+            ),
+        ),
+    )
     result = _payload(Capture(spoof=(record,)))
     assert result["status"] == "incomplete_checks"
     assert result["alarms"] == ["SPOOF_INDICATOR"]

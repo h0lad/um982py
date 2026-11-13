@@ -157,10 +157,8 @@ def test_catalog_retains_r14_inventory() -> None:
     assert len(reference["logs"]) == 79
     for item in reference["logs"]:
         definition = LOGS[item["name"]]
-        assert (definition.section, definition.message_id) == (
-            item["section"],
-            item["message_id"],
-        )
+        # Section numbers changed in later manuals; the wire ID is stable.
+        assert definition.message_id == item["message_id"]
         for example in item["examples"]:
             head = example.split()[0]
             assert head in (

@@ -17,159 +17,159 @@ class LogDefinition:
 
 LOGS: Mapping[str, LogDefinition] = MappingProxyType(
     {
-        "VERSION": LogDefinition("VERSION", 37, "7.3.1", "VERSIONA", "VERSIONB", False),
-        "OBSVM": LogDefinition("OBSVM", 12, "7.3.2", "OBSVMA", "OBSVMB", False),
-        "OBSVH": LogDefinition("OBSVH", 13, "7.3.3", "OBSVHA", "OBSVHB", False),
+        "VERSION": LogDefinition("VERSION", 37, "7.5.2", "VERSIONA", "VERSIONB", False),
+        "OBSVM": LogDefinition("OBSVM", 12, "7.5.67", "OBSVMA", "OBSVMB", False),
+        "OBSVH": LogDefinition("OBSVH", 13, "7.5.66", "OBSVHA", "OBSVHB", False),
         "OBSVMCMP": LogDefinition(
-            "OBSVMCMP", 138, "7.3.4", "OBSVMCMPA", "OBSVMCMPB", False
+            "OBSVMCMP", 138, "7.5.69", "OBSVMCMPA", "OBSVMCMPB", False
         ),
         "OBSVHCMP": LogDefinition(
-            "OBSVHCMP", 139, "7.3.5", "OBSVHCMPA", "OBSVHCMPB", False
+            "OBSVHCMP", 139, "7.5.68", "OBSVHCMPA", "OBSVHCMPB", False
         ),
         "OBSVBASE": LogDefinition(
-            "OBSVBASE", 284, "7.3.6", "OBSVBASEA", "OBSVBASEB", True
+            "OBSVBASE", 284, "7.5.65", "OBSVBASEA", "OBSVBASEB", True
         ),
         "BASEINFO": LogDefinition(
-            "BASEINFO", 176, "7.3.7", "BASEINFOA", "BASEINFOB", False
+            "BASEINFO", 176, "7.5.12", "BASEINFOA", "BASEINFOB", False
         ),
-        "GPSION": LogDefinition("GPSION", 8, "7.3.8", "GPSIONA", "GPSIONB", False),
-        "BD3ION": LogDefinition("BD3ION", 21, "7.3.9", "BD3IONA", "BD3IONB", False),
-        "BDSION": LogDefinition("BDSION", 4, "7.3.10", "BDSIONA", "BDSIONB", False),
-        "GALION": LogDefinition("GALION", 9, "7.3.11", "GALIONA", "GALIONB", False),
-        "GPSUTC": LogDefinition("GPSUTC", 19, "7.3.12", "GPSUTCA", "GPSUTCB", False),
-        "BD3UTC": LogDefinition("BD3UTC", 22, "7.3.13", "BD3UTCA", "BD3UTCB", False),
-        "BDSUTC": LogDefinition("BDSUTC", 2012, "7.3.14", "BDSUTCA", "BDSUTCB", False),
-        "GALUTC": LogDefinition("GALUTC", 20, "7.3.15", "GALUTCA", "GALUTCB", False),
-        "GPSEPH": LogDefinition("GPSEPH", 106, "7.3.16", "GPSEPHA", "GPSEPHB", False),
+        "GPSION": LogDefinition("GPSION", 8, "7.5.41", "GPSIONA", "GPSIONB", False),
+        "BD3ION": LogDefinition("BD3ION", 21, "7.5.15", "BD3IONA", "BD3IONB", False),
+        "BDSION": LogDefinition("BDSION", 4, "7.5.18", "BDSIONA", "BDSIONB", False),
+        "GALION": LogDefinition("GALION", 9, "7.5.37", "GALIONA", "GALIONB", False),
+        "GPSUTC": LogDefinition("GPSUTC", 19, "7.5.42", "GPSUTCA", "GPSUTCB", False),
+        "BD3UTC": LogDefinition("BD3UTC", 22, "7.5.16", "BD3UTCA", "BD3UTCB", False),
+        "BDSUTC": LogDefinition("BDSUTC", 2012, "7.5.19", "BDSUTCA", "BDSUTCB", False),
+        "GALUTC": LogDefinition("GALUTC", 20, "7.5.38", "GALUTCA", "GALUTCB", False),
+        "GPSEPH": LogDefinition("GPSEPH", 106, "7.5.40", "GPSEPHA", "GPSEPHB", False),
         "QZSSEPH": LogDefinition(
-            "QZSSEPH", 110, "7.3.17", "QZSSEPHA", "QZSSEPHB", False
+            "QZSSEPH", 110, "7.5.83", "QZSSEPHA", "QZSSEPHB", False
         ),
-        "BD3EPH": LogDefinition("BD3EPH", 2999, "7.3.18", "BD3EPHA", "BD3EPHB", False),
-        "BDSEPH": LogDefinition("BDSEPH", 108, "7.3.19", "BDSEPHA", "BDSEPHB", False),
-        "GLOEPH": LogDefinition("GLOEPH", 107, "7.3.20", "GLOEPHA", "GLOEPHB", False),
-        "GALEPH": LogDefinition("GALEPH", 109, "7.3.21", "GALEPHA", "GALEPHB", False),
+        "BD3EPH": LogDefinition("BD3EPH", 2999, "7.5.14", "BD3EPHA", "BD3EPHB", False),
+        "BDSEPH": LogDefinition("BDSEPH", 108, "7.5.17", "BDSEPHA", "BDSEPHB", False),
+        "GLOEPH": LogDefinition("GLOEPH", 107, "7.5.39", "GLOEPHA", "GLOEPHB", False),
+        "GALEPH": LogDefinition("GALEPH", 109, "7.5.36", "GALEPHA", "GALEPHB", False),
         "IRNSSEPH": LogDefinition(
-            "IRNSSEPH", 112, "7.3.22", "IRNSSEPHA", "IRNSSEPHB", False
+            "IRNSSEPH", 112, "7.5.47", "IRNSSEPHA", "IRNSSEPHB", False
         ),
-        "AGRIC": LogDefinition("AGRIC", 11276, "7.3.23", "AGRICA", "AGRICB", False),
-        "PVTSLN": LogDefinition("PVTSLN", 1021, "7.3.24", "PVTSLNA", "PVTSLNB", False),
+        "AGRIC": LogDefinition("AGRIC", 11276, "7.5.9", "AGRICA", "AGRICB", False),
+        "PVTSLN": LogDefinition("PVTSLN", 1021, "7.5.81", "PVTSLNA", "PVTSLNB", False),
         "UNILOGLIST": LogDefinition(
-            "UNILOGLIST", None, "7.3.25", "UNILOGLIST", None, False
+            "UNILOGLIST", None, "7.5.103", "UNILOGLIST", None, False
         ),
         "BESTNAV": LogDefinition(
-            "BESTNAV", 2118, "7.3.26", "BESTNAVA", "BESTNAVB", False
+            "BESTNAV", 2118, "7.5.21", "BESTNAVA", "BESTNAVB", False
         ),
         "BESTNAVXYZ": LogDefinition(
-            "BESTNAVXYZ", 240, "7.3.27", "BESTNAVXYZA", "BESTNAVXYZB", False
+            "BESTNAVXYZ", 240, "7.5.23", "BESTNAVXYZA", "BESTNAVXYZB", False
         ),
         "BESTNAVH": LogDefinition(
-            "BESTNAVH", 2119, "7.3.28", "BESTNAVHA", "BESTNAVHB", False
+            "BESTNAVH", 2119, "7.5.20", "BESTNAVHA", "BESTNAVHB", False
         ),
         "BESTNAVXYZH": LogDefinition(
-            "BESTNAVXYZH", 242, "7.3.29", "BESTNAVXYZHA", "BESTNAVXYZHB", False
+            "BESTNAVXYZH", 242, "7.5.22", "BESTNAVXYZHA", "BESTNAVXYZHB", False
         ),
         "BESTSAT": LogDefinition(
-            "BESTSAT", 1041, "7.3.30", "BESTSATA", "BESTSATB", False
+            "BESTSAT", 1041, "7.5.24", "BESTSATA", "BESTSATB", False
         ),
-        "ADRNAV": LogDefinition("ADRNAV", 142, "7.3.31", "ADRNAVA", "ADRNAVB", False),
+        "ADRNAV": LogDefinition("ADRNAV", 142, "7.5.5", "ADRNAVA", "ADRNAVB", False),
         "ADRNAVH": LogDefinition(
-            "ADRNAVH", 2117, "7.3.32", "ADRNAVHA", "ADRNAVHB", False
+            "ADRNAVH", 2117, "7.5.6", "ADRNAVHA", "ADRNAVHB", False
         ),
-        "PPPNAV": LogDefinition("PPPNAV", 1026, "7.3.33", "PPPNAVA", "PPPNAVB", False),
+        "PPPNAV": LogDefinition("PPPNAV", 1026, "7.5.78", "PPPNAVA", "PPPNAVB", False),
         "PPPNAVH": LogDefinition(
             "PPPNAVH", 5996, "7.5.79", "PPPNAVHA", "PPPNAVHB", False
         ),
-        "SPPNAV": LogDefinition("SPPNAV", 46, "7.3.34", "SPPNAVA", "SPPNAVB", False),
+        "SPPNAV": LogDefinition("SPPNAV", 46, "7.5.96", "SPPNAVA", "SPPNAVB", False),
         "SPPNAVH": LogDefinition(
-            "SPPNAVH", 2116, "7.3.35", "SPPNAVHA", "SPPNAVHB", False
+            "SPPNAVH", 2116, "7.5.97", "SPPNAVHA", "SPPNAVHB", False
         ),
-        "STADOP": LogDefinition("STADOP", 954, "7.3.36", "STADOPA", "STADOPB", False),
+        "STADOP": LogDefinition("STADOP", 954, "7.5.98", "STADOPA", "STADOPB", False),
         "STADOPH": LogDefinition(
-            "STADOPH", 2122, "7.3.37", "STADOPHA", "STADOPHB", False
+            "STADOPH", 2122, "7.5.99", "STADOPHA", "STADOPHB", False
         ),
-        "ADRDOP": LogDefinition("ADRDOP", 953, "7.3.38", "ADRDOPA", "ADRDOPB", False),
+        "ADRDOP": LogDefinition("ADRDOP", 953, "7.5.3", "ADRDOPA", "ADRDOPB", False),
         "ADRDOPH": LogDefinition(
-            "ADRDOPH", 2121, "7.3.39", "ADRDOPHA", "ADRDOPHB", False
+            "ADRDOPH", 2121, "7.5.4", "ADRDOPHA", "ADRDOPHB", False
         ),
-        "PPPDOP": LogDefinition("PPPDOP", 1025, "7.3.40", "PPPDOPA", "PPPDOPB", False),
+        "PPPDOP": LogDefinition("PPPDOP", 1025, "7.5.75", "PPPDOPA", "PPPDOPB", False),
         "PPPDOP2": LogDefinition(
             "PPPDOP2", 5995, "7.5.76", "PPPDOP2A", "PPPDOP2B", False
         ),
-        "SPPDOP": LogDefinition("SPPDOP", 173, "7.3.41", "SPPDOPA", "SPPDOPB", False),
+        "SPPDOP": LogDefinition("SPPDOP", 173, "7.5.94", "SPPDOPA", "SPPDOPB", False),
         "SPPDOPH": LogDefinition(
-            "SPPDOPH", 2120, "7.3.42", "SPPDOPHA", "SPPDOPHB", False
+            "SPPDOPH", 2120, "7.5.95", "SPPDOPHA", "SPPDOPHB", False
         ),
         "SATSINFO": LogDefinition(
-            "SATSINFO", 2124, "7.3.43", "SATSINFOA", "SATSINFOB", False
+            "SATSINFO", 2124, "7.5.92", "SATSINFOA", "SATSINFOB", False
         ),
         "BASEPOS": LogDefinition(
-            "BASEPOS", 49, "7.3.44", "BASEPOSA", "BASEPOSB", False
+            "BASEPOS", 49, "7.5.13", "BASEPOSA", "BASEPOSB", False
         ),
         "SATELLITE": LogDefinition(
-            "SATELLITE", 1042, "7.3.45", "SATELLITEA", "SATELLITEB", False
+            "SATELLITE", 1042, "7.5.91", "SATELLITEA", "SATELLITEB", False
         ),
         "SATECEF": LogDefinition(
-            "SATECEF", 2115, "7.3.46", "SATECEFA", "SATECEFB", False
+            "SATECEF", 2115, "7.5.90", "SATECEFA", "SATECEFB", False
         ),
         "RECTIME": LogDefinition(
-            "RECTIME", 102, "7.3.47", "RECTIMEA", "RECTIMEB", False
+            "RECTIME", 102, "7.5.84", "RECTIMEA", "RECTIMEB", False
         ),
         "UNIHEADING": LogDefinition(
-            "UNIHEADING", 972, "7.3.48", "UNIHEADINGA", "UNIHEADINGB", False
+            "UNIHEADING", 972, "7.5.101", "UNIHEADINGA", "UNIHEADINGB", False
         ),
         "UNIHEADING2": LogDefinition(
-            "UNIHEADING2", 1331, "7.3.49", "UNIHEADING2A", "UNIHEADING2B", True
+            "UNIHEADING2", 1331, "7.5.102", "UNIHEADING2A", "UNIHEADING2B", True
         ),
         "HEADINGSTATUS": LogDefinition(
-            "HEADINGSTATUS", 521, "7.3.50", "HEADINGSTATUSA", "HEADINGSTATUSB", False
+            "HEADINGSTATUS", 521, "7.5.43", "HEADINGSTATUSA", "HEADINGSTATUSB", False
         ),
         "RTKSTATUS": LogDefinition(
-            "RTKSTATUS", 509, "7.3.51", "RTKSTATUSA", "RTKSTATUSB", False
+            "RTKSTATUS", 509, "7.5.88", "RTKSTATUSA", "RTKSTATUSB", False
         ),
         "AGNSSSTATUS": LogDefinition(
-            "AGNSSSTATUS", 512, "7.3.52", "AGNSSSTATUSA", "AGNSSSTATUSB", False
+            "AGNSSSTATUS", 512, "7.5.8", "AGNSSSTATUSA", "AGNSSSTATUSB", False
         ),
         "RTCSTATUS": LogDefinition(
-            "RTCSTATUS", 510, "7.3.53", "RTCSTATUSA", "RTCSTATUSB", False
+            "RTCSTATUS", 510, "7.5.87", "RTCSTATUSA", "RTCSTATUSB", False
         ),
         "JAMSTATUS": LogDefinition(
-            "JAMSTATUS", 511, "7.3.54", "JAMSTATUSA", "JAMSTATUSB", False
+            "JAMSTATUS", 511, "7.5.48", "JAMSTATUSA", "JAMSTATUSB", False
         ),
         "FREQJAMSTATUS": LogDefinition(
-            "FREQJAMSTATUS", 519, "7.3.55", "FREQJAMSTATUSA", "FREQJAMSTATUSB", False
+            "FREQJAMSTATUS", 519, "7.5.35", "FREQJAMSTATUSA", "FREQJAMSTATUSB", False
         ),
         "RTCMSTATUS": LogDefinition(
-            "RTCMSTATUS", 2125, "7.3.56", "RTCMSTATUSA", "RTCMSTATUSB", True
+            "RTCMSTATUS", 2125, "7.5.86", "RTCMSTATUSA", "RTCMSTATUSB", True
         ),
         "HWSTATUS": LogDefinition(
-            "HWSTATUS", 218, "7.3.57", "HWSTATUSA", "HWSTATUSB", False
+            "HWSTATUS", 218, "7.5.44", "HWSTATUSA", "HWSTATUSB", False
         ),
-        "AGC": LogDefinition("AGC", 220, "7.3.58", "AGCA", "AGCB", False),
-        "KSXT": LogDefinition("KSXT", None, "7.3.59", "KSXT", None, False),
+        "AGC": LogDefinition("AGC", 220, "7.5.7", "AGCA", "AGCB", False),
+        "KSXT": LogDefinition("KSXT", None, "7.5.49", "KSXT", None, False),
         "INFOPART1": LogDefinition(
-            "INFOPART1", 1019, "7.3.60", "INFOPART1A", "INFOPART1B", False
+            "INFOPART1", 1019, "7.5.45", "INFOPART1A", "INFOPART1B", False
         ),
         "INFOPART2": LogDefinition(
-            "INFOPART2", 1020, "7.3.61", "INFOPART2A", "INFOPART2B", False
+            "INFOPART2", 1020, "7.5.46", "INFOPART2A", "INFOPART2B", False
         ),
-        "MSPOS": LogDefinition("MSPOS", 520, "7.3.62", "MSPOSA", "MSPOSB", False),
+        "MSPOS": LogDefinition("MSPOS", 520, "7.5.64", "MSPOSA", "MSPOSB", False),
         "TROPINFO": LogDefinition(
-            "TROPINFO", 2318, "7.3.63", "TROPINFOA", "TROPINFOB", True
+            "TROPINFO", 2318, "7.5.100", "TROPINFOA", "TROPINFOB", True
         ),
         "PPPB2BINFO1": LogDefinition(
-            "PPPB2BINFO1", 2302, "7.3.64", "PPPB2BINFO1A", "PPPB2BINFO1B", True
+            "PPPB2BINFO1", 2302, "7.5.70", "PPPB2BINFO1A", "PPPB2BINFO1B", True
         ),
         "PPPB2BINFO2": LogDefinition(
-            "PPPB2BINFO2", 2304, "7.3.65", "PPPB2BINFO2A", "PPPB2BINFO2B", True
+            "PPPB2BINFO2", 2304, "7.5.71", "PPPB2BINFO2A", "PPPB2BINFO2B", True
         ),
         "PPPB2BINFO3": LogDefinition(
-            "PPPB2BINFO3", 2306, "7.3.66", "PPPB2BINFO3A", "PPPB2BINFO3B", True
+            "PPPB2BINFO3", 2306, "7.5.72", "PPPB2BINFO3A", "PPPB2BINFO3B", True
         ),
         "PPPB2BINFO4": LogDefinition(
-            "PPPB2BINFO4", 2308, "7.3.67", "PPPB2BINFO4A", "PPPB2BINFO4B", True
+            "PPPB2BINFO4", 2308, "7.5.73", "PPPB2BINFO4A", "PPPB2BINFO4B", True
         ),
         "PPPB2BINFO5": LogDefinition(
-            "PPPB2BINFO5", 2310, "7.3.68", "PPPB2BINFO5A", "PPPB2BINFO5B", True
+            "PPPB2BINFO5", 2310, "7.5.74", "PPPB2BINFO5A", "PPPB2BINFO5B", True
         ),
         "PPPB2BINFO6": LogDefinition(
             "PPPB2BINFO6", 2312, "7.3.69", "PPPB2BINFO6A", "PPPB2BINFO6B", True
@@ -178,15 +178,15 @@ LOGS: Mapping[str, LogDefinition] = MappingProxyType(
             "PPPB2BINFO7", 2314, "7.3.70", "PPPB2BINFO7A", "PPPB2BINFO7B", True
         ),
         "E6MASKBLOCK": LogDefinition(
-            "E6MASKBLOCK", 2319, "7.3.71", "E6MASKBLOCKA", "E6MASKBLOCKB", True
+            "E6MASKBLOCK", 2319, "7.5.31", "E6MASKBLOCKA", "E6MASKBLOCKB", True
         ),
         "E6ORBITBLOCK": LogDefinition(
-            "E6ORBITBLOCK", 2320, "7.3.72", "E6ORBITBLOCKA", "E6ORBITBLOCKB", True
+            "E6ORBITBLOCK", 2320, "7.5.32", "E6ORBITBLOCKA", "E6ORBITBLOCKB", True
         ),
         "E6CLOCKFULLBLOCK": LogDefinition(
             "E6CLOCKFULLBLOCK",
             2321,
-            "7.3.73",
+            "7.5.29",
             "E6CLOCKFULLBLOCKA",
             "E6CLOCKFULLBLOCKB",
             True,
@@ -194,59 +194,59 @@ LOGS: Mapping[str, LogDefinition] = MappingProxyType(
         "E6CLOCKSUBBLOCK": LogDefinition(
             "E6CLOCKSUBBLOCK",
             2322,
-            "7.3.74",
+            "7.5.30",
             "E6CLOCKSUBBLOCKA",
             "E6CLOCKSUBBLOCKB",
             True,
         ),
         "E6CBIASBLOCK": LogDefinition(
-            "E6CBIASBLOCK", 2323, "7.3.75", "E6CBIASBLOCKA", "E6CBIASBLOCKB", True
+            "E6CBIASBLOCK", 2323, "7.5.28", "E6CBIASBLOCKA", "E6CBIASBLOCKB", True
         ),
         "E6PBIASBLOCK": LogDefinition(
-            "E6PBIASBLOCK", 2324, "7.3.76", "E6PBIASBLOCKA", "E6PBIASBLOCKB", True
+            "E6PBIASBLOCK", 2324, "7.5.33", "E6PBIASBLOCKA", "E6PBIASBLOCKB", True
         ),
         "BSLNENUHD2": LogDefinition(
-            "BSLNENUHD2", 1316, "7.3.77", "BSLNENUHD2A", "BSLNENUHD2B", True
+            "BSLNENUHD2", 1316, "7.5.25", "BSLNENUHD2A", "BSLNENUHD2B", True
         ),
         "BSLNXYZHD2": LogDefinition(
-            "BSLNXYZHD2", 1317, "7.3.78", "BSLNXYZHD2A", "BSLNXYZHD2B", True
+            "BSLNXYZHD2", 1317, "7.5.26", "BSLNXYZHD2A", "BSLNXYZHD2B", True
         ),
-        "DOPHD2": LogDefinition("DOPHD2", 1333, "7.3.79", "DOPHD2A", "DOPHD2B", True),
-        "GPDTM": LogDefinition("GPDTM", None, "7.1.1.1", "GPDTM", None, False),
-        "GPGBS": LogDefinition("GPGBS", None, "7.1.1.2", "GPGBS", None, False),
-        "GPGGA": LogDefinition("GPGGA", None, "7.1.1.3", "GPGGA", None, False),
-        "GPGLL": LogDefinition("GPGLL", None, "7.1.1.4", "GPGLL", None, False),
-        "GPGNS": LogDefinition("GPGNS", None, "7.1.1.5", "GPGNS", None, False),
-        "GPGRS": LogDefinition("GPGRS", None, "7.1.1.6", "GPGRS", None, False),
-        "GPGSA": LogDefinition("GPGSA", None, "7.1.1.7", "GPGSA", None, False),
-        "GPGST": LogDefinition("GPGST", None, "7.1.1.8", "GPGST", None, False),
-        "GPGSV": LogDefinition("GPGSV", None, "7.1.1.9", "GPGSV", None, False),
-        "GPTHS": LogDefinition("GPTHS", None, "7.1.1.10", "GPTHS", None, False),
-        "GPRMC": LogDefinition("GPRMC", None, "7.1.1.11", "GPRMC", None, False),
-        "GPROT": LogDefinition("GPROT", None, "7.1.1.12", "GPROT", None, False),
-        "GPVTG": LogDefinition("GPVTG", None, "7.1.1.13", "GPVTG", None, False),
-        "GPZDA": LogDefinition("GPZDA", None, "7.1.1.14", "GPZDA", None, False),
-        "GPGGAH": LogDefinition("GPGGAH", None, "7.2.1", "GPGGAH", None, False),
-        "GPGLLH": LogDefinition("GPGLLH", None, "7.2.2", "GPGLLH", None, False),
-        "GPGNSH": LogDefinition("GPGNSH", None, "7.2.3", "GPGNSH", None, False),
-        "GPGRSH": LogDefinition("GPGRSH", None, "7.2.4", "GPGRSH", None, False),
-        "GPGSAH": LogDefinition("GPGSAH", None, "7.2.5", "GPGSAH", None, False),
-        "GPGSTH": LogDefinition("GPGSTH", None, "7.2.6", "GPGSTH", None, False),
-        "GPGSVH": LogDefinition("GPGSVH", None, "7.2.7", "GPGSVH", None, False),
-        "GPRMCH": LogDefinition("GPRMCH", None, "7.2.8", "GPRMCH", None, False),
-        "GPVTGH": LogDefinition("GPVTGH", None, "7.2.9", "GPVTGH", None, False),
-        "GPTHS2": LogDefinition("GPTHS2", None, "7.2.10", "GPTHS2", None, True),
-        "GPHPR": LogDefinition("GPHPR", None, "7.2.11", "GPHPR", None, False),
-        "GPHPR2": LogDefinition("GPHPR2", None, "7.2.12", "GPHPR2", None, True),
-        "GPTRA2": LogDefinition("GPTRA2", None, "7.2.13", "GPTRA2", None, True),
-        "GPROT2": LogDefinition("GPROT2", None, "7.2.14", "GPROT2", None, True),
-        "GPHPD": LogDefinition("GPHPD", None, "7.2.15", "GPHPD", None, False),
+        "DOPHD2": LogDefinition("DOPHD2", 1333, "7.5.27", "DOPHD2A", "DOPHD2B", True),
+        "GPDTM": LogDefinition("GPDTM", None, "7.2.1", "GPDTM", None, False),
+        "GPGBS": LogDefinition("GPGBS", None, "7.2.2", "GPGBS", None, False),
+        "GPGGA": LogDefinition("GPGGA", None, "7.2.3", "GPGGA", None, False),
+        "GPGLL": LogDefinition("GPGLL", None, "7.2.4", "GPGLL", None, False),
+        "GPGNS": LogDefinition("GPGNS", None, "7.2.5", "GPGNS", None, False),
+        "GPGRS": LogDefinition("GPGRS", None, "7.2.6", "GPGRS", None, False),
+        "GPGSA": LogDefinition("GPGSA", None, "7.2.7", "GPGSA", None, False),
+        "GPGST": LogDefinition("GPGST", None, "7.2.8", "GPGST", None, False),
+        "GPGSV": LogDefinition("GPGSV", None, "7.2.9", "GPGSV", None, False),
+        "GPTHS": LogDefinition("GPTHS", None, "7.2.10", "GPTHS", None, False),
+        "GPRMC": LogDefinition("GPRMC", None, "7.2.11", "GPRMC", None, False),
+        "GPROT": LogDefinition("GPROT", None, "7.2.12", "GPROT", None, False),
+        "GPVTG": LogDefinition("GPVTG", None, "7.2.13", "GPVTG", None, False),
+        "GPZDA": LogDefinition("GPZDA", None, "7.2.14", "GPZDA", None, False),
+        "GPGGAH": LogDefinition("GPGGAH", None, "7.4.1", "GPGGAH", None, False),
+        "GPGLLH": LogDefinition("GPGLLH", None, "7.4.2", "GPGLLH", None, False),
+        "GPGNSH": LogDefinition("GPGNSH", None, "7.4.3", "GPGNSH", None, False),
+        "GPGRSH": LogDefinition("GPGRSH", None, "7.4.4", "GPGRSH", None, False),
+        "GPGSAH": LogDefinition("GPGSAH", None, "7.4.5", "GPGSAH", None, False),
+        "GPGSTH": LogDefinition("GPGSTH", None, "7.4.6", "GPGSTH", None, False),
+        "GPGSVH": LogDefinition("GPGSVH", None, "7.4.7", "GPGSVH", None, False),
+        "GPRMCH": LogDefinition("GPRMCH", None, "7.4.11", "GPRMCH", None, False),
+        "GPVTGH": LogDefinition("GPVTGH", None, "7.4.15", "GPVTGH", None, False),
+        "GPTHS2": LogDefinition("GPTHS2", None, "7.4.13", "GPTHS2", None, True),
+        "GPHPR": LogDefinition("GPHPR", None, "7.4.9", "GPHPR", None, False),
+        "GPHPR2": LogDefinition("GPHPR2", None, "7.4.10", "GPHPR2", None, True),
+        "GPTRA2": LogDefinition("GPTRA2", None, "7.4.14", "GPTRA2", None, True),
+        "GPROT2": LogDefinition("GPROT2", None, "7.4.12", "GPROT2", None, True),
+        "GPHPD": LogDefinition("GPHPD", None, "7.4.8", "GPHPD", None, False),
         "QZQSM": LogDefinition("QZQSM", None, "7.4.16", "QZQSM", None, False),
         "EVENTFLAG": LogDefinition(
-            "EVENTFLAG", 312, "Appendix 3", "EVENTFLAGA", "EVENTFLAGB", True
+            "EVENTFLAG", 312, "Appendix 4", "EVENTFLAGA", "EVENTFLAGB", True
         ),
         "EVENTSLN": LogDefinition(
-            "EVENTSLN", 311, "Appendix 3", "EVENTSLNA", "EVENTSLNB", True
+            "EVENTSLN", 311, "Appendix 4", "EVENTSLNA", "EVENTSLNB", True
         ),
     }
 )
@@ -346,8 +346,17 @@ RTCM_LOGS: Mapping[str, LogDefinition] = MappingProxyType(
 # The R1.15 text lists only ASCII syntax for L1SMT. A receiver accepted the
 # binary commands with ONCHANGED, and documented binary layouts are available.
 RAW_CORRECTION_LOGS: frozenset[str] = frozenset()
-R115_LOGS: Mapping[str, LogDefinition] = MappingProxyType(
+ADDITIONAL_LOGS: Mapping[str, LogDefinition] = MappingProxyType(
     {
+        "ENVINFO": LogDefinition(
+            "ENVINFO", 11779, "7.5.34", "ENVINFOA", "ENVINFOB", False
+        ),
+        "PPSSTATUS": LogDefinition(
+            "PPSSTATUS", 9000, "7.5.82", "PPSSTATUSA", "PPSSTATUSB", False
+        ),
+        "SPOOFINFO": LogDefinition(
+            "SPOOFINFO", 530, "7.5.93", "SPOOFINFOA", "SPOOFINFOB", False
+        ),
         "APPPNAV": LogDefinition(
             "APPPNAV", 1457, "7.5.11", "APPPNAVA", "APPPNAVB", False
         ),
@@ -405,11 +414,11 @@ R115_LOGS: Mapping[str, LogDefinition] = MappingProxyType(
             "RPPPNAV", 1027, "7.5.80", "RPPPNAVA", "RPPPNAVB", False
         ),
         "RTKSTATUS2": LogDefinition(
-            "RTKSTATUS2", 691, "7.5.88", "RTKSTATUS2A", "RTKSTATUS2B", False
+            "RTKSTATUS2", 691, "7.5.89", "RTKSTATUS2A", "RTKSTATUS2B", False
         ),
     }
 )
-LOGS = MappingProxyType(dict(LOGS) | dict(RTCM_LOGS) | dict(R115_LOGS))
+LOGS = MappingProxyType(dict(LOGS) | dict(RTCM_LOGS) | dict(ADDITIONAL_LOGS))
 
 WIRE_LOGS: Mapping[str, LogDefinition] = MappingProxyType(
     {

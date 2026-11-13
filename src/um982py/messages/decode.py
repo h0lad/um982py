@@ -6,6 +6,7 @@ from math import isfinite
 from um982py.commands.catalog import LOGS, RTCM_LOGS
 from um982py.errors import ProtocolError
 from um982py.messages.frames import (
+    AbbreviatedAsciiMessage,
     AsciiMessage,
     BinaryMessage,
     LogListMessage,
@@ -70,6 +71,10 @@ def _decode_log(message: Message) -> Record:
                 name
                 for name, definition in LOGS.items()
                 if definition.ascii_command == message.name
+                or (
+                    isinstance(message, AbbreviatedAsciiMessage)
+                    and definition.name == message.name
+                )
             ),
             None,
         )

@@ -42,8 +42,8 @@ FREQUENCIES = (
 def frequency(signal: str, *, enabled: bool = False) -> Command[CommandResponse]:
     """Mask or unmask a documented signal token.
 
-    R1.16 notes that BeiDou-2 signals will no longer be tracked. B2I remains
-    available here for receivers and firmware that support it.
+    The receiver manual notes that BeiDou-2 signals will no longer be tracked.
+    B2I remains available here for receivers and firmware that support it.
     """
     return action(f"{'UNMASK' if enabled else 'MASK'} {option(signal, FREQUENCIES)}")
 

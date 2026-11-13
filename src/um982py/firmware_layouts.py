@@ -3,7 +3,7 @@
 from dataclasses import replace
 
 from um982py.messages.layouts import LAYOUTS as DOCUMENTED
-from um982py.messages.schema import Field, Group, Kind, Layout
+from um982py.messages.schema import Field, Group, Layout
 from um982py.navigation_layouts import LAYOUTS as NAVIGATION
 
 POSITION = Layout("BESTPOS", "extended", DOCUMENTED["BESTNAV"].fields[:21], 72)
@@ -70,57 +70,6 @@ HEADINGOFFSET = Layout(
     (Field("heading", "f", 0, 4), Field("pitch", "f", 4, 4)),
     8,
 )
-PPSSTATUS = Layout(
-    "PPSSTATUS",
-    "extended",
-    tuple(
-        Field(
-            f"field_{i + 1:02}",
-            "i" if i in (3, 4, 7) else "x" if i in (5, 6) or i >= 8 else "u",
-            i * 4,
-            4,
-        )
-        for i in range(15)
-    ),
-    60,
-)
-_ENV_FIELDS: tuple[tuple[Kind, int, int], ...] = (
-    ("u", 0, 2),
-    ("d", 2, 8),
-    ("u", 10, 2),
-    ("u", 12, 2),
-    ("u", 14, 1),
-    ("u", 15, 1),
-    ("d", 16, 8),
-    ("e", 24, 4),
-    ("u", 28, 4),
-    ("u", 32, 4),
-    ("d", 36, 8),
-    ("u", 44, 2),
-    ("u", 46, 2),
-    ("u", 48, 2),
-    ("u", 50, 2),
-    ("u", 52, 4),
-    ("u", 56, 4),
-    ("u", 60, 4),
-    ("u", 64, 8),
-    ("d", 72, 8),
-    ("d", 80, 8),
-    ("d", 88, 8),
-    ("u", 96, 1),
-    ("u", 97, 1),
-    ("d", 98, 8),
-    ("d", 106, 8),
-)
-ENVINFO = Layout(
-    "ENVINFO",
-    "extended",
-    tuple(
-        Field(f"field_{i + 1:02}", kind, offset, size)
-        for i, (kind, offset, size) in enumerate(_ENV_FIELDS)
-    ),
-    114,
-)
 RXSTATUS = Layout(
     "RXSTATUS",
     "extended",
@@ -156,8 +105,6 @@ LAYOUTS = {
         TIME,
         RANGE,
         HEADINGOFFSET,
-        PPSSTATUS,
-        ENVINFO,
         RXSTATUS,
     )
 }
@@ -181,22 +128,7 @@ DOPPVEL = Layout(
     tuple(replace(f, offset=f.offset - 72) for f in DOCUMENTED["BESTNAV"].fields[21:]),
     48,
 )
-SPOOFINFO = Layout(
-    "SPOOFINFO",
-    "extended",
-    (
-        Field("position_type", "e", 0, 4),
-        Field("spoof_indicator", "i", 4, 4),
-        *(
-            Field(f"field_{i + 1:02}", "x" if i < 5 else "u", i * 4, 4)
-            for i in range(2, 20)
-        ),
-        *(Field(f"field_{i + 21:02}", "x", 80 + i * 8, 8) for i in range(4)),
-        *(Field(f"field_{i + 25:02}", "d", 112 + i * 8, 8) for i in range(3)),
-    ),
-    136,
-)
-LAYOUTS.update({layout.name: layout for layout in (ANTENNA, DOPPVEL, SPOOFINFO)})
+LAYOUTS.update({layout.name: layout for layout in (ANTENNA, DOPPVEL)})
 LAYOUTS["ANTENNASTATUS"] = replace(ANTENNA, name="ANTENNASTATUS")
 LAYOUTS["DOPPVELH"] = replace(DOPPVEL, name="DOPPVELH")
 LAYOUTS.update(NAVIGATION)

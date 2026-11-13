@@ -181,3 +181,21 @@ def test_invalid_receiver_utc_is_reported_without_calendar_conversion(
     monkeypatch.setattr(cli, "capture_records", lambda *a, **kw: {"TIME": [invalid]})
     assert cli.main([]) == 1
     assert "receiver UTC is not valid" in capsys.readouterr().out
+
+
+def test_replay_reports_receiver_pps_status(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import json
+
+    from examples.time_transfer import __main__ as cli
+
+    replay = tmp_path / "time-and-pps.bin"
+    replay.write_bytes(
+        (FIXTURES / "TIMEB.bin").read_bytes()
+        + (FIXTURES / "PPSSTATUSB.bin").read_bytes()
+    )
+    assert cli.main(["--replay", str(replay), "--pps-status"]) == 0
+    result = json.loads(capsys.readouterr().out)
+    assert result["pps_status"]["status"] == 3
+    assert result["pps_status"]["pulse_error_ns"] is not None

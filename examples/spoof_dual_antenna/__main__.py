@@ -21,7 +21,6 @@ from examples.spoof_dual_antenna import (
     HeadingAgreement,
     HeadingOffset,
     SkyComparison,
-    SpoofStatus,
     alarms,
     apply_heading_offset,
     compare_headings,
@@ -32,7 +31,7 @@ from um982py import Receiver
 from um982py.capture import iter_frames
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
-from um982py.messages import Record
+from um982py.messages import Record, SpoofInfo
 
 
 @dataclass(frozen=True, slots=True)
@@ -152,8 +151,8 @@ def _compare_latest_sky_snapshots(capture: Capture) -> tuple[SkyComparison, ...]
     return compare_snapshots(snapshots[-2], snapshots[-1])
 
 
-def _latest_spoof_status(capture: Capture) -> SpoofStatus | None:
-    return None if not capture.spoof else SpoofStatus.from_record(capture.spoof[-1])
+def _latest_spoof_status(capture: Capture) -> SpoofInfo | None:
+    return None if not capture.spoof else SpoofInfo.from_record(capture.spoof[-1])
 
 
 def _payload(capture: Capture, *, swapped: bool = False) -> dict[str, object]:
@@ -206,13 +205,20 @@ def _max_absolute(values: Sequence[float]) -> float | None:
     return max((abs(value) for value in values), default=None)
 
 
-def _spoof_payload(spoof: SpoofStatus | None) -> dict[str, object] | None:
+def _spoof_payload(spoof: SpoofInfo | None) -> dict[str, object] | None:
     if spoof is None:
         return None
     return {
-        "position_type": spoof.position_type,
+        "position_type": spoof.position_type_label,
         "indicator": spoof.indicator,
-        "spoofed": spoof.spoofed,
+        "spoofed": spoof.is_suspect,
+        "notice_mask": int(spoof.notices),
+        "time_notice_mask": int(spoof.time_notices),
+        "signal_mask": int(spoof.signals),
+        "gps_satellites": list(spoof.gps_satellites),
+        "bds_satellites": list(spoof.bds_satellites),
+        "galileo_satellites": list(spoof.galileo_satellites),
+        "glonass_satellites": list(spoof.glonass_satellites),
     }
 
 

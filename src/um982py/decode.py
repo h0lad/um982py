@@ -6,6 +6,7 @@ from um982py.commands.catalog import RTCM_LOGS
 from um982py.errors import ProtocolError
 from um982py.messages.decode import decode_log
 from um982py.messages.frames import (
+    AbbreviatedAsciiMessage,
     AsciiMessage,
     BinaryMessage,
     LogListMessage,
@@ -21,7 +22,11 @@ from um982py.protocol.binary import (
     parse_binary,
     parse_rtcm,
 )
-from um982py.protocol.listing import listing_size, parse_listing
+from um982py.protocol.listing import (
+    listing_size,
+    parse_abbreviated_table,
+    parse_listing,
+)
 
 if TYPE_CHECKING:
     from um982py.commands import Log
@@ -38,6 +43,10 @@ def _frame(raw: bytes) -> Message:
         if listing_size(bytearray(raw)) != len(raw):
             raise ProtocolError("Expected one complete UNILOGLIST response")
         return parse_listing(raw)
+    if raw.startswith((b"#LBANDBEAM,", b"#LBANDTRACKSTATUS,")):
+        if listing_size(bytearray(raw), kind="L-band table") != len(raw):
+            raise ProtocolError("Expected one complete L-band table")
+        return parse_abbreviated_table(raw)
     if not raw.startswith((b"$", b"#")):
         raise ProtocolError("Unknown receiver message header")
     body = raw.rstrip(b"\r\n")
@@ -75,7 +84,10 @@ def decode_message(raw: bytes, *, log: "Log | None" = None) -> Record:
                     continue
                 if candidate.definition.message_id == frame.header.message_id:
                     matches.append(candidate)
-            elif wire == frame.name:
+            elif wire == frame.name or (
+                isinstance(frame, AbbreviatedAsciiMessage)
+                and candidate.value == frame.name
+            ):
                 matches.append(candidate)
         if len(matches) == 1:
             return matches[0].decode(frame)

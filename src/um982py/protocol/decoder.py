@@ -13,7 +13,11 @@ from um982py.protocol.binary import (
     parse_binary,
     parse_rtcm,
 )
-from um982py.protocol.listing import listing_size, parse_listing
+from um982py.protocol.listing import (
+    listing_size,
+    parse_abbreviated_table,
+    parse_listing,
+)
 
 
 class StreamDecoder:
@@ -50,16 +54,22 @@ class StreamDecoder:
                 self._buffer.startswith(b"#UNILOGLIST,")
                 and b"*" not in self._buffer[: self._buffer.find(b"\n")]
             )
-            if listing:
+            table = any(
+                self._buffer.startswith(b"#" + name + b",")
+                for name in (b"LBANDBEAM", b"LBANDTRACKSTATUS")
+            )
+            if listing or table:
                 try:
-                    listing_length = listing_size(self._buffer)
+                    listing_length = listing_size(
+                        self._buffer, kind="L-band table" if table else "UNILOGLIST"
+                    )
                 except ProtocolError as error:
                     self._fail(error, self._buffer.find(b"\n") + 1)
                     continue
                 if listing_length is None:
                     if len(self._buffer) > self.max_frame_size:
                         self._fail(
-                            ProtocolError("UNILOGLIST exceeds size limit"),
+                            ProtocolError("Table exceeds size limit"),
                             len(self._buffer),
                         )
                         continue
@@ -130,6 +140,8 @@ class StreamDecoder:
             try:
                 if listing:
                     message = parse_listing(raw)
+                elif table:
+                    message = parse_abbreviated_table(raw)
                 elif binary:
                     message = parse_binary(raw)
                 elif rtcm:

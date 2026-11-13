@@ -1,8 +1,105 @@
 """Receiver, antenna and DOP body layouts."""
 
-from um982py.messages.schema import Field, Group, Layout
+from um982py.messages.schema import Field, Group, Kind, Layout
+
+_ENV_FIELDS: tuple[tuple[Kind, int, int], ...] = (
+    ("u", 0, 2),
+    ("d", 2, 8),
+    ("u", 10, 2),
+    ("u", 12, 2),
+    ("u", 14, 1),
+    ("u", 15, 1),
+    ("d", 16, 8),
+    ("e", 24, 4),
+    ("i", 28, 4),
+    ("i", 32, 4),
+    ("d", 36, 8),
+    ("u", 44, 2),
+    ("u", 46, 2),
+    ("u", 48, 2),
+    ("u", 50, 2),
+    ("u", 52, 4),
+    ("u", 56, 4),
+    ("u", 60, 4),
+    ("u", 64, 8),
+    ("d", 72, 8),
+    ("d", 80, 8),
+    ("d", 88, 8),
+    ("u", 96, 1),
+    ("u", 97, 1),
+    ("d", 98, 8),
+    ("d", 106, 8),
+)
+ENVINFO = Layout(
+    "ENVINFO",
+    "7-89",
+    tuple(
+        Field(name, kind, offset, size)
+        for name, (kind, offset, size) in zip(
+            (
+                "base_score",
+                "solution_confidence",
+                "visible_satellite_ratio",
+                "used_satellite_ratio",
+                "moved_flag",
+                "moving_flag",
+                "position_difference",
+                "position_type",
+                "base_satellite_count",
+                "common_satellite_count",
+                "reserved_1",
+                "visible_satellite_count",
+                *(f"reserved_{i}" for i in range(2, 16)),
+            ),
+            _ENV_FIELDS,
+            strict=True,
+        )
+    ),
+    114,
+)
+PPSSTATUS = Layout(
+    "PPSSTATUS",
+    "7-152",
+    (
+        Field("status", "u", 0, 4),
+        Field("gps_week", "u", 4, 4),
+        Field("milliseconds_of_week", "u", 8, 4),
+        Field("pulse_error_ns", "i", 12, 4),
+        Field("observation_offset_0_01_ns", "i", 16, 4),
+        Field("config_info", "x", 20, 4),
+        Field("register_status", "x", 24, 4),
+        Field("time_estimate_error", "i", 28, 4),
+        Field("inner_quality", "x", 32, 4),
+        Field("pps_inner_status", "x", 36, 4),
+        Field("pps_config_status", "x", 40, 4),
+        Field("pps_stage", "x", 44, 4),
+        *(Field(f"reserved_{i + 1}", "x", 48 + 4 * i, 4) for i in range(3)),
+    ),
+    60,
+)
+SPOOFINFO = Layout(
+    "SPOOFINFO",
+    "7-163",
+    (
+        Field("position_type", "e", 0, 4),
+        Field("spoof_indicator", "i", 4, 4),
+        Field("spoof_notice_mask", "x", 8, 4),
+        Field("time_notice_mask", "x", 12, 4),
+        Field("spoof_frequency_mask", "x", 16, 4),
+        *(Field(f"reserved_{i + 1}", "u", 20 + 4 * i, 4) for i in range(15)),
+        Field("gps_satellite_notice_mask", "x", 80, 8),
+        Field("bds_satellite_notice_mask", "x", 88, 8),
+        Field("galileo_satellite_notice_mask", "x", 96, 8),
+        Field("glonass_satellite_notice_mask", "x", 104, 8),
+        *(Field(f"reserved_{i + 16}", "d", 112 + 8 * i, 8) for i in range(3)),
+    ),
+    136,
+)
 
 LAYOUTS: tuple[Layout, ...] = (
+    ENVINFO,
+    PPSSTATUS,
+    SPOOFINFO,
     Layout(
         "BASEINFO",
         "7-63",

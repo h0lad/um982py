@@ -52,16 +52,19 @@ def binary_message(name: str, data: bytes) -> BinaryMessage:
 
 
 def test_body_inventory() -> None:
+    reference = json.loads((FIXTURES / "receiver-reference.json").read_text())
     documented = {
-        name
-        for name, definition in LOGS.items()
-        if definition.section.startswith(("7.3.", "7.5."))
-        or definition.section == "Appendix 3"
+        item["name"]
+        for item in reference["logs"]
+        if item["section"].startswith("7.5.") or item["section"] == "Appendix 4"
     }
-    assert (
-        set(LAYOUTS) | {"UNILOGLIST", "SATSINFO", "KSXT"} | RAW_CORRECTION_LOGS
-        == documented
-    )
+    assert set(LAYOUTS) | {
+        "UNILOGLIST",
+        "SATSINFO",
+        "KSXT",
+        "PPPB2BINFO6",
+        "PPPB2BINFO7",
+    } | RAW_CORRECTION_LOGS == documented | {"PPPB2BINFO6", "PPPB2BINFO7"}
 
 
 @pytest.mark.parametrize("name", sorted(set(EXAMPLES) - {"MODE", "CONFIG"}))

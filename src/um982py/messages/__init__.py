@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from um982py.messages.decode import decode_log
     from um982py.messages.frames import (
+        AbbreviatedAsciiMessage,
         AsciiHeader,
         AsciiMessage,
         BinaryHeader,
@@ -21,10 +22,20 @@ if TYPE_CHECKING:
     )
     from um982py.messages.navigation import BestNavigation, Fix, Heading
     from um982py.messages.observations import Observation, TrackingStatus
+    from um982py.messages.receiver_status import (
+        PpsConfigInfo,
+        PpsQuality,
+        PpsStatus,
+        SpoofInfo,
+        SpoofNotice,
+        SpoofSignal,
+        SpoofTimeNotice,
+    )
     from um982py.messages.record import Record, Value
     from um982py.messages.version import Version
 
 _EXPORTS: dict[str, tuple[str, str | None]] = {
+    "AbbreviatedAsciiMessage": ("um982py.messages.frames", "AbbreviatedAsciiMessage"),
     "AsciiHeader": ("um982py.messages.frames", "AsciiHeader"),
     "AsciiMessage": ("um982py.messages.frames", "AsciiMessage"),
     "BestNavigation": ("um982py.messages.navigation", "BestNavigation"),
@@ -38,9 +49,16 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "LogListMessage": ("um982py.messages.frames", "LogListMessage"),
     "Message": ("um982py.messages.frames", "Message"),
     "Observation": ("um982py.messages.observations", "Observation"),
+    "PpsConfigInfo": ("um982py.messages.receiver_status", "PpsConfigInfo"),
+    "PpsQuality": ("um982py.messages.receiver_status", "PpsQuality"),
+    "PpsStatus": ("um982py.messages.receiver_status", "PpsStatus"),
     "Record": ("um982py.messages.record", "Record"),
     "RtcmMessage": ("um982py.messages.frames", "RtcmMessage"),
     "Sentence": ("um982py.messages.frames", "Sentence"),
+    "SpoofInfo": ("um982py.messages.receiver_status", "SpoofInfo"),
+    "SpoofNotice": ("um982py.messages.receiver_status", "SpoofNotice"),
+    "SpoofSignal": ("um982py.messages.receiver_status", "SpoofSignal"),
+    "SpoofTimeNotice": ("um982py.messages.receiver_status", "SpoofTimeNotice"),
     "TextLine": ("um982py.messages.frames", "TextLine"),
     "TrackingStatus": ("um982py.messages.observations", "TrackingStatus"),
     "Value": ("um982py.messages.record", "Value"),
@@ -49,6 +67,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
 }
 
 __all__ = [
+    "AbbreviatedAsciiMessage",
     "AsciiHeader",
     "AsciiMessage",
     "BestNavigation",
@@ -62,9 +81,16 @@ __all__ = [
     "LogListMessage",
     "Message",
     "Observation",
+    "PpsConfigInfo",
+    "PpsQuality",
+    "PpsStatus",
     "Record",
     "RtcmMessage",
     "Sentence",
+    "SpoofInfo",
+    "SpoofNotice",
+    "SpoofSignal",
+    "SpoofTimeNotice",
     "TextLine",
     "TrackingStatus",
     "Value",

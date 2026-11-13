@@ -10,6 +10,7 @@ from enum import StrEnum
 from examples.satellite_monitor import constellation_of
 from um982py.capture import record_epoch
 from um982py.geodesy import enu_from_ecef, records_from
+from um982py.messages import SpoofInfo
 from um982py.messages.record import Record
 
 FULL_TURN_DEGREES = 360.0
@@ -36,7 +37,6 @@ __all__ = [
     "SkyDisagreement",
     "SkyEntry",
     "SkyView",
-    "SpoofStatus",
     "alarms",
     "apply_heading_offset",
     "bearing_candidates",
@@ -392,28 +392,10 @@ def compare_snapshots(
     )
 
 
-@dataclass(frozen=True, slots=True)
-class SpoofStatus:
-    """SPOOFINFO position type and spoofing indicator."""
-
-    position_type: str
-    indicator: int
-
-    @classmethod
-    def from_record(cls, record: Record) -> SpoofStatus:
-        """Build the status from a decoded SPOOFINFO record."""
-        return cls(str(record["position_type"]), record.integer("spoof_indicator"))
-
-    @property
-    def spoofed(self) -> bool:
-        """Whether the receiver reports a non-zero spoofing indicator."""
-        return self.indicator != 0
-
-
 def alarms(
     heading: HeadingAgreement | None,
     skies: Sequence[SkyComparison],
-    spoof: SpoofStatus | None,
+    spoof: SpoofInfo | None,
 ) -> tuple[Alarm, ...]:
     """Alarms raised by the heading, sky-view and spoof-indicator paths."""
     raised: list[Alarm] = []
@@ -421,7 +403,7 @@ def alarms(
         raised.append(Alarm.BASELINE_HEADING)
     if any(not comparison.consistent for comparison in skies):
         raised.append(Alarm.SKY_VIEW)
-    if spoof is not None and spoof.spoofed:
+    if spoof is not None and spoof.is_suspect:
         raised.append(Alarm.SPOOF_INDICATOR)
     return tuple(raised)
 

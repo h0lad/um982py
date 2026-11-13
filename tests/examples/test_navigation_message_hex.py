@@ -130,7 +130,7 @@ def test_reserved_fields_are_flagged(constellation: str = "GLONASS") -> None:
     assert sum(field.size for field in reserved) > 0
 
 
-def test_unknown_log_marks_every_field_neutral() -> None:
+def test_environment_log_labels_known_fields_and_marks_reserved_bytes() -> None:
     raw = (FIXTURES.parent / "captures" / "ENVINFOB.bin").read_bytes()
     request = Log.ENVINFO.request(binary=True)
     message = next(
@@ -144,7 +144,10 @@ def test_unknown_log_marks_every_field_neutral() -> None:
     )
     assert view.satellite is None
     assert view.fields
-    assert all(field.reserved for field in view.fields)
+    assert any(field.name == "base_score" and field.documented for field in view.fields)
+    assert any(
+        field.name.startswith("reserved_") and field.reserved for field in view.fields
+    )
     assert sum(field.size for field in view.fields) == len(message.payload)
 
 

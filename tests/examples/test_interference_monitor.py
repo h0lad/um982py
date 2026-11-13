@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -9,17 +10,15 @@ from examples.interference_monitor import (
     AntennaState,
     Cn0Sample,
     Severity,
-    SpoofReport,
     antenna_report,
     detect_cn0_collapse,
     median_absolute_deviation,
     robust_z_score,
-    spoof_report,
     status_alerts,
 )
 
 from um982py.commands import Log
-from um982py.messages import Record
+from um982py.messages import Record, SpoofInfo
 from um982py.messages.enums import PositionType
 from um982py.protocol import StreamDecoder
 
@@ -143,13 +142,38 @@ def test_series_shorter_than_five_samples_is_not_tested() -> None:
 
 
 def test_spoofinfo_fixture_reports_no_spoofing_indicator() -> None:
-    binary = spoof_report(record(Log.SPOOFINFO, binary=True))
+    binary = SpoofInfo.from_record(record(Log.SPOOFINFO, binary=True))
     ascii_record = record(Log.SPOOFINFO, binary=False)
-    assert binary.spoof_indicator == 0
+    assert binary.indicator == 0
     assert binary.is_suspect is False
     assert binary.position_type == PositionType.SINGLE
     assert binary.position_type_label == "SINGLE"
     assert ascii_record["position_type"] == binary.position_type_label
+
+
+def test_spoof_report_includes_signal_and_satellite_notices() -> None:
+    from examples.interference_monitor.__main__ import _spoof_payload
+
+    from um982py.messages import SpoofNotice, SpoofSignal
+
+    captured = record(Log.SPOOFINFO, binary=True)
+    changes = {
+        "spoof_indicator": 1,
+        "spoof_notice_mask": int(SpoofNotice.SIGNAL_SOURCE),
+        "spoof_frequency_mask": int(SpoofSignal.GPS_L1CA),
+        "gps_satellite_notice_mask": (1 << 2) | (1 << 7),
+    }
+    updated = replace(
+        captured,
+        entries=tuple(
+            (key, changes.get(key, value)) for key, value in captured.entries
+        ),
+    )
+    payload = _spoof_payload(SpoofInfo.from_record(updated))
+    assert payload is not None
+    assert payload["notice_mask"] == int(SpoofNotice.SIGNAL_SOURCE)
+    assert payload["signal_mask"] == int(SpoofSignal.GPS_L1CA)
+    assert payload["gps_satellites"] == [3, 8]
 
 
 def test_antenna_fixture_reports_both_antennas_working() -> None:
@@ -164,7 +188,7 @@ def test_antenna_fixture_reports_both_antennas_working() -> None:
 
 def test_ascii_labels_decode_like_the_binary_codes() -> None:
     for log in (Log.SPOOFINFO, Log.ANTENNA):
-        decoder = spoof_report if log is Log.SPOOFINFO else antenna_report
+        decoder = SpoofInfo.from_record if log is Log.SPOOFINFO else antenna_report
         assert decoder(record(log, binary=False)) == decoder(record(log, binary=True))
 
 
@@ -180,7 +204,9 @@ def test_unknown_antenna_status_is_reported_as_degraded() -> None:
 
 
 def test_spoofing_indicator_raises_a_critical_alert() -> None:
-    report = SpoofReport(position_type=PositionType.SINGLE, spoof_indicator=3)
+    report = replace(
+        SpoofInfo.from_record(record(Log.SPOOFINFO, binary=True)), indicator=3
+    )
     alerts = status_alerts(0, report, None)
     assert len(alerts) == 1
     assert alerts[0].kind is AlertKind.SPOOFING
@@ -188,6 +214,6 @@ def test_spoofing_indicator_raises_a_critical_alert() -> None:
 
 
 def test_healthy_status_words_raise_no_alert() -> None:
-    spoof = SpoofReport(position_type=PositionType.SINGLE, spoof_indicator=0)
+    spoof = SpoofInfo.from_record(record(Log.SPOOFINFO, binary=True))
     antenna = AntennaReport(status_1=5, status_2=5, status_3=0)
     assert status_alerts(0, spoof, antenna) == ()

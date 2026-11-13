@@ -135,7 +135,7 @@ def test_antenna_and_spoof_records() -> None:
     assert b["status_1"] == b["status_2"] == 5
     spoof = Log.SPOOFINFO.decode(captured(Log.SPOOFINFO, True))
     assert spoof.integer("spoof_indicator") == 0
-    assert spoof.integer("field_21") == 0
+    assert spoof.integer("gps_satellite_notice_mask") == 0
     message = captured(Log.SPOOFINFO, False)
     assert isinstance(message, AsciiMessage)
     for bad in ("not_hex", "10000000000000000"):

@@ -24,6 +24,8 @@ python -m examples.navigation_message_hex \
 
 Use `--family` or `--log` to select messages and `--seconds` to set the live
 collection time.
+For example, `--log PPSSTATUS` or `--log SPOOFINFO` annotates the documented
+status fields and marks reserved bytes separately.
 
 ## References
 

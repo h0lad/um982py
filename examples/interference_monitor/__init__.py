@@ -9,8 +9,7 @@ from enum import StrEnum
 from types import MappingProxyType
 
 from um982py.capture import gps_signals
-from um982py.messages import Record, Value
-from um982py.messages.enums import PositionType
+from um982py.messages import Record, SpoofInfo, Value
 from um982py.stats import percentile
 
 MAD_SCALE = 0.6745
@@ -70,24 +69,6 @@ class Cn0Sample:
     epoch: int
     satellite: int
     cn0: float
-
-
-@dataclass(frozen=True, slots=True)
-class SpoofReport:
-    """The two leading SPOOFINFO fields."""
-
-    position_type: int
-    spoof_indicator: int
-
-    @property
-    def position_type_label(self) -> str:
-        """Documented name of the reported position type."""
-        return PositionType(self.position_type).name
-
-    @property
-    def is_suspect(self) -> bool:
-        """True when the receiver reports any spoofing indicator."""
-        return self.spoof_indicator != 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -199,14 +180,6 @@ def detect_cn0_collapse(
     )
 
 
-def spoof_report(record: Record) -> SpoofReport:
-    """Decode the SPOOFINFO position type and spoof indicator."""
-    return SpoofReport(
-        position_type=_position_type_code(record["position_type"]),
-        spoof_indicator=_integer(record["spoof_indicator"], "spoof_indicator"),
-    )
-
-
 def antenna_report(record: Record) -> AntennaReport:
     """Decode the three ANTENNA status words."""
     return AntennaReport(
@@ -214,17 +187,6 @@ def antenna_report(record: Record) -> AntennaReport:
         status_2=_antenna_code(record["status_2"]),
         status_3=_antenna_code(record["status_3"]),
     )
-
-
-def _position_type_code(value: Value) -> int:
-    if isinstance(value, int):
-        return value
-    if isinstance(value, str):
-        try:
-            return PositionType[value].value
-        except KeyError:
-            raise ValueError(f"unknown position type label {value}") from None
-    raise ValueError("position_type is neither a code nor a label")
 
 
 def _antenna_code(value: Value) -> int:
@@ -238,15 +200,9 @@ def _antenna_code(value: Value) -> int:
     raise ValueError("antenna status is neither a code nor a label")
 
 
-def _integer(value: Value, field: str) -> int:
-    if not isinstance(value, int):
-        raise ValueError(f"{field} is not an integer")
-    return value
-
-
 def status_alerts(
     epoch: int,
-    spoof: SpoofReport | None,
+    spoof: SpoofInfo | None,
     antenna: AntennaReport | None,
 ) -> tuple[Alert, ...]:
     """Alerts raised by the SPOOFINFO and ANTENNA status words."""

@@ -8,32 +8,6 @@ from um982py.messages import AsciiMessage, BinaryMessage, Message, Record
 from um982py.messages.reader import BodyReader
 from um982py.navigation_layouts import visibility_fields
 
-_DOCUMENTED_FIELDS = {
-    "PPSSTATUS": {
-        "status": "field_01",
-        "gps_week": "field_02",
-        "milliseconds_of_week": "field_03",
-        "pulse_error_ns": "field_04",
-        "observation_offset_0_01_ns": "field_05",
-        "config_info": "field_06",
-        "register_status": "field_07",
-        "time_estimate_error": "field_08",
-        "inner_quality": "field_09",
-        "pps_inner_status": "field_10",
-        "pps_config_status": "field_11",
-        "pps_stage": "field_12",
-    },
-    "SPOOFINFO": {
-        "spoof_notice_mask": "field_03",
-        "time_notice_mask": "field_04",
-        "spoof_frequency_mask": "field_05",
-        "gps_satellite_notice_mask": "field_21",
-        "bds_satellite_notice_mask": "field_22",
-        "galileo_satellite_notice_mask": "field_23",
-        "glonass_satellite_notice_mask": "field_24",
-    },
-}
-
 
 def decode_extended(name: str, message: Message) -> Record:
     """Decode an extended log whose frame has already been matched."""
@@ -47,11 +21,4 @@ def decode_extended(name: str, message: Message) -> Record:
             values = visibility_fields(values)
     else:
         raise ProtocolError("Expected an extended data log")
-    record = BodyReader(values).read(LAYOUTS[name])
-    aliases = _DOCUMENTED_FIELDS.get(name, {})
-    return replace(
-        record,
-        entries=record.entries
-        + tuple((alias, record[key]) for alias, key in aliases.items()),
-        message=message,
-    )
+    return replace(BodyReader(values).read(LAYOUTS[name]), message=message)

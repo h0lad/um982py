@@ -229,8 +229,12 @@ class Log(StrEnum):
         """Whether continuous output uses the ONCHANGED trigger."""
         return self.definition.changed_only
 
-    def wire_name(self, *, binary: bool = False) -> str:
+    def wire_name(self, *, binary: bool = False, table: bool = False) -> str:
         definition = self.definition
+        if table:
+            if binary or self not in (Log.LBANDBEAM, Log.LBANDTRACKSTATUS):
+                raise ValueError(f"{self.value} has no requested table format")
+            return self.value
         if not binary:
             return definition.ascii_command
         if definition.binary_command is None:
@@ -238,12 +242,12 @@ class Log(StrEnum):
         return definition.binary_command
 
     def request(
-        self, *, binary: bool = False, port: Port | None = None
+        self, *, binary: bool = False, table: bool = False, port: Port | None = None
     ) -> Command[Message]:
         if self.value in LOGS and self.definition.changed_only:
             raise ValueError(f"{self.value} requires ONCHANGED output")
         return logging.request(
-            self.wire_name(binary=binary),
+            self.wire_name(binary=binary, table=table),
             port=port,
             message_id=self.definition.message_id,
         )
@@ -254,6 +258,7 @@ class Log(StrEnum):
         *,
         rate_hz: float | None = None,
         binary: bool = False,
+        table: bool = False,
         port: Port | None = None,
     ) -> Command[CommandResponse]:
         """Build a periodic or ONCHANGED output command for this log.
@@ -262,6 +267,8 @@ class Log(StrEnum):
         receiver, firmware, signal group and log. ``interval`` is in seconds.
         FREQJAMSTATUS, HWSTATUS, JAMSTATUS, PPSSTATUS and RTCSTATUS are
         limited to 1 Hz.
+        ``table=True`` selects unchecksummed L-band table output and cannot be
+        combined with ``binary=True``.
         EVENTFLAG also supports ``Trigger.ONCE``; enable GGA output alongside it.
         """
         if isinstance(interval, Trigger):
@@ -292,19 +299,20 @@ class Log(StrEnum):
             and not (self is Log.EVENTFLAG and interval is Trigger.ONCE)
         ):
             raise ValueError(f"{self.value} requires ONCHANGED output")
-        return logging.output(self.wire_name(binary=binary), interval, port=port)
+        return logging.output(
+            self.wire_name(binary=binary, table=table), interval, port=port
+        )
 
     def read(
-        self, *, binary: bool = False, port: Port | None = None
+        self, *, binary: bool = False, table: bool = False, port: Port | None = None
     ) -> Command[Record]:
-        command = self.request(binary=binary, port=port)
+        command = self.request(binary=binary, table=table, port=port)
         return Command(command.text, command.matches, self.decode)
 
     def decode(self, message: Message) -> Record:
         """Decode a log body.
 
-        PPSSTATUS and SPOOFINFO expose the R1.16 field names as aliases for
-        the original numbered fields. PPS observation offsets use 0.01 ns.
+        PPSSTATUS observation offsets use 0.01 ns units.
         """
         if (
             isinstance(message, BinaryMessage)
@@ -326,6 +334,6 @@ class Log(StrEnum):
         return decode_log(message)
 
     def stop(
-        self, *, binary: bool = False, port: Port | None = None
+        self, *, binary: bool = False, table: bool = False, port: Port | None = None
     ) -> Command[CommandResponse]:
-        return logging.stop(self.wire_name(binary=binary), port=port)
+        return logging.stop(self.wire_name(binary=binary, table=table), port=port)

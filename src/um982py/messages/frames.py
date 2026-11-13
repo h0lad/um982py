@@ -50,6 +50,15 @@ class AsciiMessage:
 
 
 @dataclass(frozen=True, slots=True)
+class AbbreviatedAsciiMessage(AsciiMessage):
+    """A table-format receiver message with no checksum on the wire."""
+
+    @property
+    def checksum_verified(self) -> bool:
+        return False
+
+
+@dataclass(frozen=True, slots=True)
 class BinaryHeader:
     cpu_idle: int
     message_id: int
