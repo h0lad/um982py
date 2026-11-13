@@ -2,7 +2,7 @@
 
 Python 3.12+ library and command-line tools for the Unicore UM982 GNSS receiver.
 
-UM960 and UM980 have not been tested.
+UM960 and UM980 have not been tested but might work to some extend.
 
 ## Install and use
 
@@ -71,37 +71,6 @@ prediction; the signature alone does not prove prediction.
 | Convert coordinates and measure distance | `ecef_from_geodetic()`, `geodetic_from_ecef()`, `haversine_distance()` |
 | Read a Linux PPS timestamp | `with PpsDevice(path) as device: device.fetch()` |
 | Use asyncio | `AsyncReceiver.connect()` |
-
-## API scope and validation
-
-Use `Receiver`, `AsyncReceiver`, command builders, decoded `Record` values and
-transport APIs for receiver integration. Use `SessionRecorder` for long raw
-recordings and `iter_live_records()` for incremental processing. `capture_live()`
-is a convenience for short captures and retains all selected records in memory.
-A slow streaming consumer can still lose data at the transport; choose the baud
-rate and log schedule for the total output volume.
-
-The package is classified as beta. The package version in `pyproject.toml`
-identifies the API release; pin a tested release for reproducible applications.
-Modules under `um982py.experimental` expose internal receiver formats and
-research interfaces whose behavior can depend on firmware. Scientific examples
-are starting points for experiments and need validation against the intended
-antenna, environment and reference data. Import reusable APIs from `um982py`
-or its public modules instead of importing example scripts or private helpers.
-
-RINEX export accepts uncompressed RANGE, RANGEH, OBSVM, OBSVH and OBSVBASE
-records. Compressed OBSVMCMP and OBSVHCMP records are decoded but are not RINEX
-export inputs. Intersignal carrier-phase alignment has not been independently
-established, and antenna phase-centre corrections are not applied. Exported
-files preserve these limitations in their headers.
-
-Independent parser vectors, orbit references and RINEX comparisons exercise
-specific fixtures. They do not establish 24-hour moving-rover PPK accuracy or
-sustained receiver capture performance at 5, 10 or 20 Hz. Those checks require
-real recordings, epoch-loss accounting and an independent position reference.
-The G17 orbit regression retains the discrepancy in the captured ephemeris;
-a separate comparison substitutes two reference coefficients, without changing
-the decoder or silently correcting receiver data.
 
 ## Read RTCM correction fields
 
