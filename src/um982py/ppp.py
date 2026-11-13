@@ -10,6 +10,7 @@ from threading import Event
 from time import sleep
 from typing import TYPE_CHECKING, Literal, cast
 
+from um982py._polling import validate_callback, validate_interval
 from um982py.augmentation import HIGH_ACCURACY_SIGNAL_GROUP
 from um982py.commands import Log, queries
 from um982py.commands.configuration import SignalGroup, ppp, signal_group
@@ -200,10 +201,8 @@ class PppSession:
         discarded. Previously queued messages remain available to ``receive``.
         The callback runs within the transaction and must not use the receiver.
         """
-        if isinstance(interval, bool) or not isfinite(interval) or interval <= 0:
-            raise ValueError("interval must be finite and positive")
-        if on_message is not None and not callable(on_message):
-            raise TypeError("on_message must be callable")
+        validate_interval(interval)
+        validate_callback(on_message)
         while stop is None or not stop.is_set():
             yield self._poll_position(on_message)
             if stop is not None:

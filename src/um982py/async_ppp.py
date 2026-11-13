@@ -5,9 +5,9 @@ from __future__ import annotations
 import asyncio
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass
-from math import isfinite
 from typing import TYPE_CHECKING
 
+from um982py._polling import poll_async, validate_callback, validate_interval
 from um982py.commands.configuration import SignalGroup
 from um982py.messages.frames import Message
 from um982py.ppp import PppService, PppSession, PppSolution
@@ -71,19 +71,13 @@ class AsyncPppSession:
         discarded. Previously queued messages remain available to ``receive``.
         The callback runs in the worker thread and must not use the receiver.
         """
-        if isinstance(interval, bool) or not isfinite(interval) or interval <= 0:
-            raise ValueError("interval must be finite and positive")
-        if on_message is not None and not callable(on_message):
-            raise TypeError("on_message must be callable")
-        while stop is None or not stop.is_set():
-            yield await self.receiver._run(
+        validate_interval(interval)
+        validate_callback(on_message)
+        async for solution in poll_async(
+            lambda: self.receiver._run(
                 lambda: self._session._poll_position(on_message)
-            )
-            if stop is None:
-                await asyncio.sleep(interval)
-            else:
-                try:
-                    await asyncio.wait_for(stop.wait(), timeout=interval)
-                except TimeoutError:
-                    continue
-                return
+            ),
+            interval,
+            stop,
+        ):
+            yield solution

@@ -9,6 +9,7 @@ from types import TracebackType
 from typing import Self
 from urllib.parse import urlsplit
 
+from um982py._polling import validate_callback, validate_interval
 from um982py.antenna import AntennaLog, antenna_log
 from um982py.augmentation import AugmentationState, enable_augmentation
 from um982py.commands import Log, logging, queries
@@ -345,12 +346,10 @@ class Receiver:
         remain available through ``receive``. The callback runs within the
         transaction and must not use the receiver.
         """
-        if isinstance(interval, bool) or not isfinite(interval) or interval <= 0:
-            raise ValueError("interval must be finite and positive")
+        validate_interval(interval)
         if antenna not in (1, 2):
             raise ValueError("antenna must be 1 or 2")
-        if on_message is not None and not callable(on_message):
-            raise TypeError("on_message must be callable")
+        validate_callback(on_message)
 
         def poll() -> Iterator[Fix]:
             while stop is None or not stop.is_set():

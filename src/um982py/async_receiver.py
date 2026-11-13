@@ -3,10 +3,10 @@
 import asyncio
 from collections.abc import AsyncIterator, Callable, Sequence
 from contextlib import suppress
-from math import isfinite
 from types import TracebackType
 from typing import Self
 
+from um982py._polling import poll_async, validate_callback, validate_interval
 from um982py.antenna import AntennaLog
 from um982py.async_ppp import AsyncPppSession
 from um982py.augmentation import AugmentationState
@@ -182,26 +182,20 @@ class AsyncReceiver:
         discarded. Previously queued messages remain available to ``receive``.
         The callback runs in the worker thread and must not use the receiver.
         """
-        if isinstance(interval, bool) or not isfinite(interval) or interval <= 0:
-            raise ValueError("interval must be finite and positive")
+        validate_interval(interval)
         if antenna not in (1, 2):
             raise ValueError("antenna must be 1 or 2")
-        if on_message is not None and not callable(on_message):
-            raise TypeError("on_message must be callable")
-        while stop is None or not stop.is_set():
-            yield await self._run(
+        validate_callback(on_message)
+        async for fix in poll_async(
+            lambda: self._run(
                 lambda: self.receiver._poll_query(
                     queries.fix(antenna=antenna), on_message
                 )
-            )
-            if stop is None:
-                await asyncio.sleep(interval)
-            else:
-                try:
-                    await asyncio.wait_for(stop.wait(), timeout=interval)
-                except TimeoutError:
-                    continue
-                return
+            ),
+            interval,
+            stop,
+        ):
+            yield fix
 
     async def enable_augmentation(
         self, *, persist: bool = False, sbas_service: str = "AUTO"

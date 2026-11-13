@@ -185,3 +185,42 @@ def test_async_polling_calls_back_on_worker_and_keeps_old_messages(ppp: bool) ->
         await asynchronous.close()
 
     asyncio.run(run())
+
+
+@pytest.mark.parametrize("ppp", [False, True])
+@pytest.mark.parametrize("stop_mode", ["already_set", "during_wait", "cancel"])
+def test_async_polling_stops_without_an_extra_query(ppp: bool, stop_mode: str) -> None:
+    async def run() -> None:
+        command, reply = (b"PPPNAVB\r\n", PPP) if ppp else (b"GPGGA\r\n", GGA)
+        transport = ReplayTransport({command: reply}, chunk=65536)
+        receiver = Receiver(transport)
+        asynchronous = AsyncReceiver(receiver)
+        stop = asyncio.Event() if stop_mode != "cancel" else None
+        if stop_mode == "already_set":
+            assert stop is not None
+            stop.set()
+        iterator = (
+            AsyncPppSession(asynchronous, _session(receiver)).positions(
+                interval=30, stop=stop
+            )
+            if ppp
+            else asynchronous.positions(interval=30, stop=stop)
+        )
+        if stop_mode != "already_set":
+            assert (await anext(iterator)).valid
+            waiting = asyncio.create_task(anext(iterator))
+            await asyncio.sleep(0)
+            if stop is None:
+                waiting.cancel()
+                with pytest.raises(asyncio.CancelledError):
+                    await waiting
+            else:
+                stop.set()
+                with pytest.raises(StopAsyncIteration):
+                    await asyncio.wait_for(waiting, timeout=1)
+        with pytest.raises(StopAsyncIteration):
+            await anext(iterator)
+        assert transport.writes == ([] if stop_mode == "already_set" else [command])
+        await asynchronous.close()
+
+    asyncio.run(run())
