@@ -68,3 +68,22 @@ def cn0(
     if signal is not None:
         parts.append(option(signal, FREQUENCIES))
     return action(" ".join(parts))
+
+
+def azimuth(
+    elevation_min: float,
+    elevation_max: float,
+    azimuth_min: float,
+    azimuth_max: float,
+) -> Command[CommandResponse]:
+    """Mask a sky sector using ordered elevation and azimuth bounds.
+
+    Angles are degrees. Bounds must be ordered; sectors crossing north are
+    not supported by this builder. Uses the ``MASK AZIMUTH 1`` command form.
+    Receiver firmware determines availability of this mode.
+    """
+    elevations = [number(value, -90, 90) for value in (elevation_min, elevation_max)]
+    azimuths = [number(value, 0, 360) for value in (azimuth_min, azimuth_max)]
+    if elevation_min >= elevation_max or azimuth_min >= azimuth_max:
+        raise ValueError("Sector minimum angles must be smaller than maximum angles")
+    return action(" ".join(("MASK AZIMUTH 1", *elevations, *azimuths)))

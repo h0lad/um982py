@@ -56,11 +56,9 @@ def _decode_log(message: Message) -> Record:
     if isinstance(message, Sentence):
         return decode_nmea(message)
     if isinstance(message, RtcmMessage):
-        return Record(
-            "RTCM",
-            (("message_type", message.message_type), ("payload", message.payload)),
-            message,
-        )
+        from um982py.rtcm import decode_rtcm
+
+        return decode_rtcm(message)
     if isinstance(message, LogListMessage):
         entries = tuple(_log_entry(line) for line in message.entries)
         return Record(

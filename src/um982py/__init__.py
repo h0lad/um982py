@@ -91,6 +91,7 @@ if TYPE_CHECKING:
     from um982py.rinex_merge import MergeResult, merge_gps_observations
     from um982py.rinex_nav import RinexNavigationExport, export_rinex_navigation
     from um982py.rover import Rover, RoverPosition
+    from um982py.rtcm import decode_rtcm
     from um982py.rtk_session import (
         CorrectionWriteError,
         GgaProviderError,
@@ -192,6 +193,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "capture_live": ("um982py.capture", "capture_live"),
     "commands": ("um982py.commands", None),
     "decode_message": ("um982py.decode", "decode_message"),
+    "decode_rtcm": ("um982py.rtcm", "decode_rtcm"),
     "decode_records": ("um982py.capture", "decode_records"),
     "dms_to_degrees": ("um982py.geodesy", "dms_to_degrees"),
     "ecef_from_geodetic": ("um982py.geodesy", "ecef_from_geodetic"),
@@ -308,6 +310,7 @@ __all__ = [
     "commands",
     "decode_message",
     "decode_records",
+    "decode_rtcm",
     "dms_to_degrees",
     "ecef_from_geodetic",
     "enable_augmentation",

@@ -99,7 +99,7 @@ def test_configuration_examples(
     assert section.startswith("4.")
 
 
-def test_all_configuration_sections_are_covered() -> None:
+def test_legacy_configuration_examples_are_retained() -> None:
     sections = {s for s, _, _ in CASES} | {"4.1"}
     assert sections == {f"4.{i}" for i in range(1, 42) if i not in (17, 32, 33, 35, 36)}
     assert queries.configuration().text == "CONFIG"
@@ -152,7 +152,7 @@ def test_all_documented_logs(log: Log) -> None:
                 assert request.matches(parse_binary(binary(b"", definition.message_id)))
 
 
-def test_catalog_matches_manual_inventory() -> None:
+def test_catalog_retains_r14_inventory() -> None:
     reference = json.loads((FIXTURES / "reference-r1.4.json").read_text())
     assert len(reference["logs"]) == 79
     for item in reference["logs"]:

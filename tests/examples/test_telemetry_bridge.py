@@ -10,11 +10,12 @@ from examples.telemetry_bridge import (
     value_object,
 )
 
+from conftest import rtcm
 from um982py.messages import (
     Record,
-    RtcmMessage,
     decode_log,
 )
+from um982py.protocol.binary import parse_rtcm
 
 JSON_TOLERANCE = 1e-12
 """A JSON round trip of a float is exact; 1e-12 only guards repr formatting."""
@@ -45,12 +46,15 @@ def assert_record_matches(record: Record, encoded: object) -> None:
 
 
 def test_rtcm_payload_is_encoded_as_hexadecimal() -> None:
-    message = RtcmMessage(message_type=1005, payload=b"\x01\x02\xff", raw=b"")
+    payload = (1005 << 140).to_bytes(19, "big")
+    message = parse_rtcm(rtcm(payload))
     frame = frame_from(message)
     assert frame.kind is FrameKind.RTCM
     assert frame.name == "RTCM_1005"
-    assert json.loads(frame.to_line())["fields"]["payload"] == "0102ff"
-    assert record_object(decode_log(message))["payload"] == "0102ff"
+    assert json.loads(frame.to_line())["fields"]["payload"] == payload.hex()
+    encoded = record_object(decode_log(message))
+    assert encoded["payload"] == payload.hex()
+    assert encoded["fields"]["DF025"] == 0
 
 
 def test_record_values_convert_to_plain_json_types() -> None:

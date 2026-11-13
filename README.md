@@ -60,6 +60,8 @@ prediction; the signature alone does not prove prediction.
 | Start satellite PPP | `receiver.start_ppp(service="E6-HAS")` |
 | Capture one log or several logs | `capture_live()` |
 | Read a saved capture or one message | `load_records(path, Log.RANGE)` or `decode_message(data)` |
+| Decode RTCM correction fields | `decode_rtcm(data)` or `decode_message(data)` |
+| Mask an elevation/azimuth sector | `receiver.execute(masking.azimuth(20, 90, 15, 45))` |
 | Convert receiver time to UTC | `message_utc(record, leap_seconds=...)` |
 | Read position and heading while applying NTRIP | `Rover.connect(target, ntrip_url=...)` |
 | Wait for a fixed solution | `wait_for_fix(receiver, rtk_fixed=True)` |
@@ -69,6 +71,45 @@ prediction; the signature alone does not prove prediction.
 | Convert coordinates and measure distance | `ecef_from_geodetic()`, `geodetic_from_ecef()`, `haversine_distance()` |
 | Read a Linux PPS timestamp | `with PpsDevice(path) as device: device.fetch()` |
 | Use asyncio | `AsyncReceiver.connect()` |
+
+## Read RTCM correction fields
+
+Decode station coordinates and descriptions, GPS and GLONASS observations,
+MSM messages, and broadcast ephemerides into immutable records:
+
+```python
+from um982py import decode_rtcm
+
+record = decode_rtcm(frame_bytes)
+body = record["fields"]
+station_id = body["DF003"]  # Present in station and observation messages
+```
+
+`decode_message()` and `Log.RTCM1005.decode(message)` use the same decoder.
+Fields use RTCM data-field identifiers and scaled wire units. Repeated
+observations are grouped in `body["satellites"]` and MSM `body["cells"]`;
+each MSM cell includes its satellite and signal mask indices. Epochs and MSM
+ranges retain milliseconds; range rates use metres per second. Invalid-value
+sentinels remain numeric, and weeks are not expanded across rollovers.
+
+Every result retains its raw `payload` and `message_type`. Its `status` is
+`decoded`, `unsupported`, or `unicore_private`. Private types 63, 1104 and 1105
+remain raw, including Unicore's nonstandard use of the latter two IDs. Malformed
+supported bodies raise `ProtocolError`; frame-only streaming and correction
+forwarding continue to preserve raw data.
+
+## Mask a sky sector
+
+Exclude satellites within an elevation and azimuth range:
+
+```python
+from um982py.commands import masking
+
+receiver.execute(masking.azimuth(20, 90, 15, 45))
+```
+
+Bounds are in degrees and must be ordered. The command uses `MASK AZIMUTH 1`;
+sectors crossing north are rejected. Availability depends on receiver firmware.
 
 ## Receiver output rates
 
