@@ -299,6 +299,11 @@ records in memory; `InterruptedCapture.records` contains records received before
 Ctrl+C. For long recordings, use `SessionRecorder` or the
 [unattended station example](examples/unattended_station/README.md).
 
+For `OBSVMCMP` and `OBSVHCMP` input, RINEX export includes valid pseudorange,
+Doppler and signal strength. Carrier phase remains blank because the compressed
+phase ambiguity has not been independently resolved; the omission count appears
+in `result.omitted`.
+
 For mixed capture rates, pass `intervals={Log.JAMSTATUS: 1}` alongside
 `rate_hz=20` and `logs=[Log.RANGE, Log.JAMSTATUS]`. RANGE then uses 0.05 seconds
 and JAMSTATUS uses 1 second. Both `capture_live()` and `iter_live_records()`

@@ -67,7 +67,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         type=int,
         help="maximum epochs (default: 60 live, all epochs when replaying)",
     )
-    parser.add_argument("--source", choices=("range", "obsv"), default="range")
+    parser.add_argument(
+        "--source", choices=("range", "obsv", "obsv-compressed"), default="range"
+    )
     parser.add_output_interval(default=1.0)
     parser.add_argument(
         "--duration", type=float, default=60.0, help="live collection time in seconds"
@@ -117,9 +119,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         destinations.append(args.secondary_metadata)
     if len({path.resolve() for path in destinations}) != len(destinations):
         parser.error("output, report, capture and metadata paths must be distinct")
-    first_log, second_log = (
-        (Log.OBSVM, Log.OBSVH) if args.source == "obsv" else (Log.RANGE, Log.RANGEH)
-    )
+    first_log, second_log = {
+        "range": (Log.RANGE, Log.RANGEH),
+        "obsv": (Log.OBSVM, Log.OBSVH),
+        "obsv-compressed": (Log.OBSVMCMP, Log.OBSVHCMP),
+    }[args.source]
     logs = (
         [
             AntennaLog(first_log, first_log),

@@ -1,4 +1,4 @@
-"""Keep the supported command and decoder inventory aligned with R1.15."""
+"""Keep the supported command and decoder inventory aligned with the manual."""
 
 import json
 
@@ -9,6 +9,7 @@ from um982py import Log
 from um982py.commands import Command, masking, queries
 from um982py.commands import configuration as config
 from um982py.commands.catalog import LOGS, RTCM_LOGS
+from um982py.commands.configuration.receiver import SIGNAL_GROUP_BANDS
 from um982py.commands.types import NmeaVersion, Port
 from um982py.messages import CommandResponse, Message
 from um982py.messages.layouts import LAYOUTS
@@ -16,31 +17,28 @@ from um982py.messages.layouts.firmware import LAYOUTS as EXTENDED_LAYOUTS
 from um982py.messages.nmea import SCHEMAS
 from um982py.rtcm import STANDARD_RTCM_TYPES, UNICORE_RTCM_TYPES
 
-REFERENCE = json.loads((FIXTURES / "reference-r1.15.json").read_text())
+REFERENCE = json.loads((FIXTURES / "reference-commands.json").read_text())
 
 
-def test_r115_inventory_covers_all_log_sections() -> None:
+def test_inventory_covers_all_log_sections() -> None:
     entries = REFERENCE["logs"]
     names = {item["name"] for item in entries}
     assert len(names) == len(entries)
-    assert names == (
-        LOGS.keys()
-        - RTCM_LOGS.keys()
-        - {"PPPB2BINFO6", "PPPB2BINFO7", "PPSSTATUS", "SPOOFINFO"}
-    )
+    assert names == (LOGS.keys() - RTCM_LOGS.keys() - {"PPPB2BINFO6", "PPPB2BINFO7"})
     sections = {item["section"] for item in entries}
-    assert {f"7.5.{n}" for n in range(2, 102)} - {"7.5.10", "7.5.84"} == {
+    assert {f"7.5.{n}" for n in range(2, 104)} - {"7.5.10", "7.5.85"} == {
         section for section in sections if section.startswith("7.5.")
     }
     assert {f"7.2.{n}" for n in range(1, 15)} <= sections
     assert {f"7.4.{n}" for n in range(1, 17)} <= sections
-    assert {item["section"] for item in REFERENCE["excluded_logs"]} == {"7.5.84"}
+    assert {item["section"] for item in REFERENCE["excluded_logs"]} == {"7.5.85"}
 
 
 @pytest.mark.parametrize("item", REFERENCE["logs"], ids=lambda item: item["name"])
-def test_r115_log_has_command_and_decoder(item: dict) -> None:
+def test_log_has_command_and_decoder(item: dict) -> None:
     log = Log[item["name"]]
     assert log.definition.message_id == item["message_id"]
+    assert log.definition.section == item["section"]
     assert log.wire_name()
     if item["message_id"] is not None:
         assert log.wire_name(binary=True)
@@ -59,6 +57,16 @@ def test_rtcm_catalogue_matches_supported_and_private_wire_types() -> None:
     assert {log.message_id for log in RTCM_LOGS.values()} == expected
     assert expected == STANDARD_RTCM_TYPES | UNICORE_RTCM_TYPES
     assert STANDARD_RTCM_TYPES.isdisjoint(UNICORE_RTCM_TYPES)
+
+
+@pytest.mark.parametrize("group", [1, 2, 3, 4, 7, 10])
+def test_signal_groups_include_documented_sbas(group: int) -> None:
+    assert "SBAS" in SIGNAL_GROUP_BANDS[group]
+
+
+@pytest.mark.parametrize("group", [1, 3, 4, 5, 7])
+def test_signal_groups_include_documented_gps_l2p(group: int) -> None:
+    assert "L2P" in SIGNAL_GROUP_BANDS[group].split("GPS ", 1)[1].split(",", 1)[0]
 
 
 # Each applicable configuration section has an executable wire example.

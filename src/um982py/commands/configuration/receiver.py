@@ -9,28 +9,28 @@ from um982py.messages.frames import CommandResponse, Message, Sentence
 
 SIGNAL_GROUP_BANDS: dict[int, str] = {
     0: "Disable the slave antenna",
-    1: "BDS B1I/B3I/B1C/B2a/B2b, GPS L1C/A/L2C/L5, GLO G1/G2, "
-    "GAL E1/E5a/E5b, QZSS L1C/A/L1S/L2C/L5",
+    1: "BDS B1I/B3I/B1C/B2a/B2b, GPS L1C/A/L2C/L2P/L5, GLO G1/G2, "
+    "GAL E1/E5a/E5b, QZSS L1C/A/L1S/L2C/L5, SBAS",
     2: "BDS B1I/B3I/B1C/B2a/B2b, GPS L1C/A/L1C/L2C/L2P(Y)/L5, "
-    "GLO G1/G2/G3, GAL E1/E5a/E5b/E6, QZSS L1C/A/L1C/L1S/L2C/L5, NavIC L5",
+    "GLO G1/G2/G3, GAL E1/E5a/E5b/E6, QZSS L1C/A/L1C/L1S/L2C/L5, NavIC L5, SBAS",
     3: "BDS B1I/B3I/B2a/B2b-PPP (UM982 before Build23575 uses B1C instead of B2a), "
-    "GPS L1C/A/L2C/L5, GLO G1/G2, GAL E1/E5a/E5b/E6, "
-    "QZSS L1C/A/L1C/B/L1S/L2C/L5/L6E/L6D, L-band "
+    "GPS L1C/A/L2C/L2P/L5, GLO G1/G2, GAL E1/E5a/E5b/E6, "
+    "QZSS L1C/A/L1C/B/L1S/L2C/L5/L6E/L6D, SBAS, L-band "
     "(UM982 master, 20 Hz with supported firmware and logs; product dependent)",
-    4: "BDS B1I/B2a/B3I, GPS L1C/A/L2C/L5, GLO G1/G2, GAL E1/E5a/E5b, "
-    "QZSS L1C/A/L1C/B/L1S/L2C/L5 (firmware dependent)",
+    4: "BDS B1I/B2a/B3I, GPS L1C/A/L2C/L2P/L5, GLO G1/G2, GAL E1/E5a/E5b, "
+    "QZSS L1C/A/L1C/B/L1S/L2C/L5, SBAS (firmware dependent)",
     5: "BDS B1I/B2a/B3I, GPS L1C/A/L2C/L2P, GLO G1/G2, GAL E1/E5b, "
     "QZSS L1C/A/L1C/B/L2C (UM982 Build25164 and later do not support L2P)",
     6: "BDS B1I/B3I, GPS L1C/A/L2C, GAL E1/E5b, "
     "QZSS L1C/A/L1C/B/L2C (UM982 slave, 20 Hz; firmware dependent)",
-    7: "BDS B1I/B3I/B1C/B2a/B2b, GPS L1C/A/L2C/L5, GLO G1/G2, "
-    "GAL E1/E5a/E5b/E6, QZSS L1C/A/L1C/B/L1S/L2C/L5 (firmware dependent)",
+    7: "BDS B1I/B3I/B1C/B2a/B2b, GPS L1C/A/L2C/L2P/L5, GLO G1/G2, "
+    "GAL E1/E5a/E5b/E6, QZSS L1C/A/L1C/B/L1S/L2C/L5, SBAS (firmware dependent)",
     8: "GPS L1C/A/L2C/L2P/L5, BDS B1I/B3I/B1C/B2a, GAL E1/E5a/E5b, "
     "QZSS L1C/A/L2C/L5 (UM980 50 Hz; firmware dependent)",
     9: "BDS B1I/B3I/B1C/B2a/B2b, GPS L1C/A/L2(Y)/L2C/L5, GLO G1/G2, "
     "GAL E1C/E5A/E5B, QZSS L1C/A/L2C/L5 (UB9A0 50 Hz)",
     10: "BDS B1I/B3I/B1C/B2a/B2b, GPS L1C/A/L2C/L2P/L5, GLO G1/G2, "
-    "GAL E1/E5a/E5b/E6, QZSS L1C/A/L1S/L2C/L5/L6E/L6D, L-band "
+    "GAL E1/E5a/E5b/E6, QZSS L1C/A/L1S/L2C/L5/L6E/L6D, SBAS, L-band "
     "(product and firmware dependent)",
 }
 

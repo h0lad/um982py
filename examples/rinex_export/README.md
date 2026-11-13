@@ -45,15 +45,23 @@ python -m examples.rinex_export --port /dev/ttyUSB0 --frames 60 --secondary \
     --json /tmp/rinex-report.json
 ```
 
-Use the documented R1.15 OBSVM/OBSVH observation logs instead of RANGE/RANGEH:
+Use the OBSVM/OBSVH observation logs instead of RANGE/RANGEH:
 
 ```bash
 python -m examples.rinex_export --port /dev/ttyUSB0 --source obsv \
     --frames 60 --output /tmp/obsv.obs --json /tmp/obsv-report.json
 ```
 
-The library also accepts OBSVBASE records. The exporter excludes compressed
-OBSVMCMP and OBSVHCMP records, whose phase values are modulo encoded.
+The library also accepts OBSVBASE records. For compressed OBSVMCMP and
+OBSVHCMP input, choose `--source obsv-compressed`. The exporter retains code,
+Doppler and signal strength, but leaves carrier phases blank because their
+compressed values are modulo encoded. The report counts omitted phases.
+
+```bash
+python -m examples.rinex_export --replay tests/fixtures/bodies/OBSVMCMPB.bin \
+    --source obsv-compressed --output /tmp/compressed.obs \
+    --json /tmp/compressed-report.json
+```
 
 For an in-memory capture with the library, an interruption retains the records
 received so far:

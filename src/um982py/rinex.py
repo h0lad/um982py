@@ -1,4 +1,4 @@
-"""Uncompressed receiver observations exported to RINEX 3.05."""
+"""Receiver observations exported to RINEX 3.05."""
 
 import math
 from collections import Counter
@@ -9,8 +9,10 @@ from os import PathLike
 from pathlib import Path
 from typing import Literal
 
+from um982py.errors import ProtocolError
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
+from um982py.messages.observations import Observation
 from um982py.signals import tracking_signal
 
 _LETTERS = "GRSECJI"
@@ -111,6 +113,27 @@ type Epoch = tuple[float, dict[str, dict[str, Record]]]
 
 
 def _observation(row: Record, name: str) -> Record:
+    if name in ("OBSVMCMP", "OBSVHCMP"):
+        if not isinstance(row.get("cmp_record"), bytes):
+            raise ProtocolError("Expected a compressed observation")
+        compressed = Observation.from_record(row)
+        return Record(
+            "observation",
+            (
+                ("prn", compressed.prn),
+                (
+                    "frequency_channel",
+                    (compressed.glonass_frequency or 0) + _GLONASS_CHANNEL_OFFSET,
+                ),
+                ("pseudorange", compressed.pseudorange_m),
+                ("carrier_phase", compressed.carrier_phase_cycles),
+                ("phase_available", 0),
+                ("doppler", compressed.doppler_hz),
+                ("cn0", compressed.cn0_db_hz),
+                ("lock_time", compressed.lock_seconds),
+                ("tracking_status", compressed.tracking.raw),
+            ),
+        )
     if name not in ("OBSVM", "OBSVH", "OBSVBASE"):
         return row
     return Record(
@@ -165,6 +188,8 @@ def _collect_epochs(
                 omitted["invalid_code_or_phase"] += 1
             if not status & 0x1400:
                 continue
+            if status & 0x0400 and observation.get("phase_available") == 0:
+                omitted["unresolved_compressed_phase"] += 1
             values = tuple(
                 observation.real(field)
                 for field in (
@@ -282,6 +307,8 @@ def _header_lines(
         lines.append(
             _header("Type-9 L2C omitted: component attribute unverified", "COMMENT")
         )
+    if omitted.get("unresolved_compressed_phase"):
+        lines.append(_header("Compressed carrier phases omitted", "COMMENT"))
     for system, observables in sorted(codes.items()):
         for start in range(0, len(observables), 13):
             prefix = f"{system}  {len(observables):3d}" if start == 0 else "      "
@@ -348,9 +375,13 @@ def _epoch_lines(
                     continue
                 status = row.integer("tracking_status")
                 if (
-                    code[0] == "C"
-                    and (not status & 0x1000 or row.real("pseudorange") <= 0)
-                ) or (code[0] in ("L", "D") and not status & 0x0400):
+                    (
+                        code[0] == "C"
+                        and (not status & 0x1000 or row.real("pseudorange") <= 0)
+                    )
+                    or (code[0] == "L" and row.get("phase_available") == 0)
+                    or (code[0] in ("L", "D") and not status & 0x0400)
+                ):
                     fields.append(" " * 16)
                     continue
                 value = {
@@ -386,14 +417,16 @@ def export_rinex(
 
     ``invalid_code_or_phase`` counts signal records missing either validity
     flag, although a valid code or phase can still be exported.
+    Compressed observations export code, Doppler and signal strength, but omit
+    carrier phase because the stored phase is modulo and its ambiguity has not
+    been independently resolved. ``unresolved_compressed_phase`` counts them.
     """
     if not records or any(
-        record.name not in ("RANGE", "RANGEH", "OBSVM", "OBSVH", "OBSVBASE")
+        record.name
+        not in ("RANGE", "RANGEH", "OBSVM", "OBSVH", "OBSVBASE", "OBSVMCMP", "OBSVHCMP")
         for record in records
     ):
-        raise ValueError(
-            "uncompressed RANGE, RANGEH, OBSVM, OBSVH or OBSVBASE records are required"
-        )
+        raise ValueError("RANGE or OBSV observation records are required")
     if len({record.name for record in records}) != 1:
         raise ValueError("export one antenna per RINEX file")
     omitted: Counter[str] = Counter()

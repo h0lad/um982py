@@ -42,9 +42,10 @@ def audit_observations(
     if (
         not records
         or len(names) != 1
-        or not names <= {"RANGE", "RANGEH", "OBSVM", "OBSVH", "OBSVBASE"}
+        or not names
+        <= {"RANGE", "RANGEH", "OBSVM", "OBSVH", "OBSVBASE", "OBSVMCMP", "OBSVHCMP"}
     ):
-        raise ValueError("one uncompressed observation log is required")
+        raise ValueError("one observation log is required")
     if expected_interval is not None and (
         not math.isfinite(expected_interval) or expected_interval <= 0
     ):

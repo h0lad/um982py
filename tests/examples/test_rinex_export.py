@@ -95,6 +95,32 @@ def test_cli_replays_documented_obsv(tmp_path: Path) -> None:
     assert "G26" in output.read_text()
 
 
+def test_cli_replays_compressed_observations(tmp_path: Path) -> None:
+    from conftest import FIXTURES
+
+    output, report = tmp_path / "compressed.obs", tmp_path / "report.json"
+    assert (
+        main(
+            [
+                "--replay",
+                str(FIXTURES / "bodies/OBSVMCMPB.bin"),
+                "--source",
+                "obsv-compressed",
+                "--output",
+                str(output),
+                "--json",
+                str(report),
+            ]
+        )
+        == 0
+    )
+    data = json.loads(report.read_text())["files"][0]
+    assert data["input_log"] == "OBSVMCMP"
+    assert data["observation_quality"]["epochs"] == 1
+    assert data["omitted"]["unresolved_compressed_phase"] > 0
+    assert "Compressed carrier phases omitted" in output.read_text()
+
+
 def test_cli_exports_multignss_shared_epochs_and_omission_report(
     tmp_path: Path,
 ) -> None:

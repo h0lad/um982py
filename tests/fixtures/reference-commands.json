@@ -1,20 +1,168 @@
 {
-  "revision": "R1.15",
-  "source": "https://device.report/m/683bf59f948a571fc5b177e9e54f5335c5b5032c65d04c16f8e984cb77ba7a6d.pdf",
-  "scope": "NMEA, proprietary logs and event outputs implemented by um982py, including the C-series additions. Sections reference the R1.15 manual. This is an inventory, not certification of every field or firmware.",
+  "scope": "Manual inventory for NMEA, proprietary logs and event outputs applicable to UM982 and supported C-series variants; inventory coverage does not certify every field or firmware.",
   "notes": [
-    "The published text skips section 7.5.10; ANT1GROUP and ANT2GROUP appear in revision history and remain covered by extended-log tests.",
-    "NMEA V4.11 duplicates the V4.10 message inventory in chapter 7.3.",
-    "PPPB2BINFO6 and PPPB2BINFO7 were removed in R1.13; legacy decoding remains supported."
+    "The manual skips section 7.5.10; ANT1GROUP and ANT2GROUP appear in revision history and remain covered by extended-log tests.",
+    "NMEA V4.11 duplicates the V4.10 message inventory.",
+    "PPPB2BINFO6 and PPPB2BINFO7 were removed from the current manual."
   ],
   "excluded_logs": [
     {
       "name": "REMOTEANTENNAPCOA",
-      "section": "7.5.84",
+      "section": "7.5.85",
       "reason": "UM982 is not among applicable products."
     }
   ],
   "logs": [
+    {
+      "section": "7.2.1",
+      "name": "GPDTM",
+      "message_id": null
+    },
+    {
+      "section": "7.2.2",
+      "name": "GPGBS",
+      "message_id": null
+    },
+    {
+      "section": "7.2.3",
+      "name": "GPGGA",
+      "message_id": null
+    },
+    {
+      "section": "7.2.4",
+      "name": "GPGLL",
+      "message_id": null
+    },
+    {
+      "section": "7.2.5",
+      "name": "GPGNS",
+      "message_id": null
+    },
+    {
+      "section": "7.2.6",
+      "name": "GPGRS",
+      "message_id": null
+    },
+    {
+      "section": "7.2.7",
+      "name": "GPGSA",
+      "message_id": null
+    },
+    {
+      "section": "7.2.8",
+      "name": "GPGST",
+      "message_id": null
+    },
+    {
+      "section": "7.2.9",
+      "name": "GPGSV",
+      "message_id": null
+    },
+    {
+      "section": "7.2.10",
+      "name": "GPTHS",
+      "message_id": null
+    },
+    {
+      "section": "7.2.11",
+      "name": "GPRMC",
+      "message_id": null
+    },
+    {
+      "section": "7.2.12",
+      "name": "GPROT",
+      "message_id": null
+    },
+    {
+      "section": "7.2.13",
+      "name": "GPVTG",
+      "message_id": null
+    },
+    {
+      "section": "7.2.14",
+      "name": "GPZDA",
+      "message_id": null
+    },
+    {
+      "section": "7.4.1",
+      "name": "GPGGAH",
+      "message_id": null
+    },
+    {
+      "section": "7.4.2",
+      "name": "GPGLLH",
+      "message_id": null
+    },
+    {
+      "section": "7.4.3",
+      "name": "GPGNSH",
+      "message_id": null
+    },
+    {
+      "section": "7.4.4",
+      "name": "GPGRSH",
+      "message_id": null
+    },
+    {
+      "section": "7.4.5",
+      "name": "GPGSAH",
+      "message_id": null
+    },
+    {
+      "section": "7.4.6",
+      "name": "GPGSTH",
+      "message_id": null
+    },
+    {
+      "section": "7.4.7",
+      "name": "GPGSVH",
+      "message_id": null
+    },
+    {
+      "section": "7.4.8",
+      "name": "GPHPD",
+      "message_id": null
+    },
+    {
+      "section": "7.4.9",
+      "name": "GPHPR",
+      "message_id": null
+    },
+    {
+      "section": "7.4.10",
+      "name": "GPHPR2",
+      "message_id": null
+    },
+    {
+      "section": "7.4.11",
+      "name": "GPRMCH",
+      "message_id": null
+    },
+    {
+      "section": "7.4.12",
+      "name": "GPROT2",
+      "message_id": null
+    },
+    {
+      "section": "7.4.13",
+      "name": "GPTHS2",
+      "message_id": null
+    },
+    {
+      "section": "7.4.14",
+      "name": "GPTRA2",
+      "message_id": null
+    },
+    {
+      "section": "7.4.15",
+      "name": "GPVTGH",
+      "message_id": null
+    },
+    {
+      "section": "7.4.16",
+      "name": "QZQSM",
+      "message_id": null
+    },
     {
       "section": "7.5.2",
       "name": "VERSION",
@@ -412,247 +560,107 @@
     },
     {
       "section": "7.5.82",
+      "name": "PPSSTATUS",
+      "message_id": 9000
+    },
+    {
+      "section": "7.5.83",
       "name": "QZSSEPH",
       "message_id": 110
     },
     {
-      "section": "7.5.83",
+      "section": "7.5.84",
       "name": "RECTIME",
       "message_id": 102
     },
     {
-      "section": "7.5.85",
+      "section": "7.5.86",
       "name": "RTCMSTATUS",
       "message_id": 2125
     },
     {
-      "section": "7.5.86",
+      "section": "7.5.87",
       "name": "RTCSTATUS",
       "message_id": 510
     },
     {
-      "section": "7.5.87",
+      "section": "7.5.88",
       "name": "RTKSTATUS",
       "message_id": 509
     },
     {
-      "section": "7.5.88",
+      "section": "7.5.89",
       "name": "RTKSTATUS2",
       "message_id": 691
     },
     {
-      "section": "7.5.89",
+      "section": "7.5.90",
       "name": "SATECEF",
       "message_id": 2115
     },
     {
-      "section": "7.5.90",
+      "section": "7.5.91",
       "name": "SATELLITE",
       "message_id": 1042
     },
     {
-      "section": "7.5.91",
+      "section": "7.5.92",
       "name": "SATSINFO",
       "message_id": 2124
     },
     {
-      "section": "7.5.92",
+      "section": "7.5.93",
+      "name": "SPOOFINFO",
+      "message_id": 530
+    },
+    {
+      "section": "7.5.94",
       "name": "SPPDOP",
       "message_id": 173
     },
     {
-      "section": "7.5.93",
+      "section": "7.5.95",
       "name": "SPPDOPH",
       "message_id": 2120
     },
     {
-      "section": "7.5.94",
+      "section": "7.5.96",
       "name": "SPPNAV",
       "message_id": 46
     },
     {
-      "section": "7.5.95",
+      "section": "7.5.97",
       "name": "SPPNAVH",
       "message_id": 2116
     },
     {
-      "section": "7.5.96",
+      "section": "7.5.98",
       "name": "STADOP",
       "message_id": 954
     },
     {
-      "section": "7.5.97",
+      "section": "7.5.99",
       "name": "STADOPH",
       "message_id": 2122
     },
     {
-      "section": "7.5.98",
+      "section": "7.5.100",
       "name": "TROPINFO",
       "message_id": 2318
     },
     {
-      "section": "7.5.99",
+      "section": "7.5.101",
       "name": "UNIHEADING",
       "message_id": 972
     },
     {
-      "section": "7.5.100",
+      "section": "7.5.102",
       "name": "UNIHEADING2",
       "message_id": 1331
     },
     {
-      "section": "7.5.101",
+      "section": "7.5.103",
       "name": "UNILOGLIST",
-      "message_id": null
-    },
-    {
-      "section": "7.2.1",
-      "name": "GPDTM",
-      "message_id": null
-    },
-    {
-      "section": "7.2.2",
-      "name": "GPGBS",
-      "message_id": null
-    },
-    {
-      "section": "7.2.3",
-      "name": "GPGGA",
-      "message_id": null
-    },
-    {
-      "section": "7.2.4",
-      "name": "GPGLL",
-      "message_id": null
-    },
-    {
-      "section": "7.2.5",
-      "name": "GPGNS",
-      "message_id": null
-    },
-    {
-      "section": "7.2.6",
-      "name": "GPGRS",
-      "message_id": null
-    },
-    {
-      "section": "7.2.7",
-      "name": "GPGSA",
-      "message_id": null
-    },
-    {
-      "section": "7.2.8",
-      "name": "GPGST",
-      "message_id": null
-    },
-    {
-      "section": "7.2.9",
-      "name": "GPGSV",
-      "message_id": null
-    },
-    {
-      "section": "7.2.10",
-      "name": "GPTHS",
-      "message_id": null
-    },
-    {
-      "section": "7.2.11",
-      "name": "GPRMC",
-      "message_id": null
-    },
-    {
-      "section": "7.2.12",
-      "name": "GPROT",
-      "message_id": null
-    },
-    {
-      "section": "7.2.13",
-      "name": "GPVTG",
-      "message_id": null
-    },
-    {
-      "section": "7.2.14",
-      "name": "GPZDA",
-      "message_id": null
-    },
-    {
-      "section": "7.4.1",
-      "name": "GPGGAH",
-      "message_id": null
-    },
-    {
-      "section": "7.4.2",
-      "name": "GPGLLH",
-      "message_id": null
-    },
-    {
-      "section": "7.4.3",
-      "name": "GPGNSH",
-      "message_id": null
-    },
-    {
-      "section": "7.4.4",
-      "name": "GPGRSH",
-      "message_id": null
-    },
-    {
-      "section": "7.4.5",
-      "name": "GPGSAH",
-      "message_id": null
-    },
-    {
-      "section": "7.4.6",
-      "name": "GPGSTH",
-      "message_id": null
-    },
-    {
-      "section": "7.4.7",
-      "name": "GPGSVH",
-      "message_id": null
-    },
-    {
-      "section": "7.4.8",
-      "name": "GPRMCH",
-      "message_id": null
-    },
-    {
-      "section": "7.4.9",
-      "name": "GPVTGH",
-      "message_id": null
-    },
-    {
-      "section": "7.4.10",
-      "name": "GPTHS2",
-      "message_id": null
-    },
-    {
-      "section": "7.4.11",
-      "name": "GPHPR",
-      "message_id": null
-    },
-    {
-      "section": "7.4.12",
-      "name": "GPHPR2",
-      "message_id": null
-    },
-    {
-      "section": "7.4.13",
-      "name": "GPTRA2",
-      "message_id": null
-    },
-    {
-      "section": "7.4.14",
-      "name": "GPROT2",
-      "message_id": null
-    },
-    {
-      "section": "7.4.15",
-      "name": "GPHPD",
-      "message_id": null
-    },
-    {
-      "section": "7.4.16",
-      "name": "QZQSM",
       "message_id": null
     },
     {
