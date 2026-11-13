@@ -268,3 +268,101 @@ def test_capture_rejects_conflicts_and_event_only_before_write() -> None:
         with pytest.raises(ValueError, match="ONCHANGED-only"):
             next(iter_live_records(receiver, [Log.OBSVBASE], duration=1, rate_hz=10))
     assert transport.writes == []
+
+
+def test_capture_plan_supports_independent_log_intervals() -> None:
+    secondary = antenna_log(Log.RANGE, "secondary")
+    plan = subscription_plan(
+        [Log.RANGE, secondary, Log.JAMSTATUS, Log.OBSVBASE],
+        interval=0.05,
+        binary=True,
+        intervals={secondary: 0.1, Log.JAMSTATUS: 1},
+    )
+    assert [command.text for _, command in plan] == [
+        "RANGEB 0.05",
+        "RANGEHB 0.1",
+        "JAMSTATUSB 1",
+        "OBSVBASEB ONCHANGED",
+    ]
+
+
+@pytest.mark.parametrize(
+    "intervals",
+    [
+        {Log.JAMSTATUS: 0},
+        {Log.JAMSTATUS: -1},
+        {Log.JAMSTATUS: float("nan")},
+        {Log.JAMSTATUS: float("inf")},
+        {Log.JAMSTATUS: True},
+        {Log.JAMSTATUS: 0.1},
+        {Log.GPGGA: 1},
+        {"JAMSTATUS": 1},
+        {Log.OBSVBASE: 1},
+    ],
+)
+@pytest.mark.parametrize("stream", [False, True])
+def test_invalid_capture_intervals_do_not_write(
+    intervals: dict[Log, float], *, stream: bool
+) -> None:
+    transport = SubscriptionTransport()
+    with Receiver(transport) as receiver, pytest.raises(ValueError):
+        if stream:
+            next(
+                iter_live_records(
+                    receiver,
+                    [Log.RANGE, Log.JAMSTATUS, Log.OBSVBASE],
+                    duration=1,
+                    intervals=intervals,
+                )
+            )
+        else:
+            capture_live(
+                receiver,
+                [Log.RANGE, Log.JAMSTATUS, Log.OBSVBASE],
+                duration=1,
+                intervals=intervals,
+            )
+    assert transport.writes == []
+
+
+@pytest.mark.parametrize("stream", [False, True])
+def test_mixed_capture_intervals_restore_previous_subscriptions(
+    *, stream: bool
+) -> None:
+    frame = Path("tests/fixtures/captures/RANGEB.bin").read_bytes()
+
+    class StreamingTransport(SubscriptionTransport):
+        def read(self, size: int, timeout: float) -> bytes:
+            if not self.pending and ("RANGEB", Port.COM1) in self.subscriptions:
+                assert self.subscriptions[("RANGEB", Port.COM1)] == 0.05
+                assert self.subscriptions[("JAMSTATUSB", Port.COM1)] == 1
+                self.pending.extend(frame)
+            return super().read(size, timeout)
+
+    transport = StreamingTransport()
+    transport.subscriptions[("JAMSTATUSB", Port.COM1)] = 5
+    original = dict(transport.subscriptions)
+    with Receiver(transport) as receiver:
+        if stream:
+            records = iter_live_records(
+                receiver,
+                [Log.RANGE, Log.JAMSTATUS],
+                duration=1,
+                rate_hz=20,
+                intervals={Log.JAMSTATUS: 1},
+            )
+            assert next(records)[0] == "RANGE"
+            records.close()
+        else:
+            with patch("um982py.capture.receive_records", return_value={}) as receive:
+                capture_live(
+                    receiver,
+                    [Log.RANGE, Log.JAMSTATUS],
+                    duration=1,
+                    rate_hz=20,
+                    intervals={Log.JAMSTATUS: 1},
+                )
+                receive.assert_called_once()
+            assert b"RANGEB 0.05\r\n" in transport.writes
+            assert b"JAMSTATUSB 1\r\n" in transport.writes
+        assert transport.subscriptions == original

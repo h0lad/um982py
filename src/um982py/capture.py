@@ -3,7 +3,7 @@
 import math
 import os
 import sys
-from collections.abc import Callable, Iterable, Iterator, Sequence
+from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from contextlib import suppress
 from itertools import pairwise
 from pathlib import Path
@@ -145,9 +145,22 @@ def uniform_interval(records: Sequence[Record], fallback: float) -> float:
 
 
 def subscription_plan(
-    logs: Sequence[DataLog], *, interval: float, binary: bool
+    logs: Sequence[DataLog],
+    *,
+    interval: float,
+    binary: bool,
+    intervals: Mapping[DataLog, float] | None = None,
 ) -> list[tuple[str, Command[CommandResponse]]]:
     """Select supported wire forms and triggers for temporary capture."""
+    overrides = {} if intervals is None else dict(intervals)
+    for log, value in overrides.items():
+        if not isinstance(log, (Log, AntennaLog)) or log not in logs:
+            raise ValueError("intervals must refer to selected logs")
+        wire_log = log.wire if isinstance(log, AntennaLog) else log
+        if wire_log.onchanged_only:
+            raise ValueError("ONCHANGED-only logs do not support intervals")
+        if isinstance(value, bool) or not math.isfinite(value) or value <= 0:
+            raise ValueError("intervals must be finite and positive")
     subscriptions = []
     for log in logs:
         binary_output = binary
@@ -156,7 +169,11 @@ def subscription_plan(
         except ValueError:
             binary_output = False
         wire_log = log.wire if isinstance(log, AntennaLog) else log
-        trigger = Trigger.ON_CHANGED if wire_log.onchanged_only else interval
+        trigger = (
+            Trigger.ON_CHANGED
+            if wire_log.onchanged_only
+            else overrides.get(log, interval)
+        )
         output_command = log.output(trigger, binary=binary_output)
         subscriptions.append((log.wire_name(binary=binary_output), output_command))
     return subscriptions
@@ -171,6 +188,7 @@ def capture_live(  # type: ignore[overload-overlap]
     duration: float,
     interval: float | None = None,
     rate_hz: float | None = None,
+    intervals: Mapping[DataLog, float] | None = None,
     frames: int | None = None,
     binary: bool = True,
     arrival_order: list[Record] | None = None,
@@ -187,6 +205,7 @@ def capture_live(
     duration: float,
     interval: float | None = None,
     rate_hz: float | None = None,
+    intervals: Mapping[DataLog, float] | None = None,
     frames: int | None = None,
     binary: bool = True,
     arrival_order: list[Record] | None = None,
@@ -202,6 +221,7 @@ def capture_live(
     duration: float,
     interval: float | None = None,
     rate_hz: float | None = None,
+    intervals: Mapping[DataLog, float] | None = None,
     frames: int | None = None,
     binary: bool = True,
     arrival_order: list[Record] | None = None,
@@ -216,7 +236,9 @@ def capture_live(
     except SATVIS2 epochs may span multiple frames.
 
     Use ``interval`` in seconds or a documented N4 ``rate_hz``. Event-only logs
-    cannot use ``rate_hz``. Actual rates depend on receiver, log, group and firmware.
+    cannot use ``rate_hz``. ``intervals`` overrides the default period in seconds
+    for selected periodic logs. Actual rates depend on receiver, log, group and
+    firmware.
     Capture preserves received epochs, including repeats and gaps; it does not
     resample. Subscription restoration can fail after a disconnect. For longer
     recordings use ``SessionRecorder`` or stream with ``iter_live_records``.
@@ -245,7 +267,9 @@ def capture_live(
         for log in selected
     ):
         raise ValueError("ONCHANGED-only logs do not support rate_hz")
-    planned = subscription_plan(selected, interval=interval, binary=binary)
+    planned = subscription_plan(
+        selected, interval=interval, binary=binary, intervals=intervals
+    )
     with temporary_subscriptions(receiver, *planned):
         records = receive_records(
             receiver,

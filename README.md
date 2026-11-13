@@ -72,6 +72,37 @@ prediction; the signature alone does not prove prediction.
 | Read a Linux PPS timestamp | `with PpsDevice(path) as device: device.fetch()` |
 | Use asyncio | `AsyncReceiver.connect()` |
 
+## API scope and validation
+
+Use `Receiver`, `AsyncReceiver`, command builders, decoded `Record` values and
+transport APIs for receiver integration. Use `SessionRecorder` for long raw
+recordings and `iter_live_records()` for incremental processing. `capture_live()`
+is a convenience for short captures and retains all selected records in memory.
+A slow streaming consumer can still lose data at the transport; choose the baud
+rate and log schedule for the total output volume.
+
+The package is classified as beta. The package version in `pyproject.toml`
+identifies the API release; pin a tested release for reproducible applications.
+Modules under `um982py.experimental` expose internal receiver formats and
+research interfaces whose behavior can depend on firmware. Scientific examples
+are starting points for experiments and need validation against the intended
+antenna, environment and reference data. Import reusable APIs from `um982py`
+or its public modules instead of importing example scripts or private helpers.
+
+RINEX export accepts uncompressed RANGE, RANGEH, OBSVM, OBSVH and OBSVBASE
+records. Compressed OBSVMCMP and OBSVHCMP records are decoded but are not RINEX
+export inputs. Intersignal carrier-phase alignment has not been independently
+established, and antenna phase-centre corrections are not applied. Exported
+files preserve these limitations in their headers.
+
+Independent parser vectors, orbit references and RINEX comparisons exercise
+specific fixtures. They do not establish 24-hour moving-rover PPK accuracy or
+sustained receiver capture performance at 5, 10 or 20 Hz. Those checks require
+real recordings, epoch-loss accounting and an independent position reference.
+The G17 orbit regression retains the discrepancy in the captured ephemeris;
+a separate comparison substitutes two reference coefficients, without changing
+the decoder or silently correcting receiver data.
+
 ## Read RTCM correction fields
 
 Decode station coordinates and descriptions, GPS and GLONASS observations,
@@ -269,6 +300,14 @@ print(f"Saved {result.epochs} epochs; omitted observations: {result.omitted}")
 records in memory; `InterruptedCapture.records` contains records received before
 Ctrl+C. For long recordings, use `SessionRecorder` or the
 [unattended station example](examples/unattended_station/README.md).
+
+For mixed capture rates, pass `intervals={Log.JAMSTATUS: 1}` alongside
+`rate_hz=20` and `logs=[Log.RANGE, Log.JAMSTATUS]`. RANGE then uses 0.05 seconds
+and JAMSTATUS uses 1 second. Both `capture_live()` and `iter_live_records()`
+accept these overrides in seconds and restore previous subscriptions on exit.
+Overrides must name selected periodic logs; event-only logs keep their
+ONCHANGED trigger. When stopping a live iterator early, close it to restore
+subscriptions.
 
 ### Get the direction of a vehicle
 

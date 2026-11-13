@@ -1,6 +1,6 @@
 """Incremental live and replay capture with bounded application memory."""
 
-from collections.abc import Iterable, Iterator, Sequence
+from collections.abc import Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from math import isfinite
 from time import monotonic
@@ -67,9 +67,13 @@ def iter_live_records(
     duration: float,
     interval: float | None = None,
     rate_hz: float | None = None,
+    intervals: Mapping[DataLog, float] | None = None,
     binary: bool = True,
 ) -> Iterator[tuple[str, Record]]:
     """Temporarily subscribe and yield records until the duration elapses.
+
+    ``intervals`` overrides the default period in seconds for selected periodic
+    logs, allowing slow status logs alongside fast observations.
 
     If you stop early, close the iterator so the receiver's subscriptions can be
     restored. Processing happens in the reader thread, so a slow consumer can
@@ -86,7 +90,9 @@ def iter_live_records(
         for log in logs
     ):
         raise ValueError("ONCHANGED-only logs do not support rate_hz")
-    planned = subscription_plan(logs, interval=interval, binary=binary)
+    planned = subscription_plan(
+        logs, interval=interval, binary=binary, intervals=intervals
+    )
     with temporary_subscriptions(receiver, *planned):
         deadline = monotonic() + duration
 
