@@ -229,8 +229,28 @@ def test_rover_pairs_only_matching_heading_epochs() -> None:
             + f"*{unicore_crc32(different_epoch_body):08x}\r\n".encode()
         )
         assert rover.position(heading=True).heading_deg is None
+        unknown_body = raw_heading.split(b"*")[0][1:].replace(
+            b",GPS,FINE,", b",GPS,UNKNOWN,"
+        )
+        transport.responses[b"UNIHEADINGA\r\n"] = (
+            b"#" + unknown_body + f"*{unicore_crc32(unknown_body):08x}\r\n".encode()
+        )
+        assert rover.position(heading=True).heading_deg is None
     assert not transport.closed
     receiver.close()
+
+
+def test_rover_can_require_a_new_fine_receiver_epoch() -> None:
+    from um982py.protocol.checksums import unicore_crc32
+
+    parsed = parse_ascii((FIXTURES / "bodies/BESTNAVA.bin").read_bytes())
+    old = ascii_message("BESTNAVA", ",".join(parsed.fields))
+    new_body = old.split(b"*")[0][1:].replace(b"2400,123000", b"2400,124000")
+    new = b"#" + new_body + f"*{unicore_crc32(new_body):08x}\r\n".encode()
+    transport = ReplayTransport({b"BESTNAVA\r\n": old + new}, chunk=65536)
+    with Rover(Receiver(transport, timeout=0.5), close_receiver=True) as rover:
+        sample = rover.position(min_epoch_gps_seconds=2400 * 604800 + 124)
+        assert sample.epoch_gps_seconds == 2400 * 604800 + 124
 
 
 def test_rover_relays_ntrip_while_reading_positions(

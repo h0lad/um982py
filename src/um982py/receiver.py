@@ -3,8 +3,10 @@
 from collections import deque
 from collections.abc import Callable, Iterator, Sequence
 from contextlib import closing, contextmanager
+from dataclasses import dataclass
+from datetime import UTC, datetime
 from math import isclose, isfinite
-from threading import Event, RLock
+from threading import Event, RLock, Thread, current_thread
 from time import monotonic, sleep
 from types import TracebackType
 from typing import Self
@@ -61,6 +63,13 @@ def _timeout(value: float) -> float:
     return value
 
 
+@dataclass(frozen=True, slots=True)
+class _ReceivedFrame:
+    message: Message
+    received_at: datetime
+    received_monotonic: float
+
+
 class Receiver:
     def __init__(
         self,
@@ -73,16 +82,41 @@ class Receiver:
     ) -> None:
         if queue_limit < 1:
             raise ValueError("queue_limit must be positive")
-        self.transport = transport
+        self._lock = RLock()
+        self._owner: Thread | None = None
+        self._transport = transport
         self.timeout = _timeout(timeout)
         self.checksummed = checksummed
         self.queue_limit = queue_limit
-        self.decoder = decoder if decoder is not None else StreamDecoder()
-        self._incoming: deque[Message] = deque()
-        self._backlog: deque[Message] = deque()
-        self._lock = RLock()
+        self._decoder = decoder if decoder is not None else StreamDecoder()
+        self._incoming: deque[_ReceivedFrame] = deque()
+        self._backlog: deque[_ReceivedFrame] = deque()
         self._closed = False
         self._in_poll_callback = False
+
+    @property
+    def transport(self) -> Transport:
+        with self._lock:
+            self._check_open()
+            return self._transport
+
+    @transport.setter
+    def transport(self, transport: Transport) -> None:
+        with self._lock:
+            self._check_open()
+            self._transport = transport
+
+    @property
+    def decoder(self) -> StreamDecoder:
+        with self._lock:
+            self._check_open()
+            return self._decoder
+
+    @decoder.setter
+    def decoder(self, decoder: StreamDecoder) -> None:
+        with self._lock:
+            self._check_open()
+            self._decoder = decoder
 
     @classmethod
     def serial(cls, port: str, baudrate: int = 115200, *, timeout: float = 3) -> Self:
@@ -133,25 +167,55 @@ class Receiver:
 
     def close(self) -> None:
         with self._lock:
+            self._check_owner()
             if self._in_poll_callback:
-                raise RuntimeError("receiver operations are unavailable in on_message")
+                raise RuntimeError(
+                    "receiver operations are unavailable in on_message or accept"
+                )
             if not self._closed:
                 self.transport.close()
                 self._closed = True
 
-    def execute[T](self, command: Command[T], *, timeout: float | None = None) -> T:
+    def execute[T](
+        self,
+        command: Command[T],
+        *,
+        timeout: float | None = None,
+        accept: Callable[[T], bool] | None = None,
+    ) -> T:
+        """Execute a command, optionally accepting only matching decoded results.
+
+        Complete frames already available before the write are retained for
+        ``receive``. Periodic output arriving after the write cannot generally
+        be distinguished from a response. Use ``accept`` to enforce an epoch
+        or other application-specific freshness requirement when available.
+        The callback must not perform receiver operations.
+        """
+        if accept is not None and not callable(accept):
+            raise TypeError("accept must be callable")
         duration = self.timeout if timeout is None else _timeout(timeout)
         with self._lock:
             deadline = monotonic() + duration
-            self._start(command, duration)
+            prior = self._start(command, duration)
+            self._consume_prior(prior, deadline)
             while True:
-                message = self._next(deadline)
-                if message is None:
+                received = self._next(deadline)
+                if received is None:
                     raise ResponseTimeout(f"Timed out waiting for {command.text}")
+                message = received.message
                 self._check_rejection(command.text, message)
                 if command.matches(message):
-                    return command.decode(message)
-                self._save(message)
+                    result = command.decode(message)
+                    if accept is None:
+                        return result
+                    self._in_poll_callback = True
+                    try:
+                        accepted = accept(result)
+                    finally:
+                        self._in_poll_callback = False
+                    if accepted:
+                        return result
+                self._save(received)
 
     def collect[T](
         self,
@@ -164,23 +228,28 @@ class Receiver:
         _timeout(quiet)
         with self._lock:
             deadline = monotonic() + duration
-            self._start(command, duration)
+            prior = self._start(command, duration)
+            self._consume_prior(prior, deadline)
             values: list[T] = []
             idle_deadline = deadline
             while True:
-                message = self._next(min(deadline, idle_deadline))
-                if message is None:
+                received = self._next(min(deadline, idle_deadline))
+                if received is None:
                     if not values:
                         raise ResponseTimeout(f"No records for {command.text}")
                     return tuple(values)
+                message = received.message
                 self._check_rejection(command.text, message)
                 if command.matches(message):
                     values.append(command.decode(message))
                     idle_deadline = monotonic() + quiet
                 else:
-                    self._save(message)
+                    self._save(received)
 
     def receive(self, *, timeout: float | None = None) -> Message:
+        return self._receive_timed(timeout=timeout).message
+
+    def _receive_timed(self, *, timeout: float | None = None) -> _ReceivedFrame:
         duration = self.timeout if timeout is None else _timeout(timeout)
         with self._lock:
             self._check_open()
@@ -193,6 +262,9 @@ class Receiver:
 
     def drain_pending(self) -> tuple[Message, ...]:
         """Return the messages currently in the queue."""
+        return tuple(frame.message for frame in self._drain_timed())
+
+    def _drain_timed(self) -> tuple[_ReceivedFrame, ...]:
         with self._lock:
             self._check_open()
             messages = (*self._backlog, *self._incoming)
@@ -482,11 +554,46 @@ class Receiver:
                 command.encode(checksummed=self.checksummed), self.timeout
             )
 
-    def _start[T](self, command: Command[T], duration: float) -> None:
+    def _start[T](self, command: Command[T], duration: float) -> int:
         self._check_open()
         while self._incoming:
             self._save(self._incoming.popleft())
-        self.transport.write(command.encode(checksummed=self.checksummed), duration)
+        # Keep already buffered traffic, including incomplete frames, separate
+        # from a response without discarding any serial data.
+        deadline = monotonic() + duration
+        while True:
+            chunk = self.transport.read(65536, 0)
+            if not chunk:
+                break
+            for received in self._decode(chunk):
+                self._save(received)
+            if monotonic() >= deadline:
+                raise ResponseTimeout(f"Timed out preparing {command.text}")
+        prior = len(self.decoder.pending)
+        remaining = deadline - monotonic()
+        if remaining <= 0:
+            raise ResponseTimeout(f"Timed out preparing {command.text}")
+        self.transport.write(command.encode(checksummed=self.checksummed), remaining)
+        return prior
+
+    def _consume_prior(self, prior: int, deadline: float) -> None:
+        """Preserve a frame that began before a command was sent."""
+        while prior:
+            remaining = deadline - monotonic()
+            if remaining <= 0:
+                raise ResponseTimeout("Timed out waiting for buffered frame")
+            chunk = self.transport.read(1, remaining)
+            if not chunk:
+                continue
+            discarded = self.decoder.discarded_bytes
+            messages = self._decode(chunk)
+            prior = max(0, prior - (self.decoder.discarded_bytes - discarded))
+            for received in messages:
+                if prior:
+                    prior = max(0, prior - len(received.message.raw))
+                    self._save(received)
+                else:
+                    self._incoming.append(received)
 
     def _poll_query[T](
         self, command: Command[T], on_message: Callable[[Message], None] | None = None
@@ -496,44 +603,41 @@ class Receiver:
             raise TypeError("on_message must be callable")
         with self._lock:
             self._check_open()
-            prior_bytes = len(self.decoder.pending)
-            if (
-                prior_bytes
-                and len(self._incoming) + len(self._backlog) >= self.queue_limit
-            ):
-                raise BufferOverflow("Receiver queue full; consume messages")
             deadline = monotonic() + self.timeout
-            self._start(command, self.timeout)
+            prior_bytes = self._start(command, self.timeout)
             while True:
                 remaining = deadline - monotonic()
                 if remaining <= 0:
                     raise ResponseTimeout(f"Timed out waiting for {command.text}")
                 chunk = self.transport.read(65536, remaining)
-                newly_completed: list[Message] = []
+                newly_completed: list[_ReceivedFrame] = []
                 if prior_bytes:
                     for index, byte in enumerate(chunk):
                         discarded = self.decoder.discarded_bytes
-                        completed = self.decoder.feed(bytes((byte,)))
+                        completed = self._decode(bytes((byte,)))
                         prior_bytes = max(
                             0,
                             prior_bytes - (self.decoder.discarded_bytes - discarded),
                         )
-                        for message in completed:
+                        for received in completed:
                             if prior_bytes:
-                                prior_bytes = max(0, prior_bytes - len(message.raw))
-                                self._save(message)
+                                prior_bytes = max(
+                                    0, prior_bytes - len(received.message.raw)
+                                )
+                                self._save(received)
                             else:
-                                newly_completed.append(message)
+                                newly_completed.append(received)
                         if not prior_bytes:
                             chunk = chunk[index + 1 :]
                             break
                     else:
                         continue
-                messages = (*newly_completed, *self.decoder.feed(chunk))
+                messages = (*newly_completed, *self._decode(chunk))
                 found = False
                 result: T | None = None
                 failure: Exception | None = None
-                for message in messages:
+                for received in messages:
+                    message = received.message
                     if failure is None:
                         try:
                             self._check_rejection(command.text, message)
@@ -556,27 +660,55 @@ class Receiver:
                 if found:
                     return result  # type: ignore[return-value]
 
-    def _next(self, deadline: float) -> Message | None:
+    def _decode(self, chunk: bytes) -> tuple[_ReceivedFrame, ...]:
+        messages = self.decoder.feed(chunk)
+        if not messages:
+            return ()
+        received_at, received_monotonic = datetime.now(UTC), monotonic()
+        return tuple(
+            _ReceivedFrame(m, received_at, received_monotonic) for m in messages
+        )
+
+    def _next(self, deadline: float) -> _ReceivedFrame | None:
         while True:
             if self._incoming:
                 return self._incoming.popleft()
             if monotonic() >= deadline:
                 return None
             chunk = self.transport.read(65536, max(0, deadline - monotonic()))
-            self._incoming.extend(self.decoder.feed(chunk))
+            self._incoming.extend(self._decode(chunk))
             if len(self._incoming) + len(self._backlog) > self.queue_limit:
                 raise BufferOverflow("Receiver queue full; consume messages")
 
-    def _save(self, message: Message) -> None:
+    def _save(self, message: _ReceivedFrame) -> None:
         if len(self._incoming) + len(self._backlog) >= self.queue_limit:
             raise BufferOverflow("Receiver queue full; consume messages")
         self._backlog.append(message)
 
     def _check_open(self) -> None:
+        self._check_owner()
         if self._in_poll_callback:
-            raise RuntimeError("receiver operations are unavailable in on_message")
+            raise RuntimeError(
+                "receiver operations are unavailable in on_message or accept"
+            )
         if self._closed:
             raise TransportClosed("Receiver is closed")
+
+    def _check_owner(self) -> None:
+        if self._owner is not None and current_thread() is not self._owner:
+            raise RuntimeError("receiver is owned by a running stream")
+
+    def _claim(self, owner: Thread) -> None:
+        with self._lock:
+            self._check_open()
+            if self._owner is not None:
+                raise RuntimeError("receiver is already owned by a stream")
+            self._owner = owner
+
+    def _release(self, owner: Thread) -> None:
+        with self._lock:
+            if self._owner is owner:
+                self._owner = None
 
     @staticmethod
     def _check_rejection(command: str, message: Message) -> None:

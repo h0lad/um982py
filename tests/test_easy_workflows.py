@@ -23,7 +23,7 @@ GGAH = sentence(
 
 class PositionTransport(SubscriptionTransport):
     def read(self, size: int, timeout: float) -> bytes:
-        if not self.pending:
+        if timeout > 0 and not self.pending:
             if ("GPGGA", Port.COM1) in self.subscriptions:
                 self.pending.extend(GGA)
             elif ("GPGGAH", Port.COM1) in self.subscriptions:

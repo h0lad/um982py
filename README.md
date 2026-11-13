@@ -96,6 +96,12 @@ age, GPS epoch, satellites used, ellipsoidal height and optional precision. Unav
 `None`. In particular, a GGA fix has UTC time of day but no date, so its GPS
 epoch is unavailable. Source-specific information remains on each model.
 
+A one-shot query preserves frames already read or buffered before the command,
+but matching periodic output can still arrive after the command is sent. Use
+`Receiver.execute(..., accept=...)` for a source-specific acceptance rule, or
+`rover.position(min_epoch_gps_seconds=...)` when a fine GPS epoch is available.
+Neither host frame-completion time nor query time proves measurement freshness.
+
 `poll_positions()` queries the receiver once per iteration and waits between
 queries. For subscribed receiver output, use the context manager below; it
 restores the previous subscription when the block exits:
@@ -115,8 +121,9 @@ including when capturing one log; interrupted captures use the same shape.
 For a reconnecting GGA session, pass each `PositionUpdate` to a
 `PositionMonitor`. An application timer can call `monitor.status()` even when
 no new fix arrives. It reports a missing or stale position and advances the
-reported correction age since arrival. Check `PositionSession.health()` for
-connection state. See [live position](examples/live_position/README.md).
+reported correction age since host frame completion. It cannot account for
+receiver or transport buffering before the frame was read. Check
+`PositionSession.health()` for connection state. See [live position](examples/live_position/README.md).
 
 The optional ROS 2 `navsatfix()` adapter accepts any `Position`, including
 GGA, BESTNAV, PPP and rover positions. It supplies an east/north/up diagonal
@@ -152,12 +159,23 @@ receiver-reported east, north and up standard deviations in metres. Its
 `horizontal_rms_m` is their horizontal root-sum-square, not a 95% accuracy
 radius. Missing fields remain `None`. Precision is withheld for an invalid fix.
 
+Use `assess_position(position, PositionLimits(...))` to check receiver-reported
+precision, correction age and fix class against application limits. These
+checks are not an integrity guarantee. Supply `now_gps_seconds` to check epoch
+age; the receiver timestamp must report documented fine time. Inspect
+`position.receiver_time` for its reference, original status and whether its
+GPS time scale was assumed. GGA has no dated receiver timestamp.
+
 GGA does not report those deviations. To attach GST statistics, call
 `fix.with_gst(gst_record)` for records from the same receiver session. It
 checks the antenna and exact UTC time of day. Neither sentence contains a date,
 so the application must ensure the records are from the same day and session.
 GST can also include the receiver's horizontal error ellipse; it is preserved
 as reported rather than turned into an assumed correlation or confidence bound.
+For batches, `match_precision()` rejects duplicate epoch/antenna pairs. Use
+`match_stream_precision()` with `StreamEvent`s to additionally require the same
+stream session and nearby host frame-completion times. Completion is not the
+receiver measurement epoch, and both methods require checking health and drops.
 
 `geojson_feature()` and `TrackWriter` include available precision in their map
 output. `navsatfix()` maps complete per-axis deviations to a diagonal covariance;
@@ -302,8 +320,31 @@ if no valid heading matches the position epoch. Apply the offset between the
 baseline and the vehicle's forward direction to get the vehicle's heading.
 Heading queries are optional and default to off, so single-antenna use does not
 wait for a heading response.
+Both matched receiver timestamps must report documented fine GPS time.
 Pass `username` and `password` to `Rover.connect()` when the caster requires
 credentials. See [NTRIP rover](examples/ntrip_client/README.md) for setup.
+
+For a long-running rover, `RoverSession` takes a receiver factory and reconnects
+after receiver transport failures. It recreates the stream and correction relay
+for each connection; `health()` reports both. Each update identifies its stream
+session, so observations from different connections can be kept separate.
+
+```python
+from threading import Event
+from um982py import Receiver, RoverSession
+
+stop = Event()
+session = RoverSession(
+    lambda: Receiver.connect("/dev/ttyUSB0", 921600),
+    ntrip_url="https://caster.example:443/MOUNT",
+)
+for update in session.positions(stop, heading=True):
+    if update.position.valid:
+        print(update.session_id, update.position.latitude, update.position.longitude)
+```
+
+Set `stop` from another thread and close the iterator if stopping early. The
+session does not configure the receiver unless a `configure` callback is given.
 
 For ground motion and a destination:
 

@@ -117,7 +117,7 @@ def test_live_collection_waits_for_multiple_epochs_and_restores_logs(
         emitted = 0
 
         def read(self, size: int, timeout: float) -> bytes:
-            if not self.pending:
+            if timeout > 0 and not self.pending:
                 clock[0] += min(1.0, timeout)
                 if ("RANGEB", Port.COM1) in self.subscriptions:
                     self.pending.extend(frame)
@@ -172,7 +172,7 @@ def test_cancelled_capture_restores_logs_and_preserves_received_data(
         interrupted = False
 
         def read(self, size: int, timeout: float) -> bytes:
-            if not self.pending and not self.interrupted:
+            if timeout > 0 and not self.pending and not self.interrupted:
                 self.interrupted = True
                 raise KeyboardInterrupt
             return super().read(size, timeout)
@@ -373,7 +373,7 @@ def test_library_capture_uses_open_receiver_without_cli_or_output(
 
     class StreamingTransport(SubscriptionTransport):
         def read(self, size: int, timeout: float) -> bytes:
-            if not self.pending:
+            if timeout > 0 and not self.pending:
                 clock[0] += min(1.0, timeout)
                 if ("RANGEB", Port.COM1) in self.subscriptions:
                     self.pending.extend(frame)

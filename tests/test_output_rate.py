@@ -240,7 +240,7 @@ def test_capture_uses_requested_rate_and_restores_subscription(
 
     class Transport(SubscriptionTransport):
         def read(self, size: int, timeout: float) -> bytes:
-            if not self.pending:
+            if timeout > 0 and not self.pending:
                 clock[0] += min(0.1, timeout)
                 if ("RANGEB", Port.COM1) in self.subscriptions:
                     self.pending.extend(frame)
@@ -334,7 +334,11 @@ def test_mixed_capture_intervals_restore_previous_subscriptions(
 
     class StreamingTransport(SubscriptionTransport):
         def read(self, size: int, timeout: float) -> bytes:
-            if not self.pending and ("RANGEB", Port.COM1) in self.subscriptions:
+            if (
+                timeout > 0
+                and not self.pending
+                and ("RANGEB", Port.COM1) in self.subscriptions
+            ):
                 assert self.subscriptions[("RANGEB", Port.COM1)] == 0.05
                 assert self.subscriptions[("JAMSTATUSB", Port.COM1)] == 1
                 self.pending.extend(frame)

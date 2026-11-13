@@ -38,8 +38,10 @@ def test_monitor_does_not_compare_positions_across_reconnect() -> None:
     report = monitor.observe(update(11, longitude=9, connection=2))
     assert report.displacement_rate_m_s is None
     assert report.reasons == ("displacement_rate_unknown",)
-    with pytest.raises(ValueError, match="increasing"):
-        monitor.observe(update(11))
+    same_time = monitor.observe(update(11))
+    assert same_time.reasons == ("displacement_rate_unknown",)
+    with pytest.raises(ValueError, match="nondecreasing"):
+        monitor.observe(update(10))
 
 
 def test_monitor_does_not_treat_missing_corrections_as_fresh() -> None:

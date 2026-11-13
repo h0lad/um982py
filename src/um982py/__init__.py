@@ -49,12 +49,14 @@ if TYPE_CHECKING:
     )
     from um982py.measurement import (
         RangeSample,
+        ReceiverTime,
         SignalKey,
         bdt_week_to_gps_seconds,
         gps_epoch,
         gps_to_utc,
         message_utc,
         range_samples,
+        receiver_time,
         sample_series,
     )
     from um982py.messages.enums import PositionType, SatelliteSystem, SolutionStatus
@@ -82,6 +84,11 @@ if TYPE_CHECKING:
     )
     from um982py.precise import PrecisePoint, Sp3Product, interpolate_sp3, parse_sp3
     from um982py.precision import ErrorEllipse, PositionPrecision
+    from um982py.precision_matching import (
+        PrecisionMatches,
+        match_precision,
+        match_stream_precision,
+    )
     from um982py.quality import (
         EpochSolution,
         FixClass,
@@ -100,6 +107,7 @@ if TYPE_CHECKING:
     from um982py.rinex_merge import MergeResult, merge_gps_observations
     from um982py.rinex_nav import RinexNavigationExport, export_rinex_navigation
     from um982py.rover import Rover, RoverPosition
+    from um982py.rover_session import RoverSession, RoverSessionHealth, RoverUpdate
     from um982py.rtcm import decode_rtcm
     from um982py.rtk_session import (
         CorrectionWriteError,
@@ -162,6 +170,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "PositionLimits": ("um982py.assessment", "PositionLimits"),
     "PositionMonitor": ("um982py.live_quality", "PositionMonitor"),
     "PositionPrecision": ("um982py.precision", "PositionPrecision"),
+    "PrecisionMatches": ("um982py.precision_matching", "PrecisionMatches"),
     "Position": ("um982py.messages.navigation", "Position"),
     "PositionSession": ("um982py.live", "PositionSession"),
     "PositionSubscription": ("um982py.live", "PositionSubscription"),
@@ -179,6 +188,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "QualitySummary": ("um982py.quality", "QualitySummary"),
     "RangeSample": ("um982py.measurement", "RangeSample"),
     "Receiver": ("um982py.receiver", "Receiver"),
+    "ReceiverTime": ("um982py.measurement", "ReceiverTime"),
     "ReceiverConfig": ("um982py.receiver_models", "ReceiverConfig"),
     "ReceiverStream": ("um982py.streaming", "ReceiverStream"),
     "ReceiverSystemStatus": ("um982py.receiver_models", "ReceiverSystemStatus"),
@@ -190,6 +200,9 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "RtkSession": ("um982py.rtk_session", "RtkSession"),
     "Rover": ("um982py.rover", "Rover"),
     "RoverPosition": ("um982py.rover", "RoverPosition"),
+    "RoverSession": ("um982py.rover_session", "RoverSession"),
+    "RoverSessionHealth": ("um982py.rover_session", "RoverSessionHealth"),
+    "RoverUpdate": ("um982py.rover_session", "RoverUpdate"),
     "Satellite": ("um982py.satellites", "Satellite"),
     "SatelliteSignal": ("um982py.satellites", "SatelliteSignal"),
     "SatelliteSystem": ("um982py.messages.enums", "SatelliteSystem"),
@@ -234,6 +247,8 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "load_records": ("um982py.capture", "load_records"),
     "merge_gps_observations": ("um982py.rinex_merge", "merge_gps_observations"),
     "message_utc": ("um982py.measurement", "message_utc"),
+    "match_precision": ("um982py.precision_matching", "match_precision"),
+    "match_stream_precision": ("um982py.precision_matching", "match_stream_precision"),
     "missed_pps_edges": ("um982py.pps", "missed_pps_edges"),
     "navsatfix": ("um982py.adapters", "navsatfix"),
     "parse_configuration": ("um982py.receiver_models", "parse_configuration"),
@@ -241,6 +256,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "parse_sp3": ("um982py.precise", "parse_sp3"),
     "pps_clock_offset_ns": ("um982py.pps", "pps_clock_offset_ns"),
     "range_samples": ("um982py.measurement", "range_samples"),
+    "receiver_time": ("um982py.measurement", "receiver_time"),
     "read_frames": ("um982py.capture", "read_frames"),
     "record_observations": ("um982py.observations", "record_observations"),
     "run_ppk": ("um982py.ppk", "run_ppk"),
@@ -303,18 +319,23 @@ __all__ = [
     "PpsEdge",
     "PpsSnapshot",
     "PrecisePoint",
+    "PrecisionMatches",
     "QualitySummary",
     "RangeSample",
     "Receiver",
     "ReceiverConfig",
     "ReceiverStream",
     "ReceiverSystemStatus",
+    "ReceiverTime",
     "ReconnectPolicy",
     "RinexExport",
     "RinexMetadata",
     "RinexNavigationExport",
     "Rover",
     "RoverPosition",
+    "RoverSession",
+    "RoverSessionHealth",
+    "RoverUpdate",
     "RtkHealth",
     "RtkSession",
     "Satellite",
@@ -359,6 +380,8 @@ __all__ = [
     "iter_session_events",
     "iter_session_frames",
     "load_records",
+    "match_precision",
+    "match_stream_precision",
     "merge_gps_observations",
     "message_utc",
     "missed_pps_edges",
@@ -369,6 +392,7 @@ __all__ = [
     "pps_clock_offset_ns",
     "range_samples",
     "read_frames",
+    "receiver_time",
     "record_observations",
     "run_ppk",
     "sample_series",

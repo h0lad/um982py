@@ -55,7 +55,8 @@ def test_reply_available_at_deadline(monkeypatch: pytest.MonkeyPatch) -> None:
 
     class DeadlineTransport(ReplayTransport):
         def read(self, size: int, timeout: float) -> bytes:
-            clock[0] = 1.0
+            if timeout:
+                clock[0] = 1.0
             return super().read(size, timeout)
 
     transport = DeadlineTransport({b"RESET\r\n": acknowledgement("RESET")}, chunk=1000)
@@ -124,6 +125,43 @@ def test_old_ack_is_not_reused() -> None:
     with pytest.raises(ResponseTimeout):
         receiver.execute(action("RESET"))
     assert receiver.receive().command == "RESET"
+
+
+def test_query_preserves_buffered_and_partial_old_messages() -> None:
+    old = sentence(b"GNGGA,120000,5200,N,01300,E,1,10,1,2,M,3,M,,")
+    new = sentence(b"GNGGA,120001,5200,N,01300,E,1,10,1,2,M,3,M,,")
+    for split in (len(old), len(old) // 2):
+        transport = ReplayTransport({b"GPGGA\r\n": old[split:] + new}, chunk=65536)
+        transport.pending.extend(old[:split])
+        with Receiver(transport) as receiver:
+            assert receiver.fix().utc == "120001"
+            assert receiver.receive().raw == old
+
+
+def test_query_acceptance_preserves_older_matching_responses() -> None:
+    old = sentence(b"GNGGA,120000,5200,N,01300,E,1,10,1,2,M,3,M,,")
+    new = sentence(b"GNGGA,120001,5200,N,01300,E,1,10,1,2,M,3,M,,")
+    with Receiver(ReplayTransport({b"GPGGA\r\n": old + new})) as receiver:
+        result = receiver.execute(queries.fix(), accept=lambda fix: fix.utc == "120001")
+        assert result.utc == "120001"
+        assert receiver.receive().raw == old
+
+
+def test_query_acceptance_cannot_reenter_receiver_or_write_before_validation() -> None:
+    raw = sentence(b"GNGGA,120000,5200,N,01300,E,1,10,1,2,M,3,M,,")
+    transport = ReplayTransport({b"GPGGA\r\n": raw})
+    with Receiver(transport) as receiver:
+        with pytest.raises(TypeError, match="accept"):
+            receiver.execute(queries.fix(), accept=1)  # type: ignore[arg-type]
+        assert transport.writes == []
+
+        def accept(fix: object) -> bool:
+            del fix
+            receiver.receive()
+            return True
+
+        with pytest.raises(RuntimeError, match="accept"):
+            receiver.execute(queries.fix(), accept=accept)
 
 
 def test_send_correction_and_checksummed_command() -> None:

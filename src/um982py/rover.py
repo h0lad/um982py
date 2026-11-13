@@ -12,8 +12,8 @@ from um982py.antenna import AntennaLog
 from um982py.commands import Log, queries
 from um982py.commands.core import Command
 from um982py.commands.types import Port
-from um982py.errors import ResponseTimeout
-from um982py.measurement import gps_epoch
+from um982py.errors import ResponseTimeout, TransportError
+from um982py.measurement import gps_epoch, receiver_time
 from um982py.messages.enums import PositionType
 from um982py.messages.frames import CommandResponse
 from um982py.messages.navigation import BestNavigation, Fix
@@ -25,6 +25,7 @@ from um982py.streaming import ReceiverStream
 from um982py.survey import SurveyPoint, survey_point, wait_for_fix
 
 if TYPE_CHECKING:
+    from um982py.measurement import ReceiverTime
     from um982py.motion import Motion
 
 
@@ -69,6 +70,10 @@ class RoverPosition:
         return self.position.epoch_gps_seconds
 
     @property
+    def receiver_time(self) -> "ReceiverTime | None":
+        return self.position.receiver_time
+
+    @property
     def satellites_used(self) -> int:
         return self.position.satellites_used
 
@@ -103,6 +108,19 @@ def _attitude(
     position: BestNavigation, heading: Record, tolerance: float
 ) -> tuple[float | None, float | None, float | None, PositionType | None]:
     if not position.valid or position.message is None or heading.message is None:
+        return None, None, None, None
+    position_time = position.receiver_time
+    heading_time = receiver_time(heading.message)
+    if (
+        position_time is None
+        or position_time.fine is not True
+        or heading_time is None
+        or heading_time.fine is not True
+        or position_time.gps_seconds is None
+        or heading_time.gps_seconds is None
+        or position_time.assumed_scale
+        or heading_time.assumed_scale
+    ):
         return None, None, None, None
     if heading["sol_stat"] not in (0, "SOL_COMPUTED"):
         return None, None, None, None
@@ -243,7 +261,15 @@ class Rover:
     def _check(self) -> None:
         if not self._started or self._closed:
             raise RuntimeError("rover session is not running")
+        failure = self.stream.failure
+        if isinstance(failure, TransportError):
+            raise failure
         if self._failure is not None:
+            cause: BaseException | None = self._failure
+            while cause is not None:
+                if isinstance(cause, TransportError):
+                    raise cause
+                cause = cause.__cause__
             raise RuntimeError("NTRIP correction relay failed") from self._failure
 
     def correction_health(self) -> RtkHealth | None:
@@ -321,17 +347,44 @@ class Rover:
         )
 
     def position(
-        self, *, heading: bool = False, heading_tolerance: float = 0.5
+        self,
+        *,
+        heading: bool = False,
+        heading_tolerance: float = 0.5,
+        min_epoch_gps_seconds: float | None = None,
     ) -> RoverPosition:
-        """Poll one position and optionally a heading from a nearby receiver epoch."""
+        """Poll a position, optionally requiring a minimum fine receiver epoch.
+
+        Without a minimum, periodic output may satisfy the query. Heading is
+        matched only when both timestamps report documented fine GPS time.
+        """
         if (
             isinstance(heading_tolerance, bool)
             or not isfinite(heading_tolerance)
             or heading_tolerance < 0
         ):
             raise ValueError("heading_tolerance must be finite and non-negative")
+        if min_epoch_gps_seconds is not None and (
+            isinstance(min_epoch_gps_seconds, bool)
+            or not isfinite(min_epoch_gps_seconds)
+            or min_epoch_gps_seconds < 0
+        ):
+            raise ValueError("min_epoch_gps_seconds must be finite and non-negative")
         self._check()
-        position = self.stream.execute(queries.best_navigation()).result()
+
+        def acceptable(candidate: BestNavigation) -> bool:
+            timestamp = candidate.receiver_time
+            return min_epoch_gps_seconds is None or (
+                timestamp is not None
+                and timestamp.fine is True
+                and not timestamp.assumed_scale
+                and timestamp.gps_seconds is not None
+                and timestamp.gps_seconds >= min_epoch_gps_seconds
+            )
+
+        position = self.stream.execute(
+            queries.best_navigation(), accept=acceptable
+        ).result()
         angle = pitch = offset = None
         heading_type = None
         if heading:

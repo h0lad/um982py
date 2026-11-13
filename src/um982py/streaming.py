@@ -13,9 +13,10 @@ from threading import Event, Lock, Thread
 from time import monotonic
 from types import TracebackType
 from typing import TYPE_CHECKING, Self
+from uuid import uuid4
 
-from um982py.errors import ResponseTimeout, TransportClosed
-from um982py.measurement import gps_epoch
+from um982py.errors import ResponseTimeout, TransportClosed, TransportError
+from um982py.measurement import ReceiverTime, receiver_time
 from um982py.messages import Message, RtcmMessage, Sentence
 
 if TYPE_CHECKING:
@@ -26,14 +27,23 @@ if TYPE_CHECKING:
     from um982py.commands.core import Command
     from um982py.commands.types import Port
     from um982py.messages import CommandResponse
-    from um982py.receiver import Receiver
+    from um982py.receiver import Receiver, _ReceivedFrame
 
 
 @dataclass(frozen=True, slots=True)
 class StreamEvent:
+    """A frame's host completion and dispatch times, and stream session.
+
+    Completion is when the entire frame was decoded after a transport read; it
+    is not the receiver measurement time or the first byte's arrival time.
+    """
+
     message: Message
     received_at: datetime
     received_monotonic: float
+    session_id: str
+    dispatched_at: datetime
+    dispatched_monotonic: float
 
 
 class Subscription:
@@ -57,7 +67,7 @@ class Subscription:
         return self.get_event(timeout).message
 
     def get_event(self, timeout: float | None = None) -> StreamEvent:
-        """Read a message with its host dispatch time."""
+        """Read a message with host completion and dispatch times."""
         if timeout is not None and (not isfinite(timeout) or timeout < 0):
             raise ValueError("timeout must be finite and non-negative")
         deadline = None if timeout is None else monotonic() + timeout
@@ -104,6 +114,7 @@ class StreamHealth:
     messages: int
     last_arrival_monotonic: float | None
     last_receiver_gps_seconds: float | None
+    last_receiver_time: ReceiverTime | None
     subscription_drops: int
     discarded_bytes: int
     recent_decoder_errors: tuple[str, ...]
@@ -115,7 +126,10 @@ class ReceiverStream:
 
     Add subscriptions before calling ``start()``. The worker owns the receiver
     while it is running. Commands delay delivery until they finish. Closing
-    waits for the current operation and can also close the receiver.
+    waits for the current operation and can also close the receiver. A matching
+    command response goes to its future; other frames are delivered to
+    subscribers after the operation completes. Do not use independently held
+    references to the transport or decoder while the stream owns the receiver.
     """
 
     def __init__(
@@ -130,6 +144,7 @@ class ReceiverStream:
         if operation_limit < 1:
             raise ValueError("operation_limit must be positive")
         self.receiver = receiver
+        self.session_id = uuid4().hex
         self.poll_seconds = poll_seconds
         self._subscriptions: list[Subscription] = []
         self._retired_drops = 0
@@ -142,6 +157,7 @@ class ReceiverStream:
         self._messages = 0
         self._last_arrival: float | None = None
         self._last_epoch: float | None = None
+        self._last_time: ReceiverTime | None = None
         self._failure: BaseException | None = None
         self._discarded_bytes = 0
         self._decoder_errors: tuple[str, ...] = ()
@@ -170,7 +186,13 @@ class ReceiverStream:
             if self._stop.is_set():
                 raise RuntimeError("stream is stopped")
             self._thread = Thread(target=self._run, name="um982py-stream", daemon=True)
-            self._thread.start()
+            self.receiver._claim(self._thread)
+            try:
+                self._thread.start()
+            except BaseException:
+                self.receiver._release(self._thread)
+                self._thread = None
+                raise
 
     def __enter__(self) -> Self:
         """Start the worker while leaving receiver ownership with the caller."""
@@ -186,10 +208,16 @@ class ReceiverStream:
         self.close()
 
     def execute[T](
-        self, command: Command[T], *, timeout: float | None = None
+        self,
+        command: Command[T],
+        *,
+        timeout: float | None = None,
+        accept: Callable[[T], bool] | None = None,
     ) -> Future[T]:
         """Queue a command and return a future for its result or error."""
-        return self._submit(lambda: self.receiver.execute(command, timeout=timeout))
+        return self._submit(
+            lambda: self.receiver.execute(command, timeout=timeout, accept=accept)
+        )
 
     def set_output_rate(
         self,
@@ -219,9 +247,17 @@ class ReceiverStream:
         future: Future[T] = Future()
         with self._lock:
             if self._thread is None or self._stop.is_set():
+                if isinstance(self._failure, TransportError):
+                    raise TransportClosed("receiver stream stopped") from self._failure
                 raise RuntimeError("stream is not running")
             self._operations.put_nowait((operation, future))  # type: ignore[arg-type]
         return future
+
+    @property
+    def failure(self) -> BaseException | None:
+        """Return the worker's terminal error, if any."""
+        with self._lock:
+            return self._failure
 
     def health(self) -> StreamHealth:
         with self._lock:
@@ -230,6 +266,7 @@ class ReceiverStream:
                 messages=self._messages,
                 last_arrival_monotonic=self._last_arrival,
                 last_receiver_gps_seconds=self._last_epoch,
+                last_receiver_time=self._last_time,
                 subscription_drops=self._retired_drops
                 + sum(item.dropped for item in self._subscriptions),
                 discarded_bytes=self._discarded_bytes,
@@ -250,18 +287,24 @@ class ReceiverStream:
         if close_receiver:
             self.receiver.close()
 
-    def _dispatch(self, message: Message) -> None:
-        try:
-            epoch = gps_epoch(message)
-        except (ValueError, TypeError, AttributeError):
-            epoch = None
-        received = monotonic()
-        event = StreamEvent(message, datetime.now(UTC), received)
+    def _dispatch(self, frame: _ReceivedFrame) -> None:
+        message = frame.message
+        timestamp = receiver_time(message)
+        dispatched = monotonic()
+        event = StreamEvent(
+            message,
+            frame.received_at,
+            frame.received_monotonic,
+            self.session_id,
+            datetime.now(UTC),
+            dispatched,
+        )
         with self._lock:
             self._messages += 1
-            self._last_arrival = received
-            if epoch is not None:
-                self._last_epoch = epoch
+            self._last_arrival = frame.received_monotonic
+            if timestamp is not None:
+                self._last_time = timestamp
+                self._last_epoch = timestamp.gps_seconds
             for subscription in self._subscriptions:
                 subscription._put(event)
 
@@ -277,10 +320,12 @@ class ReceiverStream:
                         future.set_result(operation())
                     except Exception as error:
                         future.set_exception(error)
-                for message in self.receiver.drain_pending():
-                    self._dispatch(message)
+                for frame in self.receiver._drain_timed():
+                    self._dispatch(frame)
                 with suppress(ResponseTimeout):
-                    self._dispatch(self.receiver.receive(timeout=self.poll_seconds))
+                    self._dispatch(
+                        self.receiver._receive_timed(timeout=self.poll_seconds)
+                    )
                 with self._lock:
                     self._discarded_bytes = self.receiver.decoder.discarded_bytes
                     self._decoder_errors = tuple(map(str, self.receiver.decoder.errors))
@@ -288,6 +333,8 @@ class ReceiverStream:
             with self._lock:
                 self._failure = error
         finally:
+            if self._thread is not None:
+                self.receiver._release(self._thread)
             with self._lock:
                 self._stop.set()
                 for subscription in self._subscriptions:

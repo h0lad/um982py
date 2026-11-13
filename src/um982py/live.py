@@ -4,9 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable, Generator
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from threading import Event, Lock
-from time import monotonic
 from typing import TYPE_CHECKING
 
 from um982py.errors import ProtocolError, ResponseTimeout, TransportError
@@ -21,7 +20,11 @@ if TYPE_CHECKING:
 
 @dataclass(frozen=True, slots=True)
 class PositionUpdate:
-    """A GGA fix and its host arrival time."""
+    """A GGA fix and its host frame-completion time.
+
+    The full frame has been decoded at this time; it can have spent time in
+    receiver or operating-system buffers before it was read.
+    """
 
     fix: Fix
     received_at: datetime
@@ -156,9 +159,12 @@ class PositionSession:
                             self._state = "connected"
                         while not stop.is_set():
                             try:
-                                message = receiver.receive(timeout=self.poll_seconds)
+                                frame = receiver._receive_timed(
+                                    timeout=self.poll_seconds
+                                )
                             except ResponseTimeout:
                                 continue
+                            message = frame.message
                             if (
                                 not isinstance(message, Sentence)
                                 or message.kind != "GGA"
@@ -170,12 +176,12 @@ class PositionSession:
                                 with self._lock:
                                     self._malformed += 1
                                 continue
-                            now = monotonic()
+                            now = frame.received_monotonic
                             with self._lock:
                                 self._fixes += 1
                                 self._last_fix = now
                             update = PositionUpdate(
-                                fix, datetime.now(UTC), now, previous, connection
+                                fix, frame.received_at, now, previous, connection
                             )
                             previous = fix.quality
                             delay = self.reconnect.initial_seconds

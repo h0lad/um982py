@@ -56,10 +56,10 @@ class LiveStatus:
 
 
 class PositionMonitor:
-    """Assess successive updates using host-monotonic arrival intervals.
+    """Assess updates using host-monotonic frame-completion intervals.
 
     Displacement rate is the straight-line distance between fixes divided by
-    their arrival interval. Use one consumer per monitor.
+    their completion interval. Use one consumer per monitor.
     """
 
     def __init__(self, limits: LiveLimits) -> None:
@@ -71,8 +71,8 @@ class PositionMonitor:
         """Assess freshness without waiting for another update.
 
         Times use the host monotonic clock. A correction age is advanced by
-        the elapsed time since arrival; receiver and transport latency are not
-        included. Connection health must be checked separately.
+        the elapsed time since frame completion; receiver and transport latency
+        are not included. Check connection health separately.
         """
         latest = self._latest
         if latest is None:
@@ -111,9 +111,9 @@ class PositionMonitor:
         previous = self._previous
         if not isfinite(update.received_monotonic) or (
             previous is not None
-            and update.received_monotonic <= previous.received_monotonic
+            and update.received_monotonic < previous.received_monotonic
         ):
-            raise ValueError("updates must have strictly increasing monotonic times")
+            raise ValueError("updates must have nondecreasing monotonic times")
         fix = update.fix
         reasons: list[str] = []
         if not fix.valid:
@@ -149,6 +149,7 @@ class PositionMonitor:
         if (
             previous is not None
             and gap is not None
+            and gap > 0
             and previous.connection == update.connection
             and previous.fix.valid
             and fix.valid

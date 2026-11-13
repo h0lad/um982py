@@ -86,6 +86,8 @@ def test_tcp_contract() -> None:
         assert transport.read(2, 1) == b"ab"
         peer.recv.side_effect = TimeoutError
         assert transport.read(1, 0.1) == b""
+        peer.recv.side_effect = BlockingIOError
+        assert transport.read(1, 0) == b""
         peer.recv.side_effect = OSError
         with pytest.raises(TransportError):
             transport.read(1, 0.1)

@@ -3,6 +3,7 @@
 import math
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Literal
@@ -23,16 +24,58 @@ from um982py.signals import tracking_signal
 
 __all__ = [
     "RangeSample",
+    "ReceiverTime",
     "SignalKey",
     "bdt_week_to_gps_seconds",
     "gps_epoch",
     "gps_to_utc",
     "message_utc",
     "range_samples",
+    "receiver_time",
     "sample_series",
 ]
 
 GPS_CARRIERS = {0: 1_575_420_000.0, 14: 1_176_450_000.0}
+
+
+@dataclass(frozen=True, slots=True)
+class ReceiverTime:
+    """Receiver time and its reported quality, without assuming synchronization.
+
+    ``fine`` is known only for documented N4 ASCII FINE/UNKNOWN values. N4
+    binary status codes and OEM time scale/quality must be verified separately.
+    GPS seconds can be unavailable even when the original status is present.
+    """
+
+    gps_seconds: float | None
+    reference: str | int | None
+    status: str | int | None
+    fine: bool | None
+    assumed_scale: bool
+
+
+def receiver_time(message: Message | None) -> ReceiverTime | None:
+    """Interpret a frame's timestamp and retain its original time quality."""
+    if not isinstance(message, (AsciiMessage, BinaryMessage)):
+        return None
+    header = message.header
+    reference: str | int | None = None
+    status: str | int | None = None
+    fine: bool | None = None
+    assumed = isinstance(header, (OemAsciiHeader, OemBinaryHeader))
+    if isinstance(header, (AsciiHeader, BinaryHeader)):
+        reference, status = header.time_reference, header.time_status
+        if isinstance(header, AsciiHeader):
+            if status == "FINE":
+                fine = True
+            elif status == "UNKNOWN":
+                fine = False
+    elif isinstance(header, OemAsciiHeader) and len(header.fields) > 3:
+        status = header.fields[3]
+    epoch = None
+    with suppress(ValueError):
+        epoch = gps_epoch(message)
+    return ReceiverTime(epoch, reference, status, fine, assumed)
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -85,6 +128,8 @@ def gps_epoch(
     For non-GPS headers, supply an independently verified ``week_scale``.
     The manual leaves their week numbering unspecified. BDT uses its own
     continuous week number and seconds. OEM-style header times are assumed GPST.
+    Conversion does not establish time quality: inspect ``receiver_time`` and
+    verify that the reported status is suitable for the application.
     """
     if week_scale not in (None, "GPST", "BDT"):
         raise ValueError("week_scale must be GPST or BDT")

@@ -60,6 +60,26 @@ def test_stream_context_starts_and_stops_without_closing_receiver() -> None:
     assert transport.closed
 
 
+def test_running_stream_owns_receiver_and_releases_it_after_close() -> None:
+    receiver = Receiver(QueueTransport())
+    stream = ReceiverStream(receiver)
+    stream.start()
+    try:
+        with pytest.raises(RuntimeError, match="owned"):
+            receiver.receive(timeout=0.01)
+        with pytest.raises(RuntimeError, match="owned"):
+            receiver.close()
+        with pytest.raises(RuntimeError, match="owned"):
+            _ = receiver.transport
+        with pytest.raises(RuntimeError, match="owned"):
+            _ = receiver.decoder
+        with pytest.raises(RuntimeError, match="owned"):
+            ReceiverStream(receiver).start()
+    finally:
+        stream.close()
+    receiver.close()
+
+
 def test_stream_dispatches_command_backlog_and_counts_slow_consumer() -> None:
     transport = QueueTransport()
     stream = ReceiverStream(Receiver(transport, timeout=1), poll_seconds=0.01)
@@ -79,6 +99,39 @@ def test_stream_dispatches_command_backlog_and_counts_slow_consumer() -> None:
     assert transport.closed
 
 
+def test_stream_preserves_frame_completion_time_during_slow_command() -> None:
+    class SlowCommand(QueueTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.delivered = Event()
+
+        def write(self, data: bytes, timeout: float) -> None:
+            self.writes.append(data)
+            self.incoming.put(sentence(b"GPGGA,1"))
+
+        def read(self, size: int, timeout: float) -> bytes:
+            data = super().read(size, timeout)
+            if data.startswith(b"$GPGGA"):
+                self.delivered.set()
+            return data
+
+    transport = SlowCommand()
+    stream = ReceiverStream(Receiver(transport), poll_seconds=0.01)
+    subscriber = stream.subscribe()
+    stream.start()
+    try:
+        pending = stream.execute(action("RESET"))
+        assert transport.delivered.wait(1)
+        sleep(0.05)
+        transport.incoming.put(acknowledgement("RESET"))
+        assert pending.result(timeout=1).accepted
+        event = subscriber.get_event(timeout=1)
+        assert event.dispatched_monotonic - event.received_monotonic >= 0.04
+        assert event.session_id == stream.session_id
+    finally:
+        stream.close(close_receiver=True)
+
+
 def test_stream_reports_disconnect_and_rejects_new_work() -> None:
     transport = QueueTransport()
     stream = ReceiverStream(Receiver(transport), poll_seconds=0.01)
@@ -86,7 +139,7 @@ def test_stream_reports_disconnect_and_rejects_new_work() -> None:
     transport.incoming.put(None)
     wait_for(lambda: not stream.health().running)
     assert "disconnected" in (stream.health().failure or "")
-    with pytest.raises(RuntimeError):
+    with pytest.raises(TransportClosed, match="stream stopped"):
         stream.execute(action("RESET"))
     stream.close()
 

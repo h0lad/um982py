@@ -36,6 +36,19 @@ def test_week_boundary_is_valid() -> None:
     assert gps_epoch(message(header)) == pytest.approx(2345 * 604800 + 604799.999)
 
 
+def test_receiver_time_preserves_quality_and_unverified_binary_codes() -> None:
+    from um982py import receiver_time
+
+    fine = AsciiHeader("BESTNAVA", 1, "GPS", "FINE", 2400, 1000, 0, 0, 18, 0)
+    unknown = AsciiHeader("BESTNAVA", 1, "GPS", "UNKNOWN", 2400, 1000, 0, 0, 18, 0)
+    assert receiver_time(message(fine)).fine is True
+    time = receiver_time(message(unknown))
+    assert time.fine is False and time.status == "UNKNOWN"
+    assert time.gps_seconds == 2400 * 604800 + 1
+    binary = BinaryHeader(1, 2118, 0, 0, 0, 2400, 1000, 0, 0, 18, 0)
+    assert receiver_time(BinaryMessage(binary, b"", b"")).fine is None
+
+
 def test_incomplete_oem_time_is_rejected() -> None:
     with pytest.raises(ValueError, match="timestamp"):
         gps_epoch(message(OemAsciiHeader("BESTNAVA", ())))

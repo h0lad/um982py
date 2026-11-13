@@ -97,9 +97,15 @@ class AsyncReceiver:
         await self._run(self.receiver.close)
 
     async def execute[T](
-        self, command: Command[T], *, timeout: float | None = None
+        self,
+        command: Command[T],
+        *,
+        timeout: float | None = None,
+        accept: Callable[[T], bool] | None = None,
     ) -> T:
-        return await self._run(lambda: self.receiver.execute(command, timeout=timeout))
+        return await self._run(
+            lambda: self.receiver.execute(command, timeout=timeout, accept=accept)
+        )
 
     async def collect[T](
         self, command: Command[T], *, timeout: float | None = None, quiet: float = 0.15

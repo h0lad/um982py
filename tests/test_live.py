@@ -1,4 +1,7 @@
+from datetime import UTC, datetime
 from threading import Event
+from time import monotonic
+from types import SimpleNamespace
 
 import pytest
 
@@ -26,10 +29,14 @@ class FakeReceiver:
     def __exit__(self, *args: object) -> None:
         self.closed = True
 
-    def receive(self, *, timeout: float) -> object:
+    def _receive_timed(self, *, timeout: float) -> object:
         del timeout
         try:
-            return parse_ascii(next(self.frames))
+            return SimpleNamespace(
+                message=parse_ascii(next(self.frames)),
+                received_at=datetime.now(UTC),
+                received_monotonic=monotonic(),
+            )
         except StopIteration:
             raise TransportClosed("disconnected") from None
 

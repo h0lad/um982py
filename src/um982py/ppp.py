@@ -22,6 +22,7 @@ from um982py.messages.record import Record, Value
 from um982py.precision import PositionPrecision
 
 if TYPE_CHECKING:
+    from um982py.measurement import ReceiverTime
     from um982py.receiver import Receiver
 
 __all__ = ["PppService", "PppSession", "PppSolution"]
@@ -92,6 +93,12 @@ class PppSolution:
     datum: Value
     epoch_gps_seconds: float | None
     record: Record
+
+    @property
+    def receiver_time(self) -> ReceiverTime | None:
+        from um982py.measurement import receiver_time
+
+        return receiver_time(self.record.message)
 
     @property
     def valid(self) -> bool:

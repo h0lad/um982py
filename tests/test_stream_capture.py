@@ -51,7 +51,11 @@ def test_stopping_live_iterator_restores_subscriptions() -> None:
 
     class StreamingTransport(SubscriptionTransport):
         def read(self, size: int, timeout: float) -> bytes:
-            if not self.pending and ("RANGEB", Port.COM1) in self.subscriptions:
+            if (
+                timeout > 0
+                and not self.pending
+                and ("RANGEB", Port.COM1) in self.subscriptions
+            ):
                 self.pending.extend(frame)
             return super().read(size, timeout)
 

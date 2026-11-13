@@ -13,18 +13,25 @@ from test_bodies import manual_message
 from um982py import (
     ErrorEllipse,
     Fix,
+    FixClass,
     Log,
     Position,
+    PositionLimits,
     PositionPrecision,
     PppSolution,
     RoverPosition,
     TrackWriter,
+    assess_position,
     geojson_feature,
+    load_records,
+    match_precision,
+    match_stream_precision,
     navsatfix,
 )
-from um982py.messages import BestNavigation, Record, decode_log
+from um982py.messages import AsciiHeader, BestNavigation, Record, decode_log
 from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.protocol.ascii import parse_ascii
+from um982py.streaming import StreamEvent
 
 
 def gst(*, utc: str = "120000.00", secondary: bool = False) -> Record:
@@ -144,6 +151,76 @@ def test_all_position_models_share_precision_interface() -> None:
     )
 
 
+def test_assessment_uses_position_precision_age_and_receiver_time() -> None:
+    position = fix().with_gst(gst())
+    limits = PositionLimits(
+        max_horizontal_rms_m=3,
+        max_vertical_std_m=4,
+        max_correction_age_s=2,
+        allowed_fix_classes=frozenset({FixClass.FIXED}),
+    )
+    assert assess_position(position, limits).accepted
+    assert assess_position(position, replace(limits, max_vertical_std_m=1)).reasons == (
+        "vertical_std_exceeded",
+    )
+    predicted = replace(position, quality=1, satellites=0)
+    assert (
+        "position_possibly_predicted"
+        in assess_position(predicted, PositionLimits()).reasons
+    )
+    nav = bestnav()
+    assert nav.message is not None
+    frame = replace(
+        nav.message,
+        header=AsciiHeader("BESTNAVA", 1, "GPS", "FINE", 2400, 1000, 0, 0, 18, 0),
+    )
+    nav = replace(nav, message=frame, epoch_gps_seconds=2400 * 604800 + 1)
+    assert nav.receiver_time is not None and nav.receiver_time.fine is True
+    assert nav.epoch_gps_seconds is not None
+    assert assess_position(
+        nav,
+        PositionLimits(max_epoch_age_s=2),
+        now_gps_seconds=nav.epoch_gps_seconds + 1,
+    ).accepted
+    header = nav.message.header
+    assert isinstance(header, AsciiHeader)
+    unknown = replace(
+        nav, message=replace(nav.message, header=replace(header, time_status="UNKNOWN"))
+    )
+    assert assess_position(
+        unknown,
+        PositionLimits(max_epoch_age_s=2),
+        now_gps_seconds=nav.epoch_gps_seconds + 1,
+    ).reasons == ("epoch_age_unknown",)
+
+
+def test_matching_requires_unique_session_and_nearby_dispatch() -> None:
+    path = Path(__file__).parent / "fixtures/position-precision.txt"
+    fixes = load_records(path, Log.GPGGA)
+    statistics = load_records(path, Log.GPGST)
+    assert match_precision(fixes, statistics).matched == 1
+    assert match_precision(fixes * 2, statistics).ambiguous == 2
+    with pytest.raises(ValueError, match="max_records"):
+        match_precision(fixes, statistics, max_records=1)
+    now = datetime.now(UTC)
+    assert fixes[0].message is not None and statistics[0].message is not None
+    position = StreamEvent(fixes[0].message, now, 10, "one", now, 10)
+    statistic = StreamEvent(statistics[0].message, now, 11, "one", now, 11)
+    assert match_stream_precision([position], [statistic]).matched == 1
+    assert (
+        match_stream_precision(
+            [position], [replace(statistic, session_id="two")]
+        ).matched
+        == 0
+    )
+    assert (
+        match_stream_precision(
+            [position], [replace(statistic, received_monotonic=20)]
+        ).matched
+        == 0
+    )
+
+
 def test_secondary_position_precision_keeps_antenna_provenance() -> None:
     secondary_nav = replace(
         BestNavigation.from_record(decode_log(manual_message("BESTNAVHA"))),
@@ -171,6 +248,7 @@ def test_custom_position_can_be_written_with_precision(tmp_path: Path) -> None:
         rtk_fixed = False
         correction_age_s = None
         epoch_gps_seconds = 100.0
+        receiver_time = None
         satellites_used = None
         ellipsoidal_height = 42.0
         altitude_msl = None

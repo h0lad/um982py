@@ -20,7 +20,7 @@ class TcpTransport:
         self._socket.settimeout(timeout)
         try:
             chunk = self._socket.recv(size)
-        except TimeoutError:
+        except (TimeoutError, BlockingIOError):
             return b""
         except OSError as error:
             raise TransportError("TCP read failed") from error

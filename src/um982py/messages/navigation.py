@@ -12,6 +12,7 @@ from um982py.messages.record import Record, Value
 from um982py.precision import PositionPrecision, utc_seconds
 
 if TYPE_CHECKING:
+    from um982py.measurement import ReceiverTime
     from um982py.motion import Motion
 
 
@@ -19,9 +20,9 @@ if TYPE_CHECKING:
 class Position(Protocol):
     """Common position information; unavailable values are None.
 
-    GPS epochs are absolute GPS seconds when the source includes a verified GPS
-    week and time. GGA reports UTC time of day without a date, so its epoch is
-    unavailable. Source-specific fields remain on each concrete model.
+    GPS epochs are interpreted GPS seconds; check ``receiver_time`` for the
+    receiver's quality and time-reference information. GGA reports UTC time of
+    day without a date, so its GPS epoch is unavailable.
     """
 
     @property
@@ -41,6 +42,9 @@ class Position(Protocol):
 
     @property
     def epoch_gps_seconds(self) -> float | None: ...
+
+    @property
+    def receiver_time(self) -> "ReceiverTime | None": ...
 
     @property
     def satellites_used(self) -> int | None: ...
@@ -165,6 +169,11 @@ class Fix:
     @property
     def epoch_gps_seconds(self) -> None:
         """GGA contains time of day but no date or GPS week."""
+        return None
+
+    @property
+    def receiver_time(self) -> None:
+        """GGA does not report a dated receiver time or time quality."""
         return None
 
     @property
@@ -316,8 +325,15 @@ class BestNavigation:
         default=None, repr=False, compare=False
     )
     correction_age_s: float | None = field(default=None, kw_only=True)
+    solution_age_s: float | None = field(default=None, kw_only=True)
     epoch_gps_seconds: float | None = field(default=None, kw_only=True)
     velocity_latency_s: float | None = field(default=None, kw_only=True)
+
+    @property
+    def receiver_time(self) -> "ReceiverTime | None":
+        from um982py.measurement import receiver_time
+
+        return receiver_time(self.message)
 
     @property
     def valid(self) -> bool:
@@ -425,6 +441,7 @@ class BestNavigation:
             position_type = _position_type(_enum_value(record["pos_type"]))
             solution_status = _solution_status(_enum_value(record["p_sol_status"]))
             age = _optional_number(record.get("diff_age"))
+            solution_age = _standard_deviation(record.get("sol_age"))
             latency = _standard_deviation(record.get("latency"))
             differential = position_type in (
                 PositionType.PSRDIFF,
@@ -472,6 +489,7 @@ class BestNavigation:
                 and age >= 0
                 else None,
                 epoch_gps_seconds=epoch,
+                solution_age_s=solution_age,
                 velocity_latency_s=latency,
             )
         except (KeyError, TypeError, ValueError) as error:
