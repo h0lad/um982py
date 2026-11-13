@@ -2,11 +2,11 @@
 
 import re
 from dataclasses import dataclass
-from struct import unpack_from
 from typing import Self
 
 from um982py.errors import ProtocolError
 from um982py.messages.frames import AsciiMessage, BinaryMessage, Message
+from um982py.messages.record import Record
 
 _MODEL_NAMES = {
     0: "UNKNOWN",
@@ -47,29 +47,42 @@ class Version:
 
     @classmethod
     def from_message(cls, message: Message) -> Self:
-        if isinstance(message, AsciiMessage) and message.name in (
-            "VERSION",
-            "VERSIONA",
+        from um982py.commands import Log
+        from um982py.messages.decode import decode_log
+
+        if not (
+            (
+                isinstance(message, AsciiMessage)
+                and message.name in ("VERSION", "VERSIONA")
+            )
+            or (isinstance(message, BinaryMessage) and message.header.message_id == 37)
         ):
-            if len(message.fields) != 6:
-                raise ProtocolError("Expected six VERSION fields")
-            return cls(*message.fields)
-        if isinstance(message, BinaryMessage) and message.header.message_id == 37:
-            if len(message.payload) != 308:
-                raise ProtocolError("Expected 308-byte VERSION payload")
-            model_id = unpack_from("<I", message.payload)[0]
-            try:
-                values = tuple(
-                    message.payload[start:end].split(b"\0", 1)[0].decode("ascii")
-                    for start, end in (
-                        (4, 37),
-                        (37, 166),
-                        (166, 232),
-                        (232, 265),
-                        (265, 308),
-                    )
-                )
-            except UnicodeDecodeError as error:
-                raise ProtocolError("Invalid VERSION text") from error
-            return cls(_MODEL_NAMES.get(model_id, str(model_id)), *values)
-        raise ProtocolError("Not a VERSION message")
+            raise ProtocolError("Not a VERSION message")
+        return cls.from_record(decode_log(message, log=Log.VERSION))
+
+    @classmethod
+    def from_record(cls, record: Record) -> Self:
+        """Build version information from a decoded VERSION record."""
+        if record.name != "VERSION":
+            raise ProtocolError("Not a VERSION record")
+        try:
+            model_id = record["type"]
+            if isinstance(model_id, int):
+                model = _MODEL_NAMES.get(model_id, str(model_id))
+            elif isinstance(model_id, str):
+                model = model_id
+            elif model_id is None:
+                model = ""
+            else:
+                raise TypeError("Invalid model")
+            values = []
+            for key in ("sw_version", "auth", "psn", "efuse_id", "comp_time"):
+                value = record[key]
+                if value is None:
+                    value = ""
+                if not isinstance(value, str):
+                    raise TypeError(f"Invalid {key}")
+                values.append(value)
+            return cls(model, *values)
+        except (KeyError, TypeError) as error:
+            raise ProtocolError("Invalid VERSION record") from error

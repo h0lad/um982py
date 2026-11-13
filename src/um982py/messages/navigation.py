@@ -2,28 +2,40 @@
 
 from dataclasses import dataclass, field
 from math import isfinite
-from struct import unpack_from
 from typing import Self
 
 from um982py.errors import ProtocolError
 from um982py.messages.enums import PositionType, SolutionStatus, _reported_datum
 from um982py.messages.frames import AsciiMessage, BinaryMessage, Message, Sentence
+from um982py.messages.record import Record, Value
 
 
-def _number(value: str) -> float | None:
-    if not value:
+def _optional_number(value: Value) -> float | None:
+    if value is None:
         return None
+    if not isinstance(value, (int, float)):
+        raise ProtocolError("Invalid navigation value")
     number = float(value)
     if not isfinite(number):
-        raise ValueError("Non-finite navigation value")
+        raise ProtocolError("Non-finite navigation value")
     return number
 
 
-def _standard_deviation(value: str | float) -> float | None:
-    if value == "":
+def _standard_deviation(value: Value) -> float | None:
+    if value is None:
         return None
+    if not isinstance(value, (int, float)):
+        raise ProtocolError("Invalid BESTNAV position standard deviation")
     number = float(value)
     return number if isfinite(number) and number >= 0 else None
+
+
+def _enum_value(value: Value) -> str | int:
+    if value is None:
+        return ""
+    if isinstance(value, (str, int)):
+        return value
+    raise ProtocolError("Invalid BESTNAV enumeration")
 
 
 def _solution_status(value: str | int) -> SolutionStatus | str | int:
@@ -114,25 +126,45 @@ class Fix:
     def from_message(cls, message: Message) -> Self:
         if not isinstance(message, Sentence) or message.kind not in ("GGA", "GGAH"):
             raise ProtocolError("Not a GGA message")
-        fields = message.fields
-        if len(fields) < 14:
-            raise ProtocolError("Incomplete GGA message")
+        from um982py.messages.decode import decode_log
+
         try:
+            return cls.from_record(decode_log(message))
+        except ProtocolError as error:
+            raise ProtocolError("Invalid GGA value") from error
+
+    @classmethod
+    def from_record(cls, record: Record) -> Self:
+        """Build a fix from a decoded GGA or GGAH record."""
+        if record.name[2:] not in ("GGA", "GGAH"):
+            raise ProtocolError("Not a GGA record")
+        try:
+            quality = record["quality"]
+            satellites = record["satellites"]
+            if quality is not None and not isinstance(quality, int):
+                raise TypeError("Invalid quality")
+            if satellites is not None and not isinstance(satellites, int):
+                raise TypeError("Invalid satellites")
+            utc, station_id = record["utc"], record["station_id"]
+            if utc is not None and not isinstance(utc, str):
+                raise TypeError("Invalid UTC")
+            if station_id is not None and not isinstance(station_id, str):
+                raise TypeError("Invalid station ID")
             return cls(
-                fields[0],
-                _coordinate(fields[1], fields[2], latitude=True),
-                _coordinate(fields[3], fields[4], latitude=False),
-                int(fields[5] or 0),
-                int(fields[6] or 0),
-                _number(fields[7]),
-                _number(fields[8]),
-                _number(fields[10]),
-                _number(fields[12]),
-                fields[13],
-                quality_known=bool(fields[5]),
-                satellites_known=bool(fields[6]),
+                utc or "",
+                _optional_number(record["latitude"]),
+                _optional_number(record["longitude"]),
+                quality if quality is not None else 0,
+                satellites if satellites is not None else 0,
+                _optional_number(record["hdop"]),
+                _optional_number(record["altitude_msl"]),
+                _optional_number(record["geoid_separation"]),
+                _optional_number(record["differential_age"]),
+                station_id or "",
+                quality_known=quality is not None,
+                satellites_known=satellites is not None,
             )
-        except ValueError as error:
+        except (KeyError, TypeError, ValueError) as error:
             raise ProtocolError("Invalid GGA value") from error
 
 
@@ -145,14 +177,24 @@ class Heading:
     def from_message(cls, message: Message) -> Self:
         if not isinstance(message, Sentence) or message.kind != "THS":
             raise ProtocolError("Not a THS message")
-        if len(message.fields) != 2:
-            raise ProtocolError("Expected two THS fields")
+        from um982py.messages.decode import decode_log
+
         try:
-            degrees = _number(message.fields[0])
+            return cls.from_record(decode_log(message))
+        except ProtocolError as error:
+            raise ProtocolError("Invalid THS value") from error
+
+    @classmethod
+    def from_record(cls, record: Record) -> Self:
+        """Build a heading from a decoded THS record."""
+        if record.name[2:] != "THS":
+            raise ProtocolError("Not a THS record")
+        try:
+            degrees = _optional_number(record["heading"])
             if degrees is not None and not 0 <= degrees <= 360:
                 raise ValueError("Heading out of range")
-            return cls(degrees, message.fields[1] == "A" and degrees is not None)
-        except ValueError as error:
+            return cls(degrees, record["mode"] == "A" and degrees is not None)
+        except (KeyError, TypeError, ValueError) as error:
             raise ProtocolError("Invalid THS value") from error
 
 
@@ -223,70 +265,54 @@ class BestNavigation:
 
     @classmethod
     def from_message(cls, message: Message) -> Self:
+        from um982py.commands import Log
+        from um982py.messages.decode import decode_log
+
         if isinstance(message, BinaryMessage) and message.header.message_id in (
             2118,
             2119,
         ):
-            payload = message.payload
-            if len(payload) != 120:
-                raise ProtocolError("Expected 120-byte BESTNAV payload")
-            status, kind, lat, lon, height, undulation = unpack_from("<IIdddf", payload)
-            speed, track, vertical = unpack_from("<ddd", payload, 88)
-            velocity_status, velocity_type = unpack_from("<II", payload, 72)
-            datum_code = unpack_from("<I", payload, 36)[0]
-            datum = _reported_datum(datum_code)
-            standard_deviations = unpack_from("<fff", payload, 40)
-            return cls(
-                _solution_status(status),
-                _position_type(kind),
-                lat,
-                lon,
-                height,
-                undulation,
-                payload[64],
-                payload[65],
-                speed,
-                track,
-                vertical,
-                _solution_status(velocity_status),
-                _position_type(velocity_type),
-                datum,
-                _standard_deviation(standard_deviations[0]),
-                _standard_deviation(standard_deviations[1]),
-                _standard_deviation(standard_deviations[2]),
-                message=message,
-            )
-        if isinstance(message, AsciiMessage) and message.name in (
+            log = Log.BESTNAV if message.header.message_id == 2118 else Log.BESTNAVH
+        elif isinstance(message, AsciiMessage) and message.name in (
             "BESTNAVA",
             "BESTNAVHA",
         ):
-            fields = message.fields
-            if len(fields) < 28:
-                raise ProtocolError("Incomplete BESTNAV message")
-            try:
-                return cls(
-                    _solution_status(fields[0]),
-                    _position_type(fields[1]),
-                    float(fields[2]),
-                    float(fields[3]),
-                    float(fields[4]),
-                    float(fields[5]),
-                    int(fields[13]),
-                    int(fields[14]),
-                    float(fields[25]),
-                    float(fields[26]),
-                    float(fields[27]),
-                    _solution_status(fields[21]),
-                    _position_type(fields[22]),
-                    fields[6],
-                    _standard_deviation(fields[7]),
-                    _standard_deviation(fields[8]),
-                    _standard_deviation(fields[9]),
-                    message=message,
-                )
-            except ValueError as error:
-                raise ProtocolError("Invalid BESTNAV value") from error
-        raise ProtocolError("Not a BESTNAV message")
+            log = Log.BESTNAV if message.name == "BESTNAVA" else Log.BESTNAVH
+        else:
+            raise ProtocolError("Not a BESTNAV message")
+        return cls.from_record(decode_log(message, log=log))
+
+    @classmethod
+    def from_record(cls, record: Record) -> Self:
+        """Build a navigation model from a decoded BESTNAV or BESTNAVH record."""
+        if record.name not in ("BESTNAV", "BESTNAVH"):
+            raise ProtocolError("Not a BESTNAV record")
+        message = record.message
+        try:
+            return cls(
+                _solution_status(_enum_value(record["p_sol_status"])),
+                _position_type(_enum_value(record["pos_type"])),
+                record.real("lat"),
+                record.real("lon"),
+                record.real("hgt"),
+                record.real("undulation"),
+                record.integer("count_svs"),
+                record.integer("count_solnsvs"),
+                record.real("hor_spd"),
+                record.real("trk_gnd"),
+                record.real("vert_spd"),
+                _solution_status(_enum_value(record["v_sol_status"])),
+                _position_type(_enum_value(record["vel_type"])),
+                _reported_datum(_enum_value(record["datum_id"])),
+                _standard_deviation(record["lat_std"]),
+                _standard_deviation(record["lon_std"]),
+                _standard_deviation(record["hgt_std"]),
+                message=message
+                if isinstance(message, (AsciiMessage, BinaryMessage))
+                else None,
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ProtocolError("Invalid BESTNAV value") from error
 
 
 def _computed(status: str | int, kind: str | int, *, position: bool = False) -> bool:

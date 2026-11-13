@@ -147,7 +147,7 @@ def test_binary_version_rejects_non_ascii_fields() -> None:
 
     payload = bytearray(308)
     payload[4] = 0xFF
-    with pytest.raises(ProtocolError, match="Invalid VERSION text"):
+    with pytest.raises(ProtocolError, match="Invalid sw_version"):
         Version.from_message(binary_message("VERSION", bytes(payload)))
 
 

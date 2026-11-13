@@ -9,6 +9,10 @@ class ProtocolError(UM982Error):
     pass
 
 
+class UnknownLogError(ProtocolError):
+    """The frame has no supported log definition."""
+
+
 class ChecksumError(ProtocolError):
     pass
 

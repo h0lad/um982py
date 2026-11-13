@@ -7,8 +7,7 @@ from um982py.commands.catalog import LOGS, LogDefinition
 from um982py.commands.core import Command
 from um982py.commands.extended import EXTENDED_LOGS
 from um982py.commands.types import Port, Trigger
-from um982py.errors import ProtocolError
-from um982py.messages import BinaryMessage, CommandResponse, Message
+from um982py.messages import CommandResponse, Message
 from um982py.messages.record import Record
 
 
@@ -314,24 +313,9 @@ class Log(StrEnum):
 
         PPSSTATUS observation offsets use 0.01 ns units.
         """
-        if (
-            isinstance(message, BinaryMessage)
-            and self.definition.binary_command is None
-        ):
-            raise ProtocolError(f"{self.value} has no binary body")
-        command = logging.request(
-            self.wire_name(binary=isinstance(message, BinaryMessage)),
-            message_id=self.definition.message_id,
-        )
-        if not command.matches(message):
-            raise ProtocolError(f"Expected {self.value}")
-        if self.value in EXTENDED_LOGS:
-            from um982py.extended_logs import decode_extended
-
-            return decode_extended(self.value, message)
         from um982py.messages.decode import decode_log
 
-        return decode_log(message)
+        return decode_log(message, log=self)
 
     def stop(
         self, *, binary: bool = False, table: bool = False, port: Port | None = None

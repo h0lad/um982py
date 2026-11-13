@@ -216,6 +216,10 @@ def decode_nmea(message: Sentence) -> Record:
     entries: list[tuple[str, Value]] = [
         (spec.split(":")[0], reader.scalar(_field(spec), 0)) for spec in schema
     ]
+    if kind == "THS" and entries[0][1] is not None:
+        heading = entries[0][1]
+        if not isinstance(heading, (int, float)) or not 0 <= heading <= 360:
+            raise ProtocolError("Invalid THS heading")
     if kind in ("GGA", "GLL", "GNS", "RMC"):
         lat_index = 0 if kind == "GLL" else 2 if kind == "RMC" else 1
         try:

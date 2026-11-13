@@ -7,7 +7,7 @@ import pytest
 
 from test_bodies import binary_message, manual_message
 from um982py.errors import ProtocolError
-from um982py.messages import AsciiMessage, BestNavigation
+from um982py.messages import AsciiMessage, BestNavigation, decode_log
 
 
 @pytest.mark.parametrize(
@@ -108,11 +108,15 @@ def test_unavailable_position_standard_deviations() -> None:
     fields = list(message.fields)
     fields[7:10] = ["", "-1", "nan"]
     ascii_nav = BestNavigation.from_message(replace(message, fields=tuple(fields)))
+    ascii_record = decode_log(replace(message, fields=tuple(fields)))
 
     payload = bytearray(120)
     pack_into("<fff", payload, 40, float("inf"), -1, float("nan"))
     binary_nav = BestNavigation.from_message(binary_message("BESTNAV", bytes(payload)))
+    binary_record = decode_log(binary_message("BESTNAV", bytes(payload)))
     for navigation in (ascii_nav, binary_nav):
         assert navigation.latitude_std_m is None
         assert navigation.longitude_std_m is None
         assert navigation.height_std_m is None
+    assert ascii_record["lat_std"] is None and ascii_record["hgt_std"] is None
+    assert binary_record["lat_std"] is None and binary_record["hgt_std"] is None

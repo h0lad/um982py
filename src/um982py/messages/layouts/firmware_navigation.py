@@ -1,11 +1,8 @@
-"""Navigation layouts and visibility framing."""
+"""Firmware navigation message layouts."""
 
-import re
 from dataclasses import replace
 
-from um982py.errors import ProtocolError
 from um982py.messages.layouts import LAYOUTS as DOCUMENTED
-from um982py.messages.reader import BodyReader
 from um982py.messages.schema import Field, Group, Layout
 
 BESTXYZ = replace(DOCUMENTED["BESTNAVXYZ"], name="BESTXYZ", table="extended")
@@ -90,23 +87,3 @@ LAYOUTS = {
 LAYOUTS.update(
     {name: replace(PSRDOP, name=name) for name in ("PSRDOP2", "RTKDOP", "RTKDOP2")}
 )
-
-
-def visibility_fields(fields: tuple[str, ...]) -> tuple[str, ...]:
-    """Expand SATVIS2's PRN[+/-channel] ASCII token into its binary field order."""
-    try:
-        count = int(fields[3])
-        BodyReader.bound(count, 240)
-        if len(fields) != 4 + count * 6:
-            raise ProtocolError("SATVIS2 count does not match its fields")
-        tokens = list(fields[:4])
-        for index in range(count):
-            start = 4 + index * 6
-            satellite = re.fullmatch(r"(\d+)([+-]\d+)?", fields[start])
-            if satellite is None:
-                raise ProtocolError("Invalid SATVIS2 satellite ID")
-            tokens.extend((satellite[2] or "0", satellite[1]))
-            tokens.extend(fields[start + 1 : start + 6])
-        return tuple(tokens)
-    except (IndexError, ValueError) as error:
-        raise ProtocolError("Invalid SATVIS2 count") from error

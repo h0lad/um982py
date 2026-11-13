@@ -65,6 +65,8 @@ def test_removed_compatibility_imports_are_not_exposed() -> None:
     assert not hasattr(um982py, "gnss_range_samples")
     assert importlib.util.find_spec("um982py.logs") is None
     assert importlib.util.find_spec("um982py.messages.rtcm_layouts") is None
+    for name in ("firmware_layouts", "navigation_layouts", "extended_logs"):
+        assert importlib.util.find_spec(f"um982py.{name}") is None
 
     for name in ("capture_logs", "capture_records", "open_receiver", "capture_log"):
         assert not hasattr(um982py, name)

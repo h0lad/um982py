@@ -2,18 +2,9 @@
 
 from typing import TYPE_CHECKING
 
-from um982py.commands.catalog import RTCM_LOGS
 from um982py.errors import ProtocolError
 from um982py.messages.decode import decode_log
-from um982py.messages.frames import (
-    AbbreviatedAsciiMessage,
-    AsciiMessage,
-    BinaryMessage,
-    LogListMessage,
-    Message,
-    RtcmMessage,
-    Sentence,
-)
+from um982py.messages.frames import Message
 from um982py.messages.record import Record
 from um982py.protocol.ascii import parse_ascii
 from um982py.protocol.binary import (
@@ -62,36 +53,5 @@ def decode_message(raw: bytes, *, log: "Log | None" = None) -> Record:
     binary logs share a message ID. Unsupported messages and ambiguous binary
     IDs raise ``ProtocolError``.
     """
-    from um982py.commands import Log
-
     frame = _frame(raw)
-    if log is not None:
-        if not isinstance(log, Log):
-            raise TypeError("log must be a Log")
-        return log.decode(frame)
-    if isinstance(frame, (Sentence, RtcmMessage, LogListMessage)):
-        return decode_log(frame)
-    if isinstance(frame, (BinaryMessage, AsciiMessage)):
-        binary = isinstance(frame, BinaryMessage)
-        matches = []
-        for candidate in Log:
-            try:
-                wire = candidate.wire_name(binary=binary)
-            except ValueError:
-                continue
-            if isinstance(frame, BinaryMessage):
-                if candidate.value in RTCM_LOGS:
-                    continue
-                if candidate.definition.message_id == frame.header.message_id:
-                    matches.append(candidate)
-            elif wire == frame.name or (
-                isinstance(frame, AbbreviatedAsciiMessage)
-                and candidate.value == frame.name
-            ):
-                matches.append(candidate)
-        if len(matches) == 1:
-            return matches[0].decode(frame)
-        if len(matches) > 1:
-            names = ", ".join(candidate.value for candidate in matches)
-            raise ProtocolError(f"Ambiguous message ({names}); specify log")
-    raise ProtocolError("Unknown or unsupported data log")
+    return decode_log(frame, log=log)

@@ -2,9 +2,9 @@
 
 from dataclasses import replace
 from math import isfinite
+from typing import TYPE_CHECKING
 
-from um982py.commands.catalog import LOGS, RTCM_LOGS
-from um982py.errors import ProtocolError
+from um982py.errors import ProtocolError, UnknownLogError
 from um982py.messages.frames import (
     AbbreviatedAsciiMessage,
     AsciiMessage,
@@ -20,6 +20,9 @@ from um982py.messages.reader import BodyReader
 from um982py.messages.record import Record
 from um982py.messages.satellites import satellite_information
 from um982py.messages.schema import Field
+
+if TYPE_CHECKING:
+    from um982py.commands import Log
 
 
 def _log_entry(line: str) -> Record:
@@ -46,14 +49,28 @@ def _log_entry(line: str) -> Record:
     )
 
 
-def decode_log(message: Message) -> Record:
+def decode_log(message: Message, *, log: "Log | None" = None) -> Record:
+    """Decode a frame, requiring an explicit log for ambiguous binary IDs."""
+    from um982py.commands import Log
+    from um982py.commands.logging import request
+
+    if log is not None:
+        if not isinstance(log, Log):
+            raise TypeError("log must be a Log")
+        binary = isinstance(message, BinaryMessage)
+        if binary and log.definition.binary_command is None:
+            raise ProtocolError(f"{log.value} has no binary body")
+        if not request(
+            log.wire_name(binary=binary), message_id=log.definition.message_id
+        ).matches(message):
+            raise ProtocolError(f"Expected {log.value}")
     try:
-        return _decode_log(message)
+        return _decode_log(message, log=log)
     except (ValueError, TypeError, KeyError, IndexError) as error:
         raise ProtocolError("Malformed log body") from error
 
 
-def _decode_log(message: Message) -> Record:
+def _decode_log(message: Message, *, log: "Log | None") -> Record:
     if isinstance(message, Sentence):
         return decode_nmea(message)
     if isinstance(message, RtcmMessage):
@@ -65,36 +82,29 @@ def _decode_log(message: Message) -> Record:
         return Record(
             "UNILOGLIST", (("logs", tuple(entries)), ("checksum_verified", 0)), message
         )
-    if isinstance(message, AsciiMessage):
-        name = next(
-            (
-                name
-                for name, definition in LOGS.items()
-                if definition.ascii_command == message.name
-                or (
-                    isinstance(message, AbbreviatedAsciiMessage)
-                    and definition.name == message.name
-                )
-            ),
-            None,
-        )
-        payload: bytes | tuple[str, ...] = message.fields
-    elif isinstance(message, BinaryMessage):
-        name = next(
-            (
-                name
-                for name, definition in LOGS.items()
-                if name not in RTCM_LOGS
-                and definition.message_id == message.header.message_id
-            ),
-            None,
-        )
-        payload = message.payload
-    else:
+    if not isinstance(message, (AsciiMessage, BinaryMessage)):
         raise ProtocolError("Expected a documented data log")
+    if log is None:
+        matches = _matching_logs(message)
+        if not matches:
+            raise UnknownLogError("Unknown or unsupported data log")
+        if len(matches) > 1:
+            names = ", ".join(candidate.value for candidate in matches)
+            raise ProtocolError(f"Ambiguous message ({names}); specify log")
+        log = matches[0]
+    name = log.value
+    from um982py.commands.extended import EXTENDED_LOGS
+
+    if name in EXTENDED_LOGS:
+        from um982py.messages.extended import decode_extended
+
+        return decode_extended(name, message)
+    payload: bytes | tuple[str, ...] = (
+        message.fields if isinstance(message, AsciiMessage) else message.payload
+    )
     if name == "SATSINFO":
         return replace(satellite_information(payload), message=message)
-    if name is None or name not in LAYOUTS:
+    if name not in LAYOUTS:
         raise ProtocolError(f"No body layout for {name}")
     layout = LAYOUTS[name]
     if name == "L1SMT48" and isinstance(payload, tuple) and len(payload) > 10:
@@ -143,7 +153,12 @@ def _decode_log(message: Message) -> Record:
             layout,
             fields=(*layout.fields[:-2], Field("legacy_reserved", "x", 112, 4)),
         )
-    record = BodyReader(payload).read(layout)
+    unavailable = (
+        frozenset({"lat_std", "lon_std", "hgt_std"})
+        if name in {"BESTNAV", "BESTNAVH"}
+        else frozenset()
+    )
+    record = BodyReader(payload, nonfinite_as_none=unavailable).read(layout)
     if (
         name
         in {"PPPB2BINFO1", "PPPB2BINFO2", "PPPB2BINFO3", "PPPB2BINFO4", "PPPB2BINFO5"}
@@ -155,3 +170,23 @@ def _decode_log(message: Message) -> Record:
     ):
         raise ProtocolError("PPPB2BINFO3 bias count exceeds the 15-entry array")
     return replace(record, message=message)
+
+
+def _matching_logs(message: AsciiMessage | BinaryMessage) -> list["Log"]:
+    from um982py.commands import Log
+    from um982py.commands.catalog import RTCM_LOGS
+
+    if isinstance(message, BinaryMessage):
+        return [
+            log
+            for log in Log
+            if log.value not in RTCM_LOGS
+            and log.definition.binary_command is not None
+            and log.definition.message_id == message.header.message_id
+        ]
+    return [
+        log
+        for log in Log
+        if log.definition.ascii_command == message.name
+        or (isinstance(message, AbbreviatedAsciiMessage) and log.value == message.name)
+    ]

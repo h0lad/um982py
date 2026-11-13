@@ -4,8 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from um982py.firmware_layouts import LAYOUTS as FIRMWARE_LAYOUTS
 from um982py.messages.layouts import LAYOUTS as DOCUMENTED_LAYOUTS
+from um982py.messages.layouts.firmware import LAYOUTS as FIRMWARE_LAYOUTS
 from um982py.messages.record import Record, Value
 from um982py.messages.schema import Field, Group, Layout
 

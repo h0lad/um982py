@@ -10,9 +10,9 @@ from um982py.commands import Command, masking, queries
 from um982py.commands import configuration as config
 from um982py.commands.catalog import LOGS, RTCM_LOGS
 from um982py.commands.types import NmeaVersion, Port
-from um982py.firmware_layouts import LAYOUTS as EXTENDED_LAYOUTS
 from um982py.messages import CommandResponse, Message
 from um982py.messages.layouts import LAYOUTS
+from um982py.messages.layouts.firmware import LAYOUTS as EXTENDED_LAYOUTS
 from um982py.messages.nmea import SCHEMAS
 from um982py.rtcm import STANDARD_RTCM_TYPES, UNICORE_RTCM_TYPES
 

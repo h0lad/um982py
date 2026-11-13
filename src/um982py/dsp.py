@@ -12,10 +12,8 @@ from time import monotonic
 from typing import TYPE_CHECKING
 
 from um982py.commands import Log
-from um982py.commands.catalog import LOGS, RTCM_LOGS
 from um982py.commands.core import Command
-from um982py.commands.extended import EXTENDED_LOGS
-from um982py.errors import ProtocolError, UM982Error
+from um982py.errors import ProtocolError, UM982Error, UnknownLogError
 from um982py.experimental import DebugOutput
 from um982py.experimental.baseband import RawBasebandPacket, scan_packets
 from um982py.experimental.capture import (
@@ -86,29 +84,16 @@ class DspProfile(StrEnum):
 
 def decode_dsp(message: Message) -> Record:
     """Decode a framed payload, preserving unhandled bytes as opaque."""
-    if isinstance(message, BinaryMessage):
-        identifier = message.header.message_id
-        matches_id = (
-            d.message_id == identifier
-            for name, d in LOGS.items()
-            if name not in RTCM_LOGS
-        )
-        if any(matches_id):
-            return decode_log(message)
-        for log in Log:
-            if log.value not in EXTENDED_LOGS or log == Log.RXSTATUS:
-                continue
-            if log.request(binary=True).matches(message):
-                return log.decode(message)
+    try:
+        return decode_log(message)
+    except UnknownLogError:
+        if not isinstance(message, BinaryMessage):
+            raise
         return Record(
             "OPAQUE",
-            (("message_id", identifier), ("payload", message.payload)),
+            (("message_id", message.header.message_id), ("payload", message.payload)),
             message,
         )
-    for log in Log:
-        if log.value in EXTENDED_LOGS and log.request().matches(message):
-            return log.decode(message)
-    return decode_log(message)
 
 
 def _value(value: Value) -> object:

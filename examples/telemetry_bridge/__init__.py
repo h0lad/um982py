@@ -81,7 +81,7 @@ def record_object(record: Record) -> dict[str, object]:
 
 
 def decode_frame(message: Message) -> Record | None:
-    """Decode a frame body, or ``None`` when no layout is documented for it."""
+    """Decode a frame body, or return ``None`` if unsupported, ambiguous or invalid."""
     try:
         return decode_log(message)
     except ProtocolError:

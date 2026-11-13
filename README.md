@@ -60,6 +60,7 @@ prediction; the signature alone does not prove prediction.
 | Start satellite PPP | `receiver.start_ppp(service="E6-HAS")` |
 | Capture one log or several logs | `capture_live()` |
 | Read a saved capture or one message | `load_records(path, Log.RANGE)` or `decode_message(data)` |
+| Decode an already framed message | `decode_log(frame)` |
 | Decode RTCM correction fields | `decode_rtcm(data)` or `decode_message(data)` |
 | Mask an elevation/azimuth sector | `receiver.execute(masking.azimuth(20, 90, 15, 45))` |
 | Convert receiver time to UTC | `message_utc(record, leap_seconds=...)` |
@@ -98,6 +99,11 @@ Every result retains its raw `payload` and `message_type`. Its `status` is
 remain raw, including Unicore's nonstandard use of the latter two IDs. Malformed
 supported bodies raise `ProtocolError`; frame-only streaming and correction
 forwarding continue to preserve raw data.
+
+For an already parsed frame, `um982py.messages.decode_log(frame)` uses the
+same decoder as `decode_message()`. If binary logs share an ID, pass the
+expected log explicitly, for example `decode_log(frame, log=Log.BESTPOS)`.
+Typed models such as `BestNavigation` can also be built with `from_record()`.
 
 ## Inspect receiver timing and spoofing status
 

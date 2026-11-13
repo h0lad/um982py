@@ -10,8 +10,14 @@ from um982py.messages.schema import Field, Group, Layout
 
 
 class BodyReader:
-    def __init__(self, data: bytes | tuple[str, ...]) -> None:
+    def __init__(
+        self,
+        data: bytes | tuple[str, ...],
+        *,
+        nonfinite_as_none: frozenset[str] = frozenset(),
+    ) -> None:
         self.data = data
+        self.nonfinite_as_none = nonfinite_as_none
         self.position = 0
 
     def field(self, field: Field, offset: int, context: Record) -> Value:
@@ -93,6 +99,8 @@ class BodyReader:
                     if not minimum <= value <= maximum:
                         raise ValueError("Integer field out of range")
             if isinstance(value, float) and not isfinite(value):
+                if field.name in self.nonfinite_as_none:
+                    return None
                 raise ValueError("Non-finite value")
             return value
         except (ValueError, UnicodeError, IndexError) as error:

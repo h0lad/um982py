@@ -2,8 +2,8 @@
 
 from dataclasses import dataclass
 
-from um982py.firmware_layouts import LAYOUTS
 from um982py.messages import Record
+from um982py.messages.layouts.firmware import LAYOUTS
 from um982py.messages.schema import Field
 
 __all__ = ["TrackingField", "TrackingSlot", "tracking_fields", "tracking_slots"]
