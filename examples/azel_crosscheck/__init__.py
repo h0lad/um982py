@@ -7,14 +7,14 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from examples.ephemeris_orbit import (
+from examples.satellite_monitor import constellation_of
+from um982py.experimental.orbit import (
     KeplerElements,
     SatelliteState,
     azimuth_elevation,
     orbit_state,
     state_from_record,
 )
-from examples.satellite_monitor import constellation_of
 from um982py.messages import Record
 from um982py.messages.enums import SatelliteSystem
 

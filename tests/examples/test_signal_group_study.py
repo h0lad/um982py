@@ -5,12 +5,6 @@ import math
 from pathlib import Path
 
 import pytest
-from examples.dop_geometry import (
-    ReportedDilution,
-    SatelliteGeometry,
-    geometry_from_records,
-)
-from examples.rtk_quality import FixClass
 from examples.signal_group_study import (
     DopAgreement,
     SettingSample,
@@ -24,9 +18,15 @@ from examples.signal_group_study.__main__ import main
 from conftest import FIXTURES
 from um982py.commands import Log
 from um982py.commands.configuration import SignalGroup
+from um982py.geometry import (
+    ReportedDilution,
+    SatelliteGeometry,
+    geometry_from_records,
+)
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder
+from um982py.quality import FixClass
 
 LIVE = FIXTURES / "captures-live"
 CAPTURED_SATELLITES = 33

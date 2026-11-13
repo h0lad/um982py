@@ -28,6 +28,8 @@ python -m examples.b2b_correction_audit \
 ```
 
 The report marks missing streams as unobserved.
+The replay's type-4 clock block also reports `satellite_mapping_unverified`:
+its satellite mapping has not been independently established.
 
 ## Inputs and results
 

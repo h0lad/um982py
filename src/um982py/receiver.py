@@ -2,6 +2,7 @@
 
 from collections import deque
 from collections.abc import Callable, Iterator, Sequence
+from contextlib import closing, contextmanager
 from math import isclose, isfinite
 from threading import Event, RLock
 from time import monotonic, sleep
@@ -29,6 +30,7 @@ from um982py.errors import (
 from um982py.measurement import RangeSample, range_samples
 from um982py.messages.frames import CommandResponse, Message, RtcmMessage
 from um982py.messages.navigation import BestNavigation, Fix, Heading
+from um982py.messages.receiver_status import PpsStatus, SpoofInfo
 from um982py.messages.record import Record
 from um982py.messages.version import Version
 from um982py.ppp import PppService, PppSession, _start_ppp
@@ -241,7 +243,7 @@ class Receiver:
         specific hardware and firmware. UM982 RTK and heading are specified at
         up to 20 Hz. Actual rates depend on the log, group, firmware and port
         bandwidth. Measure delivered epochs rather than assuming the requested
-        rate. Use ``antenna_log(log, "secondary")`` for secondary antenna logs.
+        rate. Use ``antenna_log(log, 2)`` for secondary antenna logs.
         """
         interval = logging.interval_from_rate(rate_hz)
         if binary is not None and not isinstance(binary, bool):
@@ -323,11 +325,19 @@ class Receiver:
         """Query hardware clock frequencies and component build versions."""
         return self.execute(receiver_system_status())
 
+    def pps_status(self) -> PpsStatus:
+        """Read the receiver's reported PPS timing status."""
+        return PpsStatus.from_record(self.read_log(Log.PPSSTATUS))
+
+    def spoof_info(self) -> SpoofInfo:
+        """Read receiver-reported spoofing indicators, not authentication."""
+        return SpoofInfo.from_record(self.read_log(Log.SPOOFINFO))
+
     def fix(self, *, antenna: int = 1) -> Fix:
         """Query a one-shot GGA position fix for the selected antenna."""
         return self.execute(queries.fix(antenna=antenna))
 
-    def positions(
+    def poll_positions(
         self,
         *,
         interval: float = 1,
@@ -347,7 +357,7 @@ class Receiver:
         transaction and must not use the receiver.
         """
         validate_interval(interval)
-        if antenna not in (1, 2):
+        if type(antenna) is not int or antenna not in (1, 2):
             raise ValueError("antenna must be 1 or 2")
         validate_callback(on_message)
 
@@ -360,6 +370,25 @@ class Receiver:
                     return
 
         return poll()
+
+    @contextmanager
+    def stream_positions(
+        self, *, duration: float, rate_hz: float = 1, antenna: int = 1
+    ) -> Iterator[Iterator[Fix]]:
+        """Temporarily subscribe to GGA positions and restore output on exit.
+
+        The receiver controls the actual output rate. Repeated or missing
+        epochs are preserved. Closing the context restores subscriptions even
+        when iteration stops early; restoration can fail on disconnection.
+        """
+        if type(antenna) is not int or antenna not in (1, 2):
+            raise ValueError("antenna must be 1 or 2")
+        from um982py.stream_capture import iter_live_records
+
+        log = antenna_log(Log.GPGGA, antenna)
+        records = iter_live_records(self, [log], duration=duration, rate_hz=rate_hz)
+        with closing(records):
+            yield (Fix.from_record(record) for _, record in records)
 
     def best_navigation(
         self, *, binary: bool = False, antenna: int = 1
@@ -394,12 +423,14 @@ class Receiver:
         log: Log | AntennaLog,
         *,
         binary: bool | None = None,
-        antenna: str = "primary",
+        antenna: int = 1,
     ) -> Record:
         """Read one log, preferring binary when its format is supported.
 
         Pass ``binary=True`` or ``False`` to require a particular wire format.
         """
+        if type(antenna) is not int or antenna not in (1, 2):
+            raise ValueError("antenna must be 1 or 2")
         selected = antenna_log(log, antenna)
         if binary is None:
             try:
@@ -413,7 +444,7 @@ class Receiver:
     def range_samples(
         self,
         *,
-        antenna: str = "primary",
+        antenna: int = 1,
         systems: tuple[int, ...] | None = None,
         signals: tuple[int, ...] | None = None,
     ) -> tuple[RangeSample, ...]:

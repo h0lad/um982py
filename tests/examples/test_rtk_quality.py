@@ -4,7 +4,12 @@ from collections.abc import Sequence
 from pathlib import Path
 
 import pytest
-from examples.rtk_quality import (
+from examples.rtk_quality.__main__ import _diagnostic_rows
+
+from um982py.capture import decode_records, read_frames
+from um982py.commands import Log
+from um982py.messages.enums import PositionType, SolutionStatus
+from um982py.quality import (
     POSITION_CLASSES,
     EpochSolution,
     FixClass,
@@ -12,11 +17,6 @@ from examples.rtk_quality import (
     summarise,
     timeline,
 )
-from examples.rtk_quality.__main__ import _diagnostic_rows
-
-from um982py.capture import decode_records, read_frames
-from um982py.commands import Log
-from um982py.messages.enums import PositionType, SolutionStatus
 
 
 def test_fixed_ppp_remains_distinct_from_rtk_fix() -> None:

@@ -1,15 +1,14 @@
-import json
 from collections.abc import Callable
 from datetime import UTC, datetime, timedelta, timezone
 from typing import cast
 
 import pytest
 
-from conftest import FIXTURES, ReplayTransport, ascii_message, rtcm
+from conftest import ReplayTransport, ascii_message, rtcm
 from test_protocol import binary
 from um982py.commands import Log, assistance, masking, modes, queries
 from um982py.commands import configuration as config
-from um982py.commands.catalog import LOGS, RTCM_LOGS
+from um982py.commands.catalog import RTCM_LOGS
 from um982py.commands.core import Command
 from um982py.commands.types import (
     Constellation,
@@ -63,7 +62,6 @@ CASES: list[tuple[str, Callable[[], Command[CommandResponse]], str]] = [
     ("4.23", config.anti_jam, "CONFIG ANTIJAM AUTO"),
     ("4.24", lambda: config.signal_group(3, 6), "CONFIG SIGNALGROUP 3 6"),
     ("4.25", lambda: config.antenna_delta(1.521), "CONFIG ANTENNADELTAHEN 1.521 0 0"),
-    ("4.26", lambda: config.authorization("0x123:ABCD"), "CONFIG AUTHCODE 0x123:ABCD"),
     ("4.27", lambda: config.algorithm_reset("HEADING"), "CONFIG ALGRESET HEADING"),
     ("4.28", config.ionosphere_model, "CONFIG IONMODE GPSK8"),
     (
@@ -99,9 +97,7 @@ def test_configuration_examples(
     assert section.startswith("4.")
 
 
-def test_legacy_configuration_examples_are_retained() -> None:
-    sections = {s for s, _, _ in CASES} | {"4.1"}
-    assert sections == {f"4.{i}" for i in range(1, 42) if i not in (17, 32, 33, 35, 36)}
+def test_configuration_query() -> None:
     assert queries.configuration().text == "CONFIG"
 
 
@@ -150,25 +146,6 @@ def test_all_documented_logs(log: Log) -> None:
             request = log.request(binary=True)
             if definition.name not in RTCM_LOGS:
                 assert request.matches(parse_binary(binary(b"", definition.message_id)))
-
-
-def test_catalog_retains_r14_inventory() -> None:
-    reference = json.loads((FIXTURES / "reference-r1.4.json").read_text())
-    assert len(reference["logs"]) == 79
-    for item in reference["logs"]:
-        definition = LOGS[item["name"]]
-        # Section numbers changed in later manuals; the wire ID is stable.
-        assert definition.message_id == item["message_id"]
-        for example in item["examples"]:
-            head = example.split()[0]
-            assert head in (
-                definition.name,
-                definition.ascii_command,
-                definition.binary_command,
-            )
-    assert sum(d.section == "Appendix 2" for d in LOGS.values()) == 29
-    assert Log.EVENTFLAG.definition.message_id == 312
-    assert Log.EVENTSLN.definition.message_id == 311
 
 
 def test_galileo_msm4_request_matches_only_rtcm_frames() -> None:
@@ -282,7 +259,6 @@ def test_configuration_variants() -> None:
         lambda: config.ppp_timeout(181),
         lambda: config.antenna_delta(7),
         lambda: config.base_antenna_model("a" * 32),
-        lambda: config.authorization("x\r\nFRESET"),
         lambda: integer(True, 0, 1),
         lambda: option("INVALID", ("AUTO",)),
         lambda: text("a b"),

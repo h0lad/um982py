@@ -8,7 +8,7 @@ from um982py.messages.frames import (
     AsciiHeader,
     AsciiMessage,
     CommandResponse,
-    LegacyAsciiHeader,
+    OemAsciiHeader,
     Sentence,
     TextLine,
 )
@@ -89,11 +89,11 @@ def parse_ascii(raw: bytes) -> Sentence | AsciiMessage | CommandResponse | TextL
         raise ProtocolError("Malformed ASCII message") from error
 
 
-def parse_header(head: bytes) -> AsciiHeader | LegacyAsciiHeader:
+def parse_header(head: bytes) -> AsciiHeader | OemAsciiHeader:
     try:
         fields = _fields(head)
         if len(fields) >= 2 and fields[1] in ("COM1", "COM2", "COM3"):
-            return LegacyAsciiHeader(fields[0], fields[1:])
+            return OemAsciiHeader(fields[0], fields[1:])
         if len(fields) != 10:
             raise ProtocolError("Expected ten Unicore ASCII header fields")
         return AsciiHeader(

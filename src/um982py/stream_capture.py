@@ -1,6 +1,6 @@
 """Incremental live and replay capture with bounded application memory."""
 
-from collections.abc import Iterable, Iterator, Mapping, Sequence
+from collections.abc import Generator, Iterable, Iterator, Mapping, Sequence
 from dataclasses import dataclass
 from math import isfinite
 from time import monotonic
@@ -69,7 +69,7 @@ def iter_live_records(
     rate_hz: float | None = None,
     intervals: Mapping[DataLog, float] | None = None,
     binary: bool = True,
-) -> Iterator[tuple[str, Record]]:
+) -> Generator[tuple[str, Record], None, None]:
     """Temporarily subscribe and yield records until the duration elapses.
 
     ``intervals`` overrides the default period in seconds for selected periodic

@@ -4,6 +4,7 @@ import pytest
 
 from conftest import FIXTURES
 from um982py.commands import Log
+from um982py.commands import configuration as documented
 from um982py.commands.extended import EXTENDED_LOGS
 from um982py.errors import ProtocolError
 from um982py.experimental import configuration as config
@@ -84,7 +85,7 @@ def test_truncated_and_extra_fields(log: Log, binary: bool) -> None:
 
 
 def test_hidden_configuration_grammar() -> None:
-    assert config.pvt_reliability(1, 2, 3).text == "CONFIG PVT RELIABILITY 1 2 3"
+    assert documented.pvt_reliability(1, 2, 3).text == "CONFIG PVT RELIABILITY 1 2 3"
     assert config.best_position_bias().text == "CONFIG BESTPOSBIAS ENABLE"
     assert config.best_position_bias(enabled=False).text == "CONFIG BESTPOSBIAS DISABLE"
     assert config.best_position_bias(threshold=30000).text.endswith("ENABLE 30000")
@@ -97,7 +98,7 @@ def test_hidden_configuration_grammar() -> None:
     )
     for first in (0, 4, True):
         with pytest.raises(ValueError):
-            config.pvt_reliability(first, 1, 1)
+            documented.pvt_reliability(first, 1, 1)
     for threshold in (199, 30001, True):
         with pytest.raises(ValueError):
             config.best_position_bias(threshold=threshold)

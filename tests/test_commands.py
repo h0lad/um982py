@@ -311,9 +311,7 @@ def test_standalone_timeout_r115() -> None:
             configuration.standalone_timeout(value)  # type: ignore[arg-type]
 
 
-def test_documented_configuration_keeps_experimental_imports() -> None:
-    from um982py.experimental import configuration as experimental
-
+def test_documented_configuration() -> None:
     assert configuration.anti_spoof().text == "CONFIG ANTISPOOF ENABLE"
     assert configuration.anti_spoof(enabled=False).text == "CONFIG ANTISPOOF DISABLE"
     assert configuration.rtcm_output_mode("BASE").text == "CONFIG RTCMOUTPUT BASE"
@@ -322,10 +320,6 @@ def test_documented_configuration_keeps_experimental_imports() -> None:
     )
     assert configuration.ionosphere_level(0.5).text == "CONFIG IONLEVEL 0.5"
     assert configuration.pvt_reliability(1, 2, 3).text == "CONFIG PVT RELIABILITY 1 2 3"
-    assert experimental.anti_spoof is configuration.anti_spoof
-    assert experimental.rtcm_output_mode is configuration.rtcm_output_mode
-    assert experimental.ionosphere_level is configuration.ionosphere_level
-    assert experimental.pvt_reliability is configuration.pvt_reliability
 
 
 def test_integer_only_configuration() -> None:

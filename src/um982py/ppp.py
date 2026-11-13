@@ -113,6 +113,11 @@ class PppSolution:
         )
 
     @property
+    def rtk_fixed(self) -> bool:
+        """PPP solution types are not reported as a conventional RTK fixed fix."""
+        return False
+
+    @property
     def horizontal_std_m(self) -> float | None:
         """Root-sum-square of the latitude and longitude deviations in metres."""
         if self.latitude_std_m is None or self.longitude_std_m is None:
@@ -188,7 +193,7 @@ class PppSession:
         record = self.receiver._poll_query(Log.PPPNAV.read(binary=True), on_message)
         return PppSolution.from_record(record)
 
-    def positions(
+    def poll_positions(
         self,
         *,
         interval: float = 1.0,

@@ -1,4 +1,4 @@
-"""Antenna and authorization CONFIG commands."""
+"""Antenna CONFIG commands."""
 
 from typing import Literal
 
@@ -31,7 +31,3 @@ def base_antenna_model(
         integer(setup_id, 0, 255),
         option(kind, ("NO", "USER")),
     )
-
-
-def authorization(code: str) -> Command[CommandResponse]:
-    return config("AUTHCODE", text(code, 4096))

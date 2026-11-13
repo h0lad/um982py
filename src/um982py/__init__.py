@@ -52,7 +52,7 @@ if TYPE_CHECKING:
         sample_series,
     )
     from um982py.messages.enums import PositionType, SatelliteSystem, SolutionStatus
-    from um982py.messages.navigation import BestNavigation, Fix, Heading
+    from um982py.messages.navigation import BestNavigation, Fix, Heading, Position
     from um982py.ntrip import (
         Mountpoint,
         NtripClient,
@@ -145,6 +145,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "PerformanceStatus": ("um982py.receiver_models", "PerformanceStatus"),
     "PositionAssessment": ("um982py.assessment", "PositionAssessment"),
     "PositionLimits": ("um982py.assessment", "PositionLimits"),
+    "Position": ("um982py.messages.navigation", "Position"),
     "PositionSession": ("um982py.live", "PositionSession"),
     "PositionSubscription": ("um982py.live", "PositionSubscription"),
     "PositionType": ("um982py.messages.enums", "PositionType"),
@@ -259,6 +260,7 @@ __all__ = [
     "NtripDisconnected",
     "NtripError",
     "PerformanceStatus",
+    "Position",
     "PositionAssessment",
     "PositionLimits",
     "PositionSession",

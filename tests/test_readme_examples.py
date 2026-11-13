@@ -93,8 +93,10 @@ def test_readme_corrected_rover(
         def __exit__(self, *args: object) -> None:
             pass
 
-        def positions(self, *, interval: float) -> list[SimpleNamespace]:
-            assert interval == 1
+        def poll_positions(
+            self, *, interval: float, heading: bool
+        ) -> list[SimpleNamespace]:
+            assert interval == 1 and heading
             return [
                 SimpleNamespace(
                     position=SimpleNamespace(valid=True, latitude=52.5, longitude=13.4),

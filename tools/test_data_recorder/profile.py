@@ -5,6 +5,7 @@ from collections.abc import Sequence
 
 from um982py.commands import Log, Port, Trigger
 from um982py.commands.logging import interval_from_rate
+from um982py.diagnostics import B2B_LOGS, HAS_LOGS
 
 Profile = tuple[tuple[Log, float | Trigger], ...]
 
@@ -42,13 +43,7 @@ CORRECTIONS: Profile = (
     (Log.PPPNAV, 10),
     (Log.PPPNAVH, 10),
     (Log.RTCMSTATUS, Trigger.ON_CHANGED),
-    *((Log(f"PPPB2BINFO{i}"), Trigger.ON_CHANGED) for i in range(1, 8)),
-    (Log.E6MASKBLOCK, Trigger.ON_CHANGED),
-    (Log.E6ORBITBLOCK, Trigger.ON_CHANGED),
-    (Log.E6CLOCKFULLBLOCK, Trigger.ON_CHANGED),
-    (Log.E6CLOCKSUBBLOCK, Trigger.ON_CHANGED),
-    (Log.E6CBIASBLOCK, Trigger.ON_CHANGED),
-    (Log.E6PBIASBLOCK, Trigger.ON_CHANGED),
+    *((log, Trigger.ON_CHANGED) for log in (*B2B_LOGS, *HAS_LOGS)),
 )
 TRACKED = CORE + COMPRESSED + CORRECTIONS
 RATE_LOGS = frozenset(

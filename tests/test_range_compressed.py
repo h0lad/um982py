@@ -6,7 +6,7 @@ from test_protocol import binary
 from um982py.errors import ProtocolError
 from um982py.experimental import CompressedRange, decode_rangecmp
 from um982py.experimental.range_compressed import _PSRSTD
-from um982py.messages import AsciiMessage, LegacyAsciiHeader
+from um982py.messages import AsciiMessage, OemAsciiHeader
 from um982py.protocol import StreamDecoder
 
 LIGHT_SPEED = 299792458.0
@@ -189,7 +189,7 @@ def test_ascii_hex_entries_decode_like_binary() -> None:
     binary_observation = decode_frame(pack_frame((entry,))).observations[0]
     hex_entry = entry.hex()
     message = AsciiMessage(
-        LegacyAsciiHeader("RANGECMPA", ()),
+        OemAsciiHeader("RANGECMPA", ()),
         ("1", hex_entry),
         f"#RANGECMPA,1;1,{hex_entry}".encode(),
     )
@@ -242,7 +242,7 @@ def test_ascii_count_and_encoding_errors_are_rejected() -> None:
     valid = entry.hex()
 
     def ascii_message(fields: tuple[str, ...]) -> AsciiMessage:
-        return AsciiMessage(LegacyAsciiHeader("RANGECMPA", ()), fields, b"#RANGECMPA")
+        return AsciiMessage(OemAsciiHeader("RANGECMPA", ()), fields, b"#RANGECMPA")
 
     with pytest.raises(ProtocolError, match="Truncated"):
         decode_rangecmp(ascii_message(()))
@@ -254,6 +254,6 @@ def test_ascii_count_and_encoding_errors_are_rejected() -> None:
         decode_rangecmp(ascii_message(("1", valid[:40])))
     with pytest.raises(ProtocolError, match="entry encoding"):
         decode_rangecmp(ascii_message(("1", "z" * 48)))
-    other = AsciiMessage(LegacyAsciiHeader("RANGEA", ()), ("1", valid), b"")
+    other = AsciiMessage(OemAsciiHeader("RANGEA", ()), ("1", valid), b"")
     with pytest.raises(ProtocolError, match="Expected a RANGECMP frame"):
         decode_rangecmp(other)

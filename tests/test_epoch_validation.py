@@ -8,12 +8,12 @@ from um982py.messages import (
     AsciiMessage,
     BinaryHeader,
     BinaryMessage,
-    LegacyAsciiHeader,
-    LegacyBinaryHeader,
+    OemAsciiHeader,
+    OemBinaryHeader,
 )
 
 
-def message(header: AsciiHeader | LegacyAsciiHeader) -> AsciiMessage:
+def message(header: AsciiHeader | OemAsciiHeader) -> AsciiMessage:
     return AsciiMessage(header, (), b"")
 
 
@@ -25,8 +25,8 @@ def test_invalid_n4_time_of_week(milliseconds: int) -> None:
 
 
 @pytest.mark.parametrize("seconds", ["nan", "inf", "-1", "604800"])
-def test_invalid_legacy_time_of_week(seconds: str) -> None:
-    header = LegacyAsciiHeader("BESTNAVA", ("COM1", "0", "0", "FINE", "2345", seconds))
+def test_invalid_oem_time_of_week(seconds: str) -> None:
+    header = OemAsciiHeader("BESTNAVA", ("COM1", "0", "0", "FINE", "2345", seconds))
     with pytest.raises(ValueError, match="week range"):
         gps_epoch(message(header))
 
@@ -36,14 +36,14 @@ def test_week_boundary_is_valid() -> None:
     assert gps_epoch(message(header)) == pytest.approx(2345 * 604800 + 604799.999)
 
 
-def test_incomplete_legacy_time_is_rejected() -> None:
+def test_incomplete_oem_time_is_rejected() -> None:
     with pytest.raises(ValueError, match="timestamp"):
-        gps_epoch(message(LegacyAsciiHeader("BESTNAVA", ())))
+        gps_epoch(message(OemAsciiHeader("BESTNAVA", ())))
 
 
-def test_incomplete_legacy_binary_timestamp_is_rejected() -> None:
-    frame = BinaryMessage(LegacyBinaryHeader(1, 0, bytes(19)), b"", b"")
-    with pytest.raises(ValueError, match="incomplete legacy"):
+def test_incomplete_oem_binary_timestamp_is_rejected() -> None:
+    frame = BinaryMessage(OemBinaryHeader(1, 0, bytes(19)), b"", b"")
+    with pytest.raises(ValueError, match="incomplete OEM-style"):
         gps_epoch(frame)
 
 

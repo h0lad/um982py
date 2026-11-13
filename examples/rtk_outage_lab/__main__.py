@@ -22,9 +22,9 @@ from examples.rtk_outage_lab import (
     epoch_timeline,
     summarize_outages,
 )
-from examples.rtk_quality import FixClass, solution_from_record
 from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.quality import FixClass, solution_from_record
 
 
 def main(argv: Sequence[str] | None = None) -> int:

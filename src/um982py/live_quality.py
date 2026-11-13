@@ -84,7 +84,7 @@ class PositionMonitor:
             elif fix.satellites < self.limits.min_satellites:
                 reasons.append("satellites_below_limit")
         if self.limits.max_correction_age_s is not None:
-            age = fix.differential_age
+            age = fix.correction_age_s
             if age is None or not isfinite(age) or age < 0:
                 reasons.append("correction_age_unknown")
             elif age > self.limits.max_correction_age_s:

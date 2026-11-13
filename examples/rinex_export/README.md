@@ -71,7 +71,7 @@ from um982py import InterruptedCapture, Log, Receiver, capture_live
 
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
     try:
-        observations = capture_live(receiver, Log.RANGE, duration=60)
+        observations = capture_live(receiver, Log.RANGE, duration=60)[Log.RANGE]
     except InterruptedCapture as interrupted:
         observations = interrupted.records[Log.RANGE.value]
 

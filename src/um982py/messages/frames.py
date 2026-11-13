@@ -33,14 +33,16 @@ class AsciiHeader:
 
 
 @dataclass(frozen=True, slots=True)
-class LegacyAsciiHeader:
+class OemAsciiHeader:
+    """OEM-style ASCII header emitted by receiver firmware."""
+
     name: str
     fields: tuple[str, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class AsciiMessage:
-    header: AsciiHeader | LegacyAsciiHeader
+    header: AsciiHeader | OemAsciiHeader
     fields: tuple[str, ...]
     raw: bytes
 
@@ -74,7 +76,9 @@ class BinaryHeader:
 
 
 @dataclass(frozen=True, slots=True)
-class LegacyBinaryHeader:
+class OemBinaryHeader:
+    """OEM-style binary header emitted by receiver firmware."""
+
     message_id: int
     payload_length: int
     raw: bytes
@@ -82,7 +86,7 @@ class LegacyBinaryHeader:
 
 @dataclass(frozen=True, slots=True)
 class BinaryMessage:
-    header: BinaryHeader | LegacyBinaryHeader
+    header: BinaryHeader | OemBinaryHeader
     payload: bytes
     raw: bytes
 
@@ -116,7 +120,7 @@ class TextLine:
 
 @dataclass(frozen=True, slots=True)
 class LogListMessage:
-    header: AsciiHeader | LegacyAsciiHeader
+    header: AsciiHeader | OemAsciiHeader
     entries: tuple[str, ...]
     raw: bytes
 

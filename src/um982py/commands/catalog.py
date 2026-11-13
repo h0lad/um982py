@@ -171,12 +171,6 @@ LOGS: Mapping[str, LogDefinition] = MappingProxyType(
         "PPPB2BINFO5": LogDefinition(
             "PPPB2BINFO5", 2310, "7.5.74", "PPPB2BINFO5A", "PPPB2BINFO5B", True
         ),
-        "PPPB2BINFO6": LogDefinition(
-            "PPPB2BINFO6", 2312, "7.3.69", "PPPB2BINFO6A", "PPPB2BINFO6B", True
-        ),
-        "PPPB2BINFO7": LogDefinition(
-            "PPPB2BINFO7", 2314, "7.3.70", "PPPB2BINFO7A", "PPPB2BINFO7B", True
-        ),
         "E6MASKBLOCK": LogDefinition(
             "E6MASKBLOCK", 2319, "7.5.31", "E6MASKBLOCKA", "E6MASKBLOCKB", True
         ),
@@ -345,7 +339,6 @@ RTCM_LOGS: Mapping[str, LogDefinition] = MappingProxyType(
 )
 # The R1.15 text lists only ASCII syntax for L1SMT. A receiver accepted the
 # binary commands with ONCHANGED, and documented binary layouts are available.
-RAW_CORRECTION_LOGS: frozenset[str] = frozenset()
 ADDITIONAL_LOGS: Mapping[str, LogDefinition] = MappingProxyType(
     {
         "ENVINFO": LogDefinition(

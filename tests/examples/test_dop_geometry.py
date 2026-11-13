@@ -3,7 +3,10 @@ from __future__ import annotations
 import math
 
 import pytest
-from examples.dop_geometry import (
+
+from conftest import FIXTURES
+from um982py.commands import Log
+from um982py.geometry import (
     DilutionOfPrecision,
     ReportedDilution,
     SatelliteGeometry,
@@ -13,9 +16,6 @@ from examples.dop_geometry import (
     invert,
     normal_matrix,
 )
-
-from conftest import FIXTURES
-from um982py.commands import Log
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder
 

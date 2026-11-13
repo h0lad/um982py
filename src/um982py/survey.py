@@ -40,7 +40,7 @@ def _acceptable(fix: Fix, rtk_fixed: bool, max_correction_age: float | None) -> 
     if not fix.valid or (rtk_fixed and not fix.rtk_fixed):
         return False
     if max_correction_age is not None:
-        age = fix.differential_age
+        age = fix.correction_age_s
         return age is not None and isfinite(age) and 0 <= age <= max_correction_age
     return True
 

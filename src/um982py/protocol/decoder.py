@@ -9,7 +9,7 @@ from um982py.protocol.ascii import parse_ascii
 from um982py.protocol.binary import (
     BINARY_HEADER,
     BINARY_SYNC,
-    LEGACY_BINARY_SYNC,
+    OEM_BINARY_SYNC,
     parse_binary,
     parse_rtcm,
 )
@@ -78,14 +78,14 @@ class StreamDecoder:
             elif binary:
                 if len(self._buffer) < 3:
                     break
-                if self._buffer[:3] not in (BINARY_SYNC, LEGACY_BINARY_SYNC):
+                if self._buffer[:3] not in (BINARY_SYNC, OEM_BINARY_SYNC):
                     self._discard(1)
                     continue
                 if len(self._buffer) < BINARY_HEADER.size:
                     break
-                if self._buffer[:3] == LEGACY_BINARY_SYNC:
+                if self._buffer[:3] == OEM_BINARY_SYNC:
                     if self._buffer[3] < 28:
-                        self._fail(ProtocolError("Invalid legacy header size"), 1)
+                        self._fail(ProtocolError("Invalid OEM-style header size"), 1)
                         continue
                     size = (
                         self._buffer[3]
@@ -110,7 +110,7 @@ class StreamDecoder:
                             b"$",
                             b"#",
                             BINARY_SYNC,
-                            LEGACY_BINARY_SYNC,
+                            OEM_BINARY_SYNC,
                             b"\xd3",
                         )
                         if (pos := self._buffer.find(marker)) > 0
@@ -184,7 +184,7 @@ class StreamDecoder:
                 elif candidate.startswith(BINARY_SYNC) and len(candidate) >= 24:
                     length = int.from_bytes(candidate[6:8], "little") + 28
                     parse_binary(candidate[:length])
-                elif candidate.startswith(LEGACY_BINARY_SYNC) and len(candidate) >= 28:
+                elif candidate.startswith(OEM_BINARY_SYNC) and len(candidate) >= 28:
                     length = (
                         candidate[3] + int.from_bytes(candidate[8:10], "little") + 4
                     )

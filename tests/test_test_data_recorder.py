@@ -331,8 +331,11 @@ def test_profile_commands_cover_both_antennas_and_optional_logs(
     assert profile.main(["--compressed", "--corrections", "--port", "COM1"]) == 0
     extended = capsys.readouterr().out.splitlines()
     assert "OBSVMCMPB COM1 1" in extended
-    assert "PPPB2BINFO1B COM1 ONCHANGED" in extended
-    assert "E6MASKBLOCKB COM1 ONCHANGED" in extended
+    for number in range(1, 6):
+        assert f"PPPB2BINFO{number}B COM1 ONCHANGED" in extended
+    assert not any("PPPB2BINFO6" in line or "PPPB2BINFO7" in line for line in extended)
+    for name in ("E6MASKBLOCK", "E6CLOCKSUBBLOCK", "E6PBIASBLOCK"):
+        assert f"{name}B COM1 ONCHANGED" in extended
 
 
 def test_profile_rate_changes_only_observation_and_position_logs(

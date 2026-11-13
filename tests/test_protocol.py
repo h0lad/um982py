@@ -2,7 +2,7 @@ from dataclasses import replace
 
 import pytest
 
-from conftest import acknowledgement, ascii_message, rtcm, sentence
+from conftest import FIXTURES, acknowledgement, ascii_message, rtcm, sentence
 from um982py.errors import ChecksumError, ProtocolError
 from um982py.messages import (
     AsciiMessage,
@@ -186,7 +186,7 @@ def test_decoder_bounds_and_partial_headers() -> None:
     )
 
 
-def test_oversize_ascii_and_invalid_legacy() -> None:
+def test_oversize_ascii_and_invalid_oem() -> None:
     with pytest.raises(ProtocolError):
         StreamDecoder(strict=True, max_frame_size=28).feed(b"x" * 29 + b"\n")
     with pytest.raises(ProtocolError):
@@ -215,8 +215,8 @@ def test_recovery_prefers_checked_frames(following: bytes) -> None:
     assert len(decoded) == 1 and decoded[0].raw == following
 
 
-def test_recovery_to_legacy_and_incomplete_noise() -> None:
-    raw = binary()
+def test_recovery_to_oem_and_incomplete_noise() -> None:
+    raw = (FIXTURES / "captures/BESTPOSB.bin").read_bytes()
     decoder = StreamDecoder()
     assert decoder.feed(b"$bad*00\n" + raw)[0].raw == raw
     decoder = StreamDecoder()
@@ -227,8 +227,8 @@ def test_recovery_to_legacy_and_incomplete_noise() -> None:
     assert decoder.errors
 
 
-def test_legacy_and_binary_short_crc() -> None:
-    raw = binary()
+def test_oem_and_binary_short_crc() -> None:
+    raw = (FIXTURES / "captures/BESTPOSB.bin").read_bytes()
     with pytest.raises(ChecksumError):
         parse_binary(raw[:-1] + bytes([raw[-1] ^ 1]))
     with pytest.raises(ChecksumError):

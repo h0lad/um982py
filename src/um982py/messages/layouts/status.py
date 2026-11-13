@@ -589,7 +589,9 @@ LAYOUTS = (
             Field(name="service_end_date", kind="s", offset=32, size=16),
             # Field 5 was removed from the table but its 16 bytes remain in
             # the binary payload before L-bandSat at H+64 (CRC at H+80).
-            Field(name="legacy", kind="s", offset=48, size=16, count=1, ascii_count=0),
+            Field(
+                name="reserved_1", kind="s", offset=48, size=16, count=1, ascii_count=0
+            ),
             Field(name="lband_sat", kind="s", offset=64, size=8),
             Field(name="reserved", kind="s", offset=72, size=8),
         ),

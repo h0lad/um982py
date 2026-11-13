@@ -1,8 +1,9 @@
 """Use the receiver from asyncio while keeping the event loop responsive."""
 
 import asyncio
-from collections.abc import AsyncIterator, Callable, Sequence
-from contextlib import suppress
+from collections.abc import AsyncGenerator, AsyncIterator, Callable, Sequence
+from contextlib import asynccontextmanager, suppress
+from sys import exception
 from types import TracebackType
 from typing import Self
 
@@ -17,6 +18,7 @@ from um982py.commands.types import Port
 from um982py.measurement import RangeSample
 from um982py.messages.frames import CommandResponse, Message
 from um982py.messages.navigation import BestNavigation, Fix, Heading
+from um982py.messages.receiver_status import PpsStatus, SpoofInfo
 from um982py.messages.record import Record
 from um982py.messages.version import Version
 from um982py.ppp import PppService
@@ -164,11 +166,19 @@ class AsyncReceiver:
         """Query hardware clock frequencies and component builds."""
         return await self._run(self.receiver.system_status)
 
+    async def pps_status(self) -> PpsStatus:
+        """Read the receiver's reported PPS timing status."""
+        return await self._run(self.receiver.pps_status)
+
+    async def spoof_info(self) -> SpoofInfo:
+        """Read receiver-reported spoofing indicators, not authentication."""
+        return await self._run(self.receiver.spoof_info)
+
     async def fix(self, *, antenna: int = 1) -> Fix:
         """Query a one-shot GGA position fix for the selected antenna."""
         return await self._run(lambda: self.receiver.fix(antenna=antenna))
 
-    async def positions(
+    async def poll_positions(
         self,
         *,
         interval: float = 1,
@@ -183,7 +193,7 @@ class AsyncReceiver:
         The callback runs in the worker thread and must not use the receiver.
         """
         validate_interval(interval)
-        if antenna not in (1, 2):
+        if type(antenna) is not int or antenna not in (1, 2):
             raise ValueError("antenna must be 1 or 2")
         validate_callback(on_message)
         async for fix in poll_async(
@@ -196,6 +206,38 @@ class AsyncReceiver:
             stop,
         ):
             yield fix
+
+    @asynccontextmanager
+    async def stream_positions(
+        self, *, duration: float, rate_hz: float = 1, antenna: int = 1
+    ) -> AsyncIterator[AsyncIterator[Fix]]:
+        """Temporarily stream GGA positions, restoring subscriptions on exit."""
+        stream = self.receiver.stream_positions(
+            duration=duration, rate_hz=rate_hz, antenna=antenna
+        )
+        positions = stream.__enter__()
+
+        async def receive_positions() -> AsyncGenerator[Fix, None]:
+            while True:
+                item = await self._run(lambda: next(positions, None))
+                if item is None:
+                    return
+                yield item
+
+        iterator = receive_positions()
+        try:
+            yield iterator
+        finally:
+            error = exception()
+            try:
+                await iterator.aclose()
+            finally:
+                if error is None:
+                    await self._run(lambda: stream.__exit__(None, None, None))
+                else:
+                    await self._run(
+                        lambda: stream.__exit__(type(error), error, error.__traceback__)
+                    )
 
     async def enable_augmentation(
         self, *, persist: bool = False, sbas_service: str = "AUTO"
@@ -239,7 +281,7 @@ class AsyncReceiver:
         log: Log | AntennaLog,
         *,
         binary: bool | None = None,
-        antenna: str = "primary",
+        antenna: int = 1,
     ) -> Record:
         """Read and decode a single log from the selected antenna."""
         return await self._run(
@@ -249,7 +291,7 @@ class AsyncReceiver:
     async def range_samples(
         self,
         *,
-        antenna: str = "primary",
+        antenna: int = 1,
         systems: tuple[int, ...] | None = None,
         signals: tuple[int, ...] | None = None,
     ) -> tuple[RangeSample, ...]:

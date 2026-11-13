@@ -38,7 +38,7 @@ class MatchedSatellite:
 
 @dataclass(frozen=True, slots=True)
 class MatchedSolution:
-    """A legacy receiver frame and its conservatively decoded entries."""
+    """A receiver OEM-style frame and its conservatively decoded entries."""
 
     message: BinaryMessage
     header_fields_raw: bytes

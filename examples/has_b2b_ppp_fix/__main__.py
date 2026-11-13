@@ -33,25 +33,10 @@ from examples.has_b2b_ppp_fix import (
 )
 from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.diagnostics import B2B_LOGS, HAS_LOGS
 from um982py.experimental.carrier import monitor_divergence
 from um982py.measurement import RangeSample, SignalKey, range_samples
 from um982py.messages import Record
-
-B2B_LOGS = (
-    Log.PPPB2BINFO1,
-    Log.PPPB2BINFO2,
-    Log.PPPB2BINFO3,
-    Log.PPPB2BINFO4,
-    Log.PPPB2BINFO5,
-    Log.PPPB2BINFO6,
-    Log.PPPB2BINFO7,
-)
-HAS_LOGS = (
-    Log.E6MASKBLOCK,
-    Log.E6ORBITBLOCK,
-    Log.E6CLOCKFULLBLOCK,
-    Log.E6CBIASBLOCK,
-)
 
 
 def _divergence_signal_label(key: SignalKey) -> str:

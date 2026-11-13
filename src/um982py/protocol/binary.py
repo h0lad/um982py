@@ -6,29 +6,29 @@ from um982py.errors import ChecksumError, ProtocolError
 from um982py.messages.frames import (
     BinaryHeader,
     BinaryMessage,
-    LegacyBinaryHeader,
+    OemBinaryHeader,
     RtcmMessage,
 )
 from um982py.protocol.checksums import rtcm_crc24q, unicore_crc32
 
 BINARY_SYNC = b"\xaa\x44\xb5"
-LEGACY_BINARY_SYNC = b"\xaa\x44\x12"
+OEM_BINARY_SYNC = b"\xaa\x44\x12"
 BINARY_HEADER = Struct("<3sBHHBBHIIBBH")
 
 
 def parse_binary(raw: bytes) -> BinaryMessage:
-    if raw.startswith(LEGACY_BINARY_SYNC):
+    if raw.startswith(OEM_BINARY_SYNC):
         if len(raw) < 32 or raw[3] < 28:
-            raise ProtocolError("Invalid legacy binary header")
+            raise ProtocolError("Invalid OEM-style binary header")
         length = int.from_bytes(raw[8:10], "little")
         if len(raw) != raw[3] + length + 4:
-            raise ProtocolError("Legacy binary length mismatch")
+            raise ProtocolError("OEM-style binary length mismatch")
         if unicore_crc32(raw[:-4]) != int.from_bytes(raw[-4:], "little"):
-            raise ChecksumError("Legacy binary CRC mismatch")
-        legacy_header = LegacyBinaryHeader(
+            raise ChecksumError("OEM-style binary CRC mismatch")
+        oem_header = OemBinaryHeader(
             int.from_bytes(raw[4:6], "little"), length, raw[: raw[3]]
         )
-        return BinaryMessage(legacy_header, raw[raw[3] : -4], raw)
+        return BinaryMessage(oem_header, raw[raw[3] : -4], raw)
     if len(raw) < BINARY_HEADER.size + 4 or not raw.startswith(BINARY_SYNC):
         raise ProtocolError("Invalid N4 binary header")
     fields = BINARY_HEADER.unpack_from(raw)

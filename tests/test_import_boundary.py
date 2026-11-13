@@ -60,9 +60,25 @@ def test_removed_compatibility_imports_are_not_exposed() -> None:
     import um982py
     import um982py.capture
     import um982py.experimental
+    import um982py.messages
+    from um982py import Log
+    from um982py.commands import configuration
+    from um982py.experimental import configuration as experimental_configuration
 
     assert not hasattr(um982py, "FirmwareLog")
     assert not hasattr(um982py, "gnss_range_samples")
+    assert not hasattr(um982py.messages, "LegacyAsciiHeader")
+    assert not hasattr(um982py.messages, "LegacyBinaryHeader")
+    assert not hasattr(configuration, "authorization")
+    for name in (
+        "anti_spoof",
+        "ionosphere_level",
+        "rtcm_output_mode",
+        "pvt_reliability",
+    ):
+        assert not hasattr(experimental_configuration, name)
+    assert not hasattr(Log, "PPPB2BINFO6")
+    assert not hasattr(Log, "PPPB2BINFO7")
     assert importlib.util.find_spec("um982py.logs") is None
     assert importlib.util.find_spec("um982py.messages.rtcm_layouts") is None
     for name in ("firmware_layouts", "navigation_layouts", "extended_logs"):

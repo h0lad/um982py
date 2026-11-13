@@ -61,7 +61,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     f"{update.received_at.isoformat()} quality={fix.quality} "
                     f"lat={fix.latitude} lon={fix.longitude} "
                     f"height_msl={fix.altitude_msl} "
-                    f"correction_age={fix.differential_age} "
+                    f"correction_age={fix.correction_age_s} "
                     f"connection={update.connection} reasons={assessment.reasons}",
                     flush=True,
                 )

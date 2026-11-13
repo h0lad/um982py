@@ -25,18 +25,9 @@ from examples.b2b_correction_audit import (
 )
 from um982py.commands import Log
 from um982py.corrections import audit_has, correction_events
+from um982py.diagnostics import B2B_LOGS, HAS_LOGS
 from um982py.field_data import file_sha256
 from um982py.messages import Record
-
-LOGS = tuple(Log[f"PPPB2BINFO{i}"] for i in range(1, 8))
-HAS_LOGS = (
-    Log.E6MASKBLOCK,
-    Log.E6ORBITBLOCK,
-    Log.E6CLOCKFULLBLOCK,
-    Log.E6CLOCKSUBBLOCK,
-    Log.E6CBIASBLOCK,
-    Log.E6PBIASBLOCK,
-)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -99,7 +90,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     ordered: list[Record] = []
     captured = capture_logs(
         args,
-        LOGS + (HAS_LOGS if args.has else ()) + (Log.PPPNAV,),
+        B2B_LOGS + (HAS_LOGS if args.has else ()) + (Log.PPPNAV,),
         arrival_order=ordered,
         on_progress=progress_printer("b2b_correction_audit") if args.debug else None,
     )

@@ -125,7 +125,7 @@ def _decode_log(message: Message, *, log: "Log | None") -> Record:
         # The R1.15 example includes the field omitted from its table at H+48.
         fields = tuple(
             replace(field, ascii_count=1)
-            if isinstance(field, Field) and field.name == "legacy"
+            if isinstance(field, Field) and field.name == "reserved_1"
             else field
             for field in layout.fields
         )
@@ -149,9 +149,10 @@ def _decode_log(message: Message, *, log: "Log | None") -> Record:
         and len(payload) == 29
         and layout.fields[-1].name == "horspd_std"
     ):
+        # The manual also shows a single reserved tail instead of two deviations.
         layout = replace(
             layout,
-            fields=(*layout.fields[:-2], Field("legacy_reserved", "x", 112, 4)),
+            fields=(*layout.fields[:-2], Field("tail_reserved", "x", 112, 4)),
         )
     unavailable = (
         frozenset({"lat_std", "lon_std", "hgt_std"})

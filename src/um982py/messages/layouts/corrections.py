@@ -24,38 +24,6 @@ CODE_BIAS = (
     Field("bias_count", "u", 2, 2),
     Group("corrections", 4, CODE_CORRECTION, 15, 4),
 )
-COMBINED_HEADER = (
-    Field("prn", "u", 0, 2),
-    Field("num_clock", "u", 2, 1),
-    Field("num_orbit", "u", 3, 1),
-)
-ORBIT_BLOCK = (
-    Field("seconds_of_day", "u", 0, 4),
-    Field("iodssr", "u", 4, 1),
-    Field("reserved", "u", 5, 1, 3),
-    Group("corrections", 8, ORBIT, 6, 12, "num_orbit"),
-)
-CLOCK_BLOCK = (
-    Field("seconds_of_day", "u", 0, 4),
-    Field("iodssr", "u", 4, 1),
-    Field("iodp", "u", 5, 1),
-    Field("satellite_start_index", "u", 6, 2),
-    Group("corrections", 8, CLOCK, 22, 4, "num_clock"),
-)
-CLOCK_BLOCK7 = (
-    Field("seconds_of_day", "u", 0, 4),
-    Field("iodssr", "u", 4, 1),
-    Field("iodp", "u", 5, 1),
-    Field("reserved", "u", 6, 1, 2),
-    Group(
-        "corrections",
-        8,
-        (Field("prn", "i", 0, 4), Field("iod_corr", "u", 4, 2), Field("c0", "i", 6, 2)),
-        15,
-        8,
-        "num_clock",
-    ),
-)
 HAS_HEADER = (
     Field("toh", "u", 0, 4),
     Field("block_flags", "u", 4, 1),
@@ -139,26 +107,6 @@ LAYOUTS: tuple[Layout, ...] = (
             ),
         ),
         152,
-    ),
-    Layout(
-        "PPPB2BINFO6",
-        "7-141",
-        (
-            *COMBINED_HEADER,
-            Group("clock", 4, CLOCK_BLOCK, 1, 96),
-            Group("orbit", 100, ORBIT_BLOCK, 1, 80),
-        ),
-        180,
-    ),
-    Layout(
-        "PPPB2BINFO7",
-        "7-142",
-        (
-            *COMBINED_HEADER,
-            Group("clock", 4, CLOCK_BLOCK7, 1, 128),
-            Group("orbit", 132, ORBIT_BLOCK, 1, 80),
-        ),
-        212,
     ),
     Layout(
         "E6MASKBLOCK",

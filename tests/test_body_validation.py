@@ -7,9 +7,9 @@ from test_bodies import binary_message, manual_message
 from um982py.errors import ProtocolError
 from um982py.messages import (
     AsciiMessage,
-    LegacyAsciiHeader,
     LogListMessage,
     Observation,
+    OemAsciiHeader,
     Record,
     Sentence,
     decode_log,
@@ -157,7 +157,7 @@ def test_satellite_frequency_consistency() -> None:
             decode_log(binary_message("SATSINFO", header + satellite + frequencies))
 
 
-def test_nmea_invalid_values_and_legacy_options() -> None:
+def test_nmea_invalid_values_and_optional_fields() -> None:
     with pytest.raises(ProtocolError):
         decode_log(Sentence("GPUNKNOWN", (), b""))
     message = manual_message("GNGGA")
@@ -198,7 +198,7 @@ def test_unknown_binary_id() -> None:
 )
 def test_invalid_log_list_entry(entry: str) -> None:
     with pytest.raises(ProtocolError):
-        decode_log(LogListMessage(LegacyAsciiHeader("UNILOGLIST", ()), (entry,), b""))
+        decode_log(LogListMessage(OemAsciiHeader("UNILOGLIST", ()), (entry,), b""))
 
 
 @pytest.mark.parametrize(
@@ -206,9 +206,7 @@ def test_invalid_log_list_entry(entry: str) -> None:
     ["LOG COM1 GPGGA ONTIME 1", "GPGGA COM1 ONCHANGED", "LOG COM2 VERSIONA ONCE 0"],
 )
 def test_log_list_trigger_forms(entry: str) -> None:
-    record = decode_log(
-        LogListMessage(LegacyAsciiHeader("UNILOGLIST", ()), (entry,), b"")
-    )
+    record = decode_log(LogListMessage(OemAsciiHeader("UNILOGLIST", ()), (entry,), b""))
     assert len(record.records("logs")) == 1
 
 

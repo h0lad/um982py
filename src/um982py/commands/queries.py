@@ -13,7 +13,7 @@ def version(*, binary: bool = False) -> Command[Version]:
 def best_navigation(
     *, binary: bool = False, antenna: int = 1
 ) -> Command[BestNavigation]:
-    if antenna not in (1, 2):
+    if type(antenna) is not int or antenna not in (1, 2):
         raise ValueError("antenna must be 1 or 2")
     name = "BESTNAVH" if antenna == 2 else "BESTNAV"
     query = request(name + ("B" if binary else "A"), message_id=2117 + antenna)
@@ -21,7 +21,7 @@ def best_navigation(
 
 
 def fix(*, antenna: int = 1) -> Command[Fix]:
-    if antenna not in (1, 2):
+    if type(antenna) is not int or antenna not in (1, 2):
         raise ValueError("antenna must be 1 or 2")
     query = request("GPGGAH" if antenna == 2 else "GPGGA")
     return Command(query.text, query.matches, Fix.from_message)

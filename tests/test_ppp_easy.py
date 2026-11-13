@@ -343,12 +343,12 @@ def test_polling_can_stop_after_a_read_and_propagates_errors() -> None:
     fake = FakeReceiver(Config(SignalGroup(3, 6), True, "E6-HAS"))
     session: PppSession = _start_ppp(_receiver(fake))
     stop = Event()
-    positions = session.positions(interval=0.01, stop=stop)
+    positions = session.poll_positions(interval=0.01, stop=stop)
     assert next(positions).valid
     stop.set()
     assert list(positions) == [] and fake.reads == 1
     with pytest.raises(ValueError, match="interval"):
-        next(session.positions(interval=0))
+        next(session.poll_positions(interval=0))
 
     class FailingReceiver(FakeReceiver):
         def read_log(self, log: Log, *, binary: bool | None = None) -> Record:
@@ -356,7 +356,7 @@ def test_polling_can_stop_after_a_read_and_propagates_errors() -> None:
 
     failing = FailingReceiver(Config(SignalGroup(3, 6), True, "E6-HAS"))
     with pytest.raises(ResponseTimeout, match="no PPP response"):
-        next(_start_ppp(_receiver(failing)).positions())
+        next(_start_ppp(_receiver(failing)).poll_positions())
 
 
 @pytest.mark.parametrize("service", ["E6-HAS", "L6MDCPPP"])

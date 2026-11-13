@@ -337,3 +337,21 @@ def test_cli_replays_recorded_pppnav(tmp_path: Path) -> None:
     assert "latitude" in payload["fix"]
     assert "precision" in payload
     assert payload["precision"]["epochs"] == payload["fix"]["epochs"]
+
+
+def test_cli_counts_clock_subset_and_phase_bias_blocks(tmp_path: Path) -> None:
+    import json
+
+    from examples.has_b2b_ppp_fix.__main__ import main
+
+    from test_protocol import binary
+
+    replay = tmp_path / "ppp-and-has.bin"
+    replay.write_bytes(
+        (FIXTURES / "captures-extra" / "PPPNAVB.bin").read_bytes()
+        + binary(bytes(12), 2322)
+        + binary(bytes(1036), 2324)
+    )
+    report = tmp_path / "fix.json"
+    assert main(["--replay", str(replay), "--min-ppp", "1", "--json", str(report)]) == 0
+    assert json.loads(report.read_text())["corrections"]["has_blocks"] == 2

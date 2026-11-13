@@ -95,8 +95,7 @@ def test_hex_extra_log_uses_secondary_identity() -> None:
 
 
 def test_secondary_dop_reports_actual_source() -> None:
-    from examples.dop_geometry import ReportedDilution
-
+    from um982py.geometry import ReportedDilution
     from um982py.messages import Record
 
     record = Record(

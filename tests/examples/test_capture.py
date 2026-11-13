@@ -387,7 +387,7 @@ def test_library_capture_uses_open_receiver_without_cli_or_output(
     assert len(records["RANGE"]) == 3
     assert transport.subscriptions == {}
     single = _capture.capture_live(receiver, Log.RANGE, duration=8, frames=2)
-    assert isinstance(single, tuple) and len(single) == 2
+    assert len(single[Log.RANGE]) == 2
     assert transport.subscriptions == {}
     with pytest.raises(ValueError, match="at least one log"):
         _capture.capture_live(receiver, [], duration=8)

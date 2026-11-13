@@ -9,7 +9,7 @@ from um982py.messages.record import Record
 from um982py.protocol.ascii import parse_ascii
 from um982py.protocol.binary import (
     BINARY_SYNC,
-    LEGACY_BINARY_SYNC,
+    OEM_BINARY_SYNC,
     parse_binary,
     parse_rtcm,
 )
@@ -26,7 +26,7 @@ if TYPE_CHECKING:
 def _frame(raw: bytes) -> Message:
     if not raw:
         raise ProtocolError("Expected one receiver message")
-    if raw.startswith((BINARY_SYNC, LEGACY_BINARY_SYNC)):
+    if raw.startswith((BINARY_SYNC, OEM_BINARY_SYNC)):
         return parse_binary(raw)
     if raw.startswith(b"\xd3"):
         return parse_rtcm(raw)

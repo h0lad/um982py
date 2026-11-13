@@ -114,7 +114,11 @@ def test_cli_matches_independently_labelled_experiment(
     elif name == "b2b_correction_audit":
         assert len(data["checks"]) == 3
         assert [row["age_seconds"] for row in data["checks"]] == [1, 1, 1]
-        assert all(not row["flags"] for row in data["checks"])
+        assert [row["flags"] for row in data["checks"]] == [
+            [],
+            [],
+            ["satellite_mapping_unverified"],
+        ]
 
 
 def test_type_two_reserved_byte_is_not_a_prn_mask_issue() -> None:
@@ -141,12 +145,12 @@ def test_replay_retains_wire_order_across_correction_log_types(tmp_path: Path) -
     args = parser.parse_args(["--replay", str(path)])
     ordered: list[Record] = []
     capture_records(
-        args, [Log.PPPB2BINFO1, Log.PPPB2BINFO2, Log.PPPB2BINFO7], arrival_order=ordered
+        args, [Log.PPPB2BINFO1, Log.PPPB2BINFO2, Log.PPPB2BINFO4], arrival_order=ordered
     )
     assert [record.name for record in ordered] == [
         "PPPB2BINFO2",
         "PPPB2BINFO1",
-        "PPPB2BINFO7",
+        "PPPB2BINFO4",
     ]
 
 

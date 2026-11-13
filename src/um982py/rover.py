@@ -44,6 +44,34 @@ class RoverPosition:
     heading_type: PositionType | None
     correction_age_s: float | None
 
+    @property
+    def latitude(self) -> float:
+        return self.position.latitude
+
+    @property
+    def longitude(self) -> float:
+        return self.position.longitude
+
+    @property
+    def valid(self) -> bool:
+        return self.position.valid
+
+    @property
+    def rtk_fixed(self) -> bool:
+        return self.position.rtk_fixed
+
+    @property
+    def epoch_gps_seconds(self) -> float | None:
+        return self.position.epoch_gps_seconds
+
+    @property
+    def satellites_used(self) -> int:
+        return self.position.satellites_used
+
+    @property
+    def ellipsoidal_height(self) -> float:
+        return self.position.ellipsoidal_height
+
 
 def _attitude(
     position: BestNavigation, heading: Record, tolerance: float
@@ -267,7 +295,7 @@ class Rover:
         )
 
     def position(
-        self, *, heading: bool = True, heading_tolerance: float = 0.5
+        self, *, heading: bool = False, heading_tolerance: float = 0.5
     ) -> RoverPosition:
         """Poll one position and optionally a heading from a nearby receiver epoch."""
         if (
@@ -289,35 +317,16 @@ class Rover:
                 angle, pitch, offset, heading_type = _attitude(
                     position, attitude, heading_tolerance
                 )
-        age = None
-        differential_types = (
-            PositionType.PSRDIFF,
-            PositionType.L1_FLOAT,
-            PositionType.IONOFREE_FLOAT,
-            PositionType.NARROW_FLOAT,
-            PositionType.L1_INT,
-            PositionType.WIDE_INT,
-            PositionType.NARROW_INT,
-            PositionType.INS_PSRDIFF,
-            PositionType.INS_RTKFLOAT,
-            PositionType.INS_RTKFIXED,
-        )
-        if (
-            position.valid
-            and position.position_type in differential_types
-            and position.message is not None
-        ):
-            value = Log.BESTNAV.decode(position.message).real("diff_age")
-            if isfinite(value) and value >= 0:
-                age = value
         self._check()
-        return RoverPosition(position, angle, pitch, offset, heading_type, age)
+        return RoverPosition(
+            position, angle, pitch, offset, heading_type, position.correction_age_s
+        )
 
-    def positions(
+    def poll_positions(
         self,
         *,
         interval: float = 1,
-        heading: bool = True,
+        heading: bool = False,
         heading_tolerance: float = 0.5,
         stop: Event | None = None,
     ) -> Iterator[RoverPosition]:

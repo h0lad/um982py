@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 import sys
 from collections.abc import Sequence
-from contextlib import suppress
 from pathlib import Path
 
 from examples._console import (
@@ -17,25 +16,18 @@ from examples._console import (
     write_json,
 )
 from examples._console_capture import capture_records
-from examples.ephemeris_orbit import EARTH_ROTATION_RATE, state_from_record
 from examples.wls_position import (
     PositionSolution,
     RangeMeasurement,
     geodetic_position_error,
     solve_position,
 )
-from um982py.capture import gps_signals, read_frames, record_epoch
+from um982py.capture import decode_records, gps_signals, read_frames, record_epoch
 from um982py.commands import Log
-from um982py.errors import ProtocolError
+from um982py.experimental.orbit import EARTH_ROTATION_RATE, state_from_record
 from um982py.geodesy import SPEED_OF_LIGHT, geodetic_from_ecef, receiver_ecef
+from um982py.measurement import gps_epoch
 from um982py.messages import (
-    AsciiHeader,
-    AsciiMessage,
-    BinaryHeader,
-    BinaryMessage,
-    LegacyAsciiHeader,
-    LegacyBinaryHeader,
-    Message,
     Record,
 )
 from um982py.messages.enums import SatelliteSystem
@@ -108,39 +100,9 @@ def select_gps_ephemerides(
     return {prn: entry[1] for prn, entry in best.items()}
 
 
-def epoch_seconds(message: Message) -> float:
-    """Receiver time of week in seconds from a stamped data frame."""
-    if not isinstance(message, (AsciiMessage, BinaryMessage)):
-        raise ValueError("message carries no timestamp")
-    header = message.header
-    if isinstance(header, (AsciiHeader, BinaryHeader)):
-        return header.milliseconds / 1000.0
-    if isinstance(header, LegacyBinaryHeader):
-        return int.from_bytes(header.raw[16:20], "little") / 1000.0
-    if isinstance(header, LegacyAsciiHeader):
-        return float(header.fields[5])
-    raise ValueError("message carries no timestamp")
-
-
 def receiver_position(record: Record) -> tuple[float, float, float]:
     """Observer ECEF from a BESTPOS or BESTXYZ record."""
     return receiver_ecef(record)
-
-
-def _decode(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
-    decoded: list[Record] = []
-    for message in frames:
-        with suppress(ProtocolError):
-            decoded.append(log.decode(message))
-    return tuple(decoded)
-
-
-def _decode_firmware(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
-    decoded: list[Record] = []
-    for message in frames:
-        with suppress(ProtocolError):
-            decoded.append(log.decode(message))
-    return tuple(decoded)
 
 
 def _gps_l1(
@@ -280,17 +242,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.ephemeris is not None
             else list(range_frames)
         )
-        range_records = _decode_firmware(range_frames, Log.RANGE)
-        position_records = _decode_firmware(position_frames, Log.BESTPOS)
+        range_records = decode_records(range_frames, Log.RANGE)
+        position_records = decode_records(position_frames, Log.BESTPOS)
         if not position_records:
-            position_records = _decode_firmware(position_frames, Log.BESTXYZ)
-        ephemeris_records = _decode(ephemeris_frames, Log.GPSEPH)
+            position_records = decode_records(position_frames, Log.BESTXYZ)
+        ephemeris_records = decode_records(ephemeris_frames, Log.GPSEPH)
     if not range_records or not position_records:
         parser.error("a RANGE frame and a BESTPOS/BESTXYZ frame are required")
     range_record = range_records[0]
     if range_record.message is None:
         parser.error("RANGE frame carries no timestamp")
-    epoch = epoch_seconds(range_record.message)
+    epoch = gps_epoch(range_record.message) % 604800.0
     absolute_epoch = record_epoch(range_record)
     ephemerides = select_gps_ephemerides(
         ephemeris_records, absolute_epoch, ranges=range_record

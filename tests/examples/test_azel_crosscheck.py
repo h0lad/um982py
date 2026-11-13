@@ -11,9 +11,9 @@ from examples.azel_crosscheck import (
     satellite_state,
     visibility_from_satvis,
 )
-from examples.azel_crosscheck.__main__ import epoch_seconds
 
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.messages.enums import SatelliteSystem
 from um982py.protocol import StreamDecoder
@@ -67,7 +67,7 @@ def test_ephemeris_counts_match_the_live_capture() -> None:
 def test_live_satvis_timestamp_is_the_captured_epoch() -> None:
     first = satvis_records()[0]
     assert first.message is not None
-    assert epoch_seconds(first.message) == pytest.approx(EPOCH_SECONDS, abs=1e-6)
+    assert gps_epoch(first.message) % 604800.0 == pytest.approx(EPOCH_SECONDS, abs=1e-6)
 
 
 def test_satvis_count_field_matches_its_satellite_records() -> None:

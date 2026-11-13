@@ -205,7 +205,9 @@ def test_rover_pairs_only_matching_heading_epochs() -> None:
     )
     receiver = Receiver(transport, timeout=0.5)
     with Rover(receiver) as rover:
-        sample = rover.position()
+        assert rover.position().heading_deg is None
+        assert b"UNIHEADINGA\r\n" not in transport.writes
+        sample = rover.position(heading=True)
         assert sample.position.valid
         assert sample.heading_deg == pytest.approx(275.1)
         assert sample.pitch_deg == pytest.approx(-2)
@@ -226,7 +228,7 @@ def test_rover_pairs_only_matching_heading_epochs() -> None:
             + different_epoch_body
             + f"*{unicore_crc32(different_epoch_body):08x}\r\n".encode()
         )
-        assert rover.position().heading_deg is None
+        assert rover.position(heading=True).heading_deg is None
     assert not transport.closed
     receiver.close()
 

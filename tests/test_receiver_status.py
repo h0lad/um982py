@@ -37,7 +37,7 @@ def test_inventory_sections() -> None:
     entries = reference["logs"]
     names = {entry["name"] for entry in entries}
     assert len(names) == len(entries)
-    assert names == (LOGS.keys() - RTCM_LOGS.keys() - {"PPPB2BINFO6", "PPPB2BINFO7"})
+    assert names == LOGS.keys() - RTCM_LOGS.keys()
     sections = {
         item["section"] for item in entries if item["section"].startswith("7.5.")
     }

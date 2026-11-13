@@ -63,7 +63,7 @@ def geojson_feature(
             "received_at": update.received_at.isoformat(),
             "quality": fix.quality,
             "satellites": fix.satellites,
-            "correction_age_s": fix.differential_age,
+            "correction_age_s": fix.correction_age_s,
             "connection": update.connection,
         },
     }

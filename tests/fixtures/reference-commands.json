@@ -2,8 +2,7 @@
   "scope": "Manual inventory for NMEA, proprietary logs and event outputs applicable to UM982 and supported C-series variants; inventory coverage does not certify every field or firmware.",
   "notes": [
     "The manual skips section 7.5.10; ANT1GROUP and ANT2GROUP appear in revision history and remain covered by extended-log tests.",
-    "NMEA V4.11 duplicates the V4.10 message inventory.",
-    "PPPB2BINFO6 and PPPB2BINFO7 were removed from the current manual."
+    "NMEA V4.11 duplicates the V4.10 message inventory."
   ],
   "excluded_logs": [
     {

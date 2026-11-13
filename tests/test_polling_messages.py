@@ -46,11 +46,11 @@ def test_polling_routes_large_bursts_and_preserves_existing_backlog(ppp: bool) -
     with Receiver(transport, queue_limit=3) as receiver:
         receiver.execute(action("RESET"))
         iterator = (
-            _session(receiver).positions(
+            _session(receiver).poll_positions(
                 interval=0.001, on_message=lambda m: side.append(m.raw)
             )
             if ppp
-            else receiver.positions(
+            else receiver.poll_positions(
                 interval=0.001, on_message=lambda m: side.append(m.raw)
             )
         )
@@ -69,9 +69,9 @@ def test_polling_discards_new_unrelated_messages_by_default(ppp: bool) -> None:
     command, reply = (b"PPPNAVB\r\n", PPP) if ppp else (b"GPGGA\r\n", GGA)
     with Receiver(_transport(command, reply), queue_limit=1) as receiver:
         iterator = (
-            _session(receiver).positions(interval=0.001)
+            _session(receiver).poll_positions(interval=0.001)
             if ppp
-            else receiver.positions(interval=0.001)
+            else receiver.poll_positions(interval=0.001)
         )
         assert next(iterator).valid
         assert next(iterator).valid
@@ -88,9 +88,9 @@ def test_polling_checks_rejection_even_after_a_matching_response(ppp: bool) -> N
     side: list[Message] = []
     with Receiver(transport) as receiver:
         iterator = (
-            _session(receiver).positions(on_message=side.append)
+            _session(receiver).poll_positions(on_message=side.append)
             if ppp
-            else receiver.positions(on_message=side.append)
+            else receiver.poll_positions(on_message=side.append)
         )
         with pytest.raises(CommandRejected):
             next(iterator)
@@ -106,7 +106,7 @@ def test_poll_callback_cannot_start_a_nested_receiver_transaction() -> None:
             receiver.fix()
 
         with pytest.raises(RuntimeError, match="on_message"):
-            next(receiver.positions(on_message=callback))
+            next(receiver.poll_positions(on_message=callback))
         assert transport.writes == [b"GPGGA\r\n"]
 
 
@@ -122,7 +122,7 @@ def test_poll_callback_receives_only_other_messages_when_position_is_invalid() -
         Receiver(transport) as receiver,
         pytest.raises(ProtocolError, match="Invalid GGA"),
     ):
-        next(receiver.positions(on_message=received.append))
+        next(receiver.poll_positions(on_message=received.append))
     assert [message.raw for message in received] == [SIDE_BEFORE, SIDE_AFTER]
 
 
@@ -135,7 +135,9 @@ def test_polling_preserves_a_frame_partly_buffered_before_the_query() -> None:
     with Receiver(transport, queue_limit=1) as receiver:
         assert receiver.decoder.feed(SIDE_BEFORE[:split]) == ()
         position = next(
-            receiver.positions(on_message=lambda message: received.append(message.raw))
+            receiver.poll_positions(
+                on_message=lambda message: received.append(message.raw)
+            )
         )
         assert position.valid
         assert received == [SIDE_AFTER]
@@ -146,7 +148,7 @@ def test_polling_recovers_a_reply_after_a_damaged_preexisting_partial_frame() ->
     transport = ReplayTransport({b"GPGGA\r\n": GGA}, chunk=65536)
     with Receiver(transport, queue_limit=1) as receiver:
         assert receiver.decoder.feed(b"$GNRMC,damaged") == ()
-        assert next(receiver.positions()).valid
+        assert next(receiver.poll_positions()).valid
         assert receiver.drain_pending() == ()
 
 
@@ -168,9 +170,9 @@ def test_async_polling_calls_back_on_worker_and_keeps_old_messages(ppp: bool) ->
 
         if ppp:
             session = AsyncPppSession(asynchronous, _session(receiver))
-            iterator = session.positions(interval=0.001, on_message=callback)
+            iterator = session.poll_positions(interval=0.001, on_message=callback)
         else:
-            iterator = asynchronous.positions(interval=0.001, on_message=callback)
+            iterator = asynchronous.poll_positions(interval=0.001, on_message=callback)
         assert (await anext(iterator)).valid
         assert (await anext(iterator)).valid
         await iterator.aclose()
@@ -200,11 +202,11 @@ def test_async_polling_stops_without_an_extra_query(ppp: bool, stop_mode: str) -
             assert stop is not None
             stop.set()
         iterator = (
-            AsyncPppSession(asynchronous, _session(receiver)).positions(
+            AsyncPppSession(asynchronous, _session(receiver)).poll_positions(
                 interval=30, stop=stop
             )
             if ppp
-            else asynchronous.positions(interval=30, stop=stop)
+            else asynchronous.poll_positions(interval=30, stop=stop)
         )
         if stop_mode != "already_set":
             assert (await anext(iterator)).valid

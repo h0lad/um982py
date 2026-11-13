@@ -1,6 +1,5 @@
 from um982py.commands.configuration.antenna import (
     antenna_delta,
-    authorization,
     base_antenna_model,
 )
 from um982py.commands.configuration.corrections import (
@@ -80,7 +79,6 @@ __all__ = [
     "antenna_delta",
     "anti_jam",
     "anti_spoof",
-    "authorization",
     "base_antenna_model",
     "command_checksums",
     "constellation",

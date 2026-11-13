@@ -7,14 +7,14 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import cast
 
-from examples.dop_geometry import (
+from um982py.commands.configuration import SignalGroup
+from um982py.geometry import (
     DilutionOfPrecision,
     ReportedDilution,
     SatelliteGeometry,
 )
-from examples.rtk_quality import FixClass, classify
-from um982py.commands.configuration import SignalGroup
 from um982py.messages.record import Record
+from um982py.quality import FixClass, classify
 from um982py.receiver_models import LogList
 from um982py.stats import mean
 

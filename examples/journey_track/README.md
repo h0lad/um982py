@@ -19,7 +19,7 @@ from um982py import Receiver, TrackWriter
 
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
     with TrackWriter("walk.gpx", format="gpx", reference_frame="WGS84") as track:
-        for fix in receiver.positions(interval=1):
+        for fix in receiver.poll_positions(interval=1):
             if fix.valid:
                 track.write(fix)
 ```

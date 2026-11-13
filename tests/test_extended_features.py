@@ -9,6 +9,7 @@ from conftest import FIXTURES, ReplayTransport
 from test_extended_logs import captured
 from um982py import Receiver
 from um982py.commands import Log
+from um982py.commands import configuration as documented
 from um982py.commands.core import Command, action
 from um982py.errors import CommandRejected, ProtocolError
 from um982py.experimental import FirmwareSwitch
@@ -26,10 +27,10 @@ def test_firmware_switches(setting: FirmwareSwitch) -> None:
 
 
 def test_antispoof() -> None:
-    assert config.anti_spoof().text == "CONFIG ANTISPOOF ENABLE"
-    assert config.anti_spoof(enabled=False).text == "CONFIG ANTISPOOF DISABLE"
+    assert documented.anti_spoof().text == "CONFIG ANTISPOOF ENABLE"
+    assert documented.anti_spoof(enabled=False).text == "CONFIG ANTISPOOF DISABLE"
     with pytest.raises(TypeError):
-        config.anti_spoof(level=1)  # type: ignore[call-arg]
+        documented.anti_spoof(level=1)  # type: ignore[call-arg]
 
 
 def test_msm_is_discrete_not_a_range() -> None:
@@ -44,8 +45,12 @@ def test_secondary_heading_and_rtcm_modes() -> None:
     for mode in ("STATIC", "LOWDYNAMIC", "TRACTOR", "FIXLENGTH", "VARIABLELENGTH"):
         assert config.secondary_heading(mode).text == f"CONFIG HEADING2 {mode}"
     assert config.rtk_ifc("AUTO").text == "CONFIG RTKIFC AUTO"
-    assert config.rtcm_output_mode("BASE").text == "CONFIG RTCMOUTPUT BASE"
-    for factory in (config.secondary_heading, config.rtk_ifc, config.rtcm_output_mode):
+    assert documented.rtcm_output_mode("BASE").text == "CONFIG RTCMOUTPUT BASE"
+    for factory in (
+        config.secondary_heading,
+        config.rtk_ifc,
+        documented.rtcm_output_mode,
+    ):
         with pytest.raises(ValueError):
             factory("BAD\r\nRESET")
 
@@ -91,12 +96,12 @@ def test_base_observation_filter_combinations() -> None:
 
 
 def test_ionosphere_level_boundaries() -> None:
-    assert config.ionosphere_level().text == "CONFIG IONLEVEL AUTO"
+    assert documented.ionosphere_level().text == "CONFIG IONLEVEL AUTO"
     for value in (0.5, 1.2, 3):
-        assert config.ionosphere_level(value).text.endswith(f" {value:g}")
+        assert documented.ionosphere_level(value).text.endswith(f" {value:g}")
     for value in (0.49, 3.01, nan, inf, True):
         with pytest.raises(ValueError):
-            config.ionosphere_level(value)
+            documented.ionosphere_level(value)
 
 
 @pytest.mark.parametrize(

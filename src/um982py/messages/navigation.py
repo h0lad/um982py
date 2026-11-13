@@ -1,13 +1,48 @@
 """Typed navigation and heading records."""
 
+from contextlib import suppress
 from dataclasses import dataclass, field
 from math import isfinite
-from typing import Self
+from typing import Protocol, Self, runtime_checkable
 
 from um982py.errors import ProtocolError
 from um982py.messages.enums import PositionType, SolutionStatus, _reported_datum
 from um982py.messages.frames import AsciiMessage, BinaryMessage, Message, Sentence
 from um982py.messages.record import Record, Value
+
+
+@runtime_checkable
+class Position(Protocol):
+    """Common position information; unavailable values are None.
+
+    GPS epochs are absolute GPS seconds when the source includes a verified GPS
+    week and time. GGA reports UTC time of day without a date, so its epoch is
+    unavailable. Source-specific fields remain on each concrete model.
+    """
+
+    @property
+    def latitude(self) -> float | None: ...
+
+    @property
+    def longitude(self) -> float | None: ...
+
+    @property
+    def valid(self) -> bool: ...
+
+    @property
+    def rtk_fixed(self) -> bool: ...
+
+    @property
+    def correction_age_s(self) -> float | None: ...
+
+    @property
+    def epoch_gps_seconds(self) -> float | None: ...
+
+    @property
+    def satellites_used(self) -> int | None: ...
+
+    @property
+    def ellipsoidal_height(self) -> float | None: ...
 
 
 def _optional_number(value: Value) -> float | None:
@@ -79,7 +114,7 @@ class Fix:
     hdop: float | None
     altitude_msl: float | None
     geoid_separation: float | None
-    differential_age: float | None
+    correction_age_s: float | None
     station_id: str
     quality_known: bool = field(default=True, kw_only=True, repr=False)
     satellites_known: bool = field(default=True, kw_only=True, repr=False)
@@ -116,6 +151,15 @@ class Fix:
         return self.valid and self.quality == 4
 
     @property
+    def epoch_gps_seconds(self) -> None:
+        """GGA contains time of day but no date or GPS week."""
+        return None
+
+    @property
+    def satellites_used(self) -> int | None:
+        return self.satellites if self.satellites_known else None
+
+    @property
     def ellipsoidal_height(self) -> float | None:
         """Height above the ellipsoid in metres when both GGA heights are present."""
         if self.altitude_msl is None or self.geoid_separation is None:
@@ -150,6 +194,7 @@ class Fix:
                 raise TypeError("Invalid UTC")
             if station_id is not None and not isinstance(station_id, str):
                 raise TypeError("Invalid station ID")
+            age = _optional_number(record["differential_age"])
             return cls(
                 utc or "",
                 _optional_number(record["latitude"]),
@@ -159,7 +204,7 @@ class Fix:
                 _optional_number(record["hdop"]),
                 _optional_number(record["altitude_msl"]),
                 _optional_number(record["geoid_separation"]),
-                _optional_number(record["differential_age"]),
+                age if age is not None and age >= 0 else None,
                 station_id or "",
                 quality_known=quality is not None,
                 satellites_known=satellites is not None,
@@ -227,11 +272,23 @@ class BestNavigation:
     message: AsciiMessage | BinaryMessage | None = field(
         default=None, repr=False, compare=False
     )
+    correction_age_s: float | None = field(default=None, kw_only=True)
+    epoch_gps_seconds: float | None = field(default=None, kw_only=True)
 
     @property
     def valid(self) -> bool:
         """Whether the receiver reports a computed position of a known type."""
         return _computed(self.solution_status, self.position_type, position=True)
+
+    @property
+    def rtk_fixed(self) -> bool:
+        """Whether a computed solution reports a fixed RTK position type."""
+        return self.valid and self.position_type in (
+            PositionType.L1_INT,
+            PositionType.WIDE_INT,
+            PositionType.NARROW_INT,
+            PositionType.INS_RTKFIXED,
+        )
 
     @property
     def velocity_valid(self) -> bool:
@@ -289,9 +346,30 @@ class BestNavigation:
             raise ProtocolError("Not a BESTNAV record")
         message = record.message
         try:
+            position_type = _position_type(_enum_value(record["pos_type"]))
+            solution_status = _solution_status(_enum_value(record["p_sol_status"]))
+            age = _optional_number(record.get("diff_age"))
+            differential = position_type in (
+                PositionType.PSRDIFF,
+                PositionType.L1_FLOAT,
+                PositionType.IONOFREE_FLOAT,
+                PositionType.NARROW_FLOAT,
+                PositionType.L1_INT,
+                PositionType.WIDE_INT,
+                PositionType.NARROW_INT,
+                PositionType.INS_PSRDIFF,
+                PositionType.INS_RTKFLOAT,
+                PositionType.INS_RTKFIXED,
+            )
+            epoch = None
+            if message is not None:
+                from um982py.measurement import gps_epoch
+
+                with suppress(ValueError):
+                    epoch = gps_epoch(message)
             return cls(
-                _solution_status(_enum_value(record["p_sol_status"])),
-                _position_type(_enum_value(record["pos_type"])),
+                solution_status,
+                position_type,
                 record.real("lat"),
                 record.real("lon"),
                 record.real("hgt"),
@@ -310,6 +388,13 @@ class BestNavigation:
                 message=message
                 if isinstance(message, (AsciiMessage, BinaryMessage))
                 else None,
+                correction_age_s=age
+                if differential
+                and _computed(solution_status, position_type, position=True)
+                and age is not None
+                and age >= 0
+                else None,
+                epoch_gps_seconds=epoch,
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ProtocolError("Invalid BESTNAV value") from error

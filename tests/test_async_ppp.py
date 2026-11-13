@@ -34,7 +34,7 @@ def test_async_ppp_setup_and_positions(service: PppService) -> None:
         assert (await session.position()).valid
 
         stop = asyncio.Event()
-        positions = session.positions(interval=30, stop=stop)
+        positions = session.poll_positions(interval=30, stop=stop)
         assert (await anext(positions)).valid
         waiting = asyncio.create_task(anext(positions))
         await asyncio.sleep(0)
@@ -43,7 +43,7 @@ def test_async_ppp_setup_and_positions(service: PppService) -> None:
             await asyncio.wait_for(waiting, timeout=1)
         assert receiver.reads == 2
         with pytest.raises(ValueError, match="interval"):
-            await anext(session.positions(interval=0))
+            await anext(session.poll_positions(interval=0))
 
     asyncio.run(run())
 
@@ -83,7 +83,7 @@ def test_async_position_iteration_can_be_cancelled() -> None:
     async def run() -> None:
         receiver = PppReceiver(Config(SignalGroup(3, 6), True, "E6-HAS"))
         session = await AsyncReceiver(_receiver(receiver)).start_ppp()
-        positions = session.positions(interval=30)
+        positions = session.poll_positions(interval=30)
         assert (await anext(positions)).valid
         pending = asyncio.create_task(anext(positions))
         await asyncio.sleep(0)

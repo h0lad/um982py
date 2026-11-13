@@ -9,13 +9,13 @@ import pytest
 from conftest import FIXTURES
 from test_protocol import binary
 from um982py.commands import Log
-from um982py.commands.catalog import LOGS, RAW_CORRECTION_LOGS
+from um982py.commands.catalog import LOGS
 from um982py.errors import ProtocolError
 from um982py.messages import (
     AsciiMessage,
     BinaryMessage,
-    LegacyAsciiHeader,
     Observation,
+    OemAsciiHeader,
     Record,
     Sentence,
     TrackingStatus,
@@ -38,7 +38,7 @@ def manual_message(name: str) -> AsciiMessage | Sentence:
     body = raw[1 : raw.index("*")]
     if ";" in body:
         fields = tuple(next(csv.reader(StringIO(body.split(";", 1)[1]))))
-        return AsciiMessage(LegacyAsciiHeader(name, ()), fields, raw.encode())
+        return AsciiMessage(OemAsciiHeader(name, ()), fields, raw.encode())
     return Sentence(name, tuple(body.split(",")[1:]), raw.encode())
 
 
@@ -58,13 +58,15 @@ def test_body_inventory() -> None:
         for item in reference["logs"]
         if item["section"].startswith("7.5.") or item["section"] == "Appendix 4"
     }
-    assert set(LAYOUTS) | {
-        "UNILOGLIST",
-        "SATSINFO",
-        "KSXT",
-        "PPPB2BINFO6",
-        "PPPB2BINFO7",
-    } | RAW_CORRECTION_LOGS == documented | {"PPPB2BINFO6", "PPPB2BINFO7"}
+    assert (
+        set(LAYOUTS)
+        | {
+            "UNILOGLIST",
+            "SATSINFO",
+            "KSXT",
+        }
+        == documented
+    )
 
 
 @pytest.mark.parametrize("name", sorted(set(EXAMPLES) - {"MODE", "CONFIG"}))
@@ -121,6 +123,12 @@ def test_manual_navigation_values() -> None:
     ephemeris = decode_log(manual_message("GPSEPHA"))
     assert ephemeris.integer("prn") == 10
     assert ephemeris.real("a") > 26_000_000
+
+
+def test_navigation_example_with_reserved_tail() -> None:
+    record = decode_log(manual_message("ADRNAVA"))
+    assert "tail_reserved" in record
+    assert "horspd_std" not in record
 
 
 def test_nested_satellites() -> None:
@@ -239,7 +247,7 @@ def manual_latest_message(name: str) -> AsciiMessage | Sentence:
     body = raw[1 : raw.index("*")]
     if ";" in body:
         fields = tuple(next(csv.reader(StringIO(body.split(";", 1)[1]))))
-        return AsciiMessage(LegacyAsciiHeader(name, ()), fields, raw.encode())
+        return AsciiMessage(OemAsciiHeader(name, ()), fields, raw.encode())
     return Sentence(name, tuple(body.split(",")[1:]), raw.encode())
 
 
@@ -260,14 +268,14 @@ def test_apppnav_ascii_layout_documented_and_example_forms() -> None:
     assert record.real("reserved_4") == -2.5
 
 
-def test_lband_auth_full_manual_example_preserves_legacy_field() -> None:
+def test_lband_auth_full_manual_example_preserves_reserved_field() -> None:
     raw = (
         b"#LBANDAUTHA,56,GPS,FINE,2384,119469000,21315,0,18,17;"
         b"3000099,ACTIVATED,2025/10/31,GLOBAL,OCSAT,*5a14e0ab\r\n"
     )
     message = StreamDecoder(strict=True).feed(raw)[0]
     record = Log.LBANDAUTH.decode(message)
-    assert record["legacy"] == ("GLOBAL",)
+    assert record["reserved_1"] == ("GLOBAL",)
     assert record["lband_sat"] == "OCSAT"
     assert record["reserved"] is None
 

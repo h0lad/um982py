@@ -15,7 +15,6 @@ from examples._console import (
     write_json,
 )
 from examples._console_capture import open_receiver
-from examples.ephemeris_orbit import receiver_ecef
 from examples.navigation_messages import (
     FAMILIES,
     figures,
@@ -28,6 +27,7 @@ from um982py.antenna import antenna_log
 from um982py.capture import iter_frames
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
+from um982py.experimental.orbit import receiver_ecef
 from um982py.geodesy import ecef_from_geodetic
 from um982py.messages import Record
 

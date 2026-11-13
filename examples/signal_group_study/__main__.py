@@ -15,13 +15,6 @@ from examples._console import (
     write_json,
 )
 from examples._console_capture import open_receiver
-from examples.dop_geometry import (
-    DilutionOfPrecision,
-    ReportedDilution,
-    SatelliteGeometry,
-    geometry_from_records,
-)
-from examples.rtk_quality import position_type_code
 from examples.signal_group_study import (
     SettingSample,
     SettingSummary,
@@ -38,8 +31,15 @@ from um982py.commands.configuration import (
 )
 from um982py.errors import UM982Error
 from um982py.geodesy import records_from
+from um982py.geometry import (
+    DilutionOfPrecision,
+    ReportedDilution,
+    SatelliteGeometry,
+    geometry_from_records,
+)
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
+from um982py.quality import position_type_code
 from um982py.state import restore_receiver_state, snapshot_receiver_state
 from um982py.subscriptions import temporary_subscriptions
 

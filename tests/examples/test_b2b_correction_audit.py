@@ -17,6 +17,7 @@ from examples.b2b_correction_audit import (
 from tests.examples._new_api import record as range_record
 from um982py.b2b import b2b_epoch
 from um982py.capture import record_epoch
+from um982py.corrections import correction_events
 from um982py.messages import Record
 
 MASK = CorrectionEvent(100, 219, "mask", 99, 1, 2, mask=b"\x01" * 32)
@@ -24,6 +25,11 @@ ORBIT = CorrectionEvent(
     102, 219, "orbit", 100, 1, issues=((72, 3),), navigation=((72, 86),)
 )
 CLOCK = CorrectionEvent(104, 219, "clock", 103, 1, 2, issues=((72, 3),))
+
+
+def test_unsupported_correction_records_are_rejected() -> None:
+    with pytest.raises(ValueError, match="PPPB2BINFO1 through PPPB2BINFO5"):
+        correction_events(Record("PPPB2BINFO7", ()))
 
 
 def test_matching_issues_have_no_coherence_faults() -> None:

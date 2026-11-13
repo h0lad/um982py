@@ -12,6 +12,17 @@ From a source checkout:
 python -m pip install .
 ```
 
+Read a position in Python:
+
+```python
+from um982py import Receiver
+
+with Receiver.connect("/dev/ttyUSB0") as receiver:
+    position = receiver.fix()
+    if position.valid:
+        print(position.latitude, position.longitude)
+```
+
 The CLI accepts a serial port or a transparent TCP-to-UART gateway:
 
 ```bash
@@ -55,7 +66,8 @@ prediction; the signature alone does not prove prediction.
 | Read position, heading, or velocity | `receiver.fix()`, `receiver.heading()`, `receiver.best_navigation()` |
 | Query one receiver log | `receiver.read_log(Log.BESTNAV)` |
 | Inspect satellites and their signals | `receiver.satellites()` |
-| Follow positions | `receiver.positions(interval=1)` |
+| Poll positions | `receiver.poll_positions(interval=1)` |
+| Stream receiver output | `with receiver.stream_positions(duration=60) as positions: ...` |
 | Configure periodic receiver output | `receiver.set_output_rate(Log.GPGGA, 10)` |
 | Start satellite PPP | `receiver.start_ppp(service="E6-HAS")` |
 | Capture one log or several logs | `capture_live()` |
@@ -71,8 +83,31 @@ prediction; the signature alone does not prove prediction.
 | Export observations | `export_rinex()` |
 | Convert coordinates and measure distance | `ecef_from_geodetic()`, `geodetic_from_ecef()`, `haversine_distance()` |
 | Read a Linux PPS timestamp | `with PpsDevice(path) as device: device.fetch()` |
-| Interpret receiver PPS or spoofing status | `PpsStatus.from_record(record)` or `SpoofInfo.from_record(record)` |
+| Interpret receiver PPS or spoofing status | `receiver.pps_status()` or `receiver.spoof_info()` |
 | Use asyncio | `AsyncReceiver.connect()` |
+
+All receiver methods use `antenna=1` for the primary input and `antenna=2` for
+the secondary input. `Fix`, `BestNavigation`, `PppSolution` and `RoverPosition`
+share the `Position` interface: coordinates, validity, `rtk_fixed`, correction
+age, GPS epoch, satellites used and ellipsoidal height. Unavailable values are
+`None`. In particular, a GGA fix has UTC time of day but no date, so its GPS
+epoch is unavailable. Source-specific information remains on each model.
+
+`poll_positions()` queries the receiver once per iteration and waits between
+queries. For subscribed receiver output, use the context manager below; it
+restores the previous subscription when the block exits:
+
+```python
+with receiver.stream_positions(duration=60, rate_hz=1, antenna=1) as positions:
+    for position in positions:
+        if position.valid:
+            print(position.latitude, position.longitude)
+```
+
+The receiver determines the delivered rate; repeated or missing epochs are
+not concealed. `AsyncReceiver` offers the same methods with `async with` and
+`async for`. `capture_live()` always returns a dictionary keyed by log name,
+including when capturing one log; interrupted captures use the same shape.
 
 ## Read RTCM correction fields
 
@@ -111,11 +146,10 @@ The PPSSTATUS and SPOOFINFO logs expose their raw fields and documented
 bit masks. For example, with an open receiver:
 
 ```python
-from um982py import Log
-from um982py.messages import PpsStatus, SpoofInfo, SpoofSignal
+from um982py.messages import SpoofSignal
 
-pps = PpsStatus.from_record(receiver.read_log(Log.PPSSTATUS))
-spoof = SpoofInfo.from_record(receiver.read_log(Log.SPOOFINFO))
+pps = receiver.pps_status()
+spoof = receiver.spoof_info()
 print(pps.gps_week, pps.milliseconds_of_week, pps.pulse_error_ns)
 print(spoof.gps_satellites, bool(spoof.signals & SpoofSignal.GPS_L1CA))
 ```
@@ -173,7 +207,7 @@ from um982py import Log, Receiver, capture_live
 from um982py.capture import record_epoch
 
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
-    records = capture_live(receiver, Log.BESTNAV, duration=10, rate_hz=10)
+    records = capture_live(receiver, Log.BESTNAV, duration=10, rate_hz=10)[Log.BESTNAV]
 
 epochs = [record_epoch(record) for record in records]
 intervals = [later - earlier for earlier, later in pairwise(epochs)]
@@ -196,7 +230,7 @@ from um982py import Rover
 with Rover.connect(
     "/dev/ttyUSB0", 921600, ntrip_url="https://caster.example:443/MOUNT"
 ) as rover:
-    for update in rover.positions(interval=1):
+    for update in rover.poll_positions(interval=1, heading=True):
         if update.position.valid:
             print(update.position.latitude, update.position.longitude)
             print(
@@ -210,6 +244,8 @@ with Rover.connect(
 Heading and pitch describe the baseline between the antennas. Both are `None`
 if no valid heading matches the position epoch. Apply the offset between the
 baseline and the vehicle's forward direction to get the vehicle's heading.
+Heading queries are optional and default to off, so single-antenna use does not
+wait for a heading response.
 Pass `username` and `password` to `Rover.connect()` when the caster requires
 credentials. See [NTRIP rover](examples/ntrip_client/README.md) for setup.
 
@@ -248,7 +284,7 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
     ppp = receiver.start_ppp(service="E6-HAS")
     previous = None
     try:
-        for fix in ppp.positions(interval=5):
+        for fix in ppp.poll_positions(interval=5):
             print(
                 f"{fix.position_type}: horizontal std {fix.horizontal_std_m} m, "
                 f"height std {fix.height_std_m} m, correction age {fix.correction_age_s} s"
@@ -287,7 +323,7 @@ Collect one minute of observations and save them as a RINEX file:
 from um982py import Log, Receiver, capture_live, export_rinex
 
 with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    observations = capture_live(receiver, Log.RANGE, duration=60)
+    observations = capture_live(receiver, Log.RANGE, duration=60)[Log.RANGE]
 
 result = export_rinex(observations, marker_name="FIELD01")
 result.write("field.obs")

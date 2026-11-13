@@ -7,13 +7,13 @@ from collections.abc import Callable, Sequence
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
-from examples.dop_geometry import (
+from um982py.capture import latest_epoch, record_epoch
+from um982py.commands import Log
+from um982py.geometry import (
     DilutionOfPrecision,
     ReportedDilution,
     geometry_from_records,
 )
-from um982py.capture import latest_epoch, record_epoch
-from um982py.commands import Log
 from um982py.messages.record import Record
 
 _REPORTED_TIMEOUT = 0.2

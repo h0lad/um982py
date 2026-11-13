@@ -7,15 +7,15 @@ from collections.abc import Callable, Sequence
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
-from examples.rtk_quality import (
+from um982py.capture import record_epoch
+from um982py.commands import Log
+from um982py.messages import Record
+from um982py.quality import (
     EpochSolution,
     QualitySummary,
     summarise,
     timeline,
 )
-from um982py.capture import record_epoch
-from um982py.commands import Log
-from um982py.messages import Record
 
 POSITION_LOGS = (Log.BESTPOS, Log.RTKPOS)
 DIAGNOSTIC_LOGS = (Log.RTKDOP, Log.BESTSATS, Log.RTKSTATUS2)

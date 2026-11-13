@@ -13,9 +13,9 @@ from um982py.messages import (
     AsciiMessage,
     BinaryHeader,
     BinaryMessage,
-    LegacyAsciiHeader,
-    LegacyBinaryHeader,
     Message,
+    OemAsciiHeader,
+    OemBinaryHeader,
     Record,
 )
 from um982py.messages.observations import Observation
@@ -83,8 +83,8 @@ def gps_epoch(
 
     N4 ASCII GPS headers and binary reference 0 have been observed to use GPST.
     For non-GPS headers, supply an independently verified ``week_scale``.
-    R1.15 leaves their week numbering unspecified. BDT uses its own continuous
-    week number and seconds. Older headers default to GPST.
+    The manual leaves their week numbering unspecified. BDT uses its own
+    continuous week number and seconds. OEM-style header times are assumed GPST.
     """
     if week_scale not in (None, "GPST", "BDT"):
         raise ValueError("week_scale must be GPST or BDT")
@@ -102,16 +102,16 @@ def gps_epoch(
                     "week_scale"
                 )
         week, seconds = header.week, header.milliseconds / 1000.0
-    elif isinstance(header, LegacyBinaryHeader):
+    elif isinstance(header, OemBinaryHeader):
         if len(header.raw) < 20:
-            raise ValueError("incomplete legacy receiver timestamp")
+            raise ValueError("incomplete OEM-style receiver timestamp")
         week = int.from_bytes(header.raw[14:16], "little")
         seconds = int.from_bytes(header.raw[16:20], "little") / 1000.0
-    elif isinstance(header, LegacyAsciiHeader):
+    elif isinstance(header, OemAsciiHeader):
         try:
             week, seconds = int(header.fields[4]), float(header.fields[5])
         except (IndexError, ValueError) as error:
-            raise ValueError("invalid legacy receiver timestamp") from error
+            raise ValueError("invalid OEM-style receiver timestamp") from error
     else:
         raise ValueError("message carries no receiver timestamp")
     if (

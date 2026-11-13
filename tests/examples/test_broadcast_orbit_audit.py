@@ -13,9 +13,9 @@ from examples.broadcast_orbit_audit import (
     signal_in_space_range_error,
     sisre_summary,
 )
-from examples.ephemeris_orbit import KeplerElements, orbit_state
 
 from tests.examples._specialist import FIXTURES
+from um982py.experimental.orbit import KeplerElements, orbit_state
 
 ANCHORS = json.loads((FIXTURES / "rtklib-orbits.json").read_text())["cases"]
 

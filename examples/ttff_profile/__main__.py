@@ -15,7 +15,6 @@ from examples._console import (
     write_json,
 )
 from examples._console_capture import open_receiver
-from examples.rtk_quality import FixClass, position_type_code, solution_status_code
 from examples.ttff_profile import (
     FixEpoch,
     StartKind,
@@ -32,6 +31,7 @@ from um982py.commands import Log
 from um982py.errors import ResponseTimeout, TransportError
 from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.messages.record import Record
+from um982py.quality import FixClass, position_type_code, solution_status_code
 from um982py.subscriptions import temporary_subscriptions
 
 INJECTED_RUNS = {

@@ -164,6 +164,14 @@ def audit_corrections(
 
 def correction_events(record: Record) -> tuple[CorrectionEvent, ...]:
     """Extract native correction metadata and preserve the PRN mask."""
+    if record.name not in {
+        "PPPB2BINFO1",
+        "PPPB2BINFO2",
+        "PPPB2BINFO3",
+        "PPPB2BINFO4",
+        "PPPB2BINFO5",
+    }:
+        raise ValueError("expected a PPPB2BINFO1 through PPPB2BINFO5 record")
     if record.message is None:
         raise ValueError("correction record needs a receiver timestamp")
     received = gps_epoch(record.message)
@@ -197,20 +205,6 @@ def correction_events(record: Record) -> tuple[CorrectionEvent, ...]:
             mask if isinstance(mask, bytes) else None,
         )
 
-    if kind in (6, 7):
-        clocks, orbits = record.records("clock")[0], record.records("orbit")[0]
-        blocks = []
-        if record.integer("num_orbit"):
-            blocks.append(
-                block(orbits, "orbit", orbits.records("corrections"), explicit=True)
-            )
-        if record.integer("num_clock"):
-            blocks.append(
-                block(
-                    clocks, "clock", clocks.records("corrections"), explicit=kind == 7
-                )
-            )
-        return tuple(blocks)
     if kind == 2:
         return (block(record, "orbit", record.records("orbit"), explicit=True),)
     return (block(record, {1: "mask", 3: "bias", 4: "clock", 5: "ura"}[kind]),)

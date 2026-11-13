@@ -7,7 +7,7 @@ import pytest
 from test_protocol import binary
 from um982py.errors import ProtocolError
 from um982py.experimental import decode_matched_position
-from um982py.messages import AsciiMessage, LegacyAsciiHeader
+from um982py.messages import AsciiMessage, OemAsciiHeader
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder
 
@@ -79,7 +79,7 @@ def decode_binary(payload: bytes = b"") -> Record:
 def decode_ascii(fields: tuple[str, ...] = ASCII_FIELDS) -> Record:
     """Decode synthetic ASCII fields without wire framing."""
     return decode_matched_position(
-        AsciiMessage(LegacyAsciiHeader("MATCHEDPOSA", ()), fields, b"#MATCHEDPOSA")
+        AsciiMessage(OemAsciiHeader("MATCHEDPOSA", ()), fields, b"#MATCHEDPOSA")
     )
 
 
@@ -127,6 +127,6 @@ def test_foreign_frames_are_rejected() -> None:
         binary(binary_payload(), message_id=96)
     )
     assert decode_matched_position(message).name == "MATCHEDPOS"
-    other = AsciiMessage(LegacyAsciiHeader("BESTPOSA", ()), ASCII_FIELDS, b"")
+    other = AsciiMessage(OemAsciiHeader("BESTPOSA", ()), ASCII_FIELDS, b"")
     with pytest.raises(ProtocolError, match="Expected a MATCHEDPOS frame"):
         decode_matched_position(other)

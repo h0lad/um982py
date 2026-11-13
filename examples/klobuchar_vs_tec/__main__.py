@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
-from contextlib import suppress
 from pathlib import Path
 
 from examples._console import (
@@ -23,17 +22,11 @@ from examples.klobuchar_vs_tec import (
     measured_vertical_delay,
     vertical_delay_metres,
 )
-from um982py.capture import gps_signals, read_frames, record_epoch
+from um982py.capture import decode_records, gps_signals, read_frames, record_epoch
 from um982py.commands import Log
-from um982py.errors import ProtocolError
 from um982py.geodesy import geodetic_from_ecef
+from um982py.measurement import gps_epoch
 from um982py.messages import (
-    AsciiHeader,
-    AsciiMessage,
-    BinaryHeader,
-    BinaryMessage,
-    LegacyAsciiHeader,
-    LegacyBinaryHeader,
     Message,
     Record,
 )
@@ -47,39 +40,9 @@ SIGNAL_TYPE_SHIFT = 21
 SIGNAL_TYPE_MASK = 0b11111
 
 
-def epoch_seconds(message: Message) -> float:
-    """Receiver time of week in seconds from a stamped data frame."""
-    if not isinstance(message, (AsciiMessage, BinaryMessage)):
-        raise ValueError("message carries no timestamp")
-    header = message.header
-    if isinstance(header, (AsciiHeader, BinaryHeader)):
-        return header.milliseconds / 1000.0
-    if isinstance(header, LegacyBinaryHeader):
-        return int.from_bytes(header.raw[16:20], "little") / 1000.0
-    if isinstance(header, LegacyAsciiHeader):
-        return float(header.fields[5])
-    raise ValueError("message carries no timestamp")
-
-
-def _decode(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
-    decoded: list[Record] = []
-    for message in frames:
-        with suppress(ProtocolError):
-            decoded.append(log.decode(message))
-    return tuple(decoded)
-
-
-def _decode_firmware(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
-    decoded: list[Record] = []
-    for message in frames:
-        with suppress(ProtocolError):
-            decoded.append(log.decode(message))
-    return tuple(decoded)
-
-
 def _position(frames: Sequence[Message]) -> Record | None:
     for log in (Log.BESTPOS, Log.BESTXYZ):
-        records = _decode_firmware(frames, log)
+        records = decode_records(frames, log)
         if records:
             return records[0]
     return None
@@ -231,9 +194,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         position_frames = (
             read_frames(args.position) if args.position is not None else range_frames
         )
-        range_records = _decode_firmware(range_frames, Log.RANGE)
-        ionosphere = _decode(ionosphere_frames, Log.GPSION)
-        satellites = _decode_firmware(satvis_frames, Log.SATVIS2)
+        range_records = decode_records(range_frames, Log.RANGE)
+        ionosphere = decode_records(ionosphere_frames, Log.GPSION)
+        satellites = decode_records(satvis_frames, Log.SATVIS2)
         position = _position(position_frames)
         positions = (position,) if position is not None else ()
     if not range_records or not ionosphere or not satellites or not positions:
@@ -249,7 +212,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             position.real("p_x"), position.real("p_y"), position.real("p_z")
         )
     pairs = gps_pairs(range_record)
-    epoch = epoch_seconds(range_record.message)
+    epoch = gps_epoch(range_record.message) % 604800.0
     geometry: dict[int, tuple[float, float]] = {}
     for record in satellites:
         if record.message is None:

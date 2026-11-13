@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
 
-from examples.ephemeris_orbit import (
+from um982py.experimental.orbit import (
     EARTH_ROTATION_RATE,
     MU,
     GlonassElements,

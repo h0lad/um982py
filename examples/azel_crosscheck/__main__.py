@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Mapping, Sequence
-from contextlib import suppress
 from pathlib import Path
 
 from examples._console import (
@@ -22,17 +21,11 @@ from examples.azel_crosscheck import (
     CrossCheckReport,
     cross_check,
 )
-from um982py.capture import read_frames
+from um982py.capture import decode_records, read_frames
 from um982py.commands import Log
-from um982py.errors import ProtocolError
 from um982py.geodesy import receiver_ecef
+from um982py.measurement import gps_epoch
 from um982py.messages import (
-    AsciiHeader,
-    AsciiMessage,
-    BinaryHeader,
-    BinaryMessage,
-    LegacyAsciiHeader,
-    LegacyBinaryHeader,
     Message,
     Record,
 )
@@ -46,43 +39,13 @@ _EPHEMERIS_LOGS: Mapping[SatelliteSystem, Log] = {
 }
 
 
-def epoch_seconds(message: Message) -> float:
-    """Receiver time of week in seconds from any stamped data frame."""
-    if not isinstance(message, (AsciiMessage, BinaryMessage)):
-        raise ValueError("message carries no timestamp")
-    header = message.header
-    if isinstance(header, (AsciiHeader, BinaryHeader)):
-        return header.milliseconds / 1000.0
-    if isinstance(header, LegacyBinaryHeader):
-        return int.from_bytes(header.raw[16:20], "little") / 1000.0
-    if isinstance(header, LegacyAsciiHeader):
-        return float(header.fields[5])
-    raise ValueError("message carries no timestamp")
-
-
 def receiver_position(record: Record) -> tuple[float, float, float]:
     """Observer ECEF from a BESTPOS or BESTXYZ record."""
     return receiver_ecef(record)
 
 
-def _decode(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
-    decoded: list[Record] = []
-    for message in frames:
-        with suppress(ProtocolError):
-            decoded.append(log.decode(message))
-    return tuple(decoded)
-
-
-def _decode_firmware(frames: Sequence[Message], log: Log) -> tuple[Record, ...]:
-    decoded: list[Record] = []
-    for message in frames:
-        with suppress(ProtocolError):
-            decoded.append(log.decode(message))
-    return tuple(decoded)
-
-
 def _first_decoded(frames: Sequence[Message], log: Log) -> Record | None:
-    return next(iter(_decode_firmware(frames, log)), None)
+    return next(iter(decode_records(frames, log)), None)
 
 
 def _single_position(frames: Sequence[Message]) -> Record | None:
@@ -185,7 +148,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.ephemeris is not None
             else list(satellite_frames)
         )
-        satellite_records = _decode_firmware(satellite_frames, Log.SATVIS2)
+        satellite_records = decode_records(satellite_frames, Log.SATVIS2)
         position_records = tuple(
             record
             for record in (_single_position(position_frames),)
@@ -197,15 +160,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     first_satellite = satellite_records[0].message
     if first_satellite is None:
         parser.error("SATVIS2 frame carries no timestamp")
-    epoch = epoch_seconds(first_satellite)
+    absolute_epoch = gps_epoch(first_satellite)
+    epoch = absolute_epoch % 604800.0
     satellite_records = tuple(
         record
         for record in satellite_records
         if record.message is not None
-        and abs(epoch_seconds(record.message) - epoch) < 1e-6
+        and abs(gps_epoch(record.message) - absolute_epoch) < 1e-6
     )
     records_by_system = {
-        system: _decode(ephemeris_frames, log)
+        system: decode_records(ephemeris_frames, log)
         for system, log in _EPHEMERIS_LOGS.items()
     }
     report = cross_check(

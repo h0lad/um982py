@@ -3,8 +3,7 @@
   "scope": "UM982-oriented NMEA, proprietary logs and event outputs, including documented C-series additions. The inventory identifies names, IDs and sections; it does not certify every field or firmware.",
   "notes": [
     "The published text skips section 7.5.10; ANT1GROUP and ANT2GROUP appear in revision history and remain covered by extended-log tests.",
-    "NMEA V4.11 duplicates the V4.10 message inventory in chapter 7.3.",
-    "PPPB2BINFO6 and PPPB2BINFO7 were removed in R1.13; legacy decoding remains supported."
+    "NMEA V4.11 duplicates the V4.10 message inventory in chapter 7.3."
   ],
   "excluded_logs": [
     {

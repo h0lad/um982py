@@ -92,12 +92,11 @@ class AntennaLog:
         return record
 
 
-def antenna_log(log: Log | AntennaLog, antenna: str = "primary") -> Log | AntennaLog:
+def antenna_log(log: Log | AntennaLog, antenna: int | str = 1) -> Log | AntennaLog:
     """Select ANT2 where supported and leave receiver-wide logs unchanged."""
-    if isinstance(log, AntennaLog) or antenna in ("primary", "1"):
+    selected = antenna_index(antenna)
+    if isinstance(log, AntennaLog) or selected == 1:
         return log
-    if antenna not in ("secondary", "2"):
-        raise ValueError("antenna must be primary/1 or secondary/2")
     if log in (
         Log.PTOBSINFO,
         Log.BESTGNSSPOS,
@@ -124,8 +123,10 @@ for _primary, _secondary in _SECONDARY.items():
     _MIRROR[_secondary] = _primary
 
 
-def antenna_index(antenna: str) -> int:
+def antenna_index(antenna: int | str) -> int:
     """Number of the named antenna input: 1 for primary, 2 for secondary."""
+    if type(antenna) is int and antenna in (1, 2):
+        return antenna
     if antenna in ("primary", "1"):
         return 1
     if antenna in ("secondary", "2"):
@@ -133,7 +134,7 @@ def antenna_index(antenna: str) -> int:
     raise ValueError("antenna must be primary/1 or secondary/2")
 
 
-def other_antenna(antenna: str) -> str:
+def other_antenna(antenna: int | str) -> str:
     """Return the other antenna input."""
     return "secondary" if antenna_index(antenna) == 1 else "primary"
 

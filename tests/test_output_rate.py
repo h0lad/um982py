@@ -252,7 +252,7 @@ def test_capture_uses_requested_rate_and_restores_subscription(
     monkeypatch.setattr("um982py.receiver.monotonic", lambda: clock[0])
     with Receiver(transport, timeout=1) as receiver:
         records = capture_live(receiver, Log.RANGE, duration=1, rate_hz=10, frames=2)
-        assert len(records) == 2
+        assert len(records[Log.RANGE]) == 2
         assert transport.subscriptions[("RANGEB", Port.COM1)] == 1
         assert b"RANGEB 0.1\r\n" in transport.writes
 

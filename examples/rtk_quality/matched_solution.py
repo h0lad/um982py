@@ -63,7 +63,7 @@ def _report(samples: Sequence[MatchedSolution], max_gap: float) -> dict[str, obj
         "limitations": (
             "Experimental binary layout. Status meaning, signal "
             "assignment, value units and phase conventions are unverified. "
-            "Changes are receiver-reported transitions. Legacy header time is "
+            "Changes are receiver-reported transitions. OEM-style header time is "
             "assumed GPST."
         ),
     }

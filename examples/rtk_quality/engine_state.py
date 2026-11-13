@@ -55,7 +55,8 @@ def _report(samples: Sequence[RtkData]) -> dict[str, object]:
         "limitations": (
             "Experimental binary layout. Covariance frame, status meaning, "
             "value units and unmapped satellite identifiers are unverified. "
-            "Variances describe the engine state. Legacy header time is assumed GPST."
+            "Variances describe the engine state. "
+            "OEM-style header time is assumed GPST."
         ),
     }
 

@@ -8,12 +8,12 @@ from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
 
-from examples.rtk_quality import FixClass, classify
 from um982py.commands.core import Command
 from um982py.commands.system import reset
 from um982py.commands.types import ResetTarget
 from um982py.messages import CommandResponse
 from um982py.messages.enums import SolutionStatus
+from um982py.quality import FixClass, classify
 from um982py.stats import mean, stddev
 
 FIX_ORDER: Mapping[FixClass, int] = MappingProxyType(

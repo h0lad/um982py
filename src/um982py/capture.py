@@ -8,7 +8,7 @@ from contextlib import suppress
 from itertools import pairwise
 from pathlib import Path
 from time import monotonic
-from typing import Protocol, overload
+from typing import Protocol
 
 from um982py.antenna import AntennaLog
 from um982py.commands import Log, Trigger, logging
@@ -179,41 +179,6 @@ def subscription_plan(
     return subscriptions
 
 
-# Log enums inherit from str. Treat a single enum as one log in this overload.
-@overload
-def capture_live(  # type: ignore[overload-overlap]
-    receiver: Receiver,
-    logs: DataLog,
-    *,
-    duration: float,
-    interval: float | None = None,
-    rate_hz: float | None = None,
-    intervals: Mapping[DataLog, float] | None = None,
-    frames: int | None = None,
-    binary: bool = True,
-    arrival_order: list[Record] | None = None,
-    on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
-    show_progress: bool = False,
-) -> tuple[Record, ...]: ...
-
-
-@overload
-def capture_live(
-    receiver: Receiver,
-    logs: Sequence[DataLog],
-    *,
-    duration: float,
-    interval: float | None = None,
-    rate_hz: float | None = None,
-    intervals: Mapping[DataLog, float] | None = None,
-    frames: int | None = None,
-    binary: bool = True,
-    arrival_order: list[Record] | None = None,
-    on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
-    show_progress: bool = False,
-) -> dict[str, tuple[Record, ...]]: ...
-
-
 def capture_live(
     receiver: Receiver,
     logs: DataLog | Sequence[DataLog],
@@ -227,11 +192,11 @@ def capture_live(
     arrival_order: list[Record] | None = None,
     on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
     show_progress: bool = False,
-) -> tuple[Record, ...] | dict[str, tuple[Record, ...]]:
-    """Capture one log or multiple logs and restore previous subscriptions.
+) -> dict[str, tuple[Record, ...]]:
+    """Capture logs and restore previous subscriptions.
 
-    A log returns a tuple. A sequence returns a dictionary by log name, as do
-    progress callbacks and interrupted captures. Records stay in memory.
+    Results, progress callbacks and interrupted captures map log names to
+    tuples of records. Records stay in memory.
     ``duration`` limits seconds. ``frames`` can stop a single-log capture early,
     except SATVIS2 epochs may span multiple frames.
 
@@ -271,7 +236,7 @@ def capture_live(
         selected, interval=interval, binary=binary, intervals=intervals
     )
     with temporary_subscriptions(receiver, *planned):
-        records = receive_records(
+        return receive_records(
             receiver,
             selected,
             duration=duration,
@@ -281,7 +246,6 @@ def capture_live(
             on_progress=on_progress,
             show_progress=show_progress,
         )
-    return records[logs.value] if isinstance(logs, (Log, AntennaLog)) else records
 
 
 def receive_records(

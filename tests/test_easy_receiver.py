@@ -20,7 +20,7 @@ def test_positions_poll_until_the_caller_stops(monkeypatch: pytest.MonkeyPatch) 
     waits: list[float] = []
     monkeypatch.setattr("um982py.receiver.sleep", waits.append)
     with Receiver(transport) as receiver:
-        positions = receiver.positions(interval=2)
+        positions = receiver.poll_positions(interval=2)
         assert next(positions).latitude == pytest.approx(52.5333333333)
         assert next(positions).longitude == pytest.approx(13.3666666667)
         positions.close()
@@ -35,7 +35,7 @@ def test_positions_stop_event_ends_polling() -> None:
     transport = ReplayTransport({b"GPGGA\r\n": raw})
     stop = Event()
     with Receiver(transport) as receiver:
-        positions = receiver.positions(interval=60, stop=stop)
+        positions = receiver.poll_positions(interval=60, stop=stop)
         assert next(positions).valid
         stop.set()
         with pytest.raises(StopIteration):
@@ -47,7 +47,7 @@ def test_positions_stop_event_ends_polling() -> None:
 def test_positions_reject_invalid_intervals_before_querying(interval: float) -> None:
     transport = ReplayTransport()
     with Receiver(transport) as receiver, pytest.raises(ValueError, match="interval"):
-        receiver.positions(interval=interval)
+        receiver.poll_positions(interval=interval)
     assert not transport.writes
 
 
@@ -59,7 +59,7 @@ def test_async_positions_and_satellites() -> None:
         sat = (Path(__file__).parent / "fixtures/bodies/SATSINFOB.bin").read_bytes()
         transport = ReplayTransport({b"GPGGA\r\n": raw, b"SATSINFOB\r\n": sat})
         async with AsyncReceiver(Receiver(transport)) as receiver:
-            positions = receiver.positions(interval=0.001)
+            positions = receiver.poll_positions(interval=0.001)
             first = await anext(positions)
             second = await anext(positions)
             await positions.aclose()
@@ -68,7 +68,7 @@ def test_async_positions_and_satellites() -> None:
             assert satellites[0].constellation == "GPS"
             assert satellites[0].signals[0].name == "L1 C/A"
             stop = asyncio.Event()
-            stopped = receiver.positions(interval=60, stop=stop)
+            stopped = receiver.poll_positions(interval=60, stop=stop)
             assert (await anext(stopped)).valid
             stop.set()
             with pytest.raises(StopAsyncIteration):

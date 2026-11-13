@@ -58,7 +58,7 @@ class AsyncPppSession:
         """Read one PPP solution through the receiver's transaction lock."""
         return await self.receiver._run(lambda: self._session.position(binary=binary))
 
-    async def positions(
+    async def poll_positions(
         self,
         *,
         interval: float = 1.0,

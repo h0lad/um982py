@@ -90,6 +90,18 @@ def test_example_index_lists_every_project() -> None:
     assert not missing, f"examples/README.md does not link {missing}"
 
 
+@pytest.mark.parametrize(
+    ("name", "symbol"),
+    [
+        ("dop_geometry", "SatelliteGeometry"),
+        ("ephemeris_orbit", "SatelliteState"),
+        ("rtk_quality", "FixClass"),
+    ],
+)
+def test_examples_do_not_reexport_library_apis(name: str, symbol: str) -> None:
+    assert not hasattr(importlib.import_module(f"examples.{name}"), symbol)
+
+
 @pytest.mark.parametrize("name", ("", *NAMES))
 def test_example_readme_links_resolve(name: str) -> None:
     readme = EXAMPLES / name / "README.md"

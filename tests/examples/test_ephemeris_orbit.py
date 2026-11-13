@@ -5,7 +5,8 @@ import subprocess
 import sys
 
 import pytest
-from examples.ephemeris_orbit import (
+
+from um982py.experimental.orbit import (
     EARTH_ROTATION_RATE,
     MU,
     KeplerElements,
@@ -14,7 +15,6 @@ from examples.ephemeris_orbit import (
     orbit_state,
     solve_kepler,
 )
-
 from um982py.geodesy import ecef_from_geodetic
 
 PAPER_X, PAPER_Y, PAPER_Z = 19_960_559.708, 6_287_146.678, 16_433_598.090
@@ -71,7 +71,7 @@ def test_local_zenith_uses_geodetic_latitude() -> None:
 
 
 def test_backward_glonass_propagation_is_bounded() -> None:
-    code = """from examples.ephemeris_orbit import GlonassElements, glonass_state
+    code = """from um982py.experimental.orbit import GlonassElements, glonass_state
 elements = GlonassElements(25000000, 0, 1000000, 0, 3000, 0, 0, 0, 0, 0, 0, 0)
 state = glonass_state(elements, -120)
 assert state.y < 0

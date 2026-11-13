@@ -1,16 +1,6 @@
 from enum import StrEnum
 from typing import Literal
 
-from um982py.commands.configuration.corrections import anti_spoof as anti_spoof
-from um982py.commands.configuration.corrections import (
-    ionosphere_level as ionosphere_level,
-)
-from um982py.commands.configuration.corrections import (
-    rtcm_output_mode as rtcm_output_mode,
-)
-from um982py.commands.configuration.positioning import (
-    pvt_reliability as pvt_reliability,
-)
 from um982py.commands.core import Command, number
 from um982py.commands.validation import config, integer, option, switch
 from um982py.messages import CommandResponse
@@ -30,10 +20,7 @@ class FirmwareSwitch(StrEnum):
     BBL1MASTER = "BBL1MASTER"
     RTCML1MASTER = "RTCML1MASTER"
     VELDRPOS2 = "VELDRPOS2"
-    TPIONUSE = "TPIONUSE"
-    RTCMCLOCKDRIFT = "RTCMCLOCKDRIFT"
     MVCHECK = "MVCHECK"
-    PSRVELDRPOS = "PSRVELDRPOS"
 
     def configure(self, *, enabled: bool) -> Command[CommandResponse]:
         return switch(self.value, enabled)

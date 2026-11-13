@@ -40,10 +40,8 @@ RTK_LOGS: tuple[DiagnosticLog, ...] = (
     Log.BESTNAVH,
     Log.BESTSATS,
 )
-PPP_LOGS: tuple[DiagnosticLog, ...] = (
-    Log.PPPNAV,
-    Log.PPPDOP,
-    *(Log[f"PPPB2BINFO{i}"] for i in range(1, 6)),
+B2B_LOGS: tuple[Log, ...] = tuple(Log[f"PPPB2BINFO{i}"] for i in range(1, 6))
+HAS_LOGS: tuple[Log, ...] = (
     Log.E6MASKBLOCK,
     Log.E6ORBITBLOCK,
     Log.E6CLOCKFULLBLOCK,
@@ -51,6 +49,7 @@ PPP_LOGS: tuple[DiagnosticLog, ...] = (
     Log.E6CBIASBLOCK,
     Log.E6PBIASBLOCK,
 )
+PPP_LOGS: tuple[DiagnosticLog, ...] = (Log.PPPNAV, Log.PPPDOP, *B2B_LOGS, *HAS_LOGS)
 MADOCA_LOGS: tuple[DiagnosticLog, ...] = (
     Log.L6MDCTYPE1,
     Log.L6MDCTYPE2,

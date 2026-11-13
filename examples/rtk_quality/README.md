@@ -51,7 +51,7 @@ The report lists changes between successive observations within `--max-gap`.
 Raw codes and values have no assigned signal identities, physical units or
 phase conventions. Known codes include their receiver labels. Unknown codes
 stay unlabelled. Record independent labels alongside the capture before
-interpreting these fields. Legacy message timestamps use GPS time.
+interpreting these fields. OEM-style message timestamps use GPS time.
 
 ## Inspect engine covariance and satellite states
 

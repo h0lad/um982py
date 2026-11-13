@@ -88,8 +88,6 @@ LENGTHS = {
     "PPPB2BINFO3": 8,
     "PPPB2BINFO4": 104,
     "PPPB2BINFO5": 152,
-    "PPPB2BINFO6": 180,
-    "PPPB2BINFO7": 212,
     "E6MASKBLOCK": 12,
     "E6ORBITBLOCK": 556,
     "E6CLOCKFULLBLOCK": 152,
@@ -339,7 +337,7 @@ def test_l1smt_binary_offsets_per_documented_tables() -> None:
 
 
 def test_lband_binary_offsets_and_bounded_groups() -> None:
-    # LBANDAUTH: LSN/LbandAuth/ServiceEndDate/legacy/ L-bandSat/Reserved = 80.
+    # LBANDAUTH: LSN/LbandAuth/ServiceEndDate/reserved/L-bandSat/Reserved = 80.
     payload = (
         b"3000099".ljust(16, b"\x00")
         + b"ACTIVATED".ljust(16, b"\x00")
@@ -352,7 +350,7 @@ def test_lband_binary_offsets_and_bounded_groups() -> None:
     assert record["lsn"] == "3000099"
     assert record["lband_auth"] == "ACTIVATED"
     assert record["service_end_date"] == "2025/10/31"
-    assert record["legacy"] == ("GLOBAL",)
+    assert record["reserved_1"] == ("GLOBAL",)
     assert record["lband_sat"] == "OCSAT"
 
     def beam(

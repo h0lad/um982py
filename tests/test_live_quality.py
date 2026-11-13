@@ -21,7 +21,7 @@ def test_monitor_reports_gap_jump_and_stale_corrections() -> None:
     )
     assert monitor.observe(update(10)).reasons == ("displacement_rate_unknown",)
     current = update(14, longitude=8.01)
-    current = replace(current, fix=replace(current.fix, differential_age=5))
+    current = replace(current, fix=replace(current.fix, correction_age_s=5))
     report = monitor.observe(current)
     assert report.gap_s == 4 and report.displacement_rate_m_s is not None
     assert report.reasons == (
@@ -47,7 +47,7 @@ def test_monitor_does_not_treat_missing_corrections_as_fresh() -> None:
         LiveLimits(max_correction_age_s=5, allowed_quality=frozenset({4}))
     )
     current = update(1, quality=0)
-    current = replace(current, fix=replace(current.fix, differential_age=None))
+    current = replace(current, fix=replace(current.fix, correction_age_s=None))
     report = monitor.observe(current)
     assert report.reasons == (
         "solution_unavailable",

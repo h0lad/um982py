@@ -5,7 +5,6 @@ import math
 from pathlib import Path
 
 import pytest
-from examples.rtk_quality import FixClass
 from examples.ttff_profile import (
     FixEpoch,
     StartKind,
@@ -19,6 +18,7 @@ from examples.ttff_profile.__main__ import main
 
 from um982py.commands.types import ResetTarget
 from um982py.messages.enums import PositionType, SolutionStatus
+from um982py.quality import FixClass
 
 COLD_MEAN = 45.0
 WARM_MEAN = 12.0
