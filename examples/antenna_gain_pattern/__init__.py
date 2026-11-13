@@ -11,7 +11,7 @@ from examples.satellite_monitor import Constellation as SkyConstellation
 from um982py.capture import gps_signals, record_epoch
 from um982py.geodesy import records_from
 from um982py.messages import Record, Value
-from um982py.stats import _least_squares, percentile
+from um982py.stats import least_squares, percentile
 
 MINIMUM_SAMPLES = 4
 DEFAULT_CURVE_STEP = 5.0
@@ -224,11 +224,8 @@ def fit_gain_pattern(samples: Sequence[SkySample]) -> GainFit:
     values = [
         sample.cn0 + 20.0 * math.log10(sample.range / reference) for sample in samples
     ]
-    coefficients = _least_squares(design, values)
-    residuals = [
-        value - sum(c * x for c, x in zip(coefficients, row, strict=True))
-        for value, row in zip(values, design, strict=True)
-    ]
+    solution = least_squares(design, values, [1.0] * len(values))
+    coefficients, residuals = solution.parameters, solution.residuals
     return GainFit(
         zenith_cn0=coefficients[0],
         linear_rolloff=coefficients[1],

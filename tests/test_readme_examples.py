@@ -225,7 +225,7 @@ def test_readme_precise_position_can_be_interrupted(
         compile(SNIPPETS["Watch a precise position converge"], "README.md", "exec"), {}
     )
     output = capsys.readouterr().out
-    assert output.count("PPP_CONVERGING: horizontal std") == 2
+    assert output.count("PPP_CONVERGING: horizontal RMS") == 2
     assert "height std 30.083" in output and "correction age 14.0 s" in output
     assert "Change: 1.112 m" in output
     assert output.endswith("Stopped\n")

@@ -15,9 +15,9 @@ from examples._console import (
 )
 from examples._console_capture import capture_logs
 from examples.zero_baseline_lab import double_differences, estimate_noise
+from um982py import Observations
 from um982py.capture import load_records
 from um982py.commands import Log
-from um982py.measurement import sample_series
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -55,9 +55,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         [Log.RANGE],
         on_progress=progress_printer("zero_baseline_lab") if args.debug else None,
     )
-    first = sample_series(data["RANGE"], systems=(0,), signals=(0, 14))
-    second = sample_series(
-        load_records(args.reference, Log.RANGE), systems=(0,), signals=(0, 14)
+    first = Observations(data["RANGE"]).signals(systems=(0,), signals=(0, 14))
+    second = Observations(load_records(args.reference, Log.RANGE)).signals(
+        systems=(0,), signals=(0, 14)
     )
     differences = double_differences(
         [sample for series in first.values() for sample in series],

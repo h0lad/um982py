@@ -291,7 +291,8 @@ def test_ascii_and_binary_normalize_statuses_and_precision() -> None:
     assert ascii_solution.position_type == PositionType.PPP_CONVERGING
     assert ascii_solution.valid and not ascii_solution.converged
     assert ascii_solution.latitude == pytest.approx(40.07899442145)
-    assert ascii_solution.horizontal_std_m == pytest.approx(
+    assert ascii_solution.precision is not None
+    assert ascii_solution.precision.horizontal_rms_m == pytest.approx(
         (1.8755**2 + 1.4254**2) ** 0.5
     )
     assert ascii_solution.correction_age_s == pytest.approx(1.0)
@@ -308,7 +309,10 @@ def test_ascii_and_binary_normalize_statuses_and_precision() -> None:
     assert binary_solution.valid and binary_solution.converged
     assert binary_solution.ellipsoidal_height == pytest.approx(52.0)
     assert binary_solution.satellites_used == 20
-    assert binary_solution.horizontal_std_m == pytest.approx((0.1**2 + 0.2**2) ** 0.5)
+    assert binary_solution.precision is not None
+    assert binary_solution.precision.horizontal_rms_m == pytest.approx(
+        (0.1**2 + 0.2**2) ** 0.5
+    )
     assert ascii_solution.datum == binary_solution.datum == "WGS84"
     assert binary_solution.record["datum_id"] == 61
 
@@ -336,7 +340,7 @@ def test_unavailable_and_unknown_values_are_not_claimed_as_valid() -> None:
     fix = PppSolution.from_record(record)
     assert not fix.valid and not fix.converged
     assert fix.position_type == "UNKNOWN"
-    assert fix.latitude_std_m is None and fix.horizontal_std_m is None
+    assert fix.latitude_std_m is None and fix.precision is None
 
 
 def test_polling_can_stop_after_a_read_and_propagates_errors() -> None:
@@ -412,7 +416,8 @@ def test_receiver_start_ppp_queries_and_verifies_real_configuration(
         solution = ppp.position()
         assert ppp.group_changed and ppp.service_changed
         assert solution.valid and solution.position_type is PositionType.PPP_CONVERGING
-        assert solution.horizontal_std_m is not None
+        assert solution.precision is not None
+        assert solution.precision.horizontal_rms_m is not None
     assert transport.writes == [
         b"CONFIG\r\n",
         b"CONFIG SIGNALGROUP 3 6\r\n",

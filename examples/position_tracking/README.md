@@ -26,6 +26,10 @@ to several logs. Each log's supported rates depend on the receiver, firmware
 and signal group. `--csv` writes tabular fixes, and `--geojson` writes a track.
 Use `--help` for precision service and geofence options.
 
+GeoJSON point properties include receiver-reported `precision` in east, north
+and up metres. `horizontal_rms_m` is the root-sum-square of the horizontal
+axis deviations, not a confidence radius. Missing estimates remain null.
+
 ## References
 
 [Unicore UM982 documentation](https://en.unicore.com/products/um982/).

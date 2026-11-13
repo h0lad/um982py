@@ -17,7 +17,7 @@ class PositionLimits:
     max_epoch_age_s: float | None = None
     max_solution_age_s: float | None = None
     max_correction_age_s: float | None = None
-    max_horizontal_std_m: float | None = None
+    max_horizontal_rms_m: float | None = None
     max_vertical_std_m: float | None = None
     allowed_fix_classes: frozenset[FixClass] | None = None
 
@@ -26,7 +26,7 @@ class PositionLimits:
             "max_epoch_age_s",
             "max_solution_age_s",
             "max_correction_age_s",
-            "max_horizontal_std_m",
+            "max_horizontal_rms_m",
             "max_vertical_std_m",
         ):
             value = getattr(self, name)
@@ -40,7 +40,7 @@ class PositionLimits:
 class PositionAssessment:
     solution: EpochSolution
     epoch_age_s: float | None
-    horizontal_std_m: float | None
+    horizontal_rms_m: float | None
     vertical_std_m: float | None
     reasons: tuple[str, ...]
 
@@ -54,7 +54,7 @@ def assess_position(
     limits: PositionLimits,
     *,
     epoch_age_s: float | None = None,
-    horizontal_std_m: float | None = None,
+    horizontal_rms_m: float | None = None,
     vertical_std_m: float | None = None,
 ) -> PositionAssessment:
     """Check a solution against the application's limits.
@@ -81,7 +81,7 @@ def assess_position(
         ("epoch_age", epoch_age_s, limits.max_epoch_age_s),
         ("solution_age", solution.solution_age, limits.max_solution_age_s),
         ("correction_age", solution.differential_age, limits.max_correction_age_s),
-        ("horizontal_std", horizontal_std_m, limits.max_horizontal_std_m),
+        ("horizontal_rms", horizontal_rms_m, limits.max_horizontal_rms_m),
         ("vertical_std", vertical_std_m, limits.max_vertical_std_m),
     )
     for name, value, maximum in checks:
@@ -92,5 +92,5 @@ def assess_position(
         elif value > maximum:
             reasons.append(f"{name}_exceeded")
     return PositionAssessment(
-        solution, epoch_age_s, horizontal_std_m, vertical_std_m, tuple(reasons)
+        solution, epoch_age_s, horizontal_rms_m, vertical_std_m, tuple(reasons)
     )

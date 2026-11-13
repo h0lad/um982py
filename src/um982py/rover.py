@@ -6,7 +6,7 @@ from math import isfinite
 from threading import Event, Thread
 from time import sleep
 from types import TracebackType
-from typing import Literal, Self
+from typing import TYPE_CHECKING, Literal, Self
 
 from um982py.antenna import AntennaLog
 from um982py.commands import Log, queries
@@ -18,10 +18,14 @@ from um982py.messages.enums import PositionType
 from um982py.messages.frames import CommandResponse
 from um982py.messages.navigation import BestNavigation, Fix
 from um982py.messages.record import Record
+from um982py.precision import PositionPrecision
 from um982py.receiver import Receiver
 from um982py.rtk_session import RtkHealth, RtkSession
 from um982py.streaming import ReceiverStream
 from um982py.survey import SurveyPoint, survey_point, wait_for_fix
+
+if TYPE_CHECKING:
+    from um982py.motion import Motion
 
 
 @dataclass(frozen=True, slots=True)
@@ -71,6 +75,28 @@ class RoverPosition:
     @property
     def ellipsoidal_height(self) -> float:
         return self.position.ellipsoidal_height
+
+    @property
+    def altitude_msl(self) -> float:
+        return self.position.altitude_msl
+
+    @property
+    def precision(self) -> PositionPrecision | None:
+        """Precision from the position solution at this rover epoch."""
+        return self.position.precision
+
+    def motion(
+        self, *, heading_offset_deg: float = 0.0, min_course_speed_m_s: float = 0.5
+    ) -> "Motion":
+        """Interpret ground motion and the matched, mounting-adjusted heading."""
+        from um982py.motion import Motion
+
+        return Motion.from_navigation(
+            self.position,
+            heading_deg=self.heading_deg,
+            heading_offset_deg=heading_offset_deg,
+            min_course_speed_m_s=min_course_speed_m_s,
+        )
 
 
 def _attitude(

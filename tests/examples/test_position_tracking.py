@@ -144,7 +144,7 @@ def test_negative_or_nonfinite_receiver_sigmas_are_unavailable() -> None:
         Record(record.name, tuple(fields.items())), timestamp=0
     )
     assert fix.latitude_sigma_m is None
-    assert fix.horizontal_sigma_m is None
+    assert fix.horizontal_rms_m is None
     assert fix.height_sigma_m is None
 
 
@@ -274,7 +274,9 @@ def test_precision_replay_reports_convergence_and_writes_outputs(
     assert report["positions"][0]["height_ellipsoid_m"] == pytest.approx(110.0)
     assert report["speed_m_s"]["mean"] is None
     assert len(csv_path.read_text(encoding="utf-8").splitlines()) == 2
-    assert len(json.loads(geojson_path.read_text(encoding="utf-8"))["features"]) == 1
+    features = json.loads(geojson_path.read_text(encoding="utf-8"))["features"]
+    assert len(features) == 1
+    assert features[0]["properties"]["precision"]["north_std_m"] is not None
 
 
 def test_full_ppp_fix_is_a_success(

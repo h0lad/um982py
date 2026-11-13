@@ -367,7 +367,7 @@ def test_sample_accepts_new_receiver_epochs() -> None:
 
 def test_position_selection_uses_current_lower_sigma() -> None:
     code = TrackPoint(
-        100, 48, 9, 260, None, 20, "PSRDIFF", source="SPPNAV", horizontal_sigma_m=2
+        100, 48, 9, 260, None, 20, "PSRDIFF", source="SPPNAV", horizontal_rms_m=2
     )
     float_fix = TrackPoint(
         100,
@@ -378,7 +378,7 @@ def test_position_selection_uses_current_lower_sigma() -> None:
         20,
         "NARROW_FLOAT",
         source="ADRNAV",
-        horizontal_sigma_m=12,
+        horizontal_rms_m=12,
     )
     monitor = PrecisionMonitor(corrected=[code], rtk=[float_fix])
     assert monitor.position() is code
@@ -391,7 +391,7 @@ def test_position_selection_uses_current_lower_sigma() -> None:
         20,
         "NARROW_INT",
         source="ADRNAV",
-        horizontal_sigma_m=0.02,
+        horizontal_rms_m=0.02,
     )
     monitor.rtk[-1] = fixed
     assert monitor.position() is fixed
@@ -406,7 +406,7 @@ def test_baseline_summary_reports_receiver_estimate() -> None:
         None,
         20,
         "SINGLE",
-        horizontal_sigma_m=2.5,
+        horizontal_rms_m=2.5,
         height_sigma_m=3.0,
     )
     after = TrackPoint(
@@ -417,7 +417,7 @@ def test_baseline_summary_reports_receiver_estimate() -> None:
         None,
         20,
         "PSRDIFF",
-        horizontal_sigma_m=1.5,
+        horizontal_rms_m=1.5,
         height_sigma_m=2.0,
         correction_age_s=2.0,
     )
@@ -431,7 +431,7 @@ def test_report_shows_each_solution_and_the_selected_source(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     code = TrackPoint(
-        100, 48, 9, 260, None, 20, "PSRDIFF", source="SPPNAV", horizontal_sigma_m=2
+        100, 48, 9, 260, None, 20, "PSRDIFF", source="SPPNAV", horizontal_rms_m=2
     )
     float_fix = TrackPoint(
         100,
@@ -442,13 +442,13 @@ def test_report_shows_each_solution_and_the_selected_source(
         20,
         "NARROW_FLOAT",
         source="ADRNAV",
-        horizontal_sigma_m=12,
+        horizontal_rms_m=12,
     )
     monitor = PrecisionMonitor(corrected=[code], rtk=[float_fix])
     _report(CorrectionStats(), monitor, debug=False)
     output = capsys.readouterr().err
-    assert "SPPNAV PSRDIFF 2.000 m" in output
-    assert "ADRNAV NARROW_FLOAT 12.000 m" in output
+    assert "SPPNAV PSRDIFF RMS 2.000 m" in output
+    assert "ADRNAV NARROW_FLOAT RMS 12.000 m" in output
     assert "selected SPPNAV" in output
 
 
@@ -456,11 +456,11 @@ def test_debug_position_includes_selected_uncertainty(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     fix = TrackPoint(
-        100, 48, 9, 260, None, 20, "SINGLE", horizontal_sigma_m=2, height_sigma_m=3
+        100, 48, 9, 260, None, 20, "SINGLE", horizontal_rms_m=2, height_sigma_m=3
     )
     _report(CorrectionStats(), PrecisionMonitor(corrected=[fix]), debug=True)
     output = capsys.readouterr().err
-    assert "receiver horizontal sigma 2.000 m; height sigma 3.000 m" in output
+    assert "receiver horizontal RMS 2.000 m; height sigma 3.000 m" in output
 
 
 def test_requested_command_feeds_corrections_to_receiver() -> None:

@@ -16,10 +16,11 @@ from examples._console import (
 )
 from examples._console_capture import capture_logs
 from examples.sidereal_multipath import SkyResidual, evaluate_repeatability
+from um982py import Observations
 from um982py.antenna import antenna_log
 from um982py.capture import load_records, record_epoch
 from um982py.commands import Log
-from um982py.measurement import RangeSample, sample_series
+from um982py.measurement import RangeSample
 from um982py.messages import Record
 from um982py.stats import detrend, is_continuous
 
@@ -40,7 +41,9 @@ def sky_residuals(
             )
     times = sorted(skies)
     result = []
-    for samples in sample_series(ranges, systems=(0,), signals=(0, 14)).values():
+    for samples in (
+        Observations(tuple(ranges)).signals(systems=(0,), signals=(0, 14)).values()
+    ):
         arcs: list[list[RangeSample]] = []
         for sample in samples:
             if not arcs or not is_continuous(arcs[-1][-1], sample):

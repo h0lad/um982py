@@ -9,10 +9,10 @@ from statistics import stdev
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
 from examples.ionosphere_tec import Observation, slant_tec
+from um982py import Observations
 from um982py.capture import gps_signals, record_epoch
 from um982py.commands import Log
 from um982py.messages import Record
-from um982py.observation_quality import audit_observations
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -161,7 +161,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         }
         for r in captured["BESTNAV"]
     ]
-    quality = audit_observations(captured["RANGE"]) if captured["RANGE"] else None
+    quality = Observations(captured["RANGE"]).quality() if captured["RANGE"] else None
     write_json(
         {
             "status": "ok" if timeline else "no_dual_frequency_gps",

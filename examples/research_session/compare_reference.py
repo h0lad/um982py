@@ -1,33 +1,13 @@
 """Match independent ECEF position CSVs by GPS epoch without interpolation."""
 
 import argparse
-import csv
 import json
 import math
 from bisect import bisect_left
 from collections.abc import Sequence
-from itertools import pairwise
 from pathlib import Path
 
-from um982py.field_data import file_sha256
-
-
-def _read_ecef_positions(path: Path) -> list[tuple[float, float, float, float]]:
-    with path.open(newline="", encoding="utf-8") as stream:
-        result = [
-            (
-                float(row["gps_seconds"]),
-                float(row["x_m"]),
-                float(row["y_m"]),
-                float(row["z_m"]),
-            )
-            for row in csv.DictReader(stream)
-        ]
-    if any(not all(math.isfinite(value) for value in row) for row in result):
-        raise ValueError("position epochs and coordinates must be finite")
-    if any(b[0] <= a[0] for a, b in pairwise(result)):
-        raise ValueError("position epochs must be strictly increasing")
-    return result
+from um982py.field_data import file_sha256, read_ecef_positions
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -53,8 +33,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("reference frame must be supplied")
     if args.output.resolve() in (args.observed.resolve(), args.reference.resolve()):
         parser.error("output must differ from inputs")
-    observed = _read_ecef_positions(args.observed)
-    reference = _read_ecef_positions(args.reference)
+    observed = read_ecef_positions(args.observed)
+    reference = read_ecef_positions(args.reference)
     times = [item[0] for item in reference]
     matches, unmatched = [], []
     for epoch, x, y, z in observed:

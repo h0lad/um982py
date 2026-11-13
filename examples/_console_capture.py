@@ -13,7 +13,6 @@ from um982py.capture import (
     DataLog,
     InterruptedCapture,
     RecordingTransport,
-    _log_matchers,
     capture_live,
     iter_frames,
     replay_receiver,
@@ -21,6 +20,7 @@ from um982py.capture import (
 from um982py.commands.configuration import ppp, ppp_datum
 from um982py.messages import Record
 from um982py.receiver import Receiver
+from um982py.stream_capture import iter_decoded_records
 
 
 def open_receiver(args: argparse.Namespace) -> Receiver:
@@ -87,17 +87,12 @@ def capture_records(
         raise ValueError("interval must be positive")
     if args.replay is not None:
         collected: dict[str, list[Record]] = {log.value: [] for log in logs}
-        requests = [(log, _log_matchers(log)) for log in logs]
-        for message in iter_frames(args.replay):
-            for log, matchers in requests:
-                values = collected[log.value]
-                if frames is not None and len(values) >= frames:
-                    continue
-                if any(request.matches(message) for request in matchers):
-                    record = log.decode(message)
-                    values.append(record)
-                    if arrival_order is not None:
-                        arrival_order.append(record)
+        for name, record in iter_decoded_records(
+            iter_frames(args.replay), logs, max_records_per_log=frames
+        ):
+            collected[name].append(record)
+            if arrival_order is not None:
+                arrival_order.append(record)
         result = {name: tuple(values) for name, values in collected.items()}
         if on_progress is not None:
             on_progress(result)

@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     )
     from um982py.messages.enums import PositionType, SatelliteSystem, SolutionStatus
     from um982py.messages.navigation import BestNavigation, Fix, Heading, Position
+    from um982py.motion import Motion, WaypointGuidance
     from um982py.ntrip import (
         Mountpoint,
         NtripClient,
@@ -69,6 +70,7 @@ if TYPE_CHECKING:
         fetch_sourcetable,
         parse_sourcetable,
     )
+    from um982py.observations import Observations, record_observations
     from um982py.ppk import PostProcessingError, PpkResult, run_ppk
     from um982py.ppp import PppService, PppSession, PppSolution
     from um982py.pps import (
@@ -79,6 +81,7 @@ if TYPE_CHECKING:
         pps_clock_offset_ns,
     )
     from um982py.precise import PrecisePoint, Sp3Product, interpolate_sp3, parse_sp3
+    from um982py.precision import ErrorEllipse, PositionPrecision
     from um982py.quality import (
         EpochSolution,
         FixClass,
@@ -131,6 +134,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "CoordinateTransform": ("um982py.crs", "CoordinateTransform"),
     "CorrectionWriteError": ("um982py.rtk_session", "CorrectionWriteError"),
     "EpochSolution": ("um982py.quality", "EpochSolution"),
+    "ErrorEllipse": ("um982py.precision", "ErrorEllipse"),
     "Fix": ("um982py.messages.navigation", "Fix"),
     "FixClass": ("um982py.quality", "FixClass"),
     "GgaProviderError": ("um982py.rtk_session", "GgaProviderError"),
@@ -146,15 +150,18 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "LiveStatus": ("um982py.live_quality", "LiveStatus"),
     "Log": ("um982py.commands", "Log"),
     "MergeResult": ("um982py.rinex_merge", "MergeResult"),
+    "Motion": ("um982py.motion", "Motion"),
     "Mountpoint": ("um982py.ntrip", "Mountpoint"),
     "NtripClient": ("um982py.ntrip", "NtripClient"),
     "NtripClientPool": ("um982py.ntrip", "NtripClientPool"),
     "NtripDisconnected": ("um982py.ntrip", "NtripDisconnected"),
     "NtripError": ("um982py.ntrip", "NtripError"),
+    "Observations": ("um982py.observations", "Observations"),
     "PerformanceStatus": ("um982py.receiver_models", "PerformanceStatus"),
     "PositionAssessment": ("um982py.assessment", "PositionAssessment"),
     "PositionLimits": ("um982py.assessment", "PositionLimits"),
     "PositionMonitor": ("um982py.live_quality", "PositionMonitor"),
+    "PositionPrecision": ("um982py.precision", "PositionPrecision"),
     "Position": ("um982py.messages.navigation", "Position"),
     "PositionSession": ("um982py.live", "PositionSession"),
     "PositionSubscription": ("um982py.live", "PositionSubscription"),
@@ -199,6 +206,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "TrackingSignal": ("um982py.signals", "TrackingSignal"),
     "TrackWriter": ("um982py.track", "TrackWriter"),
     "WaypointDirection": ("um982py.waypoint", "WaypointDirection"),
+    "WaypointGuidance": ("um982py.motion", "WaypointGuidance"),
     "assess_position": ("um982py.assessment", "assess_position"),
     "bdt_week_to_gps_seconds": ("um982py.measurement", "bdt_week_to_gps_seconds"),
     "capture_live": ("um982py.capture", "capture_live"),
@@ -234,6 +242,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "pps_clock_offset_ns": ("um982py.pps", "pps_clock_offset_ns"),
     "range_samples": ("um982py.measurement", "range_samples"),
     "read_frames": ("um982py.capture", "read_frames"),
+    "record_observations": ("um982py.observations", "record_observations"),
     "run_ppk": ("um982py.ppk", "run_ppk"),
     "sample_series": ("um982py.measurement", "sample_series"),
     "solution_from_record": ("um982py.quality", "solution_from_record"),
@@ -256,6 +265,7 @@ __all__ = [
     "CoordinateTransform",
     "CorrectionWriteError",
     "EpochSolution",
+    "ErrorEllipse",
     "Fix",
     "FixClass",
     "GgaProviderError",
@@ -267,16 +277,19 @@ __all__ = [
     "LiveStatus",
     "Log",
     "MergeResult",
+    "Motion",
     "Mountpoint",
     "NtripClient",
     "NtripClientPool",
     "NtripDisconnected",
     "NtripError",
+    "Observations",
     "PerformanceStatus",
     "Position",
     "PositionAssessment",
     "PositionLimits",
     "PositionMonitor",
+    "PositionPrecision",
     "PositionSession",
     "PositionSubscription",
     "PositionType",
@@ -320,6 +333,7 @@ __all__ = [
     "TrackWriter",
     "TrackingSignal",
     "WaypointDirection",
+    "WaypointGuidance",
     "assess_position",
     "bdt_week_to_gps_seconds",
     "capture_live",
@@ -355,6 +369,7 @@ __all__ = [
     "pps_clock_offset_ns",
     "range_samples",
     "read_frames",
+    "record_observations",
     "run_ppk",
     "sample_series",
     "solution_from_record",

@@ -109,6 +109,27 @@ def test_live_example_outputs_geojson(
     ]
 
 
+def test_live_example_reports_health_changes_without_another_fix(
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from types import SimpleNamespace
+    from unittest.mock import Mock
+
+    monitor = Mock()
+    monitor.status.side_effect = [
+        SimpleNamespace(reasons=("position_stale",)),
+        SimpleNamespace(reasons=("position_stale",)),
+        SimpleNamespace(reasons=()),
+    ]
+    stop = Mock()
+    stop.wait.side_effect = [False, False, False, True]
+    position_cli.report_status(monitor, stop)
+    assert capsys.readouterr().err.splitlines() == [
+        "position health: position_stale",
+        "position health: recovered",
+    ]
+
+
 def test_live_example_configures_requested_receiver_rate(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

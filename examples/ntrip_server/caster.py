@@ -402,7 +402,7 @@ class Caster:
         reader: asyncio.StreamReader,
         writer: asyncio.StreamWriter,
     ) -> None:
-        from examples.ntrip_server.source import _relay_body
+        from examples.ntrip_server.source import relay_body
 
         if request.path != f"/{self.hub.station.mountpoint}":
             await self._reply(writer, "404 Not Found")
@@ -437,7 +437,7 @@ class Caster:
                 else b"ICY 200 OK\r\n"
             )
             await asyncio.wait_for(writer.drain(), self.hub.limits.write_seconds)
-            await _relay_body(reader, self.hub, request.chunked)
+            await relay_body(reader, self.hub, request.chunked)
         except (
             OSError,
             ProtocolError,

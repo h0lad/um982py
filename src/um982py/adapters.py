@@ -6,7 +6,9 @@ from typing import Any, Literal, Protocol, cast
 
 from um982py.live import PositionUpdate
 from um982py.messages.enums import PositionType
-from um982py.messages.navigation import BestNavigation, Fix
+from um982py.messages.navigation import BestNavigation, Fix, Position
+from um982py.ppp import PppSolution
+from um982py.rover import RoverPosition
 
 
 class RosTime(Protocol):
@@ -37,14 +39,17 @@ class RosNavSatFix(Protocol):
 
 
 def geojson_feature(
-    update: PositionUpdate, *, reference_frame: Literal["WGS84"]
+    update: PositionUpdate | Position, *, reference_frame: Literal["WGS84"]
 ) -> dict[str, Any] | None:
-    """Create a GeoJSON point when the caller has established WGS 84 coordinates."""
+    """Create a WGS 84 point with receiver-reported precision when available."""
     if reference_frame != "WGS84":
         raise ValueError("GeoJSON coordinates must be WGS84")
-    fix = update.fix
+    fix = update.fix if isinstance(update, PositionUpdate) else update
     if not fix.valid or fix.latitude is None or fix.longitude is None:
         return None
+    native = fix.position if isinstance(fix, RoverPosition) else fix
+    if isinstance(native, (BestNavigation, PppSolution)) and native.datum != "WGS84":
+        raise ValueError("position datum must be WGS84")
     if (
         not isfinite(fix.latitude)
         or not isfinite(fix.longitude)
@@ -58,22 +63,30 @@ def geojson_feature(
         if not isfinite(height):
             raise ValueError("invalid ellipsoidal height")
         coordinates.append(height)
+    precision = fix.precision
+    properties: dict[str, Any] = {
+        "epoch_gps_seconds": fix.epoch_gps_seconds,
+        "satellites": fix.satellites_used,
+        "correction_age_s": fix.correction_age_s,
+        "precision": precision.as_dict() if precision is not None else None,
+    }
+    if isinstance(native, Fix):
+        properties.update(receiver_utc_time=native.utc, quality=native.quality)
+    elif isinstance(native, (BestNavigation, PppSolution)):
+        properties["position_type"] = str(native.position_type)
+    if isinstance(update, PositionUpdate):
+        properties.update(
+            received_at=update.received_at.isoformat(), connection=update.connection
+        )
     return {
         "type": "Feature",
         "geometry": {"type": "Point", "coordinates": coordinates},
-        "properties": {
-            "receiver_utc_time": fix.utc,
-            "received_at": update.received_at.isoformat(),
-            "quality": fix.quality,
-            "satellites": fix.satellites,
-            "correction_age_s": fix.correction_age_s,
-            "connection": update.connection,
-        },
+        "properties": properties,
     }
 
 
 def navsatfix(
-    fix: Fix | BestNavigation,
+    fix: Position,
     *,
     stamp: RosTime,
     frame_id: str,
@@ -85,7 +98,7 @@ def navsatfix(
 
     Supply the frame, augmentation status and service mask. By default, only
     unaugmented GGA quality 1 or BESTNAV SINGLE is reported as a valid fix;
-    other solution types require an explicit status. BESTNAV standard deviations
+    other solution types require an explicit status. Position standard deviations
     produce an ENU diagonal covariance when all three are available. The
     receiver reports estimates, not an independently verified error bound.
     """
@@ -97,17 +110,21 @@ def navsatfix(
         raise ValueError("unsupported NavSatStatus code")
     if not isinstance(service, int) or not 0 <= service <= 65535:
         raise ValueError("service must be an unsigned 16-bit bitmask")
+    native = fix.position if isinstance(fix, RoverPosition) else fix
     if status is None:
-        unaugmented = (
-            fix.quality == 1
-            if isinstance(fix, Fix)
-            else fix.position_type in (PositionType.SINGLE, "SINGLE")
+        unaugmented = (isinstance(native, Fix) and native.quality == 1) or (
+            isinstance(native, BestNavigation)
+            and native.position_type in (PositionType.SINGLE, "SINGLE")
         )
         status = 0 if fix.valid and unaugmented else -1
     if status >= 0 and not fix.valid:
         raise ValueError("a valid ROS status requires a valid position")
-    if status >= 0 and isinstance(fix, BestNavigation) and fix.datum != "WGS84":
-        raise ValueError("BESTNAV datum must be WGS84")
+    if (
+        status >= 0
+        and isinstance(native, (BestNavigation, PppSolution))
+        and native.datum != "WGS84"
+    ):
+        raise ValueError("position datum must be WGS84")
     if status >= 0 and (
         fix.latitude is None
         or fix.longitude is None
@@ -139,8 +156,13 @@ def navsatfix(
     if height is not None and not isfinite(height):
         raise ValueError("invalid ellipsoidal height")
     message.position_covariance_type = message.COVARIANCE_TYPE_UNKNOWN
-    if status >= 0 and isinstance(fix, BestNavigation):
-        east, north, up = fix.longitude_std_m, fix.latitude_std_m, fix.height_std_m
+    precision = fix.precision if status >= 0 else None
+    if precision is not None:
+        east, north, up = (
+            precision.east_std_m,
+            precision.north_std_m,
+            precision.up_std_m,
+        )
         if east is not None and north is not None and up is not None:
             variances = (east * east, north * north, up * up)
             if not all(isfinite(value) for value in variances):

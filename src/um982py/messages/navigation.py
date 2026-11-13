@@ -1,14 +1,18 @@
 """Typed navigation and heading records."""
 
 from contextlib import suppress
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from math import isfinite
-from typing import Protocol, Self, runtime_checkable
+from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 from um982py.errors import ProtocolError
 from um982py.messages.enums import PositionType, SolutionStatus, _reported_datum
 from um982py.messages.frames import AsciiMessage, BinaryMessage, Message, Sentence
 from um982py.messages.record import Record, Value
+from um982py.precision import PositionPrecision, utc_seconds
+
+if TYPE_CHECKING:
+    from um982py.motion import Motion
 
 
 @runtime_checkable
@@ -43,6 +47,12 @@ class Position(Protocol):
 
     @property
     def ellipsoidal_height(self) -> float | None: ...
+
+    @property
+    def altitude_msl(self) -> float | None: ...
+
+    @property
+    def precision(self) -> PositionPrecision | None: ...
 
 
 def _optional_number(value: Value) -> float | None:
@@ -118,6 +128,8 @@ class Fix:
     station_id: str
     quality_known: bool = field(default=True, kw_only=True, repr=False)
     satellites_known: bool = field(default=True, kw_only=True, repr=False)
+    antenna: int | None = field(default=None, kw_only=True)
+    _precision: PositionPrecision | None = field(default=None, kw_only=True, repr=False)
 
     @property
     def valid(self) -> bool:
@@ -166,6 +178,36 @@ class Fix:
             return None
         return self.altitude_msl + self.geoid_separation
 
+    @property
+    def precision(self) -> PositionPrecision | None:
+        """Matched receiver precision, or None if unavailable or invalid."""
+        precision = self._precision
+        if not self.valid or precision is None or precision.antenna != self.antenna:
+            return None
+        try:
+            if precision.utc is None or utc_seconds(self.utc) != utc_seconds(
+                precision.utc
+            ):
+                return None
+        except ValueError:
+            return None
+        return precision
+
+    def with_gst(self, record: Record) -> Self:
+        """Attach GST statistics for the same UTC time and antenna.
+
+        GGA and GST have no date. The caller must ensure both are from the same
+        receiver session; equal time-of-day alone cannot distinguish days.
+        """
+        if not self.valid:
+            raise ValueError("GST precision requires a valid fix")
+        precision = PositionPrecision.from_gst(record)
+        if self.antenna is None or precision.antenna != self.antenna:
+            raise ValueError("GST and fix must identify the same antenna")
+        if precision.utc is None or utc_seconds(self.utc) != utc_seconds(precision.utc):
+            raise ValueError("GST and fix UTC times do not match")
+        return replace(self, _precision=precision if precision.available else None)
+
     @classmethod
     def from_message(cls, message: Message) -> Self:
         if not isinstance(message, Sentence) or message.kind not in ("GGA", "GGAH"):
@@ -208,6 +250,7 @@ class Fix:
                 station_id or "",
                 quality_known=quality is not None,
                 satellites_known=satellites is not None,
+                antenna=2 if record.name[2:] == "GGAH" else 1,
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ProtocolError("Invalid GGA value") from error
@@ -274,6 +317,7 @@ class BestNavigation:
     )
     correction_age_s: float | None = field(default=None, kw_only=True)
     epoch_gps_seconds: float | None = field(default=None, kw_only=True)
+    velocity_latency_s: float | None = field(default=None, kw_only=True)
 
     @property
     def valid(self) -> bool:
@@ -300,6 +344,34 @@ class BestNavigation:
         """Return ellipsoidal height in metres. Check ``valid`` before using it."""
         return self.altitude_msl + self.geoid_separation
 
+    @property
+    def precision(self) -> PositionPrecision | None:
+        """Receiver-reported axis deviations for a computed solution."""
+        if not self.valid:
+            return None
+        antenna = None
+        if isinstance(self.message, AsciiMessage):
+            antenna = 2 if self.message.name == "BESTNAVHA" else 1
+        elif isinstance(self.message, BinaryMessage):
+            antenna = 2 if self.message.header.message_id == 2119 else 1
+        result = PositionPrecision(
+            source="BESTNAVH" if antenna == 2 else "BESTNAV",
+            east_std_m=self.longitude_std_m,
+            north_std_m=self.latitude_std_m,
+            up_std_m=self.height_std_m,
+            epoch_gps_seconds=self.epoch_gps_seconds
+            if self.epoch_gps_seconds is not None and isfinite(self.epoch_gps_seconds)
+            else None,
+            antenna=antenna,
+        )
+        return result if result.available else None
+
+    def motion(self, *, min_course_speed_m_s: float = 0.5) -> "Motion":
+        """Interpret valid ground speed, course and vertical speed."""
+        from um982py.motion import Motion
+
+        return Motion.from_navigation(self, min_course_speed_m_s=min_course_speed_m_s)
+
     def __post_init__(self) -> None:
         values = (
             self.latitude,
@@ -319,6 +391,10 @@ class BestNavigation:
             for value in (self.latitude_std_m, self.longitude_std_m, self.height_std_m)
         ):
             raise ProtocolError("Invalid BESTNAV position standard deviation")
+        if self.velocity_latency_s is not None and (
+            not isfinite(self.velocity_latency_s) or self.velocity_latency_s < 0
+        ):
+            raise ProtocolError("Invalid BESTNAV velocity latency")
 
     @classmethod
     def from_message(cls, message: Message) -> Self:
@@ -349,6 +425,7 @@ class BestNavigation:
             position_type = _position_type(_enum_value(record["pos_type"]))
             solution_status = _solution_status(_enum_value(record["p_sol_status"]))
             age = _optional_number(record.get("diff_age"))
+            latency = _standard_deviation(record.get("latency"))
             differential = position_type in (
                 PositionType.PSRDIFF,
                 PositionType.L1_FLOAT,
@@ -395,6 +472,7 @@ class BestNavigation:
                 and age >= 0
                 else None,
                 epoch_gps_seconds=epoch,
+                velocity_latency_s=latency,
             )
         except (KeyError, TypeError, ValueError) as error:
             raise ProtocolError("Invalid BESTNAV value") from error

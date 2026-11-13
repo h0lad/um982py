@@ -136,7 +136,7 @@ stream contains RTCM 1005 or 1006. Treat debug logs as location-sensitive.
 | `RTCM frames` | Number of checksum-valid RTCM messages forwarded to the receiver, not a count of fixes. |
 | `SPPNAV` | The receiver's code-based navigation solution. `SINGLE` is standalone, while `PSRDIFF` is a differential code solution. |
 | `ADRNAV` | The receiver's carrier-phase navigation solution. `NARROW_FLOAT` is a float solution and `NARROW_INT` is a fixed solution. |
-| `selected` | The example chooses between recent SPPNAV and ADRNAV using the receiver's reported horizontal sigma. It is a display selection, not a new position calculation. |
+| `selected` | The example chooses between recent SPPNAV and ADRNAV using the receiver's reported horizontal RMS. It is a display selection, not a new position calculation. |
 | `sigma` | The receiver's estimated uncertainty. |
 | `correction age` | Receiver-reported age in seconds when present. The example excludes ADRNAV differential/RTK results with a reported age over 10 seconds, negative or non-finite age, while an unavailable age is not independently verified. |
 | `Precision estimate` | Comparison of average **SPPNAV-reported** sigmas before and after connection. A pre-existing augmented baseline or changing conditions can affect it. |

@@ -17,13 +17,12 @@ from examples._console import (
     write_json,
 )
 from examples._console_capture import capture_records
-from um982py import export_rinex
+from um982py import Observations
 from um982py.antenna import AntennaLog
 from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.field_data import file_sha256
 from um982py.messages import Record
-from um982py.observation_quality import audit_observations
 from um982py.rinex import RinexMetadata
 
 
@@ -154,8 +153,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     exports = [
         (
             args.output,
-            export_rinex(
-                primary,
+            Observations(primary).to_rinex(
                 marker_name=args.marker_name,
                 l2c_code=args.l2c_code,
                 metadata=primary_metadata,
@@ -166,8 +164,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         exports.append(
             (
                 other,
-                export_rinex(
-                    secondary,
+                Observations(secondary).to_rinex(
                     marker_name=args.secondary_marker,
                     l2c_code=args.l2c_code,
                     metadata=secondary_metadata,
@@ -219,8 +216,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if metadata
                 else None,
                 "observation_quality": asdict(
-                    audit_observations(
-                        records,
+                    Observations(records).quality(
                         expected_interval=args.interval
                         if args.replay is None
                         else None,

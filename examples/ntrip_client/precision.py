@@ -28,8 +28,8 @@ class PrecisionMonitor:
             if selected is None or candidate.timestamp - selected.timestamp > max_age_s:
                 selected = candidate
             elif selected.timestamp - candidate.timestamp <= max_age_s:
-                sigma = candidate.horizontal_sigma_m
-                current = selected.horizontal_sigma_m
+                sigma = candidate.horizontal_rms_m
+                current = selected.horizontal_rms_m
                 if (
                     sigma is not None
                     and math.isfinite(sigma)
@@ -54,14 +54,14 @@ def precision_line(monitor: PrecisionMonitor) -> str:
     before, after = monitor.baseline, monitor.corrected
     if not after:
         return "Precision estimate: no SPPNAV fixes yet"
-    horizontal = _mean([point.horizontal_sigma_m for point in after])
+    horizontal = _mean([point.horizontal_rms_m for point in after])
     if not before:
         return (
             f"Precision estimate: {len(after)} SPPNAV fixes; "
-            f"mean per-fix horizontal sigma {_metres(horizontal)}; "
+            f"mean per-fix horizontal RMS {_metres(horizontal)}; "
             "no baseline for comparison"
         )
-    initial = _mean([point.horizontal_sigma_m for point in before])
+    initial = _mean([point.horizontal_rms_m for point in before])
     initial_height = _mean([point.height_sigma_m for point in before])
     final_height = _mean([point.height_sigma_m for point in after])
     ages = [
@@ -78,7 +78,7 @@ def precision_line(monitor: PrecisionMonitor) -> str:
         change = f" ({abs(difference):.1f}% {direction})"
     parts = [
         f"Precision estimate: {len(before)} -> {len(after)} SPPNAV fixes",
-        f"mean per-fix horizontal sigma {_metres(initial)} -> "
+        f"mean per-fix horizontal RMS {_metres(initial)} -> "
         f"{_metres(horizontal)}{change}",
         f"height sigma {_metres(initial_height)} -> {_metres(final_height)}",
         f"fixes {dict(Counter(p.position_type for p in before))} -> "

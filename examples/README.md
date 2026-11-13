@@ -6,6 +6,21 @@ Run live examples through a local serial device or a transparent UART gateway
 specified as `--port tcp://host:port`. Configure the gateway's UART baud
 rate separately, since `--baud` applies only to local serial devices.
 
+## Choose a starting point
+
+| What you want to do | Example |
+| --- | --- |
+| Follow a position and detect stale fixes | [Live position](live_position/README.md) |
+| Map receiver-reported position uncertainty | [Position precision](position_precision/README.md) |
+| Use RTK corrections on a rover | [NTRIP rover](ntrip_client/README.md) |
+| Survey a stationary point | [Static occupation](precise_fix/README.md) |
+| Review motion on land, at sea or in the air | [Journey tracking](journey_track/README.md) |
+| Record observations for research | [Research session](research_session/README.md) |
+| Export observations for post-processing | [RINEX export](rinex_export/README.md) |
+| Set up a reference station | [NTRIP reference station](ntrip_server/README.md) |
+| Investigate reception and interference | [Signal quality](signal_quality_report/README.md) and [interference monitor](interference_monitor/README.md) |
+| Inspect receiver time and PPS | [Time transfer](time_transfer/README.md) |
+
 ## Running the examples
 
 From the repository root, install the package:
@@ -82,6 +97,7 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`ntrip_server`](ntrip_server/README.md): Serves reference-station RTCM over NTRIP with TLS and optional guest access.
 - [`offline_ppp`](offline_ppp/README.md): Records static observations and processes them later with CODE products and Python PPP.
 - [`position_tracking`](position_tracking/README.md): Tracks positions, prefers full PPP fixes, and reports precision and satellite signals.
+- [`position_precision`](position_precision/README.md): Matches GGA and GST by antenna and UTC time and exports precision to GeoJSON.
 - [`postprocessed_rtk`](postprocessed_rtk/README.md): Runs RTKLIB with rover, base and navigation RINEX files.
 - [`ppp_filter_inspector`](ppp_filter_inspector/README.md): Inspects PPP residuals, SSR coverage, and RTOS CPU load.
 - [`precise_fix`](precise_fix/README.md): Averages a static occupation with outlier checks and a serial-correlation screening estimate.

@@ -19,14 +19,14 @@ def test_application_limits_report_missing_and_stale_values() -> None:
         max_epoch_age_s=2,
         max_solution_age_s=2,
         max_correction_age_s=5,
-        max_horizontal_std_m=0.1,
+        max_horizontal_rms_m=0.1,
         allowed_fix_classes=frozenset({FixClass.FIXED}),
     )
-    result = assess_position(solution(), limits, epoch_age_s=3, horizontal_std_m=None)
-    assert result.reasons == ("epoch_age_exceeded", "horizontal_std_unknown")
+    result = assess_position(solution(), limits, epoch_age_s=3, horizontal_rms_m=None)
+    assert result.reasons == ("epoch_age_exceeded", "horizontal_rms_unknown")
     assert not result.accepted
     assert assess_position(
-        solution(), limits, epoch_age_s=1, horizontal_std_m=0.05
+        solution(), limits, epoch_age_s=1, horizontal_rms_m=0.05
     ).accepted
 
 

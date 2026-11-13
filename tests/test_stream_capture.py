@@ -2,10 +2,13 @@ from pathlib import Path
 
 import pytest
 
-from conftest import SubscriptionTransport
+from conftest import SubscriptionTransport, ascii_message
+from test_bodies import manual_message
 from um982py.capture import iter_frames
 from um982py.commands import Log
 from um982py.commands.types import Port
+from um982py.errors import ProtocolError
+from um982py.protocol.ascii import parse_ascii
 from um982py.receiver import Receiver
 from um982py.stream_capture import EpochTracker, iter_decoded_records, iter_live_records
 
@@ -26,6 +29,21 @@ def test_replay_decodes_lazily() -> None:
     name, record = next(records)
     assert name == record.name == "RANGE"
     records.close()
+
+
+def test_replay_limits_each_log_before_decoding_its_later_frames() -> None:
+    good = parse_ascii(ascii_message("RANGEA", "0"))
+    malformed = parse_ascii(ascii_message("RANGEA", "bad"))
+    navigation = manual_message("BESTNAVA")
+    frames = [good, malformed, navigation]
+    records = list(
+        iter_decoded_records(frames, [Log.RANGE, Log.BESTNAV], max_records_per_log=1)
+    )
+    assert [name for name, _ in records] == ["RANGE", "BESTNAV"]
+    with pytest.raises(ProtocolError):
+        list(iter_decoded_records(frames, [Log.RANGE, Log.BESTNAV]))
+    with pytest.raises(ValueError, match="positive integer"):
+        list(iter_decoded_records(frames, [Log.RANGE], max_records_per_log=0))
 
 
 def test_stopping_live_iterator_restores_subscriptions() -> None:

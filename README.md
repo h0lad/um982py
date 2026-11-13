@@ -64,6 +64,7 @@ prediction; the signature alone does not prove prediction.
 | Open a serial port or TCP gateway | `Receiver.connect(target)` |
 | Identify the receiver | `receiver.version()` |
 | Read position, heading, or velocity | `receiver.fix()`, `receiver.heading()`, `receiver.best_navigation()` |
+| Inspect receiver position precision | `position.precision` or [GGA/GST mapping](examples/position_precision/README.md) |
 | Query one receiver log | `receiver.read_log(Log.BESTNAV)` |
 | Inspect satellites and their signals | `receiver.satellites()` |
 | Check live position freshness | `PositionMonitor(LiveLimits(max_gap_s=...)).status()` |
@@ -81,8 +82,8 @@ prediction; the signature alone does not prove prediction.
 | Read position and heading while applying NTRIP | `Rover.connect(target, ntrip_url=...)` |
 | Wait for a fixed solution | `wait_for_fix(receiver, rtk_fixed=True)` |
 | Record a track or survey a point | `TrackWriter(...)`, `survey_point(receiver)` |
-| Calculate distance and bearing to a waypoint | `waypoint_direction(...)` |
-| Export observations | `export_rinex()` |
+| Read motion and calculate waypoint direction | `receiver.best_navigation().motion().waypoint(...)` |
+| Capture, check and export observations | `record_observations(receiver, duration=...).to_rinex()` |
 | Convert coordinates and measure distance | `ecef_from_geodetic()`, `geodetic_from_ecef()`, `haversine_distance()` |
 | Read a Linux PPS timestamp | `with PpsDevice(path) as device: device.fetch()` |
 | Interpret receiver PPS or spoofing status | `receiver.pps_status()` or `receiver.spoof_info()` |
@@ -91,7 +92,7 @@ prediction; the signature alone does not prove prediction.
 All receiver methods use `antenna=1` for the primary input and `antenna=2` for
 the secondary input. `Fix`, `BestNavigation`, `PppSolution` and `RoverPosition`
 share the `Position` interface: coordinates, validity, `rtk_fixed`, correction
-age, GPS epoch, satellites used and ellipsoidal height. Unavailable values are
+age, GPS epoch, satellites used, ellipsoidal height and optional precision. Unavailable values are
 `None`. In particular, a GGA fix has UTC time of day but no date, so its GPS
 epoch is unavailable. Source-specific information remains on each model.
 
@@ -117,8 +118,8 @@ no new fix arrives. It reports a missing or stale position and advances the
 reported correction age since arrival. Check `PositionSession.health()` for
 connection state. See [live position](examples/live_position/README.md).
 
-The optional ROS 2 `navsatfix()` adapter accepts a GGA `Fix` or a
-`BestNavigation` position. For BESTNAV, it supplies an east/north/up diagonal
+The optional ROS 2 `navsatfix()` adapter accepts any `Position`, including
+GGA, BESTNAV, PPP and rover positions. It supplies an east/north/up diagonal
 covariance if all three receiver-reported standard deviations are available;
 otherwise covariance is unknown. The caller supplies the ROS timestamp, frame,
 and, for augmented fixes, the appropriate status and service mask. Install and
@@ -143,6 +144,26 @@ def to_ros_position(node, position, status):
 The timestamp in this example is the host's current ROS time, not a
 receiver-derived measurement timestamp. Pass a matched measurement timestamp
 if the application needs one.
+
+## Map position precision
+
+`position.precision` is either `None` or a `PositionPrecision` containing the
+receiver-reported east, north and up standard deviations in metres. Its
+`horizontal_rms_m` is their horizontal root-sum-square, not a 95% accuracy
+radius. Missing fields remain `None`. Precision is withheld for an invalid fix.
+
+GGA does not report those deviations. To attach GST statistics, call
+`fix.with_gst(gst_record)` for records from the same receiver session. It
+checks the antenna and exact UTC time of day. Neither sentence contains a date,
+so the application must ensure the records are from the same day and session.
+GST can also include the receiver's horizontal error ellipse; it is preserved
+as reported rather than turned into an assumed correlation or confidence bound.
+
+`geojson_feature()` and `TrackWriter` include available precision in their map
+output. `navsatfix()` maps complete per-axis deviations to a diagonal covariance;
+off-diagonal correlations remain unknown. See the runnable [position precision
+example](examples/position_precision/README.md). Receiver estimates are not
+independent proof of position accuracy.
 
 ## Read RTCM correction fields
 
@@ -232,7 +253,7 @@ up to 1 Hz.
 Check the receiver's time status, then measure the rate from distinct receiver
 timestamps and check for gaps.
 Capture preserves the receiver's messages without interpolation or added
-samples. Repeated queries can return the same epoch; `positions(interval=...)`
+samples. Repeated queries can return the same epoch; `poll_positions(interval=...)`
 sets the delay between queries, not the receiver output rate.
 
 ```python
@@ -284,6 +305,52 @@ wait for a heading response.
 Pass `username` and `password` to `Rover.connect()` when the caster requires
 credentials. See [NTRIP rover](examples/ntrip_client/README.md) for setup.
 
+For ground motion and a destination:
+
+```python
+from um982py import Rover
+
+with Rover.connect("/dev/ttyUSB0", 921600) as rover:
+    position = rover.position(heading=True)
+    if position.valid:
+        motion = position.motion(heading_offset_deg=0)
+        destination = motion.waypoint(50.0, 8.0)
+        print(motion.ground_speed_m_s, motion.course_deg, motion.heading_deg)
+        print(
+            destination.distance_m,
+            destination.bearing_deg,
+            destination.closing_speed_m_s,
+        )
+```
+
+Supply the measured antenna mounting offset and destination coordinates in the
+same frame as the position. Heading is the adjusted antenna baseline; course
+and speed are over ground. Course is omitted at low speed. Distances use a
+spherical Earth, and the calculation does not plan a route. Receiver-reported
+velocity latency can make its epoch differ from the position and heading epochs;
+`motion.velocity_epoch_gps_seconds` accounts for that latency when available.
+
+### Survey a point
+
+With the receiver configured as a rover, wait for a fixed solution and average
+a stationary occupation:
+
+```python
+from um982py import Rover
+
+with Rover.connect(
+    "/dev/ttyUSB0", 921600, ntrip_url="https://caster.example:443/MOUNT"
+) as rover:
+    rover.wait_for_fix(rtk_fixed=True, max_correction_age=5)
+    point = rover.survey_point(duration=60, rtk_fixed=True, max_correction_age=5)
+
+print(point.latitude, point.longitude, point.ellipsoidal_height_m)
+print(point.samples, point.rejected, point.horizontal_scatter_m)
+```
+
+The scatter describes the collected fixes, not absolute accuracy. Verify the
+base coordinates, reference frame, antenna point and corrections independently.
+
 ### Locate a field site
 
 ```python
@@ -297,13 +364,14 @@ if position.valid:
     print(
         f"Solution: {position.position_type}, satellites used: {position.satellites_used}"
     )
-    for axis, std in (
-        ("Latitude", position.latitude_std_m),
-        ("Longitude", position.longitude_std_m),
-        ("Height", position.height_std_m),
-    ):
-        if std is not None:
-            print(f"{axis} standard deviation: {std:.2f} m")
+    if position.precision is not None:
+        for axis, std in (
+            ("Latitude", position.precision.north_std_m),
+            ("Longitude", position.precision.east_std_m),
+            ("Height", position.precision.up_std_m),
+        ):
+            if std is not None:
+                print(f"{axis} standard deviation: {std:.2f} m")
 else:
     print("No position available yet")
 ```
@@ -320,9 +388,12 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
     previous = None
     try:
         for fix in ppp.poll_positions(interval=5):
+            precision = fix.precision
             print(
-                f"{fix.position_type}: horizontal std {fix.horizontal_std_m} m, "
-                f"height std {fix.height_std_m} m, correction age {fix.correction_age_s} s"
+                f"{fix.position_type}: horizontal RMS "
+                f"{precision.horizontal_rms_m if precision else None} m, "
+                f"height std {precision.up_std_m if precision else None} m, "
+                f"correction age {fix.correction_age_s} s"
             )
             if fix.valid and fix.latitude is not None and fix.longitude is not None:
                 position = (fix.latitude, fix.longitude)
@@ -355,20 +426,26 @@ Receiving correction messages does not confirm that the receiver applied them.
 Collect one minute of observations and save them as a RINEX file:
 
 ```python
-from um982py import Log, Receiver, capture_live, export_rinex
+from um982py import Receiver, record_observations
 
 with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    observations = capture_live(receiver, Log.RANGE, duration=60)[Log.RANGE]
+    observations = record_observations(receiver, duration=60)
 
-result = export_rinex(observations, marker_name="FIELD01")
+result = observations.to_rinex(marker_name="FIELD01")
 result.write("field.obs")
 print(f"Saved {result.epochs} epochs; omitted observations: {result.omitted}")
 ```
 
-`result.write()` replaces an existing file. `capture_live()` stores decoded
+`result.write()` replaces an existing file. `record_observations()` stores decoded
 records in memory; `InterruptedCapture.records` contains records received before
 Ctrl+C. For long recordings, use `SessionRecorder` or the
 [unattended station example](examples/unattended_station/README.md).
+
+Call `observations.quality(expected_interval=1)` to inspect receiver-reported
+flags, lock resets and gaps against a chosen interval. For uncompressed logs,
+`observations.signals()` groups usable code and phase measurements by signal.
+Inspect the RINEX omissions and establish phase alignment independently before
+precise work.
 
 For `OBSVMCMP` and `OBSVHCMP` input, RINEX export includes valid pseudorange,
 Doppler and signal strength. Carrier phase remains blank because the compressed

@@ -22,11 +22,14 @@ health while consuming positions.
 
 After confirming that the receiver outputs WGS 84 coordinates, pass `--geojson`
 for GeoJSON lines. GeoJSON height, when available, is ellipsoidal height.
+GGA alone does not contain position standard deviations. To pair GGA with
+receiver-reported GST error ellipses, use the [position precision
+example](../position_precision/README.md).
 
 The optional `--max-gap` and `--max-correction-age` checks report assessment
-reasons with each fix. Arrival gaps are observed when the next fix arrives. To
-detect an outage before the next fix, check `PositionMonitor.status()` or the
-session health from another thread. `status()` reports `position_unavailable`
+reasons with each fix. A background check also reports health changes on stderr
+when no new fix arrives. Applications can call `PositionMonitor.status()` or
+check the session health from another thread. `status()` reports `position_unavailable`
 before the first update and `position_stale` when its age exceeds `max_gap_s`.
 It also advances the last receiver-reported correction age by the time since
 arrival. This does not include receiver or transport latency. Connection health

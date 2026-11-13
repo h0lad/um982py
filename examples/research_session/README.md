@@ -31,6 +31,28 @@ and time scale stay marked as unknown when unavailable. Live quality checks
 detect gaps against the requested interval. Replay does not assume that this
 interval matches the recording.
 
+For a short in-memory recording from your own Python application:
+
+```python
+from um982py import Receiver, record_observations
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    observations = record_observations(receiver, duration=60, rate_hz=1)
+
+quality = observations.quality(expected_interval=1)
+signals = observations.signals()
+result = observations.to_rinex(marker_name="FIELD01")
+print(quality.gaps, quality.lock_resets, len(signals), result.omitted)
+result.write("field.obs")
+```
+
+`record_observations()` keeps records in memory and restores previous log
+subscriptions. Preserve a separate raw recording and station metadata for
+research. An interrupted capture exposes its partial records through
+`InterruptedCapture.records`. The same RINEX phase-alignment limitations apply.
+Signal samples require uncompressed logs and omit measurements without usable
+code, carrier phase or a known frequency.
+
 ## Compare base and rover observations
 
 When the receiver is already receiving a correction stream on another input,

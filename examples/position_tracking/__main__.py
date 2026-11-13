@@ -69,10 +69,10 @@ def _precision_line(point: TrackPoint) -> str:
     parts = [f"tracked={point.satellites}"]
     if point.solution_satellites is not None:
         parts.append(f"used={point.solution_satellites}")
-    if point.horizontal_sigma_m is not None:
-        parts.append(f"horizontal_sigma={point.horizontal_sigma_m:.3f} m")
+    if point.horizontal_rms_m is not None:
+        parts.append(f"horizontal_rms={point.horizontal_rms_m:.3f} m")
     else:
-        parts.append("horizontal_sigma=unknown")
+        parts.append("horizontal_rms=unknown")
     if point.height_sigma_m is not None:
         parts.append(f"height_sigma={point.height_sigma_m:.3f} m")
     else:

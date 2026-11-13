@@ -21,11 +21,7 @@ from examples.wls_position import (
     RangeMeasurement,
     geodetic_position_error,
 )
-from examples.wls_position.__main__ import (
-    _gps_l1,
-    select_gps_ephemerides,
-    select_position,
-)
+from examples.wls_position import measurements as wls_measurements
 from um982py.capture import decode_records, read_frames, record_epoch
 from um982py.commands import Log
 from um982py.experimental.orbit import orbit_state, state_from_record
@@ -39,11 +35,6 @@ from um982py.messages.enums import SatelliteSystem
 SATELLITE_SYSTEM_SHIFT = 16
 SATELLITE_SYSTEM_MASK = 0b111
 RESERVED_SYSTEM = 0b111
-
-
-def receiver_position(record: Record) -> tuple[float, float, float]:
-    """Observer ECEF from a BESTPOS or BESTXYZ record."""
-    return receiver_ecef(record)
 
 
 def measurements(
@@ -212,16 +203,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("RANGE frame carries no timestamp")
     epoch = gps_epoch(range_record.message) % 604800.0
     absolute_epoch = record_epoch(range_record)
-    ephemerides = select_gps_ephemerides(
+    ephemerides = wls_measurements.select_gps_ephemerides(
         decode_records(ephemeris_frames, Log.GPSEPH),
         absolute_epoch,
         ranges=range_record,
     )
-    position = select_position(
+    position = wls_measurements.select_position(
         position_records, absolute_epoch, args.position_tolerance
     )
-    truth = receiver_position(position)
-    observations = _gps_l1(range_record, ephemerides, epoch)
+    truth = receiver_ecef(position)
+    observations = wls_measurements.gps_l1_measurements(
+        range_record, ephemerides, epoch
+    )
     result = raim_fde(observations, (*truth, 0.0))
     latitude, longitude = (
         (position.real("lat"), position.real("lon"))

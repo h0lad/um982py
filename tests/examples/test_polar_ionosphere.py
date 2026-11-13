@@ -54,7 +54,7 @@ def test_roti_coverage_and_missing_frequency_reset(
         "capture_records",
         lambda *args, **kwargs: {"RANGE": records, "BESTNAV": (), "JAMSTATUS": ()},
     )
-    monkeypatch.setattr(polar, "audit_observations", lambda _: None)
+    monkeypatch.setattr(polar.Observations, "quality", lambda _: None)
     output = tmp_path / "report.json"
     assert (
         polar.main(

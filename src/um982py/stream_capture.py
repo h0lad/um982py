@@ -50,13 +50,31 @@ class EpochTracker:
 
 
 def iter_decoded_records(
-    messages: Iterable[Message], logs: Sequence[DataLog]
+    messages: Iterable[Message],
+    logs: Sequence[DataLog],
+    *,
+    max_records_per_log: int | None = None,
 ) -> Iterator[tuple[str, Record]]:
-    """Yield matching records in arrival order as input arrives."""
+    """Yield matching records in arrival order as input arrives.
+
+    An optional limit applies separately to each logical log. Frames beyond a
+    log's limit are not decoded, while other selected logs keep streaming.
+    """
+    if max_records_per_log is not None and (
+        type(max_records_per_log) is not int or max_records_per_log < 1
+    ):
+        raise ValueError("max_records_per_log must be a positive integer")
+    counts = {log.value: 0 for log in logs}
     requests = [(log, _log_matchers(log)) for log in logs]
     for message in messages:
         for log, matchers in requests:
+            if (
+                max_records_per_log is not None
+                and counts[log.value] >= max_records_per_log
+            ):
+                continue
             if any(request.matches(message) for request in matchers):
+                counts[log.value] += 1
                 yield log.value, log.decode(message)
 
 

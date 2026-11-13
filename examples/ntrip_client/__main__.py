@@ -120,9 +120,9 @@ def _brief(
 ) -> str:
     if point is None:
         return f"{name} waiting"
-    sigma = point.horizontal_sigma_m
-    accuracy = f"{sigma:.3f} m" if sigma is not None else "sigma unknown"
-    line = f"{name} {point.position_type} {accuracy}"
+    rms = point.horizontal_rms_m
+    estimate = f"RMS {rms:.3f} m" if rms is not None else "RMS unknown"
+    line = f"{name} {point.position_type} {estimate}"
     if reference_epoch is not None and reference_epoch - point.timestamp > 8:
         line += f" (stale {reference_epoch - point.timestamp:.0f} s)"
     return line
@@ -206,13 +206,11 @@ def _report(stats: CorrectionStats, monitor: PrecisionMonitor, *, debug: bool) -
         f"{selected.altitude:.3f} m ellipsoidal; "
         f"{selected.solution_satellites}/{selected.satellites} satellites used/tracked"
     )
-    horizontal = selected.horizontal_sigma_m
+    horizontal = selected.horizontal_rms_m
     height = selected.height_sigma_m
     horizontal_text = f"{horizontal:.3f} m" if horizontal is not None else "unknown"
     height_text = f"{height:.3f} m" if height is not None else "unknown"
-    detail += (
-        f"; receiver horizontal sigma {horizontal_text}; height sigma {height_text}"
-    )
+    detail += f"; receiver horizontal RMS {horizontal_text}; height sigma {height_text}"
     if selected.correction_age_s is not None:
         detail += f"; correction age {selected.correction_age_s:.1f} s"
     if stats.station is not None:

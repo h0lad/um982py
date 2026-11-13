@@ -67,9 +67,11 @@ def test_formal_covariance_for_symmetric_satellite_geometry() -> None:
 def test_reference_position_must_be_computed_and_matched(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from examples.wls_position import __main__ as cli
+    from examples.wls_position import measurements
 
-    monkeypatch.setattr(cli, "record_epoch", lambda record: record.real("epoch"))
+    monkeypatch.setattr(
+        measurements, "record_epoch", lambda record: record.real("epoch")
+    )
 
     def fix(epoch: float, status: str) -> Record:
         return Record(
@@ -88,13 +90,13 @@ def test_reference_position_must_be_computed_and_matched(
         fix(90, "SOL_COMPUTED"),
         fix(100.5, "SOL_COMPUTED"),
     )
-    assert cli.select_position([bad, stale, valid], 100, 1) is valid
+    assert measurements.select_position([bad, stale, valid], 100, 1) is valid
     with pytest.raises(ValueError, match="no valid"):
-        cli.select_position([bad, stale], 100, 1)
+        measurements.select_position([bad, stale], 100, 1)
 
 
 def test_ephemeris_selection_checks_health_issue_and_age() -> None:
-    from examples.wls_position.__main__ import select_gps_ephemerides
+    from examples.wls_position.measurements import select_gps_ephemerides
 
     def eph(toe: float, health: int = 0, issue2: int = 1) -> Record:
         return Record(
@@ -119,7 +121,7 @@ def test_ephemeris_selection_checks_health_issue_and_age() -> None:
 def test_ephemeris_age_uses_signal_transmit_time(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from examples.wls_position import __main__ as cli
+    from examples.wls_position import measurements
 
     ephemeris = Record(
         "GPSEPH",
@@ -134,11 +136,11 @@ def test_ephemeris_age_uses_signal_transmit_time(
     )
     observation = Record("observation", (("prn", 1), ("pseudorange", 29979245.8)))
     monkeypatch.setattr(
-        cli, "gps_signals", lambda *args, **kwargs: ((observation, 1.0),)
+        measurements, "gps_signals", lambda *args, **kwargs: ((observation, 1.0),)
     )
     epoch = 2000 * 604800 + 100000
-    assert cli.select_gps_ephemerides([ephemeris], epoch) == {}
-    assert cli.select_gps_ephemerides(
+    assert measurements.select_gps_ephemerides([ephemeris], epoch) == {}
+    assert measurements.select_gps_ephemerides(
         [ephemeris], epoch, ranges=Record("RANGE", ())
     ) == {1: ephemeris}
 

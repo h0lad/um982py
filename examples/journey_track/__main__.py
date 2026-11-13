@@ -11,25 +11,7 @@ from um982py.commands import Log
 from um982py.field_data import file_sha256
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
 from um982py.messages import Record
-
-
-def waypoint_geometry(
-    latitude: float, longitude: float, target: tuple[float, float]
-) -> tuple[float, float | None]:
-    """Approximate great-circle distance and initial bearing on a mean Earth sphere."""
-    phi1, phi2 = math.radians(latitude), math.radians(target[0])
-    delta_lon = math.radians(target[1] - longitude)
-    y = math.sin(delta_lon) * math.cos(phi2)
-    x = math.cos(phi1) * math.sin(phi2) - math.sin(phi1) * math.cos(phi2) * math.cos(
-        delta_lon
-    )
-    central = math.atan2(
-        math.hypot(x, y),
-        math.sin(phi1) * math.sin(phi2)
-        + math.cos(phi1) * math.cos(phi2) * math.cos(delta_lon),
-    )
-    bearing = math.degrees(math.atan2(y, x)) % 360 if math.hypot(x, y) > 1e-12 else None
-    return 6371008.8 * central, bearing
+from um982py.waypoint import waypoint_direction
 
 
 def analyze(
@@ -107,11 +89,11 @@ def analyze(
             if nearest and abs(nearest[0] - epoch) <= heading_tolerance
             else None
         )
-        waypoint_distance, waypoint_bearing = (
-            waypoint_geometry(latitude, longitude, waypoint)
-            if waypoint is not None
-            else (None, None)
+        direction = (
+            waypoint_direction(latitude, longitude, *waypoint) if waypoint else None
         )
+        waypoint_distance = direction.distance_m if direction else None
+        waypoint_bearing = direction.bearing_deg if direction else None
         waypoint_vmg = (
             velocity[0] * math.sin(math.radians(waypoint_bearing))
             + velocity[1] * math.cos(math.radians(waypoint_bearing))

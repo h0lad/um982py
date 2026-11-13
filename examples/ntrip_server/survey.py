@@ -5,9 +5,9 @@ import math
 from collections.abc import Sequence
 
 from examples._console_capture import capture_records
+from um982py import Observations
 from um982py.commands import Log
 from um982py.messages import Record
-from um982py.rinex import export_rinex
 from um982py.signals import tracking_signal
 
 PPP_SIGNALS = {
@@ -123,7 +123,9 @@ def export_survey(
         raise ValueError(
             "capture needs supported dual-frequency GPS L1/L2 or GAL E1/E5a"
         )
-    exported = export_rinex(records, marker_name=marker_name, l2c_code=l2c_code)
+    exported = Observations(tuple(records)).to_rinex(
+        marker_name=marker_name, l2c_code=l2c_code
+    )
     if exported.omitted:
         print(f"RINEX omitted observations: {exported.omitted}")
     lines = []

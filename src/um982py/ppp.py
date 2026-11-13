@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from enum import IntEnum
-from math import hypot, isfinite
+from math import isfinite
 from threading import Event
 from time import sleep
 from typing import TYPE_CHECKING, Literal, cast
@@ -19,6 +19,7 @@ from um982py.measurement import gps_epoch
 from um982py.messages.enums import PositionType, SolutionStatus, _reported_datum
 from um982py.messages.frames import AsciiMessage, Message
 from um982py.messages.record import Record, Value
+from um982py.precision import PositionPrecision
 
 if TYPE_CHECKING:
     from um982py.receiver import Receiver
@@ -118,11 +119,21 @@ class PppSolution:
         return False
 
     @property
-    def horizontal_std_m(self) -> float | None:
-        """Root-sum-square of the latitude and longitude deviations in metres."""
-        if self.latitude_std_m is None or self.longitude_std_m is None:
+    def precision(self) -> PositionPrecision | None:
+        """Receiver-reported axis deviations for a computed PPP solution."""
+        if not self.valid:
             return None
-        return hypot(self.latitude_std_m, self.longitude_std_m)
+        result = PositionPrecision(
+            source=self.record.name,
+            east_std_m=self.longitude_std_m,
+            north_std_m=self.latitude_std_m,
+            up_std_m=self.height_std_m,
+            epoch_gps_seconds=self.epoch_gps_seconds
+            if self.epoch_gps_seconds is not None and isfinite(self.epoch_gps_seconds)
+            else None,
+            antenna=2 if self.record.name == "PPPNAVH" else 1,
+        )
+        return result if result.available else None
 
     @property
     def ellipsoidal_height(self) -> float | None:

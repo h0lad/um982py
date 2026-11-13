@@ -5,7 +5,7 @@ from dataclasses import replace
 
 import pytest
 from examples.ntrip_server import Station
-from examples.ntrip_server.source import _relay_body
+from examples.ntrip_server.source import relay_body
 
 from tests.examples.test_ntrip_server import (
     observation_frame,
@@ -64,7 +64,7 @@ def test_upstream_handles_large_chunks_extensions_and_trailers(
         reader.feed_eof()
         before = hub.frames
         with pytest.raises(OSError, match="upstream ended"):
-            await _relay_body(reader, hub, True)
+            await relay_body(reader, hub, True)
         assert hub.frames - before == 3500
 
     asyncio.run(scenario())

@@ -2,9 +2,10 @@
 
 import argparse
 import json
+import sys
 from collections.abc import Sequence
 from contextlib import closing
-from threading import Event
+from threading import Event, Thread
 
 from um982py import (
     LiveLimits,
@@ -14,6 +15,23 @@ from um982py import (
     geojson_feature,
 )
 from um982py.commands import Log
+
+
+def report_status(monitor: PositionMonitor, stop: Event) -> None:
+    """Report changed position health even when the receiver stops sending."""
+    previous: tuple[str, ...] | None = None
+    while not stop.wait(0.5):
+        reasons = monitor.status().reasons
+        if reasons != previous:
+            if reasons:
+                print(
+                    f"position health: {', '.join(reasons)}",
+                    file=sys.stderr,
+                    flush=True,
+                )
+            elif previous:
+                print("position health: recovered", file=sys.stderr, flush=True)
+            previous = reasons
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -47,8 +65,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     monitor = PositionMonitor(
         LiveLimits(max_gap_s=args.max_gap, max_correction_age_s=args.max_correction_age)
     )
+    stop = Event()
+    watcher = (
+        Thread(target=report_status, args=(monitor, stop), daemon=True)
+        if args.max_gap is not None or args.max_correction_age is not None
+        else None
+    )
+    if watcher is not None:
+        watcher.start()
     try:
-        with closing(session.positions(Event())) as positions:
+        with closing(session.positions(stop)) as positions:
             for update in positions:
                 fix = update.fix
                 assessment = monitor.observe(update)
@@ -68,6 +94,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
     except KeyboardInterrupt:
         pass
+    finally:
+        stop.set()
+        if watcher is not None:
+            watcher.join()
     return 0
 
 

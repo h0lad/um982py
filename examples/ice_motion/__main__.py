@@ -7,10 +7,9 @@ from collections.abc import Sequence
 from itertools import pairwise
 from pathlib import Path
 
-from examples.research_session.compare_reference import _read_ecef_positions
 from um982py.capture import load_records, record_epoch
 from um982py.commands import Log
-from um982py.field_data import file_sha256
+from um982py.field_data import file_sha256, read_ecef_positions
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
 
 
@@ -87,7 +86,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         observations = [
             (row[0], (row[1], row[2], row[3]))
-            for row in _read_ecef_positions(source_path)
+            for row in read_ecef_positions(source_path)
         ]
     origin = next((xyz for _, xyz in observations if xyz is not None), None)
     if origin is None:

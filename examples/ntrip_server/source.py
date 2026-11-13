@@ -63,7 +63,7 @@ class Upstream:
     context: ssl.SSLContext
 
 
-async def _relay_body(reader: asyncio.StreamReader, hub: Hub, chunked: bool) -> None:
+async def relay_body(reader: asyncio.StreamReader, hub: Hub, chunked: bool) -> None:
     decoder = StreamDecoder(max_frame_size=4096)
     last_observation = monotonic()
     remaining = 0
@@ -145,7 +145,7 @@ async def read_upstream(hub: Hub, upstream: Upstream) -> None:
             raise ProtocolError("unsupported upstream transfer framing")
         if fields.get("content-encoding", "identity") != "identity":
             raise ProtocolError("upstream compression is not supported")
-        await _relay_body(reader, hub, encoding == "chunked")
+        await relay_body(reader, hub, encoding == "chunked")
     except asyncio.LimitOverrunError as error:
         raise ProtocolError(
             "upstream exceeded the header or chunk-line limit"

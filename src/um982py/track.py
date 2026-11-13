@@ -8,9 +8,53 @@ from types import TracebackType
 from typing import IO, Literal, Self
 from xml.sax.saxutils import escape
 
-from um982py.messages.navigation import BestNavigation, Fix
+from um982py.messages.navigation import BestNavigation, Fix, Position
+from um982py.ppp import PppSolution
+from um982py.precision import PositionPrecision
+from um982py.rover import RoverPosition
 
 type TrackFormat = Literal["gpx", "geojson", "csv"]
+
+_PRECISION_COLUMNS = (
+    "precision_source",
+    "precision_east_std_m",
+    "precision_north_std_m",
+    "precision_up_std_m",
+    "precision_horizontal_rms_m",
+    "precision_ellipse_semi_major_m",
+    "precision_ellipse_semi_minor_m",
+    "precision_ellipse_orientation_deg",
+    "precision_epoch_gps_seconds",
+    "precision_utc",
+    "precision_antenna",
+    "precision_pseudorange_rms_m",
+)
+
+
+def _precision_fields(precision: PositionPrecision | None) -> dict[str, object]:
+    if precision is None:
+        return dict.fromkeys(_PRECISION_COLUMNS)
+    ellipse = precision.ellipse
+    return dict(
+        zip(
+            _PRECISION_COLUMNS,
+            (
+                precision.source,
+                precision.east_std_m,
+                precision.north_std_m,
+                precision.up_std_m,
+                precision.horizontal_rms_m,
+                ellipse.semi_major_m if ellipse else None,
+                ellipse.semi_minor_m if ellipse else None,
+                ellipse.orientation_deg if ellipse else None,
+                precision.epoch_gps_seconds,
+                precision.utc,
+                precision.antenna,
+                precision.pseudorange_rms_m,
+            ),
+            strict=True,
+        )
+    )
 
 
 class TrackWriter:
@@ -61,13 +105,12 @@ class TrackWriter:
                     "height_msl_m",
                     "ellipsoidal_height_m",
                     "quality",
+                    *_PRECISION_COLUMNS,
                 )
             )
         return self
 
-    def write(
-        self, position: Fix | BestNavigation, *, timestamp: datetime | None = None
-    ) -> None:
+    def write(self, position: Position, *, timestamp: datetime | None = None) -> None:
         """Append one valid fix. ``timestamp`` must be timezone-aware."""
         if self._file is None:
             raise RuntimeError("track is not open")
@@ -79,22 +122,32 @@ class TrackWriter:
         from um982py.geodesy import _validate_positions
 
         _validate_positions((lat, lon))
-        if isinstance(position, BestNavigation) and position.datum != "WGS84":
-            raise ValueError("BESTNAV datum must be WGS84")
+        native = position.position if isinstance(position, RoverPosition) else position
+        if (
+            isinstance(native, (BestNavigation, PppSolution))
+            and native.datum != "WGS84"
+        ):
+            raise ValueError("position datum must be WGS84")
         if timestamp is not None:
             if timestamp.tzinfo is None or timestamp.utcoffset() is None:
                 raise ValueError("timestamp must be timezone-aware")
             stamp = timestamp.astimezone(UTC).isoformat().replace("+00:00", "Z")
         else:
             stamp = None
-        msl, height = position.altitude_msl, position.ellipsoidal_height
+        msl, height = native.altitude_msl, position.ellipsoidal_height
         from math import isfinite
 
         if any(value is not None and not isfinite(value) for value in (msl, height)):
             raise ValueError("position height must be finite")
         quality = str(
-            position.quality if isinstance(position, Fix) else position.position_type
+            native.quality
+            if isinstance(native, Fix)
+            else native.position_type
+            if isinstance(native, (BestNavigation, PppSolution))
+            else "unknown"
         )
+        precision = position.precision
+        precision_fields = _precision_fields(precision)
         if self.format == "gpx":
             self._file.write(f'<trkpt lat="{lat}" lon="{lon}">')
             if msl is not None:
@@ -102,8 +155,14 @@ class TrackWriter:
             if stamp is not None:
                 self._file.write(f"<time>{stamp}</time>")
             self._file.write(
-                f"<extensions><um982:quality>{escape(quality)}</um982:quality></extensions>"
+                f"<extensions><um982:quality>{escape(quality)}</um982:quality>"
             )
+            for name, value in precision_fields.items():
+                if value is not None:
+                    self._file.write(
+                        f"<um982:{name}>{escape(str(value))}</um982:{name}>"
+                    )
+            self._file.write("</extensions>")
             self._file.write("</trkpt>\n")
         elif self.format == "geojson":
             coordinates = [lon, lat] + ([height] if height is not None else [])
@@ -114,13 +173,16 @@ class TrackWriter:
                     "time_utc": stamp,
                     "quality": quality,
                     "height_msl_m": msl,
+                    "precision": precision.as_dict() if precision is not None else None,
                 },
             }
             self._file.write(
                 (",\n" if self._count else "") + json.dumps(feature, allow_nan=False)
             )
         else:
-            csv.writer(self._file).writerow((stamp, lat, lon, msl, height, quality))
+            csv.writer(self._file).writerow(
+                (stamp, lat, lon, msl, height, quality, *precision_fields.values())
+            )
         self._count += 1
 
     def __exit__(

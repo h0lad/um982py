@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import ast
 import importlib
+import os
 import re
+import shlex
 import subprocess
 import sys
 from pathlib import Path
@@ -11,6 +14,7 @@ from pathlib import Path
 import pytest
 
 EXAMPLES = Path(__file__).resolve().parents[2] / "examples"
+TEMP_REFERENCE = str(Path(os.sep) / "tmp") + os.sep
 
 NAMES = tuple(
     sorted(
@@ -44,6 +48,69 @@ SHARED_TESTS = {
     "offline_ppp": "test_offline_ppp.py",
     "rinex_navigation": "test_rinex_nav.py",
 }
+
+
+def _fixture_replays() -> tuple[tuple[str, tuple[str, ...]], ...]:
+    root = EXAMPLES.parent
+    commands = []
+    for readme in sorted(EXAMPLES.glob("*/README.md")):
+        for block in re.findall(r"```bash\n(.*?)```", readme.read_text(), re.S):
+            for line in block.replace("\\\n", " ").splitlines():
+                try:
+                    args = shlex.split(line, comments=True)
+                except ValueError:
+                    continue
+                if (
+                    len(args) < 5
+                    or args[:2] != ["python", "-m"]
+                    or not args[2].startswith("examples.")
+                    or "--replay" not in args
+                    or "--record" in args
+                    or "--port" in args
+                    or any(arg.startswith(("--record=", "--port=")) for arg in args)
+                    or any(
+                        ".." in Path(arg).parts
+                        or "=/" in arg
+                        or (arg.startswith("/") and not arg.startswith(TEMP_REFERENCE))
+                        for arg in args
+                    )
+                    or any(token in line for token in ("|", ">", "$", ";", "&&"))
+                ):
+                    continue
+                replay_index = args.index("--replay") + 1
+                if replay_index >= len(args):
+                    continue
+                replay = args[replay_index]
+                if replay.startswith("tests/fixtures/") and (root / replay).is_file():
+                    commands.append((readme.parent.name, tuple(args)))
+    return tuple(commands)
+
+
+@pytest.mark.parametrize(("name", "args"), _fixture_replays())
+def test_documented_fixture_replay(
+    name: str, args: tuple[str, ...], tmp_path: Path
+) -> None:
+    """Run checked-in replay commands without touching the user's output paths."""
+    root = EXAMPLES.parent
+    command = [sys.executable, *args[1:]]
+    for index in range(3, len(command)):
+        argument = command[index]
+        if argument.startswith("tests/fixtures/"):
+            command[index] = str(root / argument)
+        elif argument.startswith(TEMP_REFERENCE):
+            command[index] = str(tmp_path / Path(argument).name)
+    environment = dict(os.environ)
+    environment["PYTHONPATH"] = os.pathsep.join((str(root / "src"), str(root)))
+    result = subprocess.run(
+        command,
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+        check=False,
+        timeout=30,
+    )
+    assert result.returncode == 0, f"{name}: {result.stderr or result.stdout}"
 
 
 @pytest.mark.parametrize("name", NAMES)
@@ -100,6 +167,35 @@ def test_example_index_lists_every_project() -> None:
 )
 def test_examples_do_not_reexport_library_apis(name: str, symbol: str) -> None:
     assert not hasattr(importlib.import_module(f"examples.{name}"), symbol)
+
+
+@pytest.mark.parametrize(
+    ("module", "name"),
+    [
+        ("examples.wls_position.__main__", "_gps_l1"),
+        ("examples.wls_position.__main__", "select_position"),
+        ("examples.wls_position.__main__", "select_gps_ephemerides"),
+        ("examples.research_session.compare_reference", "_read_ecef_positions"),
+        ("examples.ntrip_server.source", "_relay_body"),
+    ],
+)
+def test_removed_example_helpers_are_not_reexported(module: str, name: str) -> None:
+    assert not hasattr(importlib.import_module(module), name)
+
+
+def test_examples_import_public_names() -> None:
+    for path in EXAMPLES.rglob("*.py"):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if (
+                isinstance(node, ast.ImportFrom)
+                and node.module is not None
+                and node.module.startswith(("um982py.", "examples."))
+            ):
+                private = [
+                    name.name for name in node.names if name.name.startswith("_")
+                ]
+                assert not private, f"{path}:{node.lineno}: private imports {private}"
 
 
 @pytest.mark.parametrize("name", ("", *NAMES))

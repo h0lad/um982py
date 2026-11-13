@@ -55,6 +55,14 @@ is not airspeed or speed through water. The example is an experimental
 post-capture analysis, not a certified navigation, collision avoidance, or
 emergency system.
 
+For a current rover position in an application, `rover.position(heading=True)`
+returns an epoch-matched baseline heading when available. Call
+`position.motion(heading_offset_deg=...)` for ground speed, course, vertical
+speed and mounting-adjusted heading, or `motion.waypoint(latitude, longitude)`
+for approximate bearing and closing speed. Velocity can have a different epoch
+from the position; `motion.velocity_epoch_gps_seconds` incorporates the
+receiver-reported latency when both it and the GPS epoch are available.
+
 ## References
 
 - Unicore N4 R1.15 BESTNAVXYZ position and velocity fields.

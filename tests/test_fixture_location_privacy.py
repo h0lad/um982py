@@ -6,15 +6,12 @@ from contextlib import suppress
 from pathlib import Path
 
 from examples.wls_position import solve_position
-from examples.wls_position.__main__ import (
-    _gps_l1,
-    receiver_position,
-)
+from examples.wls_position.measurements import gps_l1_measurements
 
 from um982py.capture import decode_records, read_frames
 from um982py.commands import Log
 from um982py.errors import ProtocolError
-from um982py.geodesy import geodetic_from_ecef
+from um982py.geodesy import geodetic_from_ecef, receiver_ecef
 from um982py.measurement import gps_epoch
 from um982py.messages import BinaryMessage, Sentence, decode_log
 from um982py.messages.record import Record
@@ -129,12 +126,12 @@ def test_replay_pseudoranges_solve_to_the_synthetic_area() -> None:
     ranges = decode_records(read_frames(root / "RANGEA.bin"), Log.RANGE)
     positions = decode_records(read_frames(root / "BESTPOSA.bin"), Log.BESTPOS)
     ephemerides = decode_records(read_frames(root / "GPSEPHA.bin"), Log.GPSEPH)
-    observations = _gps_l1(
+    observations = gps_l1_measurements(
         ranges[0],
         {record.integer("prn"): record for record in ephemerides},
         gps_epoch(ranges[0].message) % 604800.0,
     )
-    solution = solve_position(observations, (*receiver_position(positions[0]), 0.0))
+    solution = solve_position(observations, (*receiver_ecef(positions[0]), 0.0))
     assert solution.converged
     assert _synthetic_area(*geodetic_from_ecef(solution.x, solution.y, solution.z)[:2])
 

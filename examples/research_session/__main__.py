@@ -8,10 +8,10 @@ from pathlib import Path
 
 from examples._console import ExampleParser, add_receiver_arguments, run
 from examples._console_capture import capture_records
+from um982py import Observations
 from um982py.commands import Log
 from um982py.field_data import file_sha256
-from um982py.observation_quality import audit_observations
-from um982py.rinex import RinexMetadata, export_rinex
+from um982py.rinex import RinexMetadata
 from um982py.rinex_nav import export_rinex_navigation
 
 
@@ -86,7 +86,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         if not records:
             continue
         try:
-            result = export_rinex(records, marker_name=name, metadata=meta)
+            observations = Observations(records)
+            result = observations.to_rinex(marker_name=name, metadata=meta)
         except ValueError as error:
             generated[name] = {"error": str(error)}
             continue
@@ -97,8 +98,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "epochs": result.epochs,
             "omitted": result.omitted,
             "quality": asdict(
-                audit_observations(
-                    records,
+                observations.quality(
                     expected_interval=args.interval if args.replay is None else None,
                 )
             ),

@@ -33,6 +33,7 @@ if TYPE_CHECKING:
     )
     from um982py.messages.record import Record, Value
     from um982py.messages.version import Version
+    from um982py.precision import ErrorEllipse, PositionPrecision
 
 _EXPORTS: dict[str, tuple[str, str | None]] = {
     "AbbreviatedAsciiMessage": ("um982py.messages.frames", "AbbreviatedAsciiMessage"),
@@ -42,6 +43,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "BinaryHeader": ("um982py.messages.frames", "BinaryHeader"),
     "BinaryMessage": ("um982py.messages.frames", "BinaryMessage"),
     "CommandResponse": ("um982py.messages.frames", "CommandResponse"),
+    "ErrorEllipse": ("um982py.precision", "ErrorEllipse"),
     "Fix": ("um982py.messages.navigation", "Fix"),
     "Heading": ("um982py.messages.navigation", "Heading"),
     "OemAsciiHeader": ("um982py.messages.frames", "OemAsciiHeader"),
@@ -50,6 +52,7 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "Message": ("um982py.messages.frames", "Message"),
     "Observation": ("um982py.messages.observations", "Observation"),
     "Position": ("um982py.messages.navigation", "Position"),
+    "PositionPrecision": ("um982py.precision", "PositionPrecision"),
     "PpsConfigInfo": ("um982py.messages.receiver_status", "PpsConfigInfo"),
     "PpsQuality": ("um982py.messages.receiver_status", "PpsQuality"),
     "PpsStatus": ("um982py.messages.receiver_status", "PpsStatus"),
@@ -75,6 +78,7 @@ __all__ = [
     "BinaryHeader",
     "BinaryMessage",
     "CommandResponse",
+    "ErrorEllipse",
     "Fix",
     "Heading",
     "LogListMessage",
@@ -83,6 +87,7 @@ __all__ = [
     "OemAsciiHeader",
     "OemBinaryHeader",
     "Position",
+    "PositionPrecision",
     "PpsConfigInfo",
     "PpsQuality",
     "PpsStatus",

@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass
 from itertools import pairwise
 
 from examples.position_tracking.quality import summary_statistics
+from um982py import PositionPrecision
 from um982py.capture import record_epoch
 from um982py.geodesy import haversine_distance
 from um982py.messages.enums import PositionType
@@ -33,7 +34,7 @@ class TrackPoint:
     latitude_sigma_m: float | None = None
     longitude_sigma_m: float | None = None
     height_sigma_m: float | None = None
-    horizontal_sigma_m: float | None = None
+    horizontal_rms_m: float | None = None
     speed_sigma_m_s: float | None = None
     vertical_speed_sigma_m_s: float | None = None
     solution_satellites: int | None = None
@@ -47,6 +48,12 @@ class TrackPoint:
         undulation = _optional_real(record, "undulation")
         lat_sigma = _optional_sigma(record, "lat_std")
         lon_sigma = _optional_sigma(record, "lon_std")
+        precision = PositionPrecision(
+            source=record.name,
+            north_std_m=lat_sigma,
+            east_std_m=lon_sigma,
+            up_std_m=_optional_sigma(record, "hgt_std"),
+        )
         return cls(
             timestamp=record_epoch(record) if timestamp is None else timestamp,
             latitude=record.real("lat"),
@@ -61,10 +68,8 @@ class TrackPoint:
             height_ellipsoid_m=height + undulation if undulation is not None else None,
             latitude_sigma_m=lat_sigma,
             longitude_sigma_m=lon_sigma,
-            height_sigma_m=_optional_sigma(record, "hgt_std"),
-            horizontal_sigma_m=math.hypot(lat_sigma, lon_sigma)
-            if lat_sigma is not None and lon_sigma is not None
-            else None,
+            height_sigma_m=precision.up_std_m,
+            horizontal_rms_m=precision.horizontal_rms_m,
             speed_sigma_m_s=_optional_sigma(record, "horspd_std"),
             vertical_speed_sigma_m_s=_optional_sigma(record, "verspd_std"),
             solution_satellites=_optional_int(record, "count_solnsvs"),
@@ -174,7 +179,7 @@ class Track:
             "latitude_sigma_m",
             "longitude_sigma_m",
             "height_sigma_m",
-            "horizontal_sigma_m",
+            "horizontal_rms_m",
             "speed_sigma_m_s",
             "vertical_speed_sigma_m_s",
             "satellites",
@@ -262,6 +267,13 @@ def _bounds_report(bounds: BoundingBox) -> dict[str, float] | None:
 
 
 def _point_feature(point: TrackPoint) -> dict[str, object]:
+    precision = PositionPrecision(
+        source=point.source,
+        east_std_m=point.longitude_sigma_m,
+        north_std_m=point.latitude_sigma_m,
+        up_std_m=point.height_sigma_m,
+        epoch_gps_seconds=point.timestamp if math.isfinite(point.timestamp) else None,
+    )
     return {
         "type": "Feature",
         "geometry": {
@@ -278,9 +290,7 @@ def _point_feature(point: TrackPoint) -> dict[str, object]:
             "satellites": point.satellites,
             "position_type": point.position_type,
             "source": point.source,
-            "latitude_sigma_m": point.latitude_sigma_m,
-            "longitude_sigma_m": point.longitude_sigma_m,
-            "height_sigma_m": point.height_sigma_m,
+            "precision": precision.as_dict() if precision.available else None,
             "correction_age_s": point.correction_age_s,
         },
     }

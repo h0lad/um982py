@@ -37,7 +37,7 @@ from examples.gnss_reflectometry.report import (
     signal_labels,
 )
 from examples.satellite_monitor import Constellation
-from um982py import export_rinex
+from um982py import Observations
 from um982py.antenna import AntennaLog, antenna_index, antenna_log
 from um982py.capture import DataLog, record_epoch
 from um982py.commands import Log
@@ -501,8 +501,8 @@ def _exports(
         for antenna, records in sources.items():
             if not records:
                 continue
-            result = export_rinex(
-                records, marker_name=f"GNSSIR-{antenna}", l2c_code=args.l2c_code
+            result = Observations(records).to_rinex(
+                marker_name=f"GNSSIR-{antenna}", l2c_code=args.l2c_code
             )
             destination = args.rinex_dir / f"{antenna}.obs"
             destination.parent.mkdir(parents=True, exist_ok=True)

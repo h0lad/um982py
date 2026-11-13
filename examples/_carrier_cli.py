@@ -12,9 +12,9 @@ from examples._console import (
     write_json,
 )
 from examples._console_capture import capture_logs
+from um982py import Observations
 from um982py.commands import Log
 from um982py.experimental.carrier import monitor_divergence, smooth_code
-from um982py.measurement import sample_series
 from um982py.stats import rms
 
 
@@ -53,7 +53,7 @@ def carrier_main(name: str, argv: Sequence[str] | None) -> int:
         [Log.RANGE],
         on_progress=progress_printer(name) if args.debug else None,
     )
-    groups = sample_series(data["RANGE"])
+    groups = Observations(data["RANGE"]).signals()
     result = []
     usable = 0
     for key, samples in groups.items():
