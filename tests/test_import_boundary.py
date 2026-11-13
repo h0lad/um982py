@@ -42,6 +42,20 @@ assert 'um982py.messages.layouts' in sys.modules
     subprocess.run([sys.executable, "-c", code, str(fixture)], check=True, timeout=10)
 
 
+def test_rtcm_decoder_loads_only_rtcm_layouts() -> None:
+    code = """
+import sys
+from um982py import decode_rtcm
+assert decode_rtcm
+assert 'um982py.messages.layouts.rtcm' in sys.modules
+assert 'um982py.messages.layouts.navigation' not in sys.modules
+assert 'um982py.messages.layouts.status' not in sys.modules
+from um982py.messages.layouts import LAYOUTS
+assert 'BESTNAV' in LAYOUTS
+"""
+    subprocess.run([sys.executable, "-c", code], check=True, timeout=10)
+
+
 def test_removed_compatibility_imports_are_not_exposed() -> None:
     import um982py
     import um982py.capture
@@ -50,6 +64,7 @@ def test_removed_compatibility_imports_are_not_exposed() -> None:
     assert not hasattr(um982py, "FirmwareLog")
     assert not hasattr(um982py, "gnss_range_samples")
     assert importlib.util.find_spec("um982py.logs") is None
+    assert importlib.util.find_spec("um982py.messages.rtcm_layouts") is None
 
     for name in ("capture_logs", "capture_records", "open_receiver", "capture_log"):
         assert not hasattr(um982py, name)

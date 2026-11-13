@@ -2,8 +2,7 @@
 
 from um982py.errors import ProtocolError
 from um982py.messages.frames import RtcmMessage
-from um982py.messages.record import Record, Value
-from um982py.messages.rtcm_layouts import (
+from um982py.messages.layouts.rtcm import (
     FIXED,
     GLO_HEADER,
     GPS_HEADER,
@@ -14,6 +13,7 @@ from um982py.messages.rtcm_layouts import (
     STATION,
     BitField,
 )
+from um982py.messages.record import Record, Value
 from um982py.protocol.binary import parse_rtcm
 
 STANDARD_RTCM_TYPES = frozenset(
