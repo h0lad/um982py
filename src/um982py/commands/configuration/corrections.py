@@ -154,6 +154,8 @@ def l_band(
 
     Actions are exclusive: DISABLE, ENABLE AUTO, ENABLE BEAMID <ID 1..7>,
     RELIABILITY <1..3>, DATUM, or TIMEOUT (0 disables, 90..600 s).
+    For L-band PPP-AR, reliability 1 favors faster convergence with lower
+    accuracy; 2 is the default; 3 favors accuracy with slower convergence.
     """
     if type(enabled) is not bool:
         raise ValueError("enabled must be a boolean")

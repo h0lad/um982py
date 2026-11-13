@@ -186,9 +186,9 @@ SPOOFINFO = Layout(
     "extended",
     (
         Field("position_type", "e", 0, 4),
-        Field("spoof_indicator", "u", 4, 4),
+        Field("spoof_indicator", "i", 4, 4),
         *(
-            Field(f"field_{i + 1:02}", "x" if i < 5 else "i", i * 4, 4)
+            Field(f"field_{i + 1:02}", "x" if i < 5 else "u", i * 4, 4)
             for i in range(2, 20)
         ),
         *(Field(f"field_{i + 21:02}", "x", 80 + i * 8, 8) for i in range(4)),

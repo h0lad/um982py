@@ -260,7 +260,8 @@ class Log(StrEnum):
 
         ``rate_hz`` uses documented N4 rates. Actual support depends on the
         receiver, firmware, signal group and log. ``interval`` is in seconds.
-        FREQJAMSTATUS, HWSTATUS, JAMSTATUS and RTCSTATUS are limited to 1 Hz.
+        FREQJAMSTATUS, HWSTATUS, JAMSTATUS, PPSSTATUS and RTCSTATUS are
+        limited to 1 Hz.
         EVENTFLAG also supports ``Trigger.ONCE``; enable GGA output alongside it.
         """
         if isinstance(interval, Trigger):
@@ -269,7 +270,14 @@ class Log(StrEnum):
         else:
             interval = logging.output_interval(interval, rate_hz)
         if (
-            self in (Log.FREQJAMSTATUS, Log.HWSTATUS, Log.JAMSTATUS, Log.RTCSTATUS)
+            self
+            in (
+                Log.FREQJAMSTATUS,
+                Log.HWSTATUS,
+                Log.JAMSTATUS,
+                Log.PPSSTATUS,
+                Log.RTCSTATUS,
+            )
             and not isinstance(interval, Trigger)
             and interval < 1
         ):
@@ -293,6 +301,11 @@ class Log(StrEnum):
         return Command(command.text, command.matches, self.decode)
 
     def decode(self, message: Message) -> Record:
+        """Decode a log body.
+
+        PPSSTATUS and SPOOFINFO expose the R1.16 field names as aliases for
+        the original numbered fields. PPS observation offsets use 0.01 ns.
+        """
         if (
             isinstance(message, BinaryMessage)
             and self.definition.binary_command is None

@@ -39,7 +39,8 @@ def test_unsupported_rates_are_rejected(rate: float) -> None:
 
 
 @pytest.mark.parametrize(
-    "log", [Log.FREQJAMSTATUS, Log.HWSTATUS, Log.JAMSTATUS, Log.RTCSTATUS]
+    "log",
+    [Log.FREQJAMSTATUS, Log.HWSTATUS, Log.JAMSTATUS, Log.PPSSTATUS, Log.RTCSTATUS],
 )
 def test_status_logs_limit_periodic_output_to_at_most_one_hertz(log: Log) -> None:
     for interval in (0.05, 0.5, 0.999):

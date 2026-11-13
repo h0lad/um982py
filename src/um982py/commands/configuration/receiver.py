@@ -15,7 +15,8 @@ SIGNAL_GROUP_BANDS: dict[int, str] = {
     "GLO G1/G2/G3, GAL E1/E5a/E5b/E6, QZSS L1C/A/L1C/L1S/L2C/L5, NavIC L5",
     3: "BDS B1I/B3I/B2a/B2b-PPP (B1C availability varies), "
     "GPS L1C/A/L2C/L5, GLO G1/G2, GAL E1/E5a/E5b/E6, "
-    "QZSS L1C/A/L1C/B/L1S/L2C/L5/L6E/L6D (UM982 master, 20 Hz; firmware dependent)",
+    "QZSS L1C/A/L1C/B/L1S/L2C/L5/L6E/L6D, L-band "
+    "(UM982 master, 20 Hz with supported firmware and logs; product dependent)",
     4: "BDS B1I/B2a/B3I, GPS L1C/A/L2C/L5, GLO G1/G2, GAL E1/E5a/E5b, "
     "QZSS L1C/A/L1C/B/L1S/L2C/L5 (firmware dependent)",
     5: "BDS B1I/B2a/B3I, GPS L1C/A/L2C/L2P, GLO G1/G2, GAL E1/E5b, "
@@ -89,17 +90,23 @@ def signal_group(
     master: int,
     slave: int | None = None,
     *,
-    product: Literal["UM982", "UM980", "UB9A0"] = "UM982",
+    product: Literal["UM982", "UM982C", "UM980", "UM980C", "UM981C", "UB9A0"] = "UM982",
 ) -> Command[CommandResponse]:
     """Set signal groups; the receiver saves a change and resets automatically.
 
-    UM982 group 7/0 is documented for base-station mode only. This command
-    builder does not check the receiver's operating mode.
+    UM982 group 7/0 is documented for base-station mode only. Group 10 on
+    UM980 requires Build 17548 or later, and on UB9A0 Build 18455 or later.
+    Actual signal support depends on product and firmware.
     """
     if type(master) is not int or (slave is not None and type(slave) is not int):
         raise ValueError("Signal group numbers must be integers")
-    if product != "UM982":
-        allowed = {"UM980": (1, 2, 8), "UB9A0": (2, 9)}
+    if product not in ("UM982", "UM982C"):
+        allowed = {
+            "UM980": (1, 2, 8, 10),
+            "UM980C": (10,),
+            "UM981C": (10,),
+            "UB9A0": (2, 9, 10),
+        }
         if (
             product not in allowed
             or master not in allowed[product]
@@ -108,8 +115,11 @@ def signal_group(
             raise ValueError("Unsupported single-antenna signal group")
         return action(f"CONFIG SIGNALGROUP {master}")
     selected_slave = 0 if slave is None else slave
-    if (master, selected_slave) not in ((4, 5), (3, 6), (5, 0), (7, 0)):
-        raise ValueError("Unsupported documented UM982 signal group pair")
+    pairs: tuple[tuple[int, int], ...] = ((4, 5), (3, 6), (7, 0))
+    if product == "UM982":
+        pairs += ((5, 0),)
+    if (master, selected_slave) not in pairs:
+        raise ValueError(f"Unsupported documented {product} signal group pair")
     suffix = f" {selected_slave}" if slave is not None else ""
     return action(f"CONFIG SIGNALGROUP {master}{suffix}")
 

@@ -171,6 +171,8 @@ def test_binary_version_rejects_non_ascii_fields() -> None:
         (63, "UMD980"),
         (64, "UM980C"),
         (65, "UM982C"),
+        (71, "UMD982C"),
+        (94, "UM982A"),
         (999, "999"),
     ],
 )
