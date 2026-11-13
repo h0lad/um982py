@@ -54,3 +54,22 @@ def test_monitor_does_not_treat_missing_corrections_as_fresh() -> None:
         "fix_quality_not_allowed",
         "correction_age_unknown",
     )
+
+
+def test_monitor_reports_ongoing_outages_and_correction_age() -> None:
+    monitor = PositionMonitor(LiveLimits(max_gap_s=3, max_correction_age_s=4))
+    missing = monitor.status(now=9)
+    assert not missing.accepted and missing.reasons == ("position_unavailable",)
+    report = monitor.observe(update(10))
+    assert monitor.status(now=12).accepted
+    assert monitor.status(now=12).assessment is report
+    stale = monitor.status(now=14)
+    assert stale.age_s == 4
+    assert stale.reasons == ("position_stale", "correction_age_exceeded")
+    assert not stale.accepted
+    with pytest.raises(ValueError, match="monotonic"):
+        monitor.status(now=9)
+    monitor.observe(update(15))
+    assert monitor.status(now=15).reasons == ("gap_exceeded",)
+    monitor.observe(update(16))
+    assert monitor.status(now=16).accepted

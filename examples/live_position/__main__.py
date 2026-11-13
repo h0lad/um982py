@@ -7,12 +7,13 @@ from contextlib import closing
 from threading import Event
 
 from um982py import (
+    LiveLimits,
+    PositionMonitor,
     PositionSession,
     Receiver,
     geojson_feature,
 )
 from um982py.commands import Log
-from um982py.live_quality import LiveLimits, PositionMonitor
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -5,7 +5,8 @@ from math import isfinite
 from typing import Any, Literal, Protocol, cast
 
 from um982py.live import PositionUpdate
-from um982py.messages.navigation import Fix
+from um982py.messages.enums import PositionType
+from um982py.messages.navigation import BestNavigation, Fix
 
 
 class RosTime(Protocol):
@@ -25,11 +26,13 @@ class RosNavSatStatus(Protocol):
 
 class RosNavSatFix(Protocol):
     COVARIANCE_TYPE_UNKNOWN: int
+    COVARIANCE_TYPE_DIAGONAL_KNOWN: int
     header: RosHeader
     status: RosNavSatStatus
     latitude: float
     longitude: float
     altitude: float
+    position_covariance: list[float]
     position_covariance_type: int
 
 
@@ -70,7 +73,7 @@ def geojson_feature(
 
 
 def navsatfix(
-    fix: Fix,
+    fix: Fix | BestNavigation,
     *,
     stamp: RosTime,
     frame_id: str,
@@ -80,8 +83,11 @@ def navsatfix(
 ) -> RosNavSatFix:
     """Build a ROS 2 NavSatFix using an application-supplied ROS timestamp.
 
-    Supply the frame, augmentation status and service mask. By default, GGA
-    quality 1 is valid and unaugmented. Covariance is unknown.
+    Supply the frame, augmentation status and service mask. By default, only
+    unaugmented GGA quality 1 or BESTNAV SINGLE is reported as a valid fix;
+    other solution types require an explicit status. BESTNAV standard deviations
+    produce an ENU diagonal covariance when all three are available. The
+    receiver reports estimates, not an independently verified error bound.
     """
     if reference_frame != "WGS84":
         raise ValueError("NavSatFix coordinates must be WGS84")
@@ -92,9 +98,16 @@ def navsatfix(
     if not isinstance(service, int) or not 0 <= service <= 65535:
         raise ValueError("service must be an unsigned 16-bit bitmask")
     if status is None:
-        status = 0 if fix.valid and fix.quality == 1 else -1
+        unaugmented = (
+            fix.quality == 1
+            if isinstance(fix, Fix)
+            else fix.position_type in (PositionType.SINGLE, "SINGLE")
+        )
+        status = 0 if fix.valid and unaugmented else -1
     if status >= 0 and not fix.valid:
-        raise ValueError("a valid ROS status requires a valid GGA fix")
+        raise ValueError("a valid ROS status requires a valid position")
+    if status >= 0 and isinstance(fix, BestNavigation) and fix.datum != "WGS84":
+        raise ValueError("BESTNAV datum must be WGS84")
     if status >= 0 and (
         fix.latitude is None
         or fix.longitude is None
@@ -121,19 +134,27 @@ def navsatfix(
     message.longitude = (
         fix.longitude if status >= 0 and fix.longitude is not None else float("nan")
     )
-    message.altitude = (
-        fix.altitude_msl + fix.geoid_separation
-        if status >= 0
-        and fix.altitude_msl is not None
-        and fix.geoid_separation is not None
-        else float("nan")
-    )
-    if (
-        fix.altitude_msl is not None
-        and fix.geoid_separation is not None
-        and status >= 0
-        and not isfinite(message.altitude)
-    ):
+    height = fix.ellipsoidal_height if status >= 0 else None
+    message.altitude = height if height is not None else float("nan")
+    if height is not None and not isfinite(height):
         raise ValueError("invalid ellipsoidal height")
     message.position_covariance_type = message.COVARIANCE_TYPE_UNKNOWN
+    if status >= 0 and isinstance(fix, BestNavigation):
+        east, north, up = fix.longitude_std_m, fix.latitude_std_m, fix.height_std_m
+        if east is not None and north is not None and up is not None:
+            variances = (east * east, north * north, up * up)
+            if not all(isfinite(value) for value in variances):
+                raise ValueError("position covariance exceeds float range")
+            message.position_covariance = [
+                variances[0],
+                0.0,
+                0.0,
+                0.0,
+                variances[1],
+                0.0,
+                0.0,
+                0.0,
+                variances[2],
+            ]
+            message.position_covariance_type = message.COVARIANCE_TYPE_DIAGONAL_KNOWN
     return message

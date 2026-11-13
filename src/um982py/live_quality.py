@@ -42,6 +42,19 @@ class LiveAssessment:
         return not self.reasons
 
 
+@dataclass(frozen=True, slots=True)
+class LiveStatus:
+    """The latest assessment and its age, including an ongoing outage."""
+
+    assessment: LiveAssessment | None
+    age_s: float | None
+    reasons: tuple[str, ...]
+
+    @property
+    def accepted(self) -> bool:
+        return not self.reasons
+
+
 class PositionMonitor:
     """Assess successive updates using host-monotonic arrival intervals.
 
@@ -52,6 +65,38 @@ class PositionMonitor:
     def __init__(self, limits: LiveLimits) -> None:
         self.limits = limits
         self._previous: PositionUpdate | None = None
+        self._latest: LiveAssessment | None = None
+
+    def status(self, *, now: float | None = None) -> LiveStatus:
+        """Assess freshness without waiting for another update.
+
+        Times use the host monotonic clock. A correction age is advanced by
+        the elapsed time since arrival; receiver and transport latency are not
+        included. Connection health must be checked separately.
+        """
+        latest = self._latest
+        if latest is None:
+            return LiveStatus(None, None, ("position_unavailable",))
+        current = monotonic() if now is None else now
+        received = latest.update.received_monotonic
+        if not isfinite(current) or current < received:
+            raise ValueError("now must be a compatible monotonic time")
+        age = current - received
+        reasons = list(latest.reasons)
+        if self.limits.max_gap_s is not None and age > self.limits.max_gap_s:
+            reasons.append("position_stale")
+        correction_limit = self.limits.max_correction_age_s
+        correction_age = latest.update.fix.correction_age_s
+        if (
+            correction_limit is not None
+            and correction_age is not None
+            and isfinite(correction_age)
+            and correction_age >= 0
+            and correction_age + age > correction_limit
+            and "correction_age_exceeded" not in reasons
+        ):
+            reasons.append("correction_age_exceeded")
+        return LiveStatus(latest, age, tuple(reasons))
 
     def age(self, *, now: float | None = None) -> float | None:
         """Seconds since the latest update, or None before the first update."""
@@ -128,5 +173,7 @@ class PositionMonitor:
                     reasons.append("displacement_rate_exceeded")
         if self.limits.max_displacement_rate_m_s is not None and rate is None:
             reasons.append("displacement_rate_unknown")
+        assessment = LiveAssessment(update, gap, rate, tuple(reasons))
         self._previous = update
-        return LiveAssessment(update, gap, rate, tuple(reasons))
+        self._latest = assessment
+        return assessment

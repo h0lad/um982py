@@ -66,6 +66,8 @@ prediction; the signature alone does not prove prediction.
 | Read position, heading, or velocity | `receiver.fix()`, `receiver.heading()`, `receiver.best_navigation()` |
 | Query one receiver log | `receiver.read_log(Log.BESTNAV)` |
 | Inspect satellites and their signals | `receiver.satellites()` |
+| Check live position freshness | `PositionMonitor(LiveLimits(max_gap_s=...)).status()` |
+| Convert a position to ROS 2 | `navsatfix(position, stamp=..., frame_id=..., reference_frame="WGS84")` |
 | Poll positions | `receiver.poll_positions(interval=1)` |
 | Stream receiver output | `with receiver.stream_positions(duration=60) as positions: ...` |
 | Configure periodic receiver output | `receiver.set_output_rate(Log.GPGGA, 10)` |
@@ -108,6 +110,39 @@ The receiver determines the delivered rate; repeated or missing epochs are
 not concealed. `AsyncReceiver` offers the same methods with `async with` and
 `async for`. `capture_live()` always returns a dictionary keyed by log name,
 including when capturing one log; interrupted captures use the same shape.
+
+For a reconnecting GGA session, pass each `PositionUpdate` to a
+`PositionMonitor`. An application timer can call `monitor.status()` even when
+no new fix arrives. It reports a missing or stale position and advances the
+reported correction age since arrival. Check `PositionSession.health()` for
+connection state. See [live position](examples/live_position/README.md).
+
+The optional ROS 2 `navsatfix()` adapter accepts a GGA `Fix` or a
+`BestNavigation` position. For BESTNAV, it supplies an east/north/up diagonal
+covariance if all three receiver-reported standard deviations are available;
+otherwise covariance is unknown. The caller supplies the ROS timestamp, frame,
+and, for augmented fixes, the appropriate status and service mask. Install and
+source ROS 2's `sensor_msgs` separately.
+
+For example, inside a ROS 2 node that has chosen the appropriate status:
+
+```python
+from um982py import navsatfix
+
+
+def to_ros_position(node, position, status):
+    return navsatfix(
+        position,
+        stamp=node.get_clock().now().to_msg(),
+        frame_id="gnss_antenna",
+        reference_frame="WGS84",
+        status=status,
+    )
+```
+
+The timestamp in this example is the host's current ROS time, not a
+receiver-derived measurement timestamp. Pass a matched measurement timestamp
+if the application needs one.
 
 ## Read RTCM correction fields
 

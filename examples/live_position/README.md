@@ -25,7 +25,33 @@ for GeoJSON lines. GeoJSON height, when available, is ellipsoidal height.
 
 The optional `--max-gap` and `--max-correction-age` checks report assessment
 reasons with each fix. Arrival gaps are observed when the next fix arrives. To
-detect an outage before the next fix, check `PositionMonitor.age()` or the
-session health from another thread.
+detect an outage before the next fix, check `PositionMonitor.status()` or the
+session health from another thread. `status()` reports `position_unavailable`
+before the first update and `position_stale` when its age exceeds `max_gap_s`.
+It also advances the last receiver-reported correction age by the time since
+arrival. This does not include receiver or transport latency. Connection health
+remains available separately from `PositionSession.health()`.
+
+For an application with an update callback and a timer, use the same monitor
+in both callbacks:
+
+```python
+from um982py import LiveLimits, PositionMonitor
+
+monitor = PositionMonitor(LiveLimits(max_gap_s=3, max_correction_age_s=5))
+
+
+def on_position(update):
+    monitor.observe(update)
+
+
+def on_timer():
+    status = monitor.status()
+    if not status.accepted:
+        print("Position unavailable:", status.reasons)
+```
+
+Register `on_position` with the code consuming `PositionSession.positions()`
+and run `on_timer` independently, so it also runs during a receiver outage.
 
 See the [Unicore receiver reference](https://en.unicore.com/uploads/file/20241219/Unicore_Reference_Commands_Manual_For_N4_High_Precision_Products_V2_EN_R1.4.pdf) for GGA output.
