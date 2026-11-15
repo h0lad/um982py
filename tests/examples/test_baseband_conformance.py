@@ -130,8 +130,9 @@ def test_main_attributes_captured_notices_by_family(tmp_path: Path) -> None:
         b"$ErrTrap:CmdDulDef:TRACKMODE\r\n"
     )
     destination = tmp_path / "replay.json"
-    assert main(["--replay", str(capture), "--json", str(destination)]) == 0
+    assert main(["--replay", str(capture), "--json", str(destination)]) == 1
     payload = json.loads(destination.read_text())
+    assert payload["status"] == "insufficient_data"
     verdicts = {
         row["command"]: row["verdict"]
         for row in payload["rows"]

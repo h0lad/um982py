@@ -22,6 +22,11 @@ from um982py.experimental import BasebandNotice, capture_baseband_notices, scan_
 
 def _payload(notices: Sequence[BasebandNotice]) -> dict[str, object]:
     return {
+        "status": "observed" if notices else "no_notices_observed",
+        "interpretation": (
+            "Event notices describe observed transitions; "
+            "silence does not establish receiver state."
+        ),
         "notices": [notice.name for notice in notices],
         "state": asdict(apply_notices(notices)),
         "solutions": solution_summary(notices),

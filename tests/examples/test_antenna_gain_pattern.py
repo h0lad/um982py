@@ -171,3 +171,26 @@ def test_sky_samples_can_select_galileo_e6_signal() -> None:
     assert joined[0].constellation is Constellation.GALILEO
     assert joined[0].prn == 7
     assert joined[0].cn0 == 38.5
+
+
+def test_default_output_is_one_json_document(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import json
+
+    from examples.antenna_gain_pattern import __main__ as cli
+
+    monkeypatch.setattr(
+        cli,
+        "capture_records",
+        lambda *args, **kwargs: {
+            "SATVIS2": (Record("SATVIS2", ()),),
+            "RANGE": (Record("RANGE", ()),),
+        },
+    )
+    monkeypatch.setattr(
+        cli, "epoch_sky_samples", lambda *args, **kwargs: synthetic_samples()
+    )
+    assert cli.main(["--replay", "unused.bin"]) == 0
+    report = json.loads(capsys.readouterr().out)
+    assert report["fit"]["sample_count"] == SYNTHETIC_SAMPLES

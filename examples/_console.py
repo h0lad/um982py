@@ -107,7 +107,8 @@ class ExampleParser(argparse.ArgumentParser):
                 if name in positive and isinstance(item, (int, float)) and item <= 0:
                     self.error(f"--{name.replace('_', '-')} must be positive")
                 if (
-                    name in ("join_tolerance", "sustained_seconds")
+                    name
+                    in ("join_tolerance", "sustained_seconds", "position_tolerance")
                     and isinstance(item, (int, float))
                     and item < 0
                 ):
@@ -127,31 +128,10 @@ class ExampleParser(argparse.ArgumentParser):
         ):
             self.error("choose --replay or --port for this run")
         recording_path = getattr(parsed, "record", None)
-        outputs = {
-            name: value.resolve()
-            for name in ("record", "json", "csv", "geojson", "output")
-            if isinstance((value := getattr(parsed, name, None)), Path)
-        }
-        for name, destination in outputs.items():
-            for other, other_destination in outputs.items():
-                if name != other and destination == other_destination:
-                    self.error(f"--{name} and --{other} need different output paths")
-            for source in (
-                "replay",
-                "ephemeris",
-                "position",
-                "satvis",
-                "ionosphere",
-                "reference",
-                "training",
-                "labels",
-                "sp3",
-                "outages",
-                "navigation",
-            ):
-                path = getattr(parsed, source, None)
-                if isinstance(path, Path) and path.resolve() == destination:
-                    self.error(f"--{name} must not overwrite --{source} input")
+        try:
+            validate_file_paths(vars(parsed))
+        except ValueError as error:
+            self.error(str(error))
         if recording_path is not None:
             if (
                 getattr(parsed, "replay", None) is not None
@@ -162,6 +142,60 @@ class ExampleParser(argparse.ArgumentParser):
             if getattr(parsed, "port", None) is None:
                 self.error("--record requires --port for a live run")
         return parsed
+
+
+def validate_file_paths(arguments: Mapping[str, object]) -> None:
+    """Keep output files distinct from every Path input, including hardlinks.
+
+    File arguments must use ``type=Path``. The explicit output names avoid
+    confusing inputs such as ``reference_json`` with destinations.
+    """
+    output_names = {
+        "record",
+        "json",
+        "csv",
+        "geojson",
+        "output",
+        "plot",
+        "markdown",
+        "timeline_csv",
+        "checks_csv",
+        "differences_csv",
+        "pairs_csv",
+        "elevation_csv",
+        "measurements_csv",
+        "samples_csv",
+        "spectra_csv",
+        "secondary_output",
+        "survey_output",
+    }
+    paths = {
+        name: tuple(item for item in values if isinstance(item, Path))
+        for name, value in arguments.items()
+        for values in [value if isinstance(value, (list, tuple)) else (value,)]
+    }
+    outputs = {name: values for name, values in paths.items() if name in output_names}
+    for name, destinations in outputs.items():
+        for destination in destinations:
+            for other, sources in paths.items():
+                if other == name:
+                    continue
+                for source in sources:
+                    if destination.resolve() == source.resolve() or (
+                        destination.exists()
+                        and source.exists()
+                        and destination.samefile(source)
+                    ):
+                        option = name.replace("_", "-")
+                        other_option = other.replace("_", "-")
+                        if other in outputs:
+                            raise ValueError(
+                                f"--{option} and --{other_option} "
+                                "need different output paths"
+                            )
+                        raise ValueError(
+                            f"--{option} must not overwrite --{other_option} input"
+                        )
 
 
 def run(main: Callable[[], int]) -> int:

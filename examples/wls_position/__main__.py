@@ -14,13 +14,14 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import capture_records
+from examples._console_capture import capture_records, selected_log
 from examples.wls_position import (
     PositionSolution,
     geodetic_position_error,
     solve_position,
 )
 from examples.wls_position import measurements as wls_measurements
+from um982py import capture
 from um982py.capture import decode_records, read_frames, record_epoch
 from um982py.commands import Log
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef
@@ -122,10 +123,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.ephemeris is not None
             else list(range_frames)
         )
-        range_records = decode_records(range_frames, Log.RANGE)
-        position_records = decode_records(position_frames, Log.BESTPOS)
+        range_records = decode_records(range_frames, selected_log(args, Log.RANGE))
+        position_records = decode_records(
+            position_frames, selected_log(args, Log.BESTPOS)
+        )
         if not position_records:
-            position_records = decode_records(position_frames, Log.BESTXYZ)
+            position_records = decode_records(
+                position_frames, selected_log(args, Log.BESTXYZ)
+            )
         ephemeris_records = decode_records(ephemeris_frames, Log.GPSEPH)
     if not range_records or not position_records:
         parser.error("a RANGE frame and a BESTPOS/BESTXYZ frame are required")
@@ -142,7 +147,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     if not measurements:
         parser.error("no GPS L1 observations have a matching ephemeris")
-    position = wls_measurements.select_position(
+    position = capture.select_position(
         position_records, absolute_epoch, args.position_tolerance
     )
     truth = receiver_ecef(position)
@@ -163,7 +168,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
         )
     write_json(payload, args.json)
-    return 0
+    return 0 if solution.converged else 1
 
 
 if __name__ == "__main__":

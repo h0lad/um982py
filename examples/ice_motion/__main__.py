@@ -1,12 +1,12 @@
 """Estimate ECEF and local ENU motion from a position time series."""
 
-import argparse
 import json
 import math
 from collections.abc import Sequence
 from itertools import pairwise
 from pathlib import Path
 
+from examples._console import ExampleParser
 from um982py.capture import load_records, record_epoch
 from um982py.commands import Log
 from um982py.field_data import file_sha256, read_ecef_positions
@@ -14,7 +14,7 @@ from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument("--input", type=Path, help="CSV: gps_seconds,x_m,y_m,z_m")
     source.add_argument("--replay", type=Path, help="capture containing BESTNAVXYZ")

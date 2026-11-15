@@ -1,14 +1,14 @@
 """Process rover and base RINEX files with RTKLIB rnx2rtkp."""
 
-import argparse
 from collections.abc import Sequence
 from pathlib import Path
 
+from examples._console import ExampleParser
 from um982py import run_ppk
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     parser.add_argument("rover", type=Path)
     parser.add_argument("base", type=Path)
     parser.add_argument("navigation", type=Path, nargs="+")

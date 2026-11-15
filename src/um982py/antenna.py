@@ -92,22 +92,37 @@ class AntennaLog:
         return record
 
 
-def antenna_log(log: Log | AntennaLog, antenna: int | str = 1) -> Log | AntennaLog:
-    """Select ANT2 where supported and leave receiver-wide logs unchanged."""
+def antenna_log(
+    log: Log | AntennaLog, antenna: int | str = 1, *, swapped: bool = False
+) -> Log | AntennaLog:
+    """Select an antenna, optionally exchanging roles after selection.
+
+    Receiver-wide logs keep their scope. Explicit :class:`AntennaLog` routes
+    are already selected and only participate in the optional swap.
+    """
     selected = antenna_index(antenna)
-    if isinstance(log, AntennaLog) or selected == 1:
-        return log
-    if log in (
+    if isinstance(log, AntennaLog):
+        return swap_antenna(log) if swapped else log
+    primary_only = (
         Log.PTOBSINFO,
         Log.BESTGNSSPOS,
         Log.BESTGNSSVEL,
         Log.BESTSATS,
         Log.PPPDOP,
         Log.TROPINFO,
-    ):
+    )
+    # Resolve logical primary requests before checking availability. ANT2
+    # plus a role swap is ANT1, even for quantities only available on ANT1.
+    if swapped and (log in _SECONDARY or log in primary_only):
+        selected = 3 - selected
+        swapped = False
+    if selected == 1:
+        return swap_antenna(log) if swapped else log
+    if log in primary_only:
         raise ValueError(f"{log.value} has no verified secondary-antenna equivalent")
     wire = _SECONDARY.get(log)
-    return log if wire is None else AntennaLog(log, wire)
+    result = log if wire is None else AntennaLog(log, wire)
+    return swap_antenna(result) if swapped else result
 
 
 _AMBIGUOUS = {
@@ -152,7 +167,14 @@ def swap_antenna(log: Log | AntennaLog) -> Log | AntennaLog:
     """Measure the same quantity through the other antenna input.
 
     An :class:`AntennaLog` keeps its logical key when the wire input changes.
+    Its logical source also disambiguates shared secondary navigation logs.
     """
     logical = log.logical if isinstance(log, AntennaLog) else log
     wire = log.wire if isinstance(log, AntennaLog) else log
+    secondary = _SECONDARY.get(logical)
+    if secondary is not None:
+        if wire == logical:
+            return AntennaLog(logical, secondary)
+        if wire == secondary:
+            return AntennaLog(logical, logical)
     return AntennaLog(logical, mirror(wire))

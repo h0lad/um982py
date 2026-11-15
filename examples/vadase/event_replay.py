@@ -1,6 +1,5 @@
 """Compare Doppler and carrier-phase motion with independent velocities."""
 
-import argparse
 import csv
 import itertools
 import json
@@ -8,6 +7,7 @@ import math
 from collections.abc import Sequence
 from pathlib import Path
 
+from examples._console import ExampleParser
 from um982py.field_data import file_sha256, nearest_epoch
 
 
@@ -21,7 +21,7 @@ def _vector(values: object) -> list[float]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     parser.add_argument(
         "--doppler", type=Path, required=True, help="examples.doppler_velocity JSON"
     )

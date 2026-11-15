@@ -75,6 +75,7 @@ prediction; the signature alone does not prove prediction.
 | Start satellite PPP | `receiver.start_ppp(service="E6-HAS")` |
 | Capture one log or several logs | `capture_live()` |
 | Read a saved capture or one message | `load_records(path, Log.RANGE)` or `decode_message(data)` |
+| Match a receiver position to an observation epoch | `um982py.capture.select_position(records, epoch, tolerance)` |
 | Decode an already framed message | `decode_log(frame)` |
 | Decode RTCM correction fields | `decode_rtcm(data)` or `decode_message(data)` |
 | Mask an elevation/azimuth sector | `receiver.execute(masking.azimuth(20, 90, 15, 45))` |
@@ -503,6 +504,17 @@ accept these overrides in seconds and restore previous subscriptions on exit.
 Overrides must name selected periodic logs; event-only logs keep their
 ONCHANGED trigger. When stopping a live iterator early, close it to restore
 subscriptions.
+
+When combining observation and position logs, pass the observation's absolute
+GPS seconds from `um982py.capture.record_epoch()` to `select_position()`. It
+selects the nearest computed, finite receiver position within the supplied
+tolerance in seconds and raises `ValueError` when none qualifies. Absolute
+epochs preserve week boundaries. Keep the records from the same receiver and
+antenna; epoch matching cannot establish their physical provenance.
+
+For low-level log selection, `um982py.antenna.antenna_log(Log.RANGE, antenna=2,
+swapped=True)` applies antenna selection and then exchanges roles, selecting
+physical ANT1 in this example. Decoded records retain the real wire-log identity.
 
 ### Get the direction of a vehicle
 

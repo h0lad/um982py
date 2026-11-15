@@ -1,6 +1,5 @@
 """Compare GNSS-IR reflector heights with a water-level gauge."""
 
-import argparse
 import csv
 import importlib
 import json
@@ -10,11 +9,12 @@ from collections.abc import Sequence
 from itertools import pairwise
 from pathlib import Path
 
+from examples._console import ExampleParser
 from um982py.field_data import file_sha256, nearest_epoch
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     parser.add_argument(
         "--arcs", type=Path, nargs="+", required=True, help="GNSS-IR arc CSV files"
     )

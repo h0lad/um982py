@@ -82,14 +82,18 @@ def solve_position(
     max_iterations: int = DEFAULT_MAX_ITERATIONS,
     tolerance: float = DEFAULT_TOLERANCE_METRES,
 ) -> PositionSolution:
-    """Gauss-Newton weighted least-squares solution for position and clock."""
+    """Solve one constellation, one independent code range per satellite.
+
+    Mixed constellations need inter-system clock states; repeated satellites
+    cannot be counted as independent geometry or RAIM redundancy here.
+    """
     if len(measurements) < MINIMUM_SATELLITES:
         raise ValueError("at least four measurements are required")
-    if max_iterations < 1:
+    if type(max_iterations) is not int or max_iterations < 1:
         raise ValueError("max_iterations must be positive")
     if not math.isfinite(tolerance) or tolerance <= 0:
         raise ValueError("tolerance must be finite and positive")
-    if not all(math.isfinite(value) for value in initial):
+    if len(initial) != 4 or not all(math.isfinite(value) for value in initial):
         raise ValueError("initial position and clock must be finite")
     for measurement in measurements:
         values = (
@@ -104,6 +108,10 @@ def solve_position(
             raise ValueError("measurement values must be finite")
     if any(measurement.pseudorange_std <= 0 for measurement in measurements):
         raise ValueError("pseudorange_std must be positive")
+    if len({item.system for item in measurements}) != 1:
+        raise ValueError("one constellation is required by the single-clock model")
+    if len({(item.system, item.prn) for item in measurements}) != len(measurements):
+        raise ValueError("one independent measurement per satellite is required")
     state = [initial[0], initial[1], initial[2], initial[3] * SPEED_OF_LIGHT]
     residual_norms = [_weighted_residual_norm(measurements, state)]
     converged = False

@@ -27,6 +27,9 @@ and commands with unverified effects. Use it only if you intend those changes.
 
 Without a baseband reply, the JSON `status` is `insufficient_data`. An
 application-level acknowledgement alone does not count as a baseband reply.
+Missing command-family evidence returns exit code 1 while retaining the
+attributed and unattributed notices. Partial evidence does not establish
+command conformance.
 
 ## References
 

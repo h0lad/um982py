@@ -44,7 +44,11 @@ def resolve(name: str) -> Log:
 
 
 def _targets(
-    wanted: Sequence[str], extra: Sequence[str], antenna: str = "primary"
+    wanted: Sequence[str],
+    extra: Sequence[str],
+    antenna: str = "primary",
+    *,
+    swapped: bool = False,
 ) -> tuple[tuple[str, Log], ...]:
     unknown = set(wanted) - dict(families()).keys()
     if unknown:
@@ -53,7 +57,7 @@ def _targets(
     names.extend((name, name) for name in extra)
     targets: dict[str, tuple[str, Log]] = {}
     for constellation, log_name in names:
-        selected = antenna_log(resolve(log_name), antenna)
+        selected = antenna_log(resolve(log_name), antenna, swapped=swapped)
         log = selected.wire if isinstance(selected, AntennaLog) else selected
         log.request(binary=True)
         targets.setdefault(log.value, (constellation, log))
@@ -81,9 +85,11 @@ def replay(
     wanted: Sequence[str],
     extra: Sequence[str] = (),
     antenna: str = "primary",
+    *,
+    swapped: bool = False,
 ) -> list[MessageHex]:
     """Annotate matching captured frames without changing receiver state."""
-    targets = _targets(wanted, extra, antenna)
+    targets = _targets(wanted, extra, antenna, swapped=swapped)
     return [view for frame in frames if (view := _annotate(frame, targets)) is not None]
 
 
@@ -93,11 +99,13 @@ def collect(
     wanted: Sequence[str],
     extra: Sequence[str] = (),
     antenna: str = "primary",
+    *,
+    swapped: bool = False,
 ) -> list[MessageHex]:
     """Subscribe the requested binary logs and annotate every frame."""
     if not isfinite(seconds) or seconds <= 0:
         raise ValueError("seconds must be finite and positive")
-    targets = _targets(wanted, extra, antenna)
+    targets = _targets(wanted, extra, antenna, swapped=swapped)
     messages: list[MessageHex] = []
     with ExitStack() as subscriptions:
         for _, log in targets:
@@ -183,21 +191,30 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not isfinite(args.seconds) or args.seconds <= 0:
         parser.error("--seconds must be finite and positive")
     try:
-        _targets(args.family, args.extra, args.antenna)
+        _targets(args.family, args.extra, args.antenna, swapped=args.swap_antennas)
     except ValueError as error:
         parser.error(str(error))
     if args.replay is not None:
         messages = replay(
-            iter_frames(args.replay), args.family, args.extra, args.antenna
+            iter_frames(args.replay),
+            args.family,
+            args.extra,
+            args.antenna,
+            swapped=args.swap_antennas,
         )
     else:
         with open_receiver(args) as receiver:
             messages = collect(
-                receiver, args.seconds, args.family, args.extra, args.antenna
+                receiver,
+                args.seconds,
+                args.family,
+                args.extra,
+                args.antenna,
+                swapped=args.swap_antennas,
             )
     if messages:
         text = "\n\n".join(render_text(message) for message in messages)
-        print(text)
+        print(text, file=sys.stdout if args.json is not None else sys.stderr)
     print(
         f"Nav hex: {len(messages)} annotated messages",
         file=sys.stderr,

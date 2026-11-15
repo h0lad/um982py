@@ -2,6 +2,11 @@
 
 Run these examples to read receiver data and analyze GNSS measurements.
 
+See the [reference review](REVIEW.md) for the intended use and evidence limits of
+all 79 projects. Workflow examples demonstrate library integration; scientific
+models and field experiments require the stated data and independent reference
+measurements before their results support an accuracy or physical claim.
+
 Run live examples through a local serial device or a transparent UART gateway
 specified as `--port tcp://host:port`. Configure the gateway's UART baud
 rate separately, since `--baud` applies only to local serial devices.
@@ -44,6 +49,12 @@ Replace `/dev/ttyUSB0` with your receiver's serial device. Many examples accept
 The recording destination must not already exist. Paths such as `captures/` and
 `products/` are placeholders. Supply your own files and create the directories
 as needed. The repository includes the files under `tests/fixtures/`.
+
+The shared parser rejects report paths that alias an input or another report,
+including symlinks and hardlinks. Use distinct destinations for JSON, CSV and
+other products. A successful command means its documented operation completed;
+inspect the report's status, convergence and alarms. In particular, zero detected
+events in an incomplete capture is not a clean bill of health.
 
 For periodic receiver logs, `--interval` sets the requested interval in seconds.
 Capture preserves native receiver epochs without interpolation or duplicated

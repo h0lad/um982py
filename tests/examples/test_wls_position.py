@@ -67,11 +67,9 @@ def test_formal_covariance_for_symmetric_satellite_geometry() -> None:
 def test_reference_position_must_be_computed_and_matched(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from examples.wls_position import measurements
+    from um982py import capture
 
-    monkeypatch.setattr(
-        measurements, "record_epoch", lambda record: record.real("epoch")
-    )
+    monkeypatch.setattr(capture, "record_epoch", lambda record: record.real("epoch"))
 
     def fix(epoch: float, status: str) -> Record:
         return Record(
@@ -90,9 +88,9 @@ def test_reference_position_must_be_computed_and_matched(
         fix(90, "SOL_COMPUTED"),
         fix(100.5, "SOL_COMPUTED"),
     )
-    assert measurements.select_position([bad, stale, valid], 100, 1) is valid
+    assert capture.select_position([bad, stale, valid], 100, 1) is valid
     with pytest.raises(ValueError, match="no valid"):
-        measurements.select_position([bad, stale], 100, 1)
+        capture.select_position([bad, stale], 100, 1)
 
 
 def test_ephemeris_selection_checks_health_issue_and_age() -> None:

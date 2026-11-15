@@ -1,6 +1,5 @@
 """Summarize station journal events and verify recorded artifact hashes."""
 
-import argparse
 import itertools
 import json
 from collections.abc import Sequence
@@ -8,11 +7,12 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
+from examples._console import ExampleParser
 from um982py.field_data import file_sha256
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     parser.add_argument("--directory", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--markdown", type=Path, help="optional readable summary")

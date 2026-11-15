@@ -9,6 +9,7 @@ import math
 import sys
 from pathlib import Path
 
+from examples._console import ExampleParser
 from um982py.field_data import file_sha256
 from um982py.science_experiments import (
     noise_multipath_summary,
@@ -129,11 +130,16 @@ def analyze_rows(
 
 
 def main(name: str) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     parser.add_argument(
-        "--input", required=True, help="prepared CSV input described in the README"
+        "--input",
+        type=Path,
+        required=True,
+        help="prepared CSV input described in the README",
     )
-    parser.add_argument("--json", help="output JSON file, defaulting to stdout")
+    parser.add_argument(
+        "--json", type=Path, help="output JSON file, defaulting to stdout"
+    )
     if name == "multifrequency_slips":
         parser.add_argument("--max-cycles", type=int, default=1)
         parser.add_argument("--gf-threshold-m", type=float, default=0.05)
@@ -144,12 +150,12 @@ def main(name: str) -> int:
         parser.add_argument("--max-gap-s", type=float, default=2.0)
     args = parser.parse_args()
     try:
-        result = analyze_rows(name, read_csv_rows(args.input), args)
+        result = analyze_rows(name, read_csv_rows(str(args.input)), args)
         output = (
             json.dumps(
                 {
                     "experiment": name,
-                    "input": args.input,
+                    "input": str(args.input),
                     "input_sha256": file_sha256(Path(args.input)),
                     "assumptions": {
                         "phase_fluctuations": [

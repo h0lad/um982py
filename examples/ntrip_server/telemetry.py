@@ -64,7 +64,9 @@ class Telemetry:
             )
 
     def sample(self, now: float, *, ready: bool) -> None:
-        if self.history and now - self.history[-1][0] < 1:
+        # Compare absolute deadlines: subtracting timestamps across a float
+        # precision boundary can turn a one-second cadence into 0.999999999 s.
+        if self.history and now < self.history[-1][0] + 1:
             return
         if self.rates and now - self.rates[-1][0] > 3:
             self.rates.clear()

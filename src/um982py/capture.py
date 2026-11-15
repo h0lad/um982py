@@ -14,6 +14,7 @@ from um982py.antenna import AntennaLog
 from um982py.commands import Log, Trigger, logging
 from um982py.commands.core import Command
 from um982py.errors import RecordingError, ResponseTimeout
+from um982py.geodesy import receiver_ecef
 from um982py.measurement import gps_epoch
 from um982py.messages import CommandResponse, Message, Record
 from um982py.protocol import StreamDecoder
@@ -39,6 +40,7 @@ __all__ = [
     "receive_records",
     "record_epoch",
     "replay_receiver",
+    "select_position",
     "uniform_interval",
 ]
 
@@ -65,6 +67,41 @@ def record_epoch(record: Record) -> float:
     if record.message is None:
         raise ValueError(f"{record.name} record carries no receiver timestamp")
     return epoch_seconds(record.message)
+
+
+def select_position(
+    records: Iterable[Record], epoch: float, tolerance: float
+) -> Record:
+    """Select the closest computed receiver position within a GPST time window.
+
+    ``epoch`` is absolute GPS seconds, and ``tolerance`` is seconds. Invalid,
+    untimestamped and near-geocentre positions are ignored. Equal-distance
+    matches prefer the earlier epoch, independently of capture arrival order.
+    Coordinates describe a terrestrial GNSS receiver, not a satellite orbit.
+    """
+    if not math.isfinite(epoch):
+        raise ValueError("position epoch must be finite")
+    if not math.isfinite(tolerance) or tolerance < 0:
+        raise ValueError("position tolerance must be finite and non-negative")
+    eligible = []
+    for record in records:
+        if record.get("p_sol_status") not in (0, "SOL_COMPUTED"):
+            continue
+        try:
+            xyz = receiver_ecef(record)
+            time = record_epoch(record)
+        except (KeyError, TypeError, ValueError):
+            continue
+        age = abs(time - epoch)
+        if (
+            all(math.isfinite(x) for x in xyz)
+            and math.dist(xyz, (0, 0, 0)) > 1e6
+            and age <= tolerance
+        ):
+            eligible.append((age, time, record))
+    if not eligible:
+        raise ValueError("no valid receiver position within the epoch tolerance")
+    return min(eligible, key=lambda item: (item[0], item[1]))[2]
 
 
 def latest_epoch(records: Sequence[Record]) -> tuple[Record, ...]:

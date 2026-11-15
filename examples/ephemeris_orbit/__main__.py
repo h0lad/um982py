@@ -54,6 +54,9 @@ def report(records: dict[str, list[Record]], seconds: float) -> dict[str, object
                 continue
             satellites.append(
                 {
+                    "prn": record.integer(
+                        {"GALEPH": "satid", "GLOEPH": "sloto"}.get(name, "prn")
+                    ),
                     "constellation": name.removesuffix("EPH"),
                     "position": [
                         round(state.x, 1),
@@ -66,6 +69,7 @@ def report(records: dict[str, list[Record]], seconds: float) -> dict[str, object
                 }
             )
     return {
+        "status": "propagated" if satellites else "insufficient_data",
         "seconds": seconds,
         "satellites": satellites,
         "position_uncertainty_note": "Broadcast orbit uncertainty is not calculated",
@@ -109,7 +113,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         file=sys.stderr,
     )
     write_json(payload, args.json)
-    return 0
+    return 0 if satellites else 1
 
 
 if __name__ == "__main__":

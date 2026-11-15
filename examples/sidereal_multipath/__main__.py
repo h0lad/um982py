@@ -14,10 +14,9 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import capture_logs
+from examples._console_capture import capture_logs, selected_log
 from examples.sidereal_multipath import SkyResidual, evaluate_repeatability
 from um982py import Observations
-from um982py.antenna import antenna_log
 from um982py.capture import load_records, record_epoch
 from um982py.commands import Log
 from um982py.measurement import RangeSample
@@ -98,7 +97,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         on_progress=progress_printer("sidereal_multipath") if args.debug else None,
     )
     training = sky_residuals(
-        load_records(args.training, antenna_log(Log.RANGE, args.antenna)),
+        load_records(args.training, selected_log(args, Log.RANGE)),
         load_records(args.training, Log.SATVIS2),
     )
     validation = sky_residuals(data["RANGE"], data["SATVIS2"])

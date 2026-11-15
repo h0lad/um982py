@@ -7,7 +7,7 @@ from collections.abc import Callable, Sequence
 from contextlib import ExitStack
 from pathlib import Path
 
-from um982py.antenna import antenna_log, swap_antenna
+from um982py.antenna import antenna_log
 from um982py.augmentation import enable_augmentation
 from um982py.capture import (
     DataLog,
@@ -76,11 +76,7 @@ def capture_records(
     on_progress: Callable[[dict[str, tuple[Record, ...]]], None] | None = None,
 ) -> dict[str, tuple[Record, ...]]:
     """Replay a file directly or temporarily stream all requested logs together."""
-    antenna = getattr(args, "antenna", "primary")
-    if getattr(args, "swap_antennas", False):
-        logs = [swap_antenna(antenna_log(log, antenna)) for log in logs]
-    else:
-        logs = [antenna_log(log, antenna) for log in logs]
+    logs = [selected_log(args, log) for log in logs]
     if frames is not None and frames < 1:
         raise ValueError("frames must be positive")
     if not math.isfinite(interval) or interval <= 0:
@@ -134,6 +130,15 @@ def capture_records(
         flush=True,
     )
     return result
+
+
+def selected_log(args: argparse.Namespace, log: DataLog) -> DataLog:
+    """Apply CLI antenna selection consistently to live and replay decoding."""
+    return antenna_log(
+        log,
+        getattr(args, "antenna", "primary"),
+        swapped=getattr(args, "swap_antennas", False),
+    )
 
 
 def capture_logs(

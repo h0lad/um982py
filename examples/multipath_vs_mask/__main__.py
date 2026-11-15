@@ -13,7 +13,7 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import open_receiver
+from examples._console_capture import open_receiver, selected_log
 from examples._observation_arcs import CarrierState
 from examples.multipath_analysis import Observation
 from examples.multipath_vs_mask import (
@@ -30,7 +30,6 @@ from examples.multipath_vs_mask import (
     synthetic_observations,
     verify_restore,
 )
-from um982py.antenna import antenna_log
 from um982py.capture import (
     GPS_FREQUENCIES,
     decode_records,
@@ -108,17 +107,21 @@ def payload(
     restore: tuple[bool, tuple[str, ...]] | None,
 ) -> dict[str, object]:
     """Serialise the sweep steps, the monotonicity verdict and the restore check."""
+    populated = [step for step in steps if step.signals]
     return {
+        "status": "analysed"
+        if any(step.signals for step in steps)
+        else "insufficient_data",
         "masks": [step.mask_degrees for step in steps],
         "steps": [
             {
                 "mask_degrees": step.mask_degrees,
                 "signals": step.signals,
-                "rms": step.rms,
+                "rms": step.rms if step.signals else None,
             }
             for step in steps
         ],
-        "falling": is_falling(steps),
+        "falling": is_falling(populated) if len(populated) >= 2 else None,
         "restore": None
         if restore is None
         else {"identical": restore[0], "changed": list(restore[1])},
@@ -127,7 +130,7 @@ def payload(
 
 def live_sweep(args: argparse.Namespace) -> dict[str, object]:
     """Sweep the mask on a receiver and restore the captured mask afterwards."""
-    range_log = antenna_log(Log.RANGE, getattr(args, "antenna", "primary"))
+    range_log = selected_log(args, Log.RANGE)
     with open_receiver(args) as receiver:
         before = ReceiverState.from_parts(receiver_state(receiver))
         original = mask_degrees(before)
@@ -180,9 +183,7 @@ def replay_sweep(args: argparse.Namespace) -> dict[str, object]:
     """Replay one captured pass at every mask without re-measuring it."""
     frames = read_frames(args.replay)
     observations = observations_from(
-        decode_records(
-            frames, antenna_log(Log.RANGE, getattr(args, "antenna", "primary"))
-        ),
+        decode_records(frames, selected_log(args, Log.RANGE)),
         interval=args.interval,
         frequency_hz=args.frequency,
     )
@@ -274,7 +275,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         file=sys.stderr,
     )
     write_json(result, args.json)
-    return 0
+    return 1 if result.get("status") == "insufficient_data" else 0
 
 
 if __name__ == "__main__":

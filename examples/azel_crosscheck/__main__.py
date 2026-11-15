@@ -14,19 +14,18 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import capture_records
+from examples._console_capture import capture_records, selected_log
 from examples.azel_crosscheck import (
     AZIMUTH_TOLERANCE_DEGREES,
     ELEVATION_TOLERANCE_DEGREES,
     CrossCheckReport,
     cross_check,
 )
-from um982py.capture import decode_records, read_frames
+from um982py.capture import decode_records, read_frames, select_position
 from um982py.commands import Log
 from um982py.geodesy import receiver_ecef
 from um982py.measurement import gps_epoch
 from um982py.messages import (
-    Message,
     Record,
 )
 from um982py.messages.enums import SatelliteSystem
@@ -44,21 +43,10 @@ def receiver_position(record: Record) -> tuple[float, float, float]:
     return receiver_ecef(record)
 
 
-def _first_decoded(frames: Sequence[Message], log: Log) -> Record | None:
-    return next(iter(decode_records(frames, log)), None)
-
-
-def _single_position(frames: Sequence[Message]) -> Record | None:
-    for log in (Log.BESTPOS, Log.BESTXYZ):
-        record = _first_decoded(frames, log)
-        if record is not None:
-            return record
-    return None
-
-
 def build_payload(report: CrossCheckReport) -> dict[str, object]:
     """Render a cross-check report as JSON-ready data."""
     return {
+        "status": "compared" if report.compared else "insufficient_data",
         "epoch": report.epoch,
         "azimuth_tolerance_degrees": AZIMUTH_TOLERANCE_DEGREES,
         "elevation_tolerance_degrees": ELEVATION_TOLERANCE_DEGREES,
@@ -114,6 +102,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="print live capture updates to stderr",
     )
+    parser.add_argument(
+        "--position-tolerance",
+        type=float,
+        default=1.0,
+        help="maximum receiver position epoch offset in seconds",
+    )
     args = parser.parse_args(argv)
     debug_header(args, "azel_crosscheck")
     if args.replay is None:
@@ -151,16 +145,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         satellite_records = decode_records(satellite_frames, Log.SATVIS2)
         position_records = tuple(
             record
-            for record in (_single_position(position_frames),)
-            if record is not None
+            for log in (Log.BESTPOS, Log.BESTXYZ)
+            for record in decode_records(position_frames, selected_log(args, log))
         )
-    position_record = position_records[0] if position_records else None
-    if not satellite_records or position_record is None:
-        parser.error("SATVIS2 and a BESTPOS/BESTXYZ frame are required")
+    if not satellite_records:
+        parser.error("SATVIS2 records are required")
     first_satellite = satellite_records[0].message
     if first_satellite is None:
         parser.error("SATVIS2 frame carries no timestamp")
     absolute_epoch = gps_epoch(first_satellite)
+    position_record = select_position(
+        position_records, absolute_epoch, args.position_tolerance
+    )
     epoch = absolute_epoch % 604800.0
     satellite_records = tuple(
         record
@@ -185,7 +181,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         file=sys.stderr,
     )
     write_json(build_payload(report), args.json)
-    return 0
+    return 0 if report.compared else 1
 
 
 if __name__ == "__main__":

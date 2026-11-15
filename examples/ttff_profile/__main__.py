@@ -14,7 +14,7 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import open_receiver
+from examples._console_capture import open_receiver, selected_log
 from examples.ttff_profile import (
     FixEpoch,
     StartKind,
@@ -25,7 +25,6 @@ from examples.ttff_profile import (
     measure,
     repeatability,
 )
-from um982py.antenna import antenna_log
 from um982py.capture import decode_records, iter_frames, record_epoch
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout, TransportError
@@ -105,7 +104,7 @@ def replay_run(
     timeline = recorded_epochs(
         decode_records(
             frames,
-            antenna_log(Log.BESTPOS, getattr(args, "antenna", "primary")),
+            selected_log(args, Log.BESTPOS),
         ),
         cadence=args.cadence,
     )
@@ -114,7 +113,7 @@ def replay_run(
 
 def live_run(args: argparse.Namespace) -> tuple[tuple[FixEpoch, ...], TtffMeasurement]:
     """Reconnect after RESET and bound the wait for the first observed fix."""
-    position_log = antenna_log(Log.BESTPOS, getattr(args, "antenna", "primary"))
+    position_log = selected_log(args, Log.BESTPOS)
     print(
         f"Starting {args.start.value} reset; fix timeout {args.timeout_seconds:g}s...",
         file=sys.stderr,

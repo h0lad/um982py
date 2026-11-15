@@ -1,6 +1,7 @@
 # RAIM fault detection and exclusion
 
-Run RAIM fault detection and exclusion, and calculate protection levels.
+Demonstrate residual chi-square fault detection, exclusion and single-fault
+position-error slope bounds.
 
 ## Run
 
@@ -31,8 +32,23 @@ the receiver fix as its reference.
 
 ## Understanding the result
 
-The output is experimental and provides no operational integrity guarantee.
+The solver uses one independent GPS L1 measurement per satellite and one
+receiver clock state. Its Python API rejects duplicate satellites and mixed
+constellations; a multi-constellation solver needs inter-system bias states.
+
+The legacy `protection_levels.hpl` and `vpl` fields contain the maximum
+single-fault position-error slopes multiplied by the square root of the
+residual detection threshold. They do not include a missed-detection
+probability, multiple-fault risk allocation or calibrated measurement-error
+overbounds. They are teaching quantities, not operational protection levels.
+The pseudorange sigma model also omits atmosphere and other systematic errors.
+
+`alarm` describes the initial residual test, while `integrity_passed` describes
+the remaining set after greedy exclusion. Neither certifies integrity. Exit
+code 0 means the report was computed; consumers must inspect both fields.
 
 ## References
 
 Brown (1992), Baseline GPS RAIM.
+
+[ESA Navipedia: RAIM fundamentals](https://gssc.esa.int/navipedia/index.php/RAIM_Fundamentals).

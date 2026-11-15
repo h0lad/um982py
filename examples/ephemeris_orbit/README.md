@@ -22,8 +22,15 @@ python -m examples.ephemeris_orbit \
 
 ## Inputs and results
 
-`--seconds` sets the propagation offset. Replay requires broadcast ephemerides.
+`--seconds` sets the propagation offset from each ephemeris's own reference
+time, not a common absolute epoch. Replay requires broadcast ephemerides.
 The supplied fixture contains GPS ephemerides only.
+
+Each output state includes its broadcast satellite identifier. No usable
+ephemerides produces `insufficient_data` and exit code 1. This is a propagation
+demonstration: it does not select healthy, age-valid ephemerides for a position
+solution or estimate orbit uncertainty. Use `broadcast_orbit_audit` to compare
+broadcast and precise products at matched epochs.
 
 ## References
 

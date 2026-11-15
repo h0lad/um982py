@@ -23,7 +23,7 @@ from examples.navigation_messages import (
     satellite_payload,
 )
 from um982py import Receiver
-from um982py.antenna import antenna_log
+from um982py.antenna import antenna_log, other_antenna
 from um982py.capture import iter_frames
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
@@ -155,6 +155,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="print live capture updates to stderr",
     )
     args = parser.parse_args(argv)
+    if args.swap_antennas:
+        args.antenna = other_antenna(args.antenna)
     debug_header(args, "navigation_messages")
     if args.replay is not None:
         records, observer = _replayed([Path(args.replay)], args.antenna)

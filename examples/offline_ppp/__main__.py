@@ -19,6 +19,7 @@ from datetime import date, timedelta
 from pathlib import Path
 from typing import TypedDict
 
+from examples._console import ExampleParser
 from examples.offline_ppp.solver import process_observations
 from examples.rinex_export.__main__ import main as record_rinex
 from um982py.commands.logging import interval_from_rate
@@ -537,7 +538,7 @@ def solve(observation: Path, products: Path, antex: Path, output: Path) -> int:
 
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     sub = parser.add_subparsers(dest="action", required=True)
     record = sub.add_parser("record", help="record raw observations and export RINEX")
     record.add_argument("--port", required=True)

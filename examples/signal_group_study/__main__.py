@@ -14,14 +14,13 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import open_receiver
+from examples._console_capture import open_receiver, selected_log
 from examples.signal_group_study import (
     SettingSample,
     SettingSummary,
     first_visibility_epoch,
     trade_study,
 )
-from um982py.antenna import antenna_log
 from um982py.capture import decode_records, read_frames, receive_records
 from um982py.commands import Log
 from um982py.commands.configuration import (
@@ -104,18 +103,12 @@ def replay_samples(args: argparse.Namespace) -> tuple[SettingSample, ...]:
     """One setting per signal group named in a captured transcript."""
     frames = read_frames(args.replay)
     sky = decode_records(frames, Log.SATVIS2)
-    dop_records = decode_records(
-        frames, antenna_log(Log.PSRDOP, getattr(args, "antenna", "primary"))
-    )
-    positions = decode_records(
-        frames, antenna_log(Log.BESTPOS, getattr(args, "antenna", "primary"))
-    )
+    dop_records = decode_records(frames, selected_log(args, Log.PSRDOP))
+    positions = decode_records(frames, selected_log(args, Log.BESTPOS))
     if not sky or not dop_records or not positions:
         raise ValueError("replay requires SATVIS2, PSRDOP and BESTPOS records")
     dilution = ReportedDilution.from_record(dop_records[0], "PSRDOP")
-    ranges = decode_records(
-        frames, antenna_log(Log.RANGE, getattr(args, "antenna", "primary"))
-    )
+    ranges = decode_records(frames, selected_log(args, Log.RANGE))
     best = positions[0]
     sample = SettingSample(
         setting=SignalGroup(args.replay_master, args.replay_slave),
@@ -131,9 +124,9 @@ def replay_samples(args: argparse.Namespace) -> tuple[SettingSample, ...]:
 
 def measure_setting(args: argparse.Namespace, setting: SignalGroup) -> SettingSample:
     """Select a signal group, wait out the reboot, then sample the resulting sky."""
-    range_log = antenna_log(Log.RANGE, getattr(args, "antenna", "primary"))
-    position_log = antenna_log(Log.BESTPOS, getattr(args, "antenna", "primary"))
-    dop_log = antenna_log(Log.PSRDOP, getattr(args, "antenna", "primary"))
+    range_log = selected_log(args, Log.RANGE)
+    position_log = selected_log(args, Log.BESTPOS)
+    dop_log = selected_log(args, Log.PSRDOP)
     print(
         f"Selecting group {setting.master}/{setting.slave}; "
         f"reboot wait {args.reboot_seconds:g}s...",

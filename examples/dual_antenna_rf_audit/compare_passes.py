@@ -1,12 +1,12 @@
 """Compare signal and elevation-bin summaries across two field captures."""
 
-import argparse
 import csv
 import json
 import math
 from collections.abc import Sequence
 from pathlib import Path
 
+from examples._console import ExampleParser
 from um982py.field_data import file_sha256
 
 _KEYS = ("system", "signal", "l2c_flag", "elevation_min_deg", "elevation_max_deg")
@@ -27,7 +27,7 @@ def _load_signal_bins(path: Path) -> dict[tuple[str, ...], dict[str, str]]:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     parser.add_argument("--earlier", type=Path, required=True)
     parser.add_argument("--later", type=Path, required=True)
     parser.add_argument("--earlier-note", required=True)

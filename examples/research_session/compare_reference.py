@@ -1,17 +1,17 @@
 """Match independent ECEF position CSVs by GPS epoch without interpolation."""
 
-import argparse
 import json
 import math
 from bisect import bisect_left
 from collections.abc import Sequence
 from pathlib import Path
 
+from examples._console import ExampleParser
 from um982py.field_data import file_sha256, read_ecef_positions
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     parser.add_argument("--observed", required=True, type=Path)
     parser.add_argument("--reference", required=True, type=Path)
     parser.add_argument(

@@ -14,7 +14,7 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import capture_records
+from examples._console_capture import capture_records, selected_log
 from examples.ionosphere_tec import Observation
 from examples.klobuchar_vs_tec import (
     GPS_L1_HZ,
@@ -22,12 +22,17 @@ from examples.klobuchar_vs_tec import (
     measured_vertical_delay,
     vertical_delay_metres,
 )
-from um982py.capture import decode_records, gps_signals, read_frames, record_epoch
+from um982py.capture import (
+    decode_records,
+    gps_signals,
+    read_frames,
+    record_epoch,
+    select_position,
+)
 from um982py.commands import Log
 from um982py.geodesy import geodetic_from_ecef
 from um982py.measurement import gps_epoch
 from um982py.messages import (
-    Message,
     Record,
 )
 
@@ -38,14 +43,6 @@ SATELLITE_SYSTEM_SHIFT = 16
 SATELLITE_SYSTEM_MASK = 0b111
 SIGNAL_TYPE_SHIFT = 21
 SIGNAL_TYPE_MASK = 0b11111
-
-
-def _position(frames: Sequence[Message]) -> Record | None:
-    for log in (Log.BESTPOS, Log.BESTXYZ):
-        records = decode_records(frames, log)
-        if records:
-            return records[0]
-    return None
 
 
 def gps_pairs(record: Record) -> dict[int, tuple[Observation, Observation]]:
@@ -167,6 +164,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="print live capture updates to stderr",
     )
+    parser.add_argument(
+        "--position-tolerance",
+        type=float,
+        default=1.0,
+        help="maximum receiver position epoch offset in seconds",
+    )
     args = parser.parse_args(argv)
     debug_header(args, "klobuchar_vs_tec")
     if args.replay is None:
@@ -194,17 +197,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         position_frames = (
             read_frames(args.position) if args.position is not None else range_frames
         )
-        range_records = decode_records(range_frames, Log.RANGE)
+        range_records = decode_records(range_frames, selected_log(args, Log.RANGE))
         ionosphere = decode_records(ionosphere_frames, Log.GPSION)
         satellites = decode_records(satvis_frames, Log.SATVIS2)
-        position = _position(position_frames)
-        positions = (position,) if position is not None else ()
+        positions = tuple(
+            record
+            for log in (Log.BESTPOS, Log.BESTXYZ)
+            for record in decode_records(position_frames, selected_log(args, log))
+        )
     if not range_records or not ionosphere or not satellites or not positions:
         parser.error("RANGE, GPSION, SATVIS2 and BESTPOS/BESTXYZ frames are required")
     range_record = range_records[0]
     if range_record.message is None:
         parser.error("RANGE frame carries no timestamp")
-    position = positions[0]
+    position = select_position(
+        positions, record_epoch(range_record), args.position_tolerance
+    )
     if "lat" in position:
         latitude, longitude = position.real("lat"), position.real("lon")
     else:

@@ -1,12 +1,14 @@
-"""Cross-check a BSLNENUHD baseline against the BESTXYZ antenna position."""
+"""Demonstrate ENU/ECEF conversion with an epoch-matched antenna baseline."""
 
 from __future__ import annotations
 
+import math
 import sys
 from collections.abc import Callable, Sequence
+from copy import copy
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
-from examples._console_capture import capture_records
+from examples._console_capture import capture_records, selected_log
 from examples.coordinate_frames import (
     Baseline,
     Geodetic,
@@ -14,6 +16,7 @@ from examples.coordinate_frames import (
     round_trip_baseline,
 )
 from um982py.antenna import AntennaLog
+from um982py.capture import record_epoch, select_position
 from um982py.commands import Log
 from um982py.messages.record import Record
 
@@ -30,6 +33,12 @@ def _parser() -> ExampleParser:
         "--duration", type=float, default=10.0, help="collection time in seconds"
     )
     parser.add_output_interval(default=1.0, help="output interval in seconds")
+    parser.add_argument(
+        "--position-tolerance",
+        type=float,
+        default=1.0,
+        help="maximum position/baseline epoch offset in seconds",
+    )
     parser.add_argument(
         "--debug",
         action="store_true",
@@ -81,6 +90,9 @@ def _payload(position: Geodetic, reported: Baseline) -> dict[str, object]:
     recovered = round_trip_baseline(position, reported)
     antenna = antenna_position(position, reported)
     return {
+        "validation": (
+            "coordinate round trip; not an independent baseline accuracy check"
+        ),
         "origin": {
             "latitude": position.latitude,
             "longitude": position.longitude,
@@ -113,11 +125,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             file=sys.stderr,
             flush=True,
         )
-    logs = [Log.BESTXYZ, Log.BSLNENUHD]
-    secondary = args.antenna in ("secondary", "2")
+    logs = [selected_log(args, Log.BESTXYZ), Log.BSLNENUHD]
+    secondary = (args.antenna in ("secondary", "2")) != args.swap_antennas
     anchor = AntennaLog(Log.BESTNAVXYZ, Log.BESTNAVXYZ)
+    capture_args = copy(args)
+    capture_args.antenna = "primary"
+    capture_args.swap_antennas = False
     captured = capture_records(
-        args,
+        capture_args,
         [*logs, anchor] if secondary else logs,
         duration=args.duration,
         interval=args.interval,
@@ -125,23 +140,37 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     positions = captured["BESTXYZ"]
     baselines = captured["BSLNENUHD"]
-    position_record = positions[-1] if positions else None
-    baseline_record = baselines[-1] if baselines else None
-    if position_record is None or baseline_record is None:
-        parser.error(
-            "BESTXYZ and BSLNENUHD records are required; replay a combined capture"
+    valid_baselines = [
+        record
+        for record in baselines
+        if record.get("p_sol_status") in (0, "SOL_COMPUTED")
+        and all(
+            math.isfinite(record.real(name))
+            for name in ("delta_1", "delta_2", "delta_3")
         )
+    ]
+    if not positions or not valid_baselines:
+        parser.error(
+            "BESTXYZ and computed BSLNENUHD records are required; "
+            "replay a combined capture"
+        )
+    baseline_record = max(valid_baselines, key=record_epoch)
+    epoch = record_epoch(baseline_record)
+    position_record = select_position(positions, epoch, args.position_tolerance)
     origin = position_record
     if secondary:
         anchors = captured["BESTNAVXYZ"]
         if not anchors:
             parser.error("the dual-antenna baseline requires its primary origin")
-        origin = anchors[-1]
+        origin = select_position(anchors, epoch, args.position_tolerance)
     payload = _payload(
         Geodetic.from_position_record(origin),
         Baseline.from_baseline_record(baseline_record),
     )
     payload["origin_precision"] = _position_precision(origin)
+    payload["epoch"] = epoch
+    payload["position_epoch_offset_s"] = record_epoch(origin) - epoch
+    payload["baseline_direction"] = "physical ANT1 to ANT2 in the ANT1 local frame"
     payload["antenna_precision"] = None
     payload["precision_note"] = (
         "Receiver ECEF standard deviations describe the origin; derived antenna "

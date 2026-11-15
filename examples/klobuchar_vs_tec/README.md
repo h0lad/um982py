@@ -27,7 +27,10 @@ python -m examples.klobuchar_vs_tec \
 
 Replay needs RANGE observations and companion ionosphere, satellite-visibility
 and position captures. Supply these with `--ionosphere`, `--satvis` and
-`--position`.
+`--position`. The selected position must be computed and lie within
+`--position-tolerance` (default one second) of the RANGE epoch. Visibility is
+joined at that RANGE epoch; supply ionosphere coefficients valid for the same
+period. Both live and replay modes honor the selected antenna and role swap.
 
 ## Understanding the result
 

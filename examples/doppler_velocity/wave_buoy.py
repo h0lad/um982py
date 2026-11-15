@@ -1,18 +1,18 @@
 """Estimate a vertical-motion spectrum from a regularly sampled buoy track."""
 
-import argparse
 import csv
 import json
 import math
 from collections.abc import Sequence
 from pathlib import Path
 
+from examples._console import ExampleParser
 from examples.doppler_velocity import SPECTRAL_FLOOR_HZ, wave_spectrum
 from um982py.field_data import file_sha256, nearest_epoch
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     source = parser.add_mutually_exclusive_group(required=True)
     source.add_argument(
         "--input", type=Path, help="CSV gps_seconds,vertical_velocity_mps"

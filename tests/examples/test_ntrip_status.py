@@ -144,6 +144,16 @@ def test_telemetry_retains_constant_space_and_marks_session_discontinuities(
     assert telemetry.messages[1074].count == 10000
 
 
+@pytest.mark.parametrize("start", [8191.9, 1048575.9])
+def test_availability_samples_survive_float_precision_boundaries(start: float) -> None:
+    telemetry = Telemetry()
+    for index in range(900):
+        telemetry.sample(start + index, ready=index % 2 == 0)
+    availability = telemetry.build_availability(start + 899)
+    assert availability["sample_count"] == 900
+    assert availability["ready_percent"] == 50
+
+
 def test_receipt_rates_and_unobserved_gaps_are_not_fabricated(station: Station) -> None:
     telemetry = Telemetry()
     started = telemetry.started

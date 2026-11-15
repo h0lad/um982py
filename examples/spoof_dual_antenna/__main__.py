@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Sequence
+from copy import copy
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,7 +15,7 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import open_receiver
+from examples._console_capture import capture_records
 from examples.spoof_dual_antenna import (
     EcefBaseline,
     EnuBaseline,
@@ -27,10 +28,9 @@ from examples.spoof_dual_antenna import (
     compare_snapshots,
     sky_snapshots,
 )
-from um982py import Receiver
-from um982py.capture import iter_frames
+from um982py.capture import iter_frames, record_epoch, select_position
 from um982py.commands import Log
-from um982py.errors import ResponseTimeout
+from um982py.geodesy import geodetic_from_ecef, receiver_ecef
 from um982py.messages import Record, SpoofInfo
 
 
@@ -78,32 +78,6 @@ _FIELDS: dict[str, Log] = {
 }
 
 
-def _query_capture(receiver: Receiver) -> Capture:
-    collected: dict[str, tuple[Record, ...]] = {}
-    for field, log in _FIELDS.items():
-        print(f"Querying {log.value}...", file=sys.stderr, flush=True)
-        try:
-            collected[field] = receiver.collect(log.read(binary=False))
-        except ResponseTimeout:
-            collected[field] = ()
-    collected["sky"] = (*collected["sky"], *_collect_binary_sky(receiver))
-    return Capture(
-        enu=collected["enu"],
-        ecef=collected["ecef"],
-        position=collected["position"],
-        offset=collected["offset"],
-        spoof=collected["spoof"],
-        sky=collected["sky"],
-    )
-
-
-def _collect_binary_sky(receiver: Receiver) -> tuple[Record, ...]:
-    try:
-        return receiver.collect(Log.SATVIS2.read(binary=True))
-    except ResponseTimeout:
-        return ()
-
-
 def _enu_baseline(capture: Capture, *, swapped: bool) -> EnuBaseline | None:
     """Last ENU baseline with the antenna roles applied."""
     if not capture.enu:
@@ -113,18 +87,35 @@ def _enu_baseline(capture: Capture, *, swapped: bool) -> EnuBaseline | None:
 
 
 def _heading_agreement(
-    capture: Capture, *, swapped: bool = False
+    capture: Capture, *, swapped: bool = False, tolerance: float = 1.0
 ) -> HeadingAgreement | None:
     """Heading agreement, or ``None`` when a required record is missing."""
     if not (capture.enu and capture.ecef and capture.position):
         return None
-    position = capture.position[-1]
-    ecef = EcefBaseline.from_record(capture.ecef[-1])
-    reference = (ecef.negated() if swapped else ecef).to_enu(
-        position.real("lat"), position.real("lon")
-    )
-    enu = _enu_baseline(capture, swapped=swapped)
-    if enu is None:
+    try:
+        valid_enu = [
+            row for row in capture.enu if row.get("p_sol_status") in (0, "SOL_COMPUTED")
+        ]
+        valid_ecef = [
+            row
+            for row in capture.ecef
+            if row.get("p_sol_status") in (0, "SOL_COMPUTED")
+        ]
+        if not valid_enu or not valid_ecef:
+            return None
+        enu_record = max(valid_enu, key=record_epoch)
+        epoch = record_epoch(enu_record)
+        ecef_record = min(valid_ecef, key=lambda row: abs(record_epoch(row) - epoch))
+        if abs(record_epoch(ecef_record) - epoch) > tolerance:
+            return None
+        position = select_position(capture.position, epoch, tolerance)
+        latitude, longitude, _ = geodetic_from_ecef(*receiver_ecef(position))
+        ecef = EcefBaseline.from_record(ecef_record)
+        reference = (ecef.negated() if swapped else ecef).to_enu(latitude, longitude)
+        enu = EnuBaseline.from_record(enu_record)
+        if swapped:
+            enu = enu.negated()
+    except (KeyError, TypeError, ValueError):
         return None
     return compare_headings(enu, reference)
 
@@ -155,14 +146,22 @@ def _latest_spoof_status(capture: Capture) -> SpoofInfo | None:
     return None if not capture.spoof else SpoofInfo.from_record(capture.spoof[-1])
 
 
-def _payload(capture: Capture, *, swapped: bool = False) -> dict[str, object]:
-    heading = _heading_agreement(capture, swapped=swapped)
+def _payload(
+    capture: Capture, *, swapped: bool = False, tolerance: float = 1.0
+) -> dict[str, object]:
+    heading = _heading_agreement(capture, swapped=swapped, tolerance=tolerance)
     skies = _compare_latest_sky_snapshots(capture)
     spoof = _latest_spoof_status(capture)
     return {
         "status": "checks_available"
-        if heading is not None and spoof is not None
+        if heading is not None and spoof is not None and skies
         else "incomplete_checks",
+        "available_checks": {
+            "heading": heading is not None,
+            "sky": bool(skies),
+            "spoof_indicator": spoof is not None,
+        },
+        "heading_epoch_tolerance_s": tolerance,
         "heading": _heading_payload(heading),
         "sky_scope": "successive SATVIS2 snapshots, not separate antenna feeds",
         "offset": _offset_payload(capture, swapped=swapped),
@@ -239,6 +238,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="print live capture updates to stderr",
     )
+    parser.add_argument("--duration", type=float, default=5.0)
+    parser.add_output_interval(default=1.0)
+    parser.add_argument(
+        "--position-tolerance",
+        type=float,
+        default=1.0,
+        help="maximum heading baseline/position epoch offset in seconds",
+    )
     args = parser.parse_args(argv)
     debug_header(args, "spoof_dual_antenna")
     if args.replay is not None:
@@ -248,12 +255,22 @@ def main(argv: Sequence[str] | None = None) -> int:
             sorted(Path(args.transcripts).glob("*.bin"))
         )
     else:
-        receiver = open_receiver(args)
-        try:
-            capture = _query_capture(receiver)
-        finally:
-            receiver.close()
-    payload = _payload(capture, swapped=args.swap_antennas)
+        # Both baseline representations use the physical ANT1 local origin.
+        capture_args = copy(args)
+        capture_args.antenna = "primary"
+        capture_args.swap_antennas = False
+        captured = capture_records(
+            capture_args,
+            list(_FIELDS.values()),
+            duration=args.duration,
+            interval=args.interval,
+        )
+        capture = Capture(
+            **{field: captured[log.value] for field, log in _FIELDS.items()}
+        )
+    payload = _payload(
+        capture, swapped=args.swap_antennas, tolerance=args.position_tolerance
+    )
     alarms = payload["alarms"]
     print(
         f"Spoof checks: status={payload['status']}, "
@@ -261,7 +278,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         file=sys.stderr,
     )
     write_json(payload, args.json)
-    return 0
+    return 1 if payload["status"] == "incomplete_checks" else 0
 
 
 if __name__ == "__main__":

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import pairwise
@@ -12,6 +13,7 @@ GPS_L1_HZ = 1575.42e6
 GPS_L2_HZ = 1227.60e6
 SLIP_THRESHOLD_CYCLES = 0.5
 GEOMETRY_FREE_THRESHOLD_METRES = 0.05
+DEFAULT_MAX_GAP_SECONDS = 2.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -22,6 +24,8 @@ class Observation:
     epoch: float
     carrier_phase: float
     doppler: float
+    lock_time: float | None = None
+    """Receiver lock duration in seconds, when available."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -78,13 +82,39 @@ def predicted_increment(doppler_a: float, doppler_b: float, interval: float) -> 
 
 def doppler_residuals(
     observations: Sequence[Observation],
+    *,
+    max_gap: float = DEFAULT_MAX_GAP_SECONDS,
 ) -> tuple[tuple[float, float], ...]:
-    """Epoch and measured minus predicted phase increment of one satellite."""
-    ordered = sorted(observations, key=lambda observation: observation.epoch)
+    """Phase residuals of one ordered satellite, within continuous tracking.
+
+    Gaps and reported lock resets start new arcs. They are unobservable
+    intervals, not evidence that no slip occurred. Do not prefilter large
+    residuals: those are exactly the discontinuities being tested.
+    """
+    if not math.isfinite(max_gap) or max_gap <= 0:
+        raise ValueError("max_gap must be finite and positive")
+    if len({item.prn for item in observations}) > 1:
+        raise ValueError("residuals require one satellite")
+    for item in observations:
+        if not all(
+            math.isfinite(value)
+            for value in (item.epoch, item.carrier_phase, item.doppler)
+        ):
+            raise ValueError("observation values must be finite")
+        if item.lock_time is not None and (
+            not math.isfinite(item.lock_time) or item.lock_time < 0
+        ):
+            raise ValueError("lock time must be finite and nonnegative")
     residuals = []
-    for previous, current in pairwise(ordered):
+    for previous, current in pairwise(observations):
         interval = current.epoch - previous.epoch
         if interval <= 0:
+            raise ValueError("satellite epochs must increase strictly")
+        if interval > max_gap or (
+            previous.lock_time is not None
+            and current.lock_time is not None
+            and current.lock_time < previous.lock_time
+        ):
             continue
         measured = current.carrier_phase - previous.carrier_phase
         predicted = predicted_increment(previous.doppler, current.doppler, interval)
@@ -96,16 +126,19 @@ def detect_slips(
     observations: Sequence[Observation],
     *,
     threshold_cycles: float = SLIP_THRESHOLD_CYCLES,
+    max_gap: float = DEFAULT_MAX_GAP_SECONDS,
 ) -> tuple[Slip, ...]:
     """Slips whose phase increment disagrees with the Doppler prediction."""
-    if threshold_cycles <= 0:
-        raise ValueError("threshold_cycles must be positive")
+    if not math.isfinite(threshold_cycles) or threshold_cycles <= 0:
+        raise ValueError("threshold_cycles must be finite and positive")
+    if not math.isfinite(max_gap) or max_gap <= 0:
+        raise ValueError("max_gap must be finite and positive")
     by_prn: dict[int, list[Observation]] = {}
     for observation in observations:
         by_prn.setdefault(observation.prn, []).append(observation)
     slips = []
     for prn, group in sorted(by_prn.items()):
-        for epoch, residual in doppler_residuals(group):
+        for epoch, residual in doppler_residuals(group, max_gap=max_gap):
             if abs(residual) >= threshold_cycles:
                 slips.append(Slip(prn=prn, epoch=epoch, cycles=residual))
     return tuple(slips)
@@ -124,21 +157,46 @@ def geometry_free_slips(
     phases: Sequence[DualFrequencyPhase],
     *,
     threshold_metres: float = GEOMETRY_FREE_THRESHOLD_METRES,
+    max_gap: float = DEFAULT_MAX_GAP_SECONDS,
 ) -> tuple[GeometryFreeSlip, ...]:
     """Slips that jump the geometry-free combination by more than a metre bound."""
-    if threshold_metres <= 0:
-        raise ValueError("threshold_metres must be positive")
+    if not math.isfinite(threshold_metres) or threshold_metres <= 0:
+        raise ValueError("threshold_metres must be finite and positive")
+    if not math.isfinite(max_gap) or max_gap <= 0:
+        raise ValueError("max_gap must be finite and positive")
     by_prn: dict[int, list[DualFrequencyPhase]] = {}
     for phase in phases:
+        if (
+            not all(
+                math.isfinite(value)
+                for value in (
+                    phase.epoch,
+                    phase.high_hz,
+                    phase.high_cycles,
+                    phase.low_hz,
+                    phase.low_cycles,
+                )
+            )
+            or not 0 < phase.low_hz < phase.high_hz
+        ):
+            raise ValueError("finite phases and high_hz > low_hz > 0 are required")
         by_prn.setdefault(phase.prn, []).append(phase)
     slips = []
     for prn, group in sorted(by_prn.items()):
-        ordered = sorted(group, key=lambda phase: phase.epoch)
-        combinations = [(phase.epoch, geometry_free(phase)) for phase in ordered]
-        for (_, previous), (epoch, current) in pairwise(combinations):
-            jump = current - previous
+        for previous, current in pairwise(group):
+            interval = current.epoch - previous.epoch
+            if interval <= 0:
+                raise ValueError("satellite epochs must increase strictly")
+            if interval > max_gap or (previous.high_hz, previous.low_hz) != (
+                current.high_hz,
+                current.low_hz,
+            ):
+                continue
+            jump = geometry_free(current) - geometry_free(previous)
             if abs(jump) >= threshold_metres:
-                slips.append(GeometryFreeSlip(prn=prn, epoch=epoch, metres=jump))
+                slips.append(
+                    GeometryFreeSlip(prn=prn, epoch=current.epoch, metres=jump)
+                )
     return tuple(slips)
 
 

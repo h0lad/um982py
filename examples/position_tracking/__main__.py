@@ -117,7 +117,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     fence = _fence(args.geofence)
-    primary = args.antenna in ("primary", "1") and not args.swap_antennas
+    primary = (args.antenna in ("primary", "1")) != args.swap_antennas
     logs = [Log.BESTNAV, Log.STADOP, Log.SATSINFO]
     if primary or args.ppp_service is not None:
         logs.append(Log.PPPNAV)

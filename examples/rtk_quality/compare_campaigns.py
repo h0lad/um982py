@@ -1,6 +1,5 @@
 """Compare receiver solution quality across labelled field sessions."""
 
-import argparse
 import csv
 import itertools
 import json
@@ -10,11 +9,12 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
+from examples._console import ExampleParser
 from um982py.field_data import file_sha256, nearest_epoch
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     parser.add_argument(
         "--campaign",
         nargs=2,

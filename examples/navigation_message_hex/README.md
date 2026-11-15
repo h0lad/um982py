@@ -27,6 +27,10 @@ collection time.
 For example, `--log PPSSTATUS` or `--log SPOOFINFO` annotates the documented
 status fields and marks reserved bytes separately.
 
+Without `--json`, stdout is a single JSON report and the annotated human-readable
+dump goes to stderr. With `--json FILE`, the report goes to the file and the dump
+goes to stdout.
+
 ## References
 
 Unicore N4 R1.4 interface guide.

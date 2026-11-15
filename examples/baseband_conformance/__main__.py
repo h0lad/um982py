@@ -342,6 +342,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 130
     if result.get("complete") is False:
         return 1
+    if result.get("status") == "insufficient_data":
+        return 1
     return 1 if result.get("restore") is False else 0
 
 

@@ -8,10 +8,12 @@ from collections.abc import Callable, Sequence
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
 from examples.cycle_slip_detection import (
+    DEFAULT_MAX_GAP_SECONDS,
     SLIP_THRESHOLD_CYCLES,
     Observation,
     common_mode_events,
     detect_slips,
+    doppler_residuals,
     report,
 )
 from um982py.capture import gps_signals, record_epoch
@@ -30,6 +32,7 @@ def read_observations(record: Record, epoch: float) -> tuple[Observation, ...]:
                 epoch=epoch,
                 carrier_phase=item.real("carrier_phase"),
                 doppler=item.real("doppler"),
+                lock_time=item.real("lock_time") if "lock_time" in item else None,
             )
         )
     return tuple(observations)
@@ -52,6 +55,12 @@ def _parser() -> ExampleParser:
     )
     parser.add_output_interval(
         default=1.0, help="seconds between collected RANGE frames"
+    )
+    parser.add_argument(
+        "--max-gap",
+        type=float,
+        default=DEFAULT_MAX_GAP_SECONDS,
+        help="maximum gap in seconds within a tested carrier arc",
     )
     parser.add_argument(
         "--frames", type=int, default=60, help="number of RANGE frames to collect"
@@ -105,12 +114,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("capture contains no RANGE records")
     observations = [
         observation
-        for index, record in enumerate(records)
+        for record in records
         for observation in read_observations(record, record_epoch(record))
     ]
-    slips = detect_slips(observations, threshold_cycles=args.threshold)
+    groups: dict[int, list[Observation]] = {}
+    for observation in observations:
+        groups.setdefault(observation.prn, []).append(observation)
+    tested = sum(
+        len(doppler_residuals(group, max_gap=args.max_gap)) for group in groups.values()
+    )
+    possible = sum(max(0, len(group) - 1) for group in groups.values())
+    slips = detect_slips(
+        observations, threshold_cycles=args.threshold, max_gap=args.max_gap
+    )
     candidates = common_mode_events(slips)
     payload = {
+        "status": "analysed" if tested else "insufficient_data",
+        "tested_increments": tested,
+        "unobserved_increments": possible - tested,
+        "max_gap_seconds": args.max_gap,
+        "interpretation": (
+            "Candidate discontinuities; gaps and lock resets are not tested. "
+            "Zero flags does not prove slip-free tracking."
+        ),
         "threshold_cycles": args.threshold,
         "slips": [
             {"prn": slip.prn, "epoch": slip.epoch, "cycles": slip.cycles}
@@ -138,7 +164,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         file=sys.stderr,
     )
     write_json(payload, args.json)
-    return 0
+    return 0 if tested else 1
 
 
 if __name__ == "__main__":

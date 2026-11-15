@@ -1,6 +1,5 @@
 """Compare polar ionosphere reports with independently supplied event windows."""
 
-import argparse
 import csv
 import json
 import math
@@ -9,6 +8,7 @@ from pathlib import Path
 from statistics import median
 from typing import TypedDict
 
+from examples._console import ExampleParser
 from um982py.field_data import file_sha256
 
 
@@ -19,7 +19,7 @@ class Event(TypedDict):
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = ExampleParser(description=__doc__)
     parser.add_argument(
         "--report",
         nargs=2,

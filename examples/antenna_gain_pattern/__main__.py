@@ -37,7 +37,7 @@ def _gain_pattern_payload(
     label = (
         f"{identified.constellation} {identified.name}"
         if identified is not None
-        else "GPS L1"
+        else f"system {system} signal {signal}"
     )
     return {
         "measurement": (
@@ -165,7 +165,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("capture holds no joined SATVIS2 and RANGE epoch", file=sys.stderr)
         return 1
     fit = fit_gain_pattern(samples)
-    _write_csv(fit, args.step, args.csv)
+    if args.csv is not None:
+        _write_csv(fit, args.step, args.csv)
     payload = _gain_pattern_payload(
         samples,
         fit,

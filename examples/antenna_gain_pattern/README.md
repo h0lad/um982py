@@ -26,7 +26,8 @@ python -m examples.antenna_gain_pattern --replay /tmp/sky.bin \
 
 Select the RANGE system and signal with `--system` and `--signal` (default:
 GPS L1 C/A). Use `--csv` to write the fitted elevation curve and `--json` to
-write the report.
+write the report. Without `--json`, stdout contains just the JSON report;
+CSV is produced only when `--csv` is supplied.
 
 ## Understanding the result
 

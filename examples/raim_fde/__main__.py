@@ -14,7 +14,7 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import capture_records
+from examples._console_capture import capture_records, selected_log
 from examples.azel_crosscheck import galileo_elements
 from examples.raim_fde import RaimResult, raim_fde
 from examples.wls_position import (
@@ -22,7 +22,7 @@ from examples.wls_position import (
     geodetic_position_error,
 )
 from examples.wls_position import measurements as wls_measurements
-from um982py.capture import decode_records, read_frames, record_epoch
+from um982py.capture import decode_records, read_frames, record_epoch, select_position
 from um982py.commands import Log
 from um982py.experimental.orbit import orbit_state, state_from_record
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef, records_from
@@ -106,6 +106,11 @@ def _payload(
             {"system": system.name, "prn": prn} for system, prn in result.excluded
         ],
         "protection_levels": {"hpl": result.hpl, "vpl": result.vpl},
+        "protection_level_interpretation": (
+            "Illustrative single-fault slope bounds at the detection threshold; "
+            "no missed-detection probability or multiple-fault risk allocation. "
+            "These are not calibrated operational protection levels."
+        ),
         "difference_to_receiver_m": {
             "horizontal": error.horizontal,
             "vertical": error.vertical,
@@ -192,10 +197,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.ephemeris is not None
             else list(range_frames)
         )
-        range_records = decode_records(range_frames, Log.RANGE)
-        position_records = decode_records(position_frames, Log.BESTPOS)
+        range_records = decode_records(range_frames, selected_log(args, Log.RANGE))
+        position_records = decode_records(
+            position_frames, selected_log(args, Log.BESTPOS)
+        )
         if not position_records:
-            position_records = decode_records(position_frames, Log.BESTXYZ)
+            position_records = decode_records(
+                position_frames, selected_log(args, Log.BESTXYZ)
+            )
     if not range_records or not position_records:
         parser.error("a RANGE frame and a BESTPOS/BESTXYZ frame are required")
     range_record = range_records[0]
@@ -208,7 +217,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         absolute_epoch,
         ranges=range_record,
     )
-    position = wls_measurements.select_position(
+    position = select_position(
         position_records, absolute_epoch, args.position_tolerance
     )
     truth = receiver_ecef(position)

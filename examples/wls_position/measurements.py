@@ -4,9 +4,9 @@ import math
 from collections.abc import Sequence
 
 from examples.wls_position import RangeMeasurement
-from um982py.capture import gps_signals, record_epoch
+from um982py.capture import gps_signals
 from um982py.experimental.orbit import EARTH_ROTATION_RATE, state_from_record
-from um982py.geodesy import SPEED_OF_LIGHT, receiver_ecef
+from um982py.geodesy import SPEED_OF_LIGHT
 from um982py.messages import Record
 from um982py.messages.enums import SatelliteSystem
 
@@ -17,32 +17,6 @@ SIGNAL_TYPE_SHIFT = 21
 SIGNAL_TYPE_MASK = 0b11111
 GPS_WEEK_SECONDS = 604800.0
 MAX_EPHEMERIS_AGE_SECONDS = 7200.0
-
-
-def select_position(
-    records: Sequence[Record], epoch: float, tolerance: float
-) -> Record:
-    """Find a computed, finite receiver position near the observation epoch."""
-    if not math.isfinite(tolerance) or tolerance < 0:
-        raise ValueError("position tolerance must be finite and non-negative")
-    eligible = []
-    for record in records:
-        if record.get("p_sol_status") not in (0, "SOL_COMPUTED"):
-            continue
-        try:
-            xyz = receiver_ecef(record)
-            age = abs(record_epoch(record) - epoch)
-        except (KeyError, TypeError, ValueError):
-            continue
-        if (
-            all(math.isfinite(x) for x in xyz)
-            and math.dist(xyz, (0, 0, 0)) > 1e6
-            and age <= tolerance
-        ):
-            eligible.append((age, record))
-    if not eligible:
-        raise ValueError("no valid receiver position within the epoch tolerance")
-    return min(eligible, key=lambda item: item[0])[1]
 
 
 def select_gps_ephemerides(

@@ -11,9 +11,8 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import open_receiver
+from examples._console_capture import open_receiver, selected_log
 from examples.baseband_epoch_audit import audit_baseband
-from um982py.antenna import antenna_log
 from um982py.capture import decode_records
 from um982py.commands import Log
 from um982py.experimental import capture_baseband_notices, scan_notices
@@ -34,7 +33,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     add_debug_argument(parser)
     args = parser.parse_args(argv)
     debug_header(args, "baseband_epoch_audit")
-    log = antenna_log(Log.PTOBSINFO, args.antenna)
+    log = selected_log(args, Log.PTOBSINFO)
     manifest = None
     if args.replay is not None:
         raw = args.replay.read_bytes()
