@@ -1,6 +1,8 @@
 """Decode frames into typed records."""
 
+from collections import defaultdict
 from dataclasses import replace
+from functools import cache
 from math import isfinite
 from typing import TYPE_CHECKING
 
@@ -174,20 +176,34 @@ def _decode_log(message: Message, *, log: "Log | None") -> Record:
 
 
 def _matching_logs(message: AsciiMessage | BinaryMessage) -> list["Log"]:
+    if isinstance(message, BinaryMessage):
+        key: tuple[str, str | int] = ("binary", message.header.message_id)
+    else:
+        kind = "table" if isinstance(message, AbbreviatedAsciiMessage) else "ascii"
+        key = kind, message.name
+    return list(_log_index().get(key, ()))
+
+
+@cache
+def _log_index() -> dict[tuple[str, str | int], tuple["Log", ...]]:
+    """Index the static catalogue once, retaining all ambiguous candidates.
+
+    Cache only catalogue entries, never names supplied by incoming traffic.
+    Construction stays lazy to preserve the core receiver import boundary.
+    """
     from um982py.commands import Log
     from um982py.commands.catalog import RTCM_LOGS
 
-    if isinstance(message, BinaryMessage):
-        return [
-            log
-            for log in Log
-            if log.value not in RTCM_LOGS
-            and log.definition.binary_command is not None
-            and log.definition.message_id == message.header.message_id
-        ]
-    return [
-        log
-        for log in Log
-        if log.definition.ascii_command == message.name
-        or (isinstance(message, AbbreviatedAsciiMessage) and log.value == message.name)
-    ]
+    index: dict[tuple[str, str | int], list[Log]] = defaultdict(list)
+    for log in Log:
+        definition = log.definition
+        if (
+            log.value not in RTCM_LOGS
+            and definition.binary_command is not None
+            and definition.message_id is not None
+        ):
+            index["binary", definition.message_id].append(log)
+        index["ascii", definition.ascii_command].append(log)
+        for name in {log.value, definition.ascii_command}:
+            index["table", name].append(log)
+    return {key: tuple(logs) for key, logs in index.items()}

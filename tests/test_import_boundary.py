@@ -56,6 +56,17 @@ assert 'BESTNAV' in LAYOUTS
     subprocess.run([sys.executable, "-c", code], check=True, timeout=10)
 
 
+def test_observation_quality_does_not_import_file_exporters() -> None:
+    code = """
+import sys
+from um982py.observation_quality import audit_observations
+assert audit_observations
+assert 'um982py.rinex' not in sys.modules
+assert 'um982py.rinex_nav' not in sys.modules
+"""
+    subprocess.run([sys.executable, "-c", code], check=True, timeout=10)
+
+
 def test_removed_compatibility_imports_are_not_exposed() -> None:
     import um982py
     import um982py.capture

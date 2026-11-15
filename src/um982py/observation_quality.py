@@ -4,9 +4,9 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from um982py._observation import range_observation
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
-from um982py.rinex import _observation
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +70,7 @@ def audit_observations(
         previous_epoch = epoch
         seen: set[tuple[int, int, int, bool]] = set()
         for native in record.records("observations"):
-            row = _observation(native, record.name)
+            row = range_observation(native, record.name)
             status = row.integer("tracking_status")
             missing_code += not bool(status & 0x1000)
             missing_phase += not bool(status & 0x0400)

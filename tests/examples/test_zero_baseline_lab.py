@@ -34,6 +34,16 @@ def test_common_receiver_clocks_cancel_in_the_double_difference() -> None:
     assert result.code_m == result.phase_m == 0
 
 
+def test_l2c_reference_preserves_native_signal_identity() -> None:
+    samples = [sample(0, prn=prn) for prn in (1, 2)]
+    samples = [
+        replace(row, key=replace(row.key, signal=9, l2c_flag=True)) for row in samples
+    ]
+    result = double_differences(samples, samples, reference_prn=1)
+    assert len(result) == 1
+    assert result[0].key.l2c_flag and result[0].reference.l2c_flag
+
+
 def test_disjoint_receiver_times_are_not_joined() -> None:
     first = [sample(0, prn=prn) for prn in (1, 2)]
     second = [sample(0.1, prn=prn) for prn in (1, 2)]

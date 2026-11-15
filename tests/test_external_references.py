@@ -78,6 +78,16 @@ def test_wgs84_conversions_match_proj() -> None:
         assert own[2] == pytest.approx(height, rel=0, abs=1e-4)
 
 
+def test_polar_height_matches_pyproj_without_coordinate_round_trip() -> None:
+    pyproj = pytest.importorskip("pyproj")
+    inverse = pyproj.Transformer.from_crs(4978, 4979, always_xy=True)
+    for z in (-6_356_762.314245179, 6_356_762.314245179):
+        for x in (1e-8, 1e-6, 0.001, 0.1, 100):
+            longitude, latitude, height = inverse.transform(x, 0, z)
+            own = geodetic_from_ecef(x, 0, z)
+            assert own == pytest.approx((latitude, longitude, height), rel=0, abs=1e-7)
+
+
 def test_rtcm_1005_and_crc_match_pyrtcm() -> None:
     pyrtcm = pytest.importorskip("pyrtcm")
     helpers = pytest.importorskip("pyrtcm.rtcmhelpers")

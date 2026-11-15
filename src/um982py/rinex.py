@@ -9,10 +9,9 @@ from os import PathLike
 from pathlib import Path
 from typing import Literal
 
-from um982py.errors import ProtocolError
+from um982py._observation import range_observation
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
-from um982py.messages.observations import Observation
 from um982py.signals import tracking_signal
 
 _LETTERS = "GRSECJI"
@@ -112,45 +111,6 @@ def _header(content: str, label: str) -> str:
 type Epoch = tuple[float, dict[str, dict[str, Record]]]
 
 
-def _observation(row: Record, name: str) -> Record:
-    if name in ("OBSVMCMP", "OBSVHCMP"):
-        if not isinstance(row.get("cmp_record"), bytes):
-            raise ProtocolError("Expected a compressed observation")
-        compressed = Observation.from_record(row)
-        return Record(
-            "observation",
-            (
-                ("prn", compressed.prn),
-                (
-                    "frequency_channel",
-                    (compressed.glonass_frequency or 0) + _GLONASS_CHANNEL_OFFSET,
-                ),
-                ("pseudorange", compressed.pseudorange_m),
-                ("carrier_phase", compressed.carrier_phase_cycles),
-                ("phase_available", 0),
-                ("doppler", compressed.doppler_hz),
-                ("cn0", compressed.cn0_db_hz),
-                ("lock_time", compressed.lock_seconds),
-                ("tracking_status", compressed.tracking.raw),
-            ),
-        )
-    if name not in ("OBSVM", "OBSVH", "OBSVBASE"):
-        return row
-    return Record(
-        "observation",
-        (
-            ("prn", row.integer("prn_slot")),
-            ("frequency_channel", row.integer("system_freq")),
-            ("pseudorange", row.real("psr")),
-            ("carrier_phase", row.real("adr")),
-            ("doppler", row.real("dopp")),
-            ("cn0", row.real("c_n0") / 100),
-            ("lock_time", row.real("locktime")),
-            ("tracking_status", row.integer("ch_tr_status")),
-        ),
-    )
-
-
 def _collect_epochs(
     records: Sequence[Record],
     l2c_code: str | None,
@@ -168,7 +128,7 @@ def _collect_epochs(
             raise ValueError("RANGE epochs must be strictly increasing")
         satellites: dict[str, dict[str, Record]] = {}
         for native in record.records("observations"):
-            observation = _observation(native, record.name)
+            observation = range_observation(native, record.name)
             status = observation.integer("tracking_status")
             signal = tracking_signal(status, l2c_code=l2c_code)
             if signal is not None and not signal.rinex_code and signal.signal == 9:

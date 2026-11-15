@@ -129,6 +129,8 @@ class NtripClient:
         self._chunked = False
         self._remaining = 0
         self._need_chunk_terminator = False
+        self._reading_trailers = False
+        self._trailer_bytes = 0
         self._ended = False
 
     def __enter__(self) -> Self:
@@ -292,21 +294,22 @@ class NtripClient:
             return self._socket.recv(size)
         if self._ended:
             return b""
+        if self._reading_trailers:
+            return self._read_trailers()
         if self._need_chunk_terminator:
             if self._take(2) != b"\r\n":
                 raise NtripError("Invalid NTRIP chunk terminator")
             self._need_chunk_terminator = False
         if self._remaining == 0:
             line = self._line().split(b";", 1)[0]
-            try:
-                self._remaining = int(line, 16)
-            except ValueError as error:
-                raise NtripError("Invalid NTRIP chunk size") from error
+            if re.fullmatch(rb"[0-9A-Fa-f]+", line) is None:
+                raise NtripError("Invalid NTRIP chunk size")
+            self._remaining = int(line, 16)
             if not 0 <= self._remaining <= 1_048_576:
                 raise NtripError("NTRIP chunk exceeds 1 MiB")
             if self._remaining == 0:
-                self._ended = True
-                return b""
+                self._reading_trailers = True
+                return self._read_trailers()
         if not self._buffer:
             self._read_socket()
         data = bytes(self._buffer[: min(size, self._remaining)])
@@ -318,6 +321,19 @@ class NtripClient:
             self._need_chunk_terminator = True
         return data
 
+    def _read_trailers(self) -> bytes:
+        # Retain state across socket timeouts, including the aggregate limit.
+        while True:
+            line = self._line()
+            self._trailer_bytes += len(line) + 2
+            if self._trailer_bytes > 16384:
+                raise NtripError("NTRIP response trailers exceed 16 KiB")
+            if not line:
+                self._ended = True
+                return b""
+            if b":" not in line:
+                raise NtripError("Invalid NTRIP response trailer")
+
     def close(self) -> None:
         if self._socket is not None:
             self._socket.close()
@@ -326,6 +342,8 @@ class NtripClient:
         self._chunked = False
         self._remaining = 0
         self._need_chunk_terminator = False
+        self._reading_trailers = False
+        self._trailer_bytes = 0
         self._ended = False
 
 

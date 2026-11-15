@@ -80,11 +80,16 @@ def receiver_time(message: Message | None) -> ReceiverTime | None:
 
 @dataclass(frozen=True, slots=True, order=True)
 class SignalKey:
-    """Identifies the constellation, PRN and signal of one observable."""
+    """Identify a native signal, including its tracking-status L2C flag.
+
+    GPS and QZSS type 9 reuse the signal code for different L2 tracking modes.
+    The flag must remain part of the identity when grouping carrier arcs.
+    """
 
     system: int
     prn: int
     signal: int
+    l2c_flag: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -252,7 +257,7 @@ def range_samples(
         ):
             continue
         prn = observation.integer("prn_slot" if uncompressed_obsv else "prn")
-        key = SignalKey(system, prn, signal_code)
+        key = SignalKey(system, prn, signal_code, bool(status & (1 << 26)))
         native = Observation.from_record(observation) if uncompressed_obsv else None
         channel = None
         if key.system == 1 and key.signal in (0, 5):
@@ -335,7 +340,13 @@ def sample_series(
     signals: tuple[int, ...] | None = None,
     glonass_channels: Mapping[int, int] | None = None,
 ) -> dict[SignalKey, tuple[RangeSample, ...]]:
-    """Group supported GNSS measurements by signal in increasing epoch order."""
+    """Group one observation log by native signal in increasing epoch order.
+
+    Supply records from one receiver session and antenna. Different native log
+    names are rejected so primary, secondary and base phases cannot be joined.
+    """
+    if len({record.name for record in records}) > 1:
+        raise ValueError("one observation log is required per measurement series")
     series: dict[SignalKey, list[RangeSample]] = defaultdict(list)
     for record in records:
         for sample in range_samples(

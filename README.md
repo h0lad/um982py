@@ -485,6 +485,9 @@ Ctrl+C. For long recordings, use `SessionRecorder` or the
 Call `observations.quality(expected_interval=1)` to inspect receiver-reported
 flags, lock resets and gaps against a chosen interval. For uncompressed logs,
 `observations.signals()` groups usable code and phase measurements by signal.
+The signal key includes the native L2C flag to distinguish tracking modes that
+share a signal code. Supply one native log from one receiver session and antenna;
+mixed log names are rejected.
 Inspect the RINEX omissions and establish phase alignment independently before
 precise work.
 
@@ -536,6 +539,10 @@ See the [example catalogue](examples/README.md) for more applications. Use
 `help()` on library objects for their parameters and behavior.
 
 ## Development
+
+See [architecture and implementation review](ARCHITECTURE.md) for the layer
+boundaries, numerical and protocol fixes, compatibility notes, and validation
+priorities.
 
 ```bash
 python -m pip install -e '.[dev]'

@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 from um982py import Receiver, export_rinex, range_samples
+from um982py._observation import range_observation
 from um982py.capture import capture_live, record_epoch
 from um982py.commands import Log, configuration
 from um982py.diagnostics import (
@@ -30,7 +31,6 @@ from um982py.experimental import (
 from um982py.experimental.capture import receiver_state
 from um982py.experimental.tracking import tracking_slots
 from um982py.messages import Record
-from um982py.rinex import _observation
 
 pytestmark = pytest.mark.hardware
 
@@ -68,7 +68,7 @@ def test_live_range_and_obsv_report_same_receiver_phases(device: Receiver) -> No
     def rows(record: Record) -> dict[tuple[int, int, bool], tuple[float, bool, bool]]:
         result = {}
         for item in record.records("observations"):
-            row = _observation(item, record.name)
+            row = range_observation(item, record.name)
             status = row.integer("tracking_status")
             if (status >> 16) & 7:
                 continue

@@ -40,7 +40,8 @@ from um982py.messages import Record
 
 
 def _divergence_signal_label(key: SignalKey) -> str:
-    return f"sys{key.system}-prn{key.prn:02d}-sig{key.signal:02d}"
+    suffix = "-l2c" if key.l2c_flag else ""
+    return f"sys{key.system}-prn{key.prn:02d}-sig{key.signal:02d}{suffix}"
 
 
 def _divergence_by_signal(

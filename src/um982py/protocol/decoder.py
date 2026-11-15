@@ -168,36 +168,77 @@ class StreamDecoder:
         return min(positions, default=min(limit, len(self._buffer)))
 
     def _verified_resync(self, limit: int) -> int:
-        # Markers can occur in payloads, so accept only a complete, valid frame.
+        # Prefer a complete, checked frame over markers inside corrupt payloads.
+        # If none is complete yet, preserve a plausible partial frame: a damaged
+        # length may overlap the next frame, independently of read boundaries.
+        incomplete = min(limit, len(self._buffer))
         for match in re.finditer(rb"[$#\xaa\xd3]", self._buffer, 0):
             position = match.start()
             if position == 0:
                 continue
-            candidate = bytes(self._buffer[position:])
+            candidate = bytes(
+                self._buffer[position : position + self.max_frame_size + 1]
+            )
             try:
                 if candidate.startswith((b"$", b"#")):
                     end = candidate.find(b"\n")
                     if end < 0:
+                        if (
+                            len(candidate) <= self.max_frame_size
+                            and candidate.isascii()
+                        ):
+                            incomplete = min(incomplete, position)
+                        continue
+                    if end + 1 > self.max_frame_size:
                         continue
                     if isinstance(parse_ascii(candidate[: end + 1]), TextLine):
                         continue
-                elif candidate.startswith(BINARY_SYNC) and len(candidate) >= 24:
-                    length = int.from_bytes(candidate[6:8], "little") + 28
-                    parse_binary(candidate[:length])
-                elif candidate.startswith(OEM_BINARY_SYNC) and len(candidate) >= 28:
+                elif candidate[0] == 0xAA:
+                    if len(candidate) < 3:
+                        if any(
+                            sync.startswith(candidate)
+                            for sync in (BINARY_SYNC, OEM_BINARY_SYNC)
+                        ):
+                            incomplete = min(incomplete, position)
+                        continue
+                    if not candidate.startswith((BINARY_SYNC, OEM_BINARY_SYNC)):
+                        continue
+                    oem = candidate.startswith(OEM_BINARY_SYNC)
+                    if oem and len(candidate) >= 4 and candidate[3] < 28:
+                        continue
+                    if len(candidate) < (28 if oem else BINARY_HEADER.size):
+                        incomplete = min(incomplete, position)
+                        continue
                     length = (
                         candidate[3] + int.from_bytes(candidate[8:10], "little") + 4
+                        if oem
+                        else int.from_bytes(candidate[6:8], "little") + 28
                     )
+                    if length > self.max_frame_size:
+                        continue
+                    if len(candidate) < length:
+                        incomplete = min(incomplete, position)
+                        continue
                     parse_binary(candidate[:length])
-                elif candidate.startswith(b"\xd3") and len(candidate) >= 3:
+                elif candidate[0] == 0xD3:
+                    if len(candidate) >= 2 and candidate[1] & 0xFC:
+                        continue
+                    if len(candidate) < 3:
+                        incomplete = min(incomplete, position)
+                        continue
                     length = ((candidate[1] & 3) << 8 | candidate[2]) + 6
+                    if length > self.max_frame_size:
+                        continue
+                    if len(candidate) < length:
+                        incomplete = min(incomplete, position)
+                        continue
                     parse_rtcm(candidate[:length])
                 else:
                     continue
             except ProtocolError:
                 continue
             return position
-        return min(limit, len(self._buffer))
+        return incomplete
 
     def _discard(self, count: int) -> None:
         del self._buffer[:count]

@@ -3,7 +3,7 @@
 import math
 from collections import defaultdict
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from statistics import fmean, stdev
 
 from um982py.measurement import RangeSample, SignalKey
@@ -86,7 +86,7 @@ def double_differences(
         for key in sorted(first_signals.keys() & second_signals.keys()):
             if key.prn == reference_prn:
                 continue
-            reference = SignalKey(key.system, reference_prn, key.signal)
+            reference = replace(key, prn=reference_prn)
             if reference not in first_signals or reference not in second_signals:
                 continue
             samples = (

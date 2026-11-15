@@ -99,7 +99,7 @@ def geodetic_from_ecef(x: float, y: float, z: float) -> tuple[float, float, floa
         raise ValueError("ECEF coordinates must be finite")
     lon = math.atan2(y, x)
     p = math.hypot(x, y)
-    # Longitude is arbitrary at the poles, and the iteration divides by cos(phi).
+    # Longitude is arbitrary on the polar axis.
     if p < 1e-9:
         if abs(z) < 1e-9:
             raise ValueError("geodetic coordinates are undefined at Earth's centre")
@@ -109,11 +109,16 @@ def geodetic_from_ecef(x: float, y: float, z: float) -> tuple[float, float, floa
     for _ in range(8):
         sin_phi = math.sin(phi)
         n = WGS84_A / math.sqrt(1 - WGS84_E2 * sin_phi * sin_phi)
-        height = p / math.cos(phi) - n
-        phi = math.atan2(z, p * (1 - WGS84_E2 * n / (n + height)))
+        phi = math.atan2(z + WGS84_E2 * n * sin_phi, p)
     sin_phi = math.sin(phi)
-    n = WGS84_A / math.sqrt(1 - WGS84_E2 * sin_phi * sin_phi)
-    return math.degrees(phi), math.degrees(lon), p / math.cos(phi) - n
+    # Project onto the ellipsoid normal. Dividing p by cos(phi) loses height
+    # accuracy near the poles even when the latitude is accurate.
+    height = (
+        p * math.cos(phi)
+        + z * sin_phi
+        - WGS84_A * math.sqrt(1 - WGS84_E2 * sin_phi * sin_phi)
+    )
+    return math.degrees(phi), math.degrees(lon), height
 
 
 def enu_from_ecef(
