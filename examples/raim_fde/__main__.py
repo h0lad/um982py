@@ -15,7 +15,6 @@ from examples._console import (
     write_json,
 )
 from examples._console_capture import capture_records, selected_log
-from examples.azel_crosscheck import galileo_elements
 from examples.raim_fde import RaimResult, raim_fde
 from examples.wls_position import (
     RangeMeasurement,
@@ -24,7 +23,7 @@ from examples.wls_position import (
 from examples.wls_position import measurements as wls_measurements
 from um982py.capture import decode_records, read_frames, record_epoch, select_position
 from um982py.commands import Log
-from um982py.experimental.orbit import orbit_state, state_from_record
+from um982py.experimental.orbit import state_from_record
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef, records_from
 from um982py.measurement import gps_epoch
 from um982py.messages import (
@@ -60,16 +59,15 @@ def measurements(
     measurements = []
     for (system, prn), observation in sorted(selected.items()):
         ephemeris = ephemerides[system][prn]
-        if system is SatelliteSystem.GALILEO:
-            state = orbit_state(
-                galileo_elements(ephemeris), epoch - ephemeris.real("toe")
-            )
-        elif system is SatelliteSystem.GLONASS:
-            state = state_from_record(
-                ephemeris, epoch - ephemeris.real("e_time") / 1000.0
-            )
+        if system is SatelliteSystem.GLONASS:
+            propagation = epoch - ephemeris.real("e_time") / 1000.0
         else:
-            state = state_from_record(ephemeris, epoch - ephemeris.real("toe"))
+            propagation = epoch - ephemeris.real("toe")
+        constellation = {
+            SatelliteSystem.GALILEO: "GALILEO",
+            SatelliteSystem.BEIDOU: "BEIDOU",
+        }.get(system, "GPS")
+        state = state_from_record(ephemeris, propagation, system=constellation)
         measurements.append(
             RangeMeasurement(
                 system=system,

@@ -12,6 +12,7 @@ from enum import StrEnum
 from um982py.experimental.orbit import (
     EARTH_ROTATION_RATE,
     MU,
+    MU_GLONASS,
     GlonassElements,
     KeplerElements,
     azimuth_elevation,
@@ -101,6 +102,12 @@ FAMILIES: Mapping[str, SatelliteSystem] = {
     "GLOEPH": SatelliteSystem.GLONASS,
 }
 
+# ICD constants and BeiDou GEO handling are constellation-specific.
+_ORBIT_CONSTELLATIONS: Mapping[SatelliteSystem, str] = {
+    SatelliteSystem.GALILEO: "GALILEO",
+    SatelliteSystem.BEIDOU: "BEIDOU",
+}
+
 PREFIXES: Mapping[SatelliteSystem, str] = {
     SatelliteSystem.GPS: "G",
     SatelliteSystem.GALILEO: "E",
@@ -150,42 +157,12 @@ class NavigationSatellite:
 
 
 def kepler_elements(record: Record) -> KeplerElements:
-    """Keplerian elements of a decoded GPS, BDS or Galileo ephemeris."""
-    if "roota" in record:
-        return _galileo_elements(record)
+    """Keplerian elements of a decoded GPS, BDS or Galileo ephemeris.
+
+    The shared decoder also selects the F/NAV or I/NAV Galileo clock
+    polynomial and its matching broadcast group delay.
+    """
     return KeplerElements.from_record(record)
-
-
-def _galileo_elements(record: Record) -> KeplerElements:
-    clock = ("fnavaf0", "fnavaf1", "fnavaf2")
-    if not _is_true(record["fnavreceived"]):
-        clock = ("inavaf0", "inavaf1", "inavaf2")
-    return KeplerElements(
-        semi_major_axis=record.real("roota") ** 2,
-        eccentricity=record.real("ecc"),
-        mean_anomaly=record.real("m0"),
-        argument_of_perigee=record.real("omega"),
-        inclination=record.real("i0"),
-        right_ascension=record.real("omega0"),
-        delta_n=record.real("deltan"),
-        idot=record.real("idot"),
-        omega_dot=record.real("omegadot"),
-        cuc=record.real("cuc"),
-        cus=record.real("cus"),
-        crc=record.real("crc"),
-        crs=record.real("crs"),
-        cic=record.real("cic"),
-        cis=record.real("cis"),
-        toe=record.real("toe"),
-        af0=record.real(clock[0]),
-        af1=record.real(clock[1]),
-        af2=record.real(clock[2]),
-        tgd=record.real("e1e5abgd"),
-    )
-
-
-def _is_true(value: object) -> bool:
-    return value is True or value == "TRUE" or value == 1
 
 
 def orbital_elements(
@@ -193,8 +170,13 @@ def orbital_elements(
     velocity: tuple[float, float, float],
     *,
     earth_rate: float = EARTH_ROTATION_RATE,
+    mu: float = MU,
 ) -> tuple[float, float, float]:
-    """Semi-major axis, eccentricity and inclination of an Earth-fixed state."""
+    """Semi-major axis, eccentricity and inclination of an Earth-fixed state.
+
+    ``mu`` must be the gravitational constant of the constellation's own
+    terrestrial reference frame (PZ-90 for GLONASS).
+    """
     radius = math.sqrt(sum(component**2 for component in position))
     inertial = (
         velocity[0] - earth_rate * position[1],
@@ -202,10 +184,10 @@ def orbital_elements(
         velocity[2],
     )
     speed_squared = sum(component**2 for component in inertial)
-    semi_major_axis = 1.0 / (2.0 / radius - speed_squared / MU)
+    semi_major_axis = 1.0 / (2.0 / radius - speed_squared / mu)
     dot = sum(p * v for p, v in zip(position, inertial, strict=True))
     vector = tuple(
-        ((speed_squared - MU / radius) * p - dot * v) / MU
+        ((speed_squared - mu / radius) * p - dot * v) / mu
         for p, v in zip(position, inertial, strict=True)
     )
     momentum = (
@@ -252,10 +234,17 @@ def navigation_satellite(
         semi_major_axis, eccentricity, inclination = orbital_elements(
             (elements.x, elements.y, elements.z),
             (elements.vx, elements.vy, elements.vz),
+            mu=MU_GLONASS,
         )
     else:
         kepler = kepler_elements(record)
-        state = orbit_state(kepler, flight_time)
+        constellation = _ORBIT_CONSTELLATIONS.get(system, "GPS")
+        state = orbit_state(
+            kepler,
+            flight_time,
+            system=constellation,
+            prn=satellite_number(record),
+        )
         semi_major_axis = kepler.semi_major_axis
         eccentricity = kepler.eccentricity
         inclination = math.degrees(kepler.inclination)

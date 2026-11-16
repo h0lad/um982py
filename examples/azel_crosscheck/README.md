@@ -39,7 +39,15 @@ Supply an ephemeris set appropriate to the observation period; this example
 does not implement navigation-message health/age selection for every
 constellation. No matched satellites returns `insufficient_data` and exit code 1.
 
+Propagation uses each constellation's ICD constants, the BeiDou GEO rotation
+and the available Galileo F/NAV or I/NAV clock set. Constellation time systems
+are not converted: verify the BDT/UTC(SU) to GPST offset before comparing
+computed and receiver-reported angles for BeiDou or GLONASS.
+
 ## References
 
 - IS-GPS-200N.
+- Galileo OS SIS ICD.
+- BeiDou-SIS-ICD-2.0 (B1I).
+- GLONASS ICD, edition 5.1.
 - Unicore N4 R1.4 interface guide.

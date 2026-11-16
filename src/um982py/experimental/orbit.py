@@ -14,13 +14,40 @@ if TYPE_CHECKING:
     from um982py.messages.record import Record
 
 MU = 3.986005e14
+"""GPS/QZSS geocentric gravitational constant, IS-GPS-200 (m^3/s^2)."""
+MU_GALILEO_BEIDOU = 3.986004418e14
+"""Galileo OS SIS ICD and BeiDou B1I ICD gravitational constant (m^3/s^2)."""
+MU_GLONASS = 3.9860044e14
+"""GLONASS PZ-90 ICD gravitational constant (m^3/s^2)."""
 EARTH_ROTATION_RATE = 7.2921151467e-5
+"""GPS/Galileo Earth rotation rate (rad/s), IS-GPS-200 and Galileo OS SIS ICD."""
+EARTH_ROTATION_RATE_BEIDOU = 7.292115e-5
+"""BeiDou B1I ICD Earth rotation rate (rad/s)."""
 J2 = 1.0826257e-3
 WEEK_SECONDS = 604_800.0
 
+# BeiDou GEO ephemerides are fitted in a frame rotated 5 degrees about the
+# X axis; the user algorithm must undo that rotation (BDS-SIS-ICD-2.0, and
+# RTKLIB eph2pos). GEO satellites are C01-C05 and C59-C63.
+GEO_ROTATION_SIN = math.sin(math.radians(-5.0))
+GEO_ROTATION_COS = math.cos(math.radians(-5.0))
+BEIDOU_GEO_PRNS = frozenset((*range(1, 6), *range(59, 64)))
+
+# Each ICD defines its own gravitational constant and Earth rotation rate.
+ORBIT_CONSTANTS: dict[str, tuple[float, float]] = {
+    "GPS": (MU, EARTH_ROTATION_RATE),
+    "GALILEO": (MU_GALILEO_BEIDOU, EARTH_ROTATION_RATE),
+    "BEIDOU": (MU_GALILEO_BEIDOU, EARTH_ROTATION_RATE_BEIDOU),
+}
+
 __all__ = [
+    "BEIDOU_GEO_PRNS",
     "EARTH_ROTATION_RATE",
+    "EARTH_ROTATION_RATE_BEIDOU",
     "MU",
+    "MU_GALILEO_BEIDOU",
+    "MU_GLONASS",
+    "ORBIT_CONSTANTS",
     "SPEED_OF_LIGHT",
     "WGS84_SEMI_MAJOR",
     "GlonassElements",
@@ -34,6 +61,7 @@ __all__ = [
     "receiver_ecef",
     "solve_kepler",
     "state_from_record",
+    "system_of",
 ]
 
 
@@ -65,8 +93,28 @@ class KeplerElements:
 
     @classmethod
     def from_record(cls, record: Record) -> KeplerElements:
-        """Build elements from a GPS, BDS or Galileo ephemeris record."""
+        """Build elements from a GPS, BDS or Galileo ephemeris record.
+
+        Galileo F/NAV (E1/E5a) and I/NAV (E1/E5b) broadcast distinct clock
+        polynomials and broadcast group delays. When F/NAV was not received,
+        its fields are unset (zero) and the I/NAV values must be used
+        (Galileo OS SIS ICD, sections 5.1.3-5.1.4).
+        """
         axis = record.real("a") if "a" in record else record.real("roota") ** 2
+        galileo = "fnavaf0" in record
+        toc: float | None
+        if galileo:
+            fnav = _truthy(record.get("fnavreceived"))
+            prefix = "fnavaf" if fnav else "inavaf"
+            af0, af1, af2 = (record.real(f"{prefix}{i}") for i in range(3))
+            tgd = record.real("e1e5abgd" if fnav else "e1e5bbgd")
+            toc = record.real("fnavt0c" if fnav else "inavt0c")
+        else:
+            af0 = _first_present_field(record, "af0", "fnavaf0")
+            af1 = _first_present_field(record, "af1", "fnavaf1")
+            af2 = _first_present_field(record, "af2", "fnavaf2")
+            tgd = _first_present_field(record, "tgd", "tgd1", "e1e5abgd")
+            toc = record.real("toc") if "toc" in record else None
         return cls(
             semi_major_axis=axis,
             eccentricity=record.real("ecc"),
@@ -84,11 +132,11 @@ class KeplerElements:
             cic=record.real("cic"),
             cis=record.real("cis"),
             toe=record.real("toe"),
-            af0=_first_present_field(record, "af0", "fnavaf0", "inavaf0"),
-            af1=_first_present_field(record, "af1", "fnavaf1", "inavaf1"),
-            af2=_first_present_field(record, "af2", "fnavaf2", "inavaf2"),
-            tgd=_first_present_field(record, "tgd", "tgd1", "e1e5abgd"),
-            toc=record.real("toc") if "toc" in record else None,
+            af0=af0,
+            af1=af1,
+            af2=af2,
+            tgd=tgd,
+            toc=toc,
         )
 
 
@@ -108,6 +156,29 @@ def _first_present_field(record: Record, *names: str, default: float = 0.0) -> f
         if name in record:
             return record.real(name)
     return default
+
+
+def _truthy(value: object) -> bool:
+    """Interpret the boolean/enum fields of a decoded receiver record."""
+    return (
+        value is True
+        or value == 1
+        or (isinstance(value, str) and value.upper() == "TRUE")
+    )
+
+
+def system_of(record: Record) -> str:
+    """Constellation of a decoded ephemeris record for ICD constants."""
+    name = record.name.upper()
+    if name.startswith("GAL"):
+        return "GALILEO"
+    if name.startswith(("BDS", "BD3")):
+        return "BEIDOU"
+    return "GPS"
+
+
+def _is_beidou_geo(system: str, prn: int | None) -> bool:
+    return system == "BEIDOU" and prn is not None and prn in BEIDOU_GEO_PRNS
 
 
 def solve_kepler(
@@ -131,16 +202,29 @@ def orbit_state(
     elements: KeplerElements,
     time_of_flight: float,
     *,
-    earth_rate: float = EARTH_ROTATION_RATE,
+    earth_rate: float | None = None,
+    mu: float | None = None,
+    system: str = "GPS",
+    prn: int | None = None,
 ) -> SatelliteState:
-    """Propagate Keplerian elements to an ECEF position and clock bias."""
+    """Propagate Keplerian elements to an ECEF position and clock bias.
+
+    ``system`` selects the ICD gravitational constant and Earth rotation rate.
+    BeiDou GEO satellites (``prn`` in :data:`BEIDOU_GEO_PRNS`) additionally
+    require the 5-degree GK-to-BDCS rotation of the BDS-SIS-ICD user algorithm.
+    """
+    if system not in ORBIT_CONSTANTS:
+        raise ValueError(f"unknown constellation {system}")
+    default_mu, default_rate = ORBIT_CONSTANTS[system]
+    mu = default_mu if mu is None else mu
+    earth_rate = default_rate if earth_rate is None else earth_rate
     axis = elements.semi_major_axis
     if axis <= 0:
         raise ValueError("semi-major axis must be positive")
     time_of_flight = (
         time_of_flight + WEEK_SECONDS / 2
     ) % WEEK_SECONDS - WEEK_SECONDS / 2
-    mean_motion = math.sqrt(MU / axis**3) + elements.delta_n
+    mean_motion = math.sqrt(mu / axis**3) + elements.delta_n
     mean_anomaly = elements.mean_anomaly + mean_motion * time_of_flight
     eccentric_anomaly = solve_kepler(mean_anomaly, elements.eccentricity)
     sin_e, cos_e = math.sin(eccentric_anomaly), math.cos(eccentric_anomaly)
@@ -164,9 +248,11 @@ def orbit_state(
     inclination = (
         elements.inclination + elements.idot * time_of_flight + inclination_correction
     )
+    geo = _is_beidou_geo(system, prn)
     ascending_node = (
         elements.right_ascension
-        + (elements.omega_dot - earth_rate) * time_of_flight
+        + (elements.omega_dot if geo else elements.omega_dot - earth_rate)
+        * time_of_flight
         - earth_rate * elements.toe
     )
     orbital_x = radius * math.cos(corrected_latitude)
@@ -176,20 +262,36 @@ def orbit_state(
     x = orbital_x * cos_node - orbital_y * cos_inclination * sin_node
     y = orbital_x * sin_node + orbital_y * cos_inclination * cos_node
     z = orbital_y * math.sin(inclination)
+    if geo:
+        # Coordinates above are in the inertial GK frame. Rotate about X by
+        # +5 degrees and about Z by the Earth rotation since t_oe (BDS ICD).
+        sine, cosine = (
+            math.sin(earth_rate * time_of_flight),
+            math.cos(earth_rate * time_of_flight),
+        )
+        x, y, z = (
+            x * cosine + y * sine * GEO_ROTATION_COS + z * sine * GEO_ROTATION_SIN,
+            -x * sine + y * cosine * GEO_ROTATION_COS + z * cosine * GEO_ROTATION_SIN,
+            -y * GEO_ROTATION_SIN + z * GEO_ROTATION_COS,
+        )
     return SatelliteState(
         x=x,
         y=y,
         z=z,
-        clock_bias=clock_correction(elements, time_of_flight, eccentric_anomaly),
+        clock_bias=clock_correction(elements, time_of_flight, eccentric_anomaly, mu=mu),
         radius=math.sqrt(x * x + y * y + z * z),
     )
 
 
 def clock_correction(
-    elements: KeplerElements, time_of_flight: float, eccentric_anomaly: float
+    elements: KeplerElements,
+    time_of_flight: float,
+    eccentric_anomaly: float,
+    *,
+    mu: float = MU,
 ) -> float:
     """Calculate satellite clock bias in seconds, including the relativistic term."""
-    relativistic = -2 * math.sqrt(MU * elements.semi_major_axis) / SPEED_OF_LIGHT**2
+    relativistic = -2 * math.sqrt(mu * elements.semi_major_axis) / SPEED_OF_LIGHT**2
     clock_time = (
         time_of_flight
         + elements.toe
@@ -305,10 +407,9 @@ def _acceleration(state: Sequence[float]) -> tuple[float, float, float]:
     radius = math.sqrt(x * x + y * y + z * z)
     if radius <= 0:
         raise ValueError("GLONASS state has zero radius")
-    mu = 3.9860044e14
-    factor = 1.5 * J2 * mu * 6378136.0**2 / radius**5
+    factor = 1.5 * J2 * MU_GLONASS * 6378136.0**2 / radius**5
     common = 5 * z * z / radius**2
-    gravity = -mu / radius**3 - factor * (1 - common)
+    gravity = -MU_GLONASS / radius**3 - factor * (1 - common)
     omega = 7.292115e-5
     return (
         (gravity + omega**2) * x + 2 * omega * state[4],
@@ -341,13 +442,23 @@ def _rk4(state: Sequence[float], step: float, external: Sequence[float]) -> list
 
 
 def state_from_record(
-    record: Record, time_of_flight: float, *, earth_rate: float = EARTH_ROTATION_RATE
+    record: Record,
+    time_of_flight: float,
+    *,
+    earth_rate: float | None = None,
+    system: str | None = None,
 ) -> SatelliteState:
     """Propagate any decoded ephemeris record to a position and clock state."""
     if "pos_x" in record:
         return glonass_state(GlonassElements.from_record(record), time_of_flight)
+    constellation = system if system is not None else system_of(record)
+    prn = record.integer("prn") if "prn" in record else None
     return orbit_state(
-        KeplerElements.from_record(record), time_of_flight, earth_rate=earth_rate
+        KeplerElements.from_record(record),
+        time_of_flight,
+        earth_rate=earth_rate,
+        system=constellation,
+        prn=prn,
     )
 
 

@@ -12,7 +12,6 @@ from um982py.experimental.orbit import (
     KeplerElements,
     SatelliteState,
     azimuth_elevation,
-    orbit_state,
     state_from_record,
 )
 from um982py.messages import Record
@@ -111,29 +110,12 @@ class CrossCheckReport:
 
 
 def galileo_elements(record: Record) -> KeplerElements:
-    """Convert a GALEPH record to the common Keplerian element type."""
-    return KeplerElements(
-        semi_major_axis=record.real("roota") ** 2,
-        eccentricity=record.real("ecc"),
-        mean_anomaly=record.real("m0"),
-        argument_of_perigee=record.real("omega"),
-        inclination=record.real("i0"),
-        right_ascension=record.real("omega0"),
-        delta_n=record.real("deltan"),
-        idot=record.real("idot"),
-        omega_dot=record.real("omegadot"),
-        cuc=record.real("cuc"),
-        cus=record.real("cus"),
-        crc=record.real("crc"),
-        crs=record.real("crs"),
-        cic=record.real("cic"),
-        cis=record.real("cis"),
-        toe=record.real("toe"),
-        af0=record.real("fnavaf0"),
-        af1=record.real("fnavaf1"),
-        af2=record.real("fnavaf2"),
-        tgd=record.real("e1e5abgd"),
-    )
+    """Convert a GALEPH record to the common Keplerian element type.
+
+    The shared decoder selects the F/NAV or I/NAV clock polynomial and the
+    matching broadcast group delay (Galileo OS SIS ICD).
+    """
+    return KeplerElements.from_record(record)
 
 
 def prn_of(record: Record, system: SatelliteSystem) -> int:
@@ -154,14 +136,19 @@ def time_of_flight(record: Record, system: SatelliteSystem, epoch: float) -> flo
     return (difference + 302400) % 604800 - 302400
 
 
+_CONSTELLATION_CONSTANTS: dict[SatelliteSystem, str] = {
+    SatelliteSystem.GALILEO: "GALILEO",
+    SatelliteSystem.BEIDOU: "BEIDOU",
+}
+
+
 def satellite_state(
     record: Record, system: SatelliteSystem, epoch: float
 ) -> SatelliteState:
-    """Propagate one broadcast ephemeris record to the observation epoch."""
+    """Propagate one broadcast ephemeris record with its own ICD constants."""
     propagation_time = time_of_flight(record, system, epoch)
-    if system is SatelliteSystem.GALILEO:
-        return orbit_state(galileo_elements(record), propagation_time)
-    return state_from_record(record, propagation_time)
+    constellation = _CONSTELLATION_CONSTANTS.get(system, "GPS")
+    return state_from_record(record, propagation_time, system=constellation)
 
 
 def visibility_from_ephemerides(

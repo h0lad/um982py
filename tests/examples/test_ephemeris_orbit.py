@@ -3,19 +3,40 @@ from __future__ import annotations
 import math
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
+from um982py.commands import Log
 from um982py.experimental.orbit import (
+    BEIDOU_GEO_PRNS,
     EARTH_ROTATION_RATE,
+    EARTH_ROTATION_RATE_BEIDOU,
     MU,
+    MU_GALILEO_BEIDOU,
+    MU_GLONASS,
     KeplerElements,
     SatelliteState,
     azimuth_elevation,
+    clock_correction,
     orbit_state,
     solve_kepler,
+    state_from_record,
+    system_of,
 )
 from um982py.geodesy import ecef_from_geodetic
+from um982py.protocol import StreamDecoder
+
+FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "captures-live"
+
+
+def records(name: str) -> list:
+    return [
+        Log(name).decode(message)
+        for message in StreamDecoder().feed((FIXTURES / f"{name}A.bin").read_bytes())
+        if getattr(message, "name", "").startswith(name)
+    ]
+
 
 PAPER_X, PAPER_Y, PAPER_Z = 19_960_559.708, 6_287_146.678, 16_433_598.090
 PAPER_RADIUS = 26_608_556.958
@@ -128,3 +149,128 @@ def test_azimuth_and_elevation_of_an_overhead_satellite() -> None:
 
 def test_default_earth_rate_is_the_icd_value() -> None:
     assert pytest.approx(7.2921151467e-5, rel=0) == EARTH_ROTATION_RATE
+
+
+def test_constellation_constants_follow_their_own_icds() -> None:
+    # IS-GPS-200, Galileo OS SIS ICD, BeiDou B1I ICD and GLONASS PZ-90 ICD.
+    assert MU == 3.986005e14
+    assert MU_GALILEO_BEIDOU == 3.986004418e14
+    assert MU_GLONASS == 3.9860044e14
+    assert EARTH_ROTATION_RATE_BEIDOU == 7.292115e-5
+    assert system_of(records("GALEPH")[0]) == "GALILEO"
+    assert system_of(records("BDSEPH")[0]) == "BEIDOU"
+    assert system_of(records("GPSEPH")[0]) == "GPS"
+
+
+def test_galileo_inav_only_uses_the_inav_clock_and_bgd() -> None:
+    """F/NAV clock fields are zero when only I/NAV was received (Galileo ICD)."""
+    record = next(r for r in records("GALEPH") if str(r["fnavreceived"]) == "FALSE")
+    elements = KeplerElements.from_record(record)
+    assert elements.af0 == pytest.approx(record.real("inavaf0"), abs=0.0)
+    assert elements.af1 == pytest.approx(record.real("inavaf1"), abs=0.0)
+    assert elements.af2 == pytest.approx(record.real("inavaf2"), abs=0.0)
+    assert elements.tgd == pytest.approx(record.real("e1e5bbgd"), abs=0.0)
+    assert elements.toc == pytest.approx(record.real("inavt0c"), abs=0.0)
+    state = state_from_record(record, 0.0)
+    assert state.clock_bias == pytest.approx(elements.af0 - elements.tgd, abs=1e-9)
+
+
+def test_galileo_fnav_uses_the_fnav_clock_and_bgd() -> None:
+    record = next(r for r in records("GALEPH") if str(r["fnavreceived"]) == "TRUE")
+    elements = KeplerElements.from_record(record)
+    assert elements.af0 == pytest.approx(record.real("fnavaf0"), abs=0.0)
+    assert elements.tgd == pytest.approx(record.real("e1e5abgd"), abs=0.0)
+
+
+def geo_elements() -> KeplerElements:
+    """Near-geostationary BDS elements fitted with the artificial -5 deg tilt."""
+    return KeplerElements(
+        semi_major_axis=42_164_169.6,
+        eccentricity=2e-4,
+        mean_anomaly=1.2,
+        argument_of_perigee=0.3,
+        inclination=math.radians(-4.7),
+        right_ascension=-1.7,
+        delta_n=1e-10,
+        idot=2e-11,
+        omega_dot=-3e-10,
+        cuc=1e-6,
+        cus=-2e-6,
+        crc=100.0,
+        crs=-50.0,
+        cic=3e-8,
+        cis=-4e-8,
+        toe=396000.0,
+    )
+
+
+def _rtklib_bds_geo(elements: KeplerElements, tk: float) -> tuple[float, float, float]:
+    """Independent transcription of the BDS-SIS-ICD GEO user algorithm.
+
+    Same equations as RTKLIB eph2pos (SIN_5 = sin(-5 deg)).
+    """
+    mu, omge = MU_GALILEO_BEIDOU, EARTH_ROTATION_RATE_BEIDOU
+    axis = elements.semi_major_axis
+    mean = elements.mean_anomaly + (math.sqrt(mu / axis**3) + elements.delta_n) * tk
+    e_anomaly = solve_kepler(mean, elements.eccentricity)
+    sin_e, cos_e = math.sin(e_anomaly), math.cos(e_anomaly)
+    latitude = (
+        math.atan2(
+            math.sqrt(1 - elements.eccentricity**2) * sin_e,
+            cos_e - elements.eccentricity,
+        )
+        + elements.argument_of_perigee
+    )
+    radius = axis * (1 - elements.eccentricity * cos_e)
+    inclination = elements.inclination + elements.idot * tk
+    sin_2u, cos_2u = math.sin(2 * latitude), math.cos(2 * latitude)
+    latitude += elements.cus * sin_2u + elements.cuc * cos_2u
+    radius += elements.crs * sin_2u + elements.crc * cos_2u
+    inclination += elements.cis * sin_2u + elements.cic * cos_2u
+    x, y = radius * math.cos(latitude), radius * math.sin(latitude)
+    cos_i = math.cos(inclination)
+    node = elements.right_ascension + elements.omega_dot * tk - omge * elements.toe
+    xg = x * math.cos(node) - y * cos_i * math.sin(node)
+    yg = x * math.sin(node) + y * cos_i * math.cos(node)
+    zg = y * math.sin(inclination)
+    sin_5, cos_5 = math.sin(math.radians(-5.0)), math.cos(math.radians(-5.0))
+    sin_o, cos_o = math.sin(omge * tk), math.cos(omge * tk)
+    return (
+        xg * cos_o + yg * sin_o * cos_5 + zg * sin_o * sin_5,
+        -xg * sin_o + yg * cos_o * cos_5 + zg * cos_o * sin_5,
+        -yg * sin_5 + zg * cos_5,
+    )
+
+
+@pytest.mark.parametrize("prn", [1, 5, 59, 63])
+@pytest.mark.parametrize("tk", [0.0, 1234.5, -3600.0, 7200.0])
+def test_beidou_geo_rotation_matches_the_icd(prn: int, tk: float) -> None:
+    elements = geo_elements()
+    state = orbit_state(elements, tk, system="BEIDOU", prn=prn)
+    assert math.dist((state.x, state.y, state.z), _rtklib_bds_geo(elements, tk)) < 1e-6
+
+
+def test_beidou_meo_does_not_use_the_geo_rotation() -> None:
+    elements = geo_elements()
+    geo = orbit_state(elements, 1234.5, system="BEIDOU", prn=3)
+    meo = orbit_state(elements, 1234.5, system="BEIDOU", prn=20)
+    assert math.dist((geo.x, geo.y, geo.z), (meo.x, meo.y, meo.z)) > 1000.0
+    assert 20 not in BEIDOU_GEO_PRNS
+
+
+def test_orbit_state_uses_constellation_mu_for_the_clock() -> None:
+    elements = geo_elements()
+    tk = 1234.5
+    mean = (
+        elements.mean_anomaly
+        + (
+            math.sqrt(MU_GALILEO_BEIDOU / elements.semi_major_axis**3)
+            + elements.delta_n
+        )
+        * tk
+    )
+    eccentric = solve_kepler(mean, elements.eccentricity)
+    state = orbit_state(elements, tk, system="BEIDOU", prn=20)
+    assert state.clock_bias == pytest.approx(
+        clock_correction(elements, tk, eccentric, mu=MU_GALILEO_BEIDOU), abs=1e-15
+    )
