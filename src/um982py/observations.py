@@ -1,15 +1,17 @@
 """Record and inspect a bounded set of raw receiver observations."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 from typing import Literal
+from uuid import uuid4
 
 from um982py.antenna import antenna_log
-from um982py.capture import capture_live
+from um982py.capture import InterruptedCapture, capture_live
 from um982py.commands import Log
 from um982py.measurement import RangeSample, SignalKey, sample_series
 from um982py.messages import Record
 from um982py.observation_quality import ObservationQuality, audit_observations
+from um982py.provenance import ObservationSource, _observation_source
 from um982py.receiver import Receiver
 from um982py.rinex import RinexExport, RinexMetadata, export_rinex
 
@@ -20,9 +22,27 @@ class Observations:
 
     Preserve the original wire capture separately for reproducibility. Quality
     checks use receiver-reported flags and do not establish measurement accuracy.
+    Source tags survive slicing and concatenation of ``records``. For replay,
+    supply ``source`` from acquisition metadata; untagged wire bytes cannot
+    identify a physical receiver or session.
     """
 
     records: tuple[Record, ...]
+    source: ObservationSource | None = field(default=None, kw_only=True)
+
+    def __post_init__(self) -> None:
+        source = _observation_source(self.records, self.source)
+        object.__setattr__(self, "source", source)
+        object.__setattr__(
+            self,
+            "records",
+            tuple(
+                replace(record, source=source)
+                if record.source is None and source
+                else record
+                for record in self.records
+            ),
+        )
 
     def quality(self, *, expected_interval: float | None = None) -> ObservationQuality:
         """Audit gaps, receiver lock resets and measurement flags."""
@@ -75,6 +95,7 @@ def record_observations(
     antenna: int = 1,
     log: Log = Log.RANGE,
     frames: int | None = None,
+    receiver_id: str | None = None,
 ) -> Observations:
     """Capture a single observation log and restore previous subscriptions.
 
@@ -82,16 +103,27 @@ def record_observations(
     log. Records are held in memory. InterruptedCapture retains partial records
     under the selected logical log name. For long captures use SessionRecorder.
     Actual cadence is receiver-dependent and must be checked in the records.
+
+    Each capture gets a new source session ID, including interrupted captures.
+    ``receiver_id`` is an optional known serial number or application label;
+    no identity query is issued. Separate captures are separate carrier arcs.
     """
     if not isinstance(log, Log) or log not in (Log.RANGE, Log.OBSVM, Log.OBSVMCMP):
         raise ValueError("log must be RANGE, OBSVM or OBSVMCMP")
     selected = antenna_log(log, antenna)
-    records = capture_live(
-        receiver,
-        selected,
-        duration=duration,
-        interval=interval,
-        rate_hz=rate_hz,
-        frames=frames,
-    )
-    return Observations(records[log.value])
+    source = ObservationSource(receiver_id, uuid4().hex, antenna)
+    try:
+        records = capture_live(
+            receiver,
+            selected,
+            duration=duration,
+            interval=interval,
+            rate_hz=rate_hz,
+            frames=frames,
+        )
+    except InterruptedCapture as error:
+        error.records[log.value] = Observations(
+            error.records[log.value], source=source
+        ).records
+        raise
+    return Observations(records[log.value], source=source)

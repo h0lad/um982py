@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from um982py.capture import record_epoch
 from um982py.messages import Record
+from um982py.provenance import _observation_source
 
 
 @dataclass(frozen=True, slots=True, order=True)
@@ -62,6 +63,8 @@ def pair_base_rover_observations(
     Multiple candidates for an epoch raise an error. Pairing uses the received
     observations without interpolation or phase alignment.
     """
+    _observation_source(base)
+    _observation_source(rover)
     if not math.isfinite(tolerance) or tolerance < 0:
         raise ValueError("epoch tolerance must be finite and nonnegative")
     if any(row.name != "OBSVBASE" for row in base) or any(

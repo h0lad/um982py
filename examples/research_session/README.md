@@ -37,7 +37,9 @@ For a short in-memory recording from your own Python application:
 from um982py import Receiver, record_observations
 
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
-    observations = record_observations(receiver, duration=60, rate_hz=1)
+    observations = record_observations(
+        receiver, duration=60, rate_hz=1, receiver_id="field-receiver-1"
+    )
 
 quality = observations.quality(expected_interval=1)
 signals = observations.signals()
@@ -52,6 +54,35 @@ research. An interrupted capture exposes its partial records through
 `InterruptedCapture.records`. The same RINEX phase-alignment limitations apply.
 Signal samples require uncompressed logs and omit measurements without usable
 code, carrier phase or a known frequency.
+
+## Preserve observation identity
+
+Each `record_observations()` call assigns a unique capture session ID and antenna
+to `observations.source` and every top-level record. `receiver_id` is your known
+serial number or application label; it remains `None` if omitted. No receiver
+identity query is issued. Source tags survive slicing, including partial records
+from `InterruptedCapture`. Observation analysis and RINEX export reject mixed
+receiver/session/antenna tags and mixtures of tagged and untagged records.
+
+For replay, restore identity from your acquisition metadata:
+
+```python
+from um982py import Log, Observations, load_records
+from um982py.provenance import ObservationSource
+
+source = ObservationSource(
+    receiver_id="field-receiver-1", session_id="occupation-2026-11-16", antenna=1
+)
+observations = Observations(load_records("capture.bin", Log.RANGE), source=source)
+subset = Observations(observations.records[:100])
+print(subset.source)
+```
+
+Save `dataclasses.asdict(observations.source)` with the original recording and
+station metadata. Raw wire bytes and RINEX files do not preserve these tags;
+untagged replay cannot identify a receiver or session automatically. A tag is
+a declaration, not proof of carrier-phase continuity. Treat separate captures,
+reconnects, reboots and antenna changes as separate acquisition sessions.
 
 ## Compare base and rover observations
 

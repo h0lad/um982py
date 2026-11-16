@@ -42,3 +42,18 @@ def test_unknown_position_and_invalid_measurements_fail_closed() -> None:
     )
     with pytest.raises(ValueError):
         PositionLimits(max_epoch_age_s=nan)
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "max_epoch_age_s",
+        "max_solution_age_s",
+        "max_correction_age_s",
+        "max_horizontal_rms_m",
+        "max_vertical_std_m",
+    ],
+)
+def test_quality_limits_reject_boolean_values(name: str) -> None:
+    with pytest.raises(ValueError, match="finite and non-negative"):
+        PositionLimits(**{name: True})

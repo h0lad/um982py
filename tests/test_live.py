@@ -10,6 +10,7 @@ from um982py.errors import TransportClosed
 from um982py.live import PositionSession
 from um982py.ntrip import ReconnectPolicy
 from um982py.protocol.ascii import parse_ascii
+from um982py.rover_session import RoverSession
 
 
 def gga(quality: int) -> bytes:
@@ -83,3 +84,24 @@ def test_position_session_stops_before_connecting() -> None:
     session = PositionSession(lambda: pytest.fail("unexpected connection"))
     assert list(session.positions(stop)) == []
     assert session.health().attempts == 0
+
+
+@pytest.mark.parametrize("session_type", [PositionSession, RoverSession])
+@pytest.mark.parametrize("option", ["receiver_factory", "configure", "on_disconnect"])
+def test_sessions_reject_non_callable_inputs_before_connecting(
+    session_type: type[PositionSession] | type[RoverSession], option: str
+) -> None:
+    options = {"receiver_factory": lambda: pytest.fail("unexpected connection")}
+    options[option] = 42  # type: ignore[assignment]
+    with pytest.raises(TypeError, match=f"{option} must be callable"):
+        session_type(**options)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize(
+    "seconds", [True, False, 0, -1, 61, float("nan"), float("inf")]
+)
+def test_position_session_rejects_invalid_poll_seconds(seconds: float) -> None:
+    with pytest.raises(ValueError, match="poll_seconds"):
+        PositionSession(
+            lambda: pytest.fail("unexpected connection"), poll_seconds=seconds
+        )

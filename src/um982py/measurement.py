@@ -20,6 +20,7 @@ from um982py.messages import (
     Record,
 )
 from um982py.messages.observations import Observation
+from um982py.provenance import _observation_source
 from um982py.signals import tracking_signal
 
 __all__ = [
@@ -343,8 +344,10 @@ def sample_series(
     """Group one observation log by native signal in increasing epoch order.
 
     Supply records from one receiver session and antenna. Different native log
-    names are rejected so primary, secondary and base phases cannot be joined.
+    names and conflicting source tags are rejected so independent carrier arcs
+    cannot be joined. Untagged records require caller-verified provenance.
     """
+    _observation_source(records)
     if len({record.name for record in records}) > 1:
         raise ValueError("one observation log is required per measurement series")
     series: dict[SignalKey, list[RangeSample]] = defaultdict(list)

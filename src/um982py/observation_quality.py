@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from um982py._observation import range_observation
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
+from um982py.provenance import _observation_source
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,8 +37,9 @@ def audit_observations(
     """Audit a log in GPST order, using the supplied cadence to identify gaps.
 
     A decrease in receiver lock time counts as a reset. Invalid phases are
-    excluded from lock-time comparisons.
+    excluded from lock-time comparisons. Conflicting source tags are rejected.
     """
+    _observation_source(records)
     names = {record.name for record in records}
     if (
         not records

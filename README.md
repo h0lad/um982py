@@ -122,6 +122,9 @@ these are receiver estimates, not verified accuracy. For saved reports with
 precision targets, see the [PPP example](examples/has_b2b_ppp_fix/README.md);
 for GGA/GST statistics, see [position precision](examples/position_precision/README.md).
 
+For a sustained acceptance window with freshness checks and a timeout, use
+[`ConvergenceMonitor`](examples/has_b2b_ppp_fix/README.md#require-sustained-precision).
+
 ## Choose a workflow
 
 | Goal | Starting point |
@@ -249,6 +252,9 @@ recordings, use the [unattended station](examples/unattended_station/README.md).
 Keep one receiver session and antenna per series. Review omissions, station
 metadata, and phase alignment before precise processing; compressed OBSV
 carrier phases remain unavailable. See [RINEX export](examples/rinex_export/README.md).
+Live captures retain receiver/session/antenna source tags; see
+[observation identity](examples/research_session/README.md#preserve-observation-identity)
+for recording and restoring them during replay.
 
 ## Receiver output rates
 

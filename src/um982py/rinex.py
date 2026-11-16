@@ -12,6 +12,7 @@ from typing import Literal
 from um982py._observation import range_observation
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
+from um982py.provenance import _observation_source
 from um982py.signals import tracking_signal
 
 _LETTERS = "GRSECJI"
@@ -380,7 +381,9 @@ def export_rinex(
     Compressed observations export code, Doppler and signal strength, but omit
     carrier phase because the stored phase is modulo and its ambiguity has not
     been independently resolved. ``unresolved_compressed_phase`` counts them.
+    Records with conflicting receiver/session/antenna source tags are rejected.
     """
+    _observation_source(records)
     if not records or any(
         record.name
         not in ("RANGE", "RANGEH", "OBSVM", "OBSVH", "OBSVBASE", "OBSVMCMP", "OBSVHCMP")

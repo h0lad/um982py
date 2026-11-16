@@ -37,7 +37,9 @@ class PositionLimits:
             "max_vertical_std_m",
         ):
             value = getattr(self, name)
-            if value is not None and (not isfinite(value) or value < 0):
+            if value is not None and (
+                isinstance(value, bool) or not isfinite(value) or value < 0
+            ):
                 raise ValueError(f"{name} must be finite and non-negative")
         if self.allowed_fix_classes is not None and not self.allowed_fix_classes:
             raise ValueError("allowed_fix_classes must not be empty")

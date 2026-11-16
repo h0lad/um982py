@@ -46,6 +46,8 @@ assert not {'numpy', 'scipy', 'pyproj', 'georinex'} & sys.modules.keys()
     "module,names",
     [
         ("antenna", ("antenna_log", "swap_antenna")),
+        ("convergence", ("ConvergenceMonitor", "ConvergenceStatus")),
+        ("provenance", ("ObservationSource",)),
         ("live", ("PositionSession", "PositionSubscription", "PositionUpdate")),
         ("streaming", ("ReceiverStream", "Subscription", "StreamEvent")),
         ("rover_session", ("RoverSession", "RoverSessionHealth", "RoverUpdate")),

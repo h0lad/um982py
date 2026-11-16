@@ -1,19 +1,28 @@
 """Immutable mapping of decoded message bodies."""
 
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
-from typing import Self, cast
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING, Self, cast
 
 from um982py.messages.frames import Message
+
+if TYPE_CHECKING:
+    from um982py.provenance import ObservationSource
 
 type Value = int | float | str | bytes | Record | tuple[Value, ...] | None
 
 
 @dataclass(frozen=True, slots=True)
 class Record(Mapping[str, Value]):
+    """Decoded wire fields, with optional acquisition provenance in ``source``.
+
+    Source metadata is separate from the decoded field mapping and raw message.
+    """
+
     name: str
     entries: tuple[tuple[str, Value], ...]
     message: Message | None = None
+    source: "ObservationSource | None" = field(default=None, kw_only=True, repr=False)
 
     def __getitem__(self, key: str) -> Value:
         for name, value in self.entries:

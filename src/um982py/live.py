@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Generator
 from dataclasses import dataclass
 from datetime import datetime
+from math import isfinite
 from threading import Event, Lock
 from typing import TYPE_CHECKING
 
@@ -118,8 +119,18 @@ class PositionSession:
         poll_seconds: float = 1.0,
         reconnect: ReconnectPolicy | None = None,
     ) -> None:
-        if not 0 < poll_seconds <= 60:
-            raise ValueError("poll_seconds must be greater than zero and at most 60")
+        if not callable(receiver_factory):
+            raise TypeError("receiver_factory must be callable")
+        if configure is not None and not callable(configure):
+            raise TypeError("configure must be callable")
+        if on_disconnect is not None and not callable(on_disconnect):
+            raise TypeError("on_disconnect must be callable")
+        if (
+            isinstance(poll_seconds, bool)
+            or not isfinite(poll_seconds)
+            or not 0 < poll_seconds <= 60
+        ):
+            raise ValueError("poll_seconds must be finite, positive and at most 60")
         self.receiver_factory = receiver_factory
         self.configure = configure
         self.on_disconnect = on_disconnect
