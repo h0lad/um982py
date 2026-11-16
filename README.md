@@ -5,6 +5,13 @@ control, RTK/PPP positions, observation recording, and offline analysis.
 
 UM960 and UM980 have not been tested.
 
+The core is receiver I/O, corrected positioning, and reproducible observation
+recording. It needs only `pyserial`; CRS transforms optionally use `pyproj`.
+Research models and application-specific policies are specialist tools, not
+navigation guarantees. This library is not certified navigation equipment:
+do not use it as the sole source for flight, collision avoidance, or other
+safety-critical decisions.
+
 ## Install and use
 
 From a source checkout:
@@ -127,6 +134,18 @@ For a sustained acceptance window with freshness checks and a timeout, use
 
 ## Choose a workflow
 
+Start with one of three paths:
+
+1. **Read positions:** `Receiver.best_navigation()` for one native solution;
+   `Receiver.stream_positions()` for live GGA updates. Keep solution quality,
+   measurement epoch, and host arrival time distinct.
+2. **Run a corrected rover:** `Rover` combines receiver and correction workflows.
+   See the NTRIP and satellite PPP examples below. Correction bytes received or
+   forwarded do not prove that the receiver applied them.
+3. **Record and analyze:** `record_observations()` returns a bounded in-memory
+   `Observations`; use `SessionRecorder` for segmented disk recording. Preserve
+   raw bytes and receiver/session/antenna identity before filtering or export.
+
 | Goal | Starting point |
 | --- | --- |
 | Follow a live position | [Live tracking](examples/live_position/README.md) |
@@ -171,6 +190,38 @@ GGA, BESTNAV, PPP and rover results share the `Position` interface. Unavailable
 values are `None`; GGA has no date and therefore no absolute GPS epoch.
 A query response or host arrival time does not prove measurement freshness.
 Check receiver epochs and time quality when matching observations.
+
+### Specialist boundaries
+
+These modules have different contracts; they are not interchangeable quality
+scores:
+
+| Module | Responsibility |
+| --- | --- |
+| `quality` | Receiver solution classification and offline epoch summaries |
+| `precision` | Receiver-reported standard deviations and error ellipses, not integrity bounds |
+| `precision_matching` | Associate precision reports with position epochs |
+| `assessment` | Apply user-selected limits to an individual position |
+| `live_quality` | Stateful GGA monitoring using host arrival intervals and ongoing outage age |
+| `precise` | SP3 orbit products, not a higher-level position/precision API |
+| `session` | Segmented raw recording and replay |
+| `rtk_session` | Correction relay lifecycle and health |
+| `rover_session` | Combined position and correction subscriptions |
+
+Use `stats.least_squares()` for small, full-rank weighted systems. Detrending
+and orbit-position sensitivity share this QR implementation rather than separate
+normal-equation solvers. Its relative rank check is not a condition-number or
+uncertainty estimate; use an SVD-based scientific solver for demanding fits.
+
+Scientific examples document assumptions and references in their own READMEs.
+They are demonstrations, not independently validated operational instruments.
+No NumPy/SciPy dependency is needed to acquire, decode, or record data.
+
+For reproducible observation exports, pass the same timezone-aware `created_at`
+to `Observations.to_rinex()` or `rinex.export_rinex()`. The default uses current
+UTC for the generation header, independently of the observation epoch.
+
+Before unattended deployment, run the [hardware validation procedure](docs/hardware-validation.md).
 
 ## Choose a connection and streaming model
 
