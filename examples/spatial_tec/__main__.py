@@ -1,4 +1,4 @@
-"""Compare matched TEC changes from two stations."""
+"""Compare matched changes in slant total electron content from two stations."""
 
 from examples._scientific_cli import main
 

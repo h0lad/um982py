@@ -1,1 +1,1 @@
-"""Spatial ionospheric TEC changes."""
+"""Spatial ionospheric TEC comparison."""

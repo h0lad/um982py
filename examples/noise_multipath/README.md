@@ -28,11 +28,8 @@ differences remain in the output. They can occur with shared errors,
 reference-satellite covariance, changing conditions or temporal correlation.
 The difference cannot uniquely separate noise from multipath.
 
-Use a suitable splitter and two receivers for the shared-antenna experiment.
-Repeat with separate antennas, then use independent days for the held-out
-comparison. Check the matched epochs and signal identities independently.
+## Reference
 
-## References
-
-- [Prochniewicz et al. (2021): Empirical stochastic model of multi-GNSS measurements](https://doi.org/10.3390/s21134566).
-- [Library examples guide](../README.md).
+Braasch, M. S. (1996). Multipath effects. In B. W. Parkinson & J. J. Spilker
+(Eds.), Global Positioning System: Theory and Applications (Vol. I, pp. 547-568).
+American Institute of Aeronautics and Astronautics.

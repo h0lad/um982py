@@ -1,4 +1,4 @@
-"""Compare reported position uncertainty with reference errors."""
+"""Compare receiver-reported per-axis standard deviations with errors at an independently known point."""
 
 from examples._scientific_cli import main
 

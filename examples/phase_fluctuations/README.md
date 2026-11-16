@@ -32,4 +32,5 @@ resolve variations above their sampling bandwidth.
 ## References
 
 - [Phase scintillation with conventional GNSS receivers at 1 Hz](https://link.springer.com/article/10.1007/s00190-019-01297-z).
-- [Library examples guide](../README.md).
+- Hofmann-Wellenhof, B., Lichtenegger, H., & Wasle, E. (2008). GNSS – Global
+  Navigation Satellite Systems. Springer. doi:10.1007/978-3-211-73017-1

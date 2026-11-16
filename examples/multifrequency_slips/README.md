@@ -1,40 +1,52 @@
-# Three-frequency cycle-slip observability
+# Multi-frequency cycle-slip detection
 
-Enumerate ideal responses to known injected integer cycle slips on three signals.
+Detect cycle-slip candidates by searching the integer space of triple-frequency
+geometry-free and ionosphere-free combinations.
+
+## Background
+
+Cycle slips break the integer continuity of carrier-phase measurements.
+A geometry-free combination of two frequencies removes geometry and clock terms,
+leaving mostly ionosphere and ambiguity.  A triple-frequency closure test adds a
+third frequency and checks whether an integer-slip vector is consistent across
+all three combinations.
+
+This experiment follows the detector design described in
+
+> Blewitt, G. (1990). An automatic editing algorithm for GPS data. *Geophysical
+> Research Letters*, 17(3), 199-202. doi:10.1029/GL017i003p00199
+
+## Input CSV
+
+One row with the three carrier frequencies in Hz:
+
+```csv
+f1_hz,f2_hz,f3_hz
+1575420000,1227600000,1176450000
+```
 
 ## Run
 
-From the repository root, run the **synthetic demonstration**:
-
 ```bash
-python -m examples.multifrequency_slips --input examples/multifrequency_slips/sample.csv
+python -m examples.multifrequency_slips \
+    --input examples/multifrequency_slips/sample.csv
 ```
 
-Use your CSV with `--input` and `--json result.json` to save the report.
+Optional parameters:
 
-## Input
+- `--max-cycles` – maximum integer cycle slip magnitude to search (default 1)
+- `--gf-threshold-m` – geometry-free detection threshold in metres
+- `--closure-threshold-m` – triple-frequency closure threshold in metres
 
-Each row supplies three distinct carrier frequencies in Hz. For each signal,
-`--max-cycles N` tests slip values from −N to +N cycles, excluding the all-zero
-combination. `--gf-threshold-m` and `--closure-threshold-m` set experimental
-thresholds in metres.
+## Output
 
-## Explanation and interpretation
+The JSON report contains an array of candidate slip vectors, each with the
+integer slips on the three frequencies and flags for geometry-free detection,
+closure detection and either.
 
-For each candidate slip, the example converts cycles to distance using the
-wavelength. It calculates two ideal responses. The first is the phase difference
-between frequencies 1 and 2. The second is a three-frequency closure that
-removes geometry and first-order ionosphere. The report shows whether either
-response crosses its threshold.
+## Limitations
 
-These ideal responses show which injected slips the combinations can
-distinguish. The example does not detect slips in receiver data.
-
-Verify signs and wavelength conventions against labelled injected phase jumps.
-The enumeration does not model noise, ionospheric evolution, Doppler, real arcs,
-false alarms or half-cycle slips, and it does not measure a detection rate.
-
-## References
-
-- [Cai et al.: Enhanced cycle slip detection for dual-frequency BeiDou observations](https://hdl.handle.net/1721.1/121403).
-- [Library examples guide](../README.md).
+- The detector assumes three simultaneous frequencies on the same satellite.
+- Geometry-free jumps can also be caused by rapid ionospheric changes.
+- This is a candidate flag; independent verification is needed before
+  editing observations.

@@ -37,4 +37,6 @@ not a significance test.
 ## References
 
 - [ESA Navipedia: Ionospheric delay](https://gssc.esa.int/navipedia/index.php/Ionospheric_Delay).
-- [Library examples guide](../README.md).
+- Jin, S. G., & Park, J. U. (2007). GPS ionospheric tomography: A comparison
+  with the IRI 2001 model over the Korean Peninsula. *Earth, Planets and Space*,
+  59(4), 287-292. doi:10.1186/BF03352692

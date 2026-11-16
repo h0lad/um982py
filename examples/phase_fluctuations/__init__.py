@@ -1,1 +1,1 @@
-"""Low-rate carrier phase fluctuations."""
+"""Low-rate carrier phase fluctuation analysis."""

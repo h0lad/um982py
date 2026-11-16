@@ -35,4 +35,5 @@ antenna reference points and clock or signal biases.
 ## References
 
 - [ESA Navipedia: Positioning error](https://gssc.esa.int/navipedia/index.php/Positioning_Error).
-- [Library examples guide](../README.md).
+- Montenbruck, O., & Gill, E. (2000). Satellite Orbits: Models, Methods and
+  Applications. Springer. doi:10.1007/978-3-642-58351-3

@@ -34,4 +34,5 @@ an independent observation. The report gives no confidence interval.
 ## References
 
 - [NIST: Measurement uncertainty](https://www.nist.gov/pml/nist-technical-note-1297).
-- [Library examples guide](../README.md).
+- Teunissen, P. J. G., & Montenbruck, O. (Eds.). (2017). Springer Handbook of
+  Global Navigation Satellite Systems. Springer. doi:10.1007/978-3-319-42928-1
