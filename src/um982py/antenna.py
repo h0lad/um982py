@@ -8,6 +8,15 @@ from um982py.commands.core import Command
 from um982py.commands.types import Port, Trigger
 from um982py.messages import CommandResponse, Message, Record
 
+__all__ = [
+    "AntennaLog",
+    "antenna_index",
+    "antenna_log",
+    "mirror",
+    "other_antenna",
+    "swap_antenna",
+]
+
 _SECONDARY: dict[Log, Log] = {
     Log.RANGE: Log.RANGEH,
     Log.BESTPOS: Log.BESTNAVH,

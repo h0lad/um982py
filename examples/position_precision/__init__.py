@@ -2,8 +2,9 @@
 
 from collections.abc import Sequence
 
-from um982py import geojson_feature, match_precision
+from um982py.adapters import geojson_feature
 from um982py.messages import Record
+from um982py.precision_matching import match_precision
 
 
 def map_precision(

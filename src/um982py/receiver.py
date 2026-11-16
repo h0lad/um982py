@@ -452,6 +452,11 @@ class Receiver:
         The receiver controls the actual output rate. Repeated or missing
         epochs are preserved. Closing the context restores subscriptions even
         when iteration stops early; restoration can fail on disconnection.
+
+        This consumes the existing connection in the calling thread and leaves
+        it open. It does not reconnect. Use ``live.PositionSession`` for a
+        reconnecting GGA reader, or ``streaming.ReceiverStream`` to share one
+        connection between message subscribers and command callers.
         """
         if type(antenna) is not int or antenna not in (1, 2):
             raise ValueError("antenna must be 1 or 2")

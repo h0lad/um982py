@@ -8,9 +8,12 @@ from collections.abc import Sequence
 from threading import Event, Timer
 
 from examples.ntrip_client import gga_from_fix
-from um982py import NtripClient, Receiver, ReceiverStream, RtkSession
+from um982py import Receiver
 from um982py.commands import queries
 from um982py.errors import ResponseTimeout
+from um982py.ntrip import NtripClient
+from um982py.rtk_session import RtkSession
+from um982py.streaming import ReceiverStream
 
 
 def main(argv: Sequence[str] | None = None) -> int:

@@ -10,8 +10,8 @@ from types import SimpleNamespace
 
 import pytest
 
-from um982py import PpsDevice, PpsEdge, missed_pps_edges, pps_clock_offset_ns
 from um982py import pps as module
+from um982py.pps import PpsDevice, PpsEdge, missed_pps_edges, pps_clock_offset_ns
 
 linux_pps = pytest.mark.skipif(
     sys.platform != "linux"

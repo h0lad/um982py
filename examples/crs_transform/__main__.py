@@ -5,7 +5,7 @@ import json
 from collections.abc import Sequence
 from dataclasses import asdict
 
-from um982py import transform_coordinate
+from um982py.crs import transform_coordinate
 
 
 def main(argv: Sequence[str] | None = None) -> int:

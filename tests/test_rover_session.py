@@ -2,8 +2,10 @@ from threading import Event
 
 from conftest import ReplayTransport
 from test_bodies import manual_message
-from um982py import Receiver, ReconnectPolicy, RoverSession
+from um982py import Receiver
 from um982py.errors import TransportClosed
+from um982py.ntrip import ReconnectPolicy
+from um982py.rover_session import RoverSession
 
 
 def test_rover_session_reconnects_receiver_and_reports_connection_health() -> None:

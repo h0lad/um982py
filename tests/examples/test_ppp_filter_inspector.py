@@ -6,13 +6,13 @@ from examples.ppp_filter_inspector import analyse_ppp_filter
 from examples.ppp_filter_inspector.__main__ import main
 
 from conftest import ascii_message
-from um982py import (
+from um982py.experimental import parse_pos_debug, parse_ppp_debug
+from um982py.protocol import StreamDecoder
+from um982py.receiver_models import (
     PerformanceStatus,
     ReceiverSystemStatus,
     parse_configuration,
 )
-from um982py.experimental import parse_pos_debug, parse_ppp_debug
-from um982py.protocol import StreamDecoder
 
 
 def test_parse_performance_and_system_status() -> None:

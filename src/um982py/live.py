@@ -17,6 +17,8 @@ if TYPE_CHECKING:
     from um982py.receiver import Receiver
     from um982py.streaming import ReceiverStream
 
+__all__ = ["LiveHealth", "PositionSession", "PositionSubscription", "PositionUpdate"]
+
 
 @dataclass(frozen=True, slots=True)
 class PositionUpdate:
@@ -52,7 +54,12 @@ class LiveHealth:
 
 
 class PositionSubscription:
-    """Consume GGA positions while a ReceiverStream handles other traffic."""
+    """Adapt an existing ReceiverStream subscription into GGA position updates.
+
+    This borrows the worker, configures no receiver output and does not reconnect.
+    Closing releases only this subscription. For a bounded position stream,
+    start with ``Receiver.stream_positions()``.
+    """
 
     def __init__(self, stream: ReceiverStream, *, capacity: int = 1024) -> None:
         self.stream = stream
@@ -88,7 +95,10 @@ class PositionSubscription:
 
 
 class PositionSession:
-    """Read GGA fixes from successive receiver connections.
+    """Own successive receiver connections and read their already-emitted GGA fixes.
+
+    Use this for a passive GGA reader that reconnects. For BESTNAV positions
+    with optional NTRIP and heading, use ``rover_session.RoverSession``.
 
     The factory opens a fresh receiver for each connection. If supplied, the
     configure callback runs after every connection and can enable GGA output.

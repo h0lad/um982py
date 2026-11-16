@@ -67,7 +67,8 @@ For an in-memory capture with the library, an interruption retains the records
 received so far:
 
 ```python
-from um982py import InterruptedCapture, Log, Receiver, capture_live
+from um982py import Log, Receiver, capture_live
+from um982py.capture import InterruptedCapture
 
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
     try:

@@ -1,9 +1,11 @@
-"""Run the README snippets unchanged against recorded receiver responses."""
+"""Run library recipes from the main and example READMEs against recorded data."""
 
+import csv
 import re
+from io import StringIO
 from pathlib import Path
 from struct import pack_into, unpack_from
-from types import SimpleNamespace
+from types import CodeType, SimpleNamespace
 
 import pytest
 
@@ -17,19 +19,44 @@ from um982py import Receiver, Rover
 from um982py.commands.configuration import SignalGroup
 from um982py.commands.types import Port
 from um982py.messages import AsciiMessage
+from um982py.ppp import PppSolution
 from um982py.protocol.ascii import parse_ascii
 from um982py.protocol.binary import BINARY_HEADER
 from um982py.protocol.checksums import unicore_crc32
 from um982py.rinex import RinexExport
 
 ROOT = Path(__file__).resolve().parents[1]
-SNIPPETS = dict(
-    re.findall(
+SNIPPET_SOURCES = {
+    title: (code, str(path.relative_to(ROOT)))
+    for path in (
+        ROOT / "README.md",
+        ROOT / "examples/has_b2b_ppp_fix/README.md",
+        ROOT / "examples/heading_attitude/README.md",
+        ROOT / "examples/satellite_monitor/README.md",
+    )
+    for title, code in re.findall(
         r"^### ([^\n]+)\n(?:(?!^### ).)*?```python\n(.*?)```",
-        (ROOT / "README.md").read_text(encoding="utf-8"),
+        path.read_text(encoding="utf-8"),
         re.S | re.M,
     )
-)
+}
+SNIPPETS = {
+    title: compile(code, path, "exec")
+    for title, (code, path) in SNIPPET_SOURCES.items()
+}
+
+
+def _configured_snippet(example: str, **settings: object) -> CodeType:
+    code, path = SNIPPET_SOURCES[example]
+    for name, value in settings.items():
+        code, count = re.subn(
+            rf"^{name} = .*$",
+            lambda _, replacement=f"{name} = {value!r}": replacement,
+            code,
+            flags=re.M,
+        )
+        assert count == 1
+    return compile(code, path, "exec")
 
 
 def _run_snippet(
@@ -56,7 +83,7 @@ def _run_snippet(
     monkeypatch.setattr(Receiver, "serial", staticmethod(serial))
     monkeypatch.chdir(tmp_path)
     namespace: dict[str, object] = {}
-    exec(compile(SNIPPETS[example], "README.md", "exec"), namespace)  # noqa: S102
+    exec(SNIPPETS[example], namespace)  # noqa: S102
     assert transport.writes == [command] * queries
     assert transport.closed
     return namespace
@@ -68,19 +95,18 @@ def test_readme_position(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     _run_snippet(
-        "Locate a field site",
+        "Read one position",
         "bodies/BESTNAVA.bin",
         b"BESTNAVA\r\n",
         monkeypatch,
         tmp_path,
     )
-    assert capsys.readouterr().out == (
-        "52.53369589952, 13.37633656974\n"
-        "Solution: SINGLE, satellites used: 7\n"
-        "Latitude standard deviation: 2.46 m\n"
-        "Longitude standard deviation: 2.19 m\n"
-        "Height standard deviation: 2.85 m\n"
+    lines = capsys.readouterr().out.splitlines()
+    assert lines[:2] == ["52.53369589952 13.37633656974", "Solution: SINGLE"]
+    assert float(lines[2].split(": ")[1]) == pytest.approx(
+        (2.4576**2 + 2.1854**2) ** 0.5
     )
+    assert float(lines[3].split(": ")[1]) == pytest.approx(2.852)
 
 
 def test_readme_corrected_rover(
@@ -114,7 +140,7 @@ def test_readme_corrected_rover(
         return FakeRover()
 
     monkeypatch.setattr(Rover, "connect", staticmethod(connect))
-    exec(compile(SNIPPETS["Use a corrected rover"], "README.md", "exec"), {})  # noqa: S102
+    exec(SNIPPETS["Use a corrected rover"], {})  # noqa: S102
     assert capsys.readouterr().out == ("52.5 13.4\nHeading: 90.0 correction age: 2.0\n")
 
 
@@ -128,13 +154,109 @@ def test_readme_position_without_solution(
     assert isinstance(message, AsciiMessage)
     fields = ("INSUFFICIENT_OBS", *message.fields[1:])
     _run_snippet(
-        "Locate a field site",
+        "Read one position",
         ascii_message("BESTNAVA", ",".join(fields)),
         b"BESTNAVA\r\n",
         monkeypatch,
         tmp_path,
     )
     assert capsys.readouterr().out == "No position available yet\n"
+
+
+def _position_transport(
+    monkeypatch: pytest.MonkeyPatch, service: str | None
+) -> tuple[ReplayTransport, bytes]:
+    command = b"BESTNAVA\r\n" if service is None else b"PPPNAVB\r\n"
+    fixture = "bodies/BESTNAVA.bin" if service is None else "captures-extra/PPPNAVB.bin"
+    transport = ReplayTransport(
+        {command: (ROOT / "tests/fixtures" / fixture).read_bytes()}
+    )
+
+    def serial(port: str, baudrate: int, *, timeout: float = 3) -> Receiver:
+        assert (port, baudrate) == ("/dev/ttyUSB0", 921600)
+        return Receiver(transport, timeout=timeout)
+
+    def configuration(receiver: Receiver) -> SimpleNamespace:
+        assert service is not None
+        return SimpleNamespace(
+            signal_group=SignalGroup(3, 6), ppp_enabled=True, ppp_service=service
+        )
+
+    monkeypatch.setattr(Receiver, "serial", staticmethod(serial))
+    monkeypatch.setattr(Receiver, "configuration", configuration)
+    return transport, command
+
+
+@pytest.mark.parametrize("service", ["E6-HAS", "B2B-PPP"])
+def test_readme_single_ppp_position(
+    service: str, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    transport, command = _position_transport(monkeypatch, service)
+    namespace: dict[str, object] = {}
+    exec(_configured_snippet("Read one position", service=service), namespace)  # noqa: S102
+    position = namespace["position"]
+    assert isinstance(position, PppSolution)
+    assert position.valid and not position.converged
+    output = capsys.readouterr().out
+    assert "Solution: PPP_CONVERGING" in output
+    assert "Horizontal RMS (m):" in output and "Vertical std (m):" in output
+    assert transport.writes == [command]
+    assert transport.closed
+
+
+@pytest.mark.parametrize("service", [None, "E6-HAS", "B2B-PPP"])
+def test_readme_precision_csv_preserves_status_and_missing_values(
+    service: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    transport, command = _position_transport(monkeypatch, service)
+    clock = [0.0]
+
+    def pause(seconds: float) -> None:
+        assert seconds == 5
+        clock[0] += seconds
+        if service is not None:
+            body = bytearray(transport.responses[command][:-4])
+            pack_into("<I", body, BINARY_HEADER.size + 4, 69)  # PPP
+            pack_into("<fff", body, BINARY_HEADER.size + 40, 0.1, 0.2, 0.3)
+            if clock[0] >= 10:
+                pack_into("<I", body, BINARY_HEADER.size, 1)  # INSUFFICIENT_OBS
+            transport.responses[command] = bytes(body) + unicore_crc32(body).to_bytes(
+                4, "little"
+            )
+        elif clock[0] >= 10:
+            message = parse_ascii(transport.responses[command])
+            assert isinstance(message, AsciiMessage)
+            transport.responses[command] = ascii_message(
+                "BESTNAVA", ",".join(("INSUFFICIENT_OBS", *message.fields[1:]))
+            )
+
+    monkeypatch.setattr("time.monotonic", lambda: clock[0])
+    monkeypatch.setattr("time.sleep", pause)
+    exec(  # noqa: S102
+        _configured_snippet(
+            "Watch precision over time", service=service, duration_s=15
+        ),
+        {},
+    )
+    rows = list(csv.DictReader(StringIO(capsys.readouterr().out)))
+    assert [float(row["elapsed_s"]) for row in rows] == [0, 5, 10]
+    assert [row["valid"] for row in rows] == ["True", "True", "False"]
+    assert float(rows[0]["horizontal_rms_m"]) > 0
+    assert rows[2]["horizontal_rms_m"] == rows[2]["vertical_std_m"] == ""
+    if service is None:
+        assert all(row["converged"] == "" for row in rows)
+        assert rows[0]["solution"] == "SINGLE"
+    else:
+        assert [row["converged"] for row in rows] == ["False", "True", "False"]
+        assert rows[0]["solution"] == "PPP_CONVERGING"
+        assert rows[1]["solution"] == "PPP"
+        assert float(rows[1]["horizontal_rms_m"]) == pytest.approx(0.05**0.5)
+        assert float(rows[1]["vertical_std_m"]) == pytest.approx(0.3)
+        assert rows[0]["correction_age_s"] != ""
+    assert transport.writes == [command] * 3
+    assert transport.closed
 
 
 @pytest.mark.parametrize(
@@ -221,9 +343,7 @@ def test_readme_precise_position_can_be_interrupted(
             raise KeyboardInterrupt
 
     monkeypatch.setattr("um982py.ppp.sleep", stop_after_two_readings)
-    exec(  # noqa: S102
-        compile(SNIPPETS["Watch a precise position converge"], "README.md", "exec"), {}
-    )
+    exec(SNIPPETS["Watch a precise position converge"], {})  # noqa: S102
     output = capsys.readouterr().out
     assert output.count("PPP_CONVERGING: horizontal RMS") == 2
     assert "height std 30.083" in output and "correction age 14.0 s" in output
@@ -256,12 +376,7 @@ def test_readme_rinex(
     )
     monkeypatch.chdir(tmp_path)
     namespace: dict[str, object] = {}
-    exec(  # noqa: S102
-        compile(
-            SNIPPETS["Record observations for post-processing"], "README.md", "exec"
-        ),
-        namespace,
-    )
+    exec(SNIPPETS["Record observations for post-processing"], namespace)  # noqa: S102
     result = namespace["result"]
     assert isinstance(result, RinexExport)
     assert result.epochs == 26

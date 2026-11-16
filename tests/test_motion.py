@@ -3,9 +3,10 @@ from dataclasses import replace
 import pytest
 
 from test_bodies import manual_message
-from um982py import Motion, RoverPosition
 from um982py.messages import BestNavigation, decode_log
 from um982py.messages.enums import PositionType, SolutionStatus
+from um982py.motion import Motion
+from um982py.rover import RoverPosition
 
 
 def navigation() -> BestNavigation:

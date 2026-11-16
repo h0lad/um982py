@@ -11,10 +11,9 @@ def test_core_receiver_api_can_load_without_experimental_modules() -> None:
 import sys
 import um982py
 assert not any(name.startswith('um982py.') for name in sys.modules)
-from um982py import (
-    BestNavigation, Log, Fix, Heading, Receiver,
-    RinexMetadata, capture_live,
-)
+from um982py.messages.navigation import BestNavigation, Fix, Heading
+from um982py import Log, Receiver, capture_live
+from um982py.rinex import RinexMetadata
 assert Log.RANGE.value == 'RANGE'
 assert Receiver and capture_live
 assert BestNavigation and Fix and Heading and Log and RinexMetadata
@@ -45,7 +44,7 @@ assert 'um982py.messages.layouts' in sys.modules
 def test_rtcm_decoder_loads_only_rtcm_layouts() -> None:
     code = """
 import sys
-from um982py import decode_rtcm
+from um982py.rtcm import decode_rtcm
 assert decode_rtcm
 assert 'um982py.messages.layouts.rtcm' in sys.modules
 assert 'um982py.messages.layouts.navigation' not in sys.modules

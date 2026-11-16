@@ -14,6 +14,8 @@ from um982py.rover import Rover, RoverPosition
 from um982py.rtk_session import RtkHealth
 from um982py.streaming import StreamHealth
 
+__all__ = ["RoverSession", "RoverSessionHealth", "RoverUpdate"]
+
 
 @dataclass(frozen=True, slots=True)
 class RoverUpdate:
@@ -38,7 +40,11 @@ class RoverSessionHealth:
 
 
 class RoverSession:
-    """Read rover positions across receiver reconnects.
+    """Own reconnecting BESTNAV polling, with optional NTRIP and matched heading.
+
+    Use ``Rover`` for one receiver connection. This class owns a fresh receiver
+    and rover worker per connection, exposing both connection and correction
+    health. It polls positions; it is not a passive GGA subscription.
 
     The factory opens a new receiver each time. The optional configuration
     callback runs before the stream and NTRIP relay start on each connection.

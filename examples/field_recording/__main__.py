@@ -7,8 +7,10 @@ from contextlib import closing
 from pathlib import Path
 from threading import Event, Timer
 
-from um982py import PositionSession, Receiver, SessionRecorder, iter_session_events
+from um982py import Receiver
 from um982py.capture import RecordingTransport
+from um982py.live import PositionSession
+from um982py.session import SessionRecorder, iter_session_events
 
 
 def main(argv: Sequence[str] | None = None) -> int:

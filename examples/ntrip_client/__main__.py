@@ -15,13 +15,18 @@ from examples._console import ExampleParser, debug_header, run
 from examples.ntrip_client import CorrectionStats, forward_corrections, gga_from_fix
 from examples.ntrip_client.precision import PrecisionMonitor, precision_line
 from examples.position_tracking import TrackPoint, collect_positions
-from um982py import NtripClient, Receiver
+from um982py import Receiver
 from um982py.antenna import antenna_log
 from um982py.commands import Log, modes
 from um982py.corrections import stale_correction
 from um982py.errors import CommandRejected, ProtocolError, ResponseTimeout
 from um982py.geodesy import ecef_from_geodetic
-from um982py.ntrip import NtripError, ReconnectPolicy, retryable_ntrip_error
+from um982py.ntrip import (
+    NtripClient,
+    NtripError,
+    ReconnectPolicy,
+    retryable_ntrip_error,
+)
 from um982py.protocol import StreamDecoder
 
 

@@ -29,6 +29,8 @@ if TYPE_CHECKING:
     from um982py.messages import CommandResponse
     from um982py.receiver import Receiver, _ReceivedFrame
 
+__all__ = ["ReceiverStream", "StreamEvent", "StreamHealth", "Subscription"]
+
 
 @dataclass(frozen=True, slots=True)
 class StreamEvent:
@@ -123,6 +125,11 @@ class StreamHealth:
 
 class ReceiverStream:
     """Dispatch receiver data and serialize commands in one background thread.
+
+    This is the advanced worker for mixed message subscriptions and concurrent
+    command callers on one connection. It neither configures periodic output
+    automatically nor reconnects. For ordinary GGA use
+    ``Receiver.stream_positions()``; for a corrected rover use ``Rover``.
 
     Add subscriptions before calling ``start()``. The worker owns the receiver
     while it is running. Commands delay delivery until they finish. Closing

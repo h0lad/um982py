@@ -39,7 +39,7 @@ For an application with an update callback and a timer, use the same monitor
 in both callbacks:
 
 ```python
-from um982py import LiveLimits, PositionMonitor
+from um982py.live_quality import LiveLimits, PositionMonitor
 
 monitor = PositionMonitor(LiveLimits(max_gap_s=3, max_correction_age_s=5))
 

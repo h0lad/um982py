@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from um982py import Receiver, export_rinex, range_samples
+from um982py import Receiver
 from um982py._observation import range_observation
 from um982py.capture import capture_live, record_epoch
 from um982py.commands import Log, configuration
@@ -30,7 +30,9 @@ from um982py.experimental import (
 )
 from um982py.experimental.capture import receiver_state
 from um982py.experimental.tracking import tracking_slots
+from um982py.measurement import range_samples
 from um982py.messages import Record
+from um982py.rinex import export_rinex
 
 pytestmark = pytest.mark.hardware
 

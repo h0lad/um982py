@@ -8,7 +8,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from examples.ntrip_server.setup import ask, choice, integer
-from um982py import NtripClient
+from um982py.ntrip import NtripClient
 
 
 def main() -> int:

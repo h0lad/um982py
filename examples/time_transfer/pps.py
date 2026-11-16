@@ -3,7 +3,7 @@
 import argparse
 from pathlib import Path
 
-from um982py import PpsDevice, PpsEdge
+from um982py.pps import PpsDevice, PpsEdge
 
 
 def describe(edge: PpsEdge | None) -> str:

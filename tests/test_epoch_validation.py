@@ -37,7 +37,7 @@ def test_week_boundary_is_valid() -> None:
 
 
 def test_receiver_time_preserves_quality_and_unverified_binary_codes() -> None:
-    from um982py import receiver_time
+    from um982py.measurement import receiver_time
 
     fine = AsciiHeader("BESTNAVA", 1, "GPS", "FINE", 2400, 1000, 0, 0, 18, 0)
     unknown = AsciiHeader("BESTNAVA", 1, "GPS", "UNKNOWN", 2400, 1000, 0, 0, 18, 0)
@@ -85,9 +85,6 @@ def test_glonass_channel_override_does_not_require_receiver_channel() -> None:
 
 
 def test_bdt_nominal_gps_conversion_and_week_rollover() -> None:
-    from um982py import bdt_week_to_gps_seconds as exported
-
-    assert exported is bdt_week_to_gps_seconds
     assert bdt_week_to_gps_seconds(0, 0) == 1356 * 604800 + 14
     assert bdt_week_to_gps_seconds(0, 604799.5) == 1357 * 604800 + 13.5
     assert bdt_week_to_gps_seconds(1, 0) == 1357 * 604800 + 14

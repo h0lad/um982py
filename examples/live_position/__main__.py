@@ -7,14 +7,11 @@ from collections.abc import Sequence
 from contextlib import closing
 from threading import Event, Thread
 
-from um982py import (
-    LiveLimits,
-    PositionMonitor,
-    PositionSession,
-    Receiver,
-    geojson_feature,
-)
+from um982py import Receiver
+from um982py.adapters import geojson_feature
 from um982py.commands import Log
+from um982py.live import PositionSession
+from um982py.live_quality import LiveLimits, PositionMonitor
 
 
 def report_status(monitor: PositionMonitor, stop: Event) -> None:

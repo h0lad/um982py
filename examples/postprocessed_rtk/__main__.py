@@ -4,7 +4,7 @@ from collections.abc import Sequence
 from pathlib import Path
 
 from examples._console import ExampleParser
-from um982py import run_ppk
+from um982py.ppk import run_ppk
 
 
 def main(argv: Sequence[str] | None = None) -> int:

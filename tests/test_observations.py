@@ -3,15 +3,9 @@ from pathlib import Path
 import pytest
 
 from conftest import SubscriptionTransport
-from um982py import (
-    InterruptedCapture,
-    Log,
-    Observations,
-    Receiver,
-    load_records,
-    record_observations,
-)
+from um982py import Log, Observations, Receiver, load_records, record_observations
 from um982py.antenna import AntennaLog
+from um982py.capture import InterruptedCapture
 from um982py.commands.types import Port
 from um982py.messages import Record
 

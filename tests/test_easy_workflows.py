@@ -8,12 +8,13 @@ import pytest
 
 from conftest import FIXTURES, ReplayTransport, SubscriptionTransport, sentence
 from test_bodies import manual_message
-from um982py import AsyncReceiver, Log, Receiver, RoverPosition
+from um982py import AsyncReceiver, Log, Receiver
 from um982py.commands.types import Port
 from um982py.messages import AsciiHeader, BestNavigation, Fix, Position, decode_log
 from um982py.messages.enums import PositionType
 from um982py.ppp import PppSolution
 from um982py.protocol.ascii import parse_ascii
+from um982py.rover import RoverPosition
 
 GGA = sentence(b"GNGGA,145842.00,5232.0000,N,01322.0000,E,4,17,1.3,38.0,M,36.0,M,0.5,")
 GGAH = sentence(

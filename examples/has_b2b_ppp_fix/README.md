@@ -40,6 +40,54 @@ its running mean to a callback without polling the receiver.
 `--target-h-sigma`, `--target-v-sigma` and `--min-ppp` set precision and sample
 criteria.
 
+## Library usage
+
+### Watch a precise position converge
+
+Keep the antenna stationary. Stop with Ctrl+C:
+
+```python
+from um982py import Receiver
+from um982py.geodesy import haversine_distance
+
+with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
+    ppp = receiver.start_ppp(service="E6-HAS")
+    previous = None
+    try:
+        for fix in ppp.poll_positions(interval=5):
+            precision = fix.precision
+            print(
+                f"{fix.position_type}: horizontal RMS "
+                f"{precision.horizontal_rms_m if precision else None} m, "
+                f"height std {precision.up_std_m if precision else None} m, "
+                f"correction age {fix.correction_age_s} s"
+            )
+            if fix.valid and fix.latitude is not None and fix.longitude is not None:
+                position = (fix.latitude, fix.longitude)
+                print(f"Position: {position}")
+                if previous is not None:
+                    print(f"Change: {haversine_distance(*previous, *position):.3f} m")
+                previous = position
+            else:
+                previous = None
+    except KeyboardInterrupt:
+        print("Stopped")
+```
+
+Use `service="B2B-PPP"` for BeiDou PPP-B2b or `service="L6MDCPPP"` for QZSS
+MADOCA PPP. `start_ppp()` changes the signal group and PPP service if needed.
+The receiver saves a changed signal group and reboots; PPP service changes are
+not explicitly saved. The session reports which settings changed. Group 7/0
+supports B2b in base mode; `start_ppp()` checks the mode before using it.
+
+For QZSS MADOCA correction telemetry, run:
+
+```bash
+um982py --port /dev/ttyUSB0 --baud 921600 --madoca ppp-diagnostics
+```
+
+Receiving correction messages does not confirm that the receiver applied them.
+
 ## References
 
 - Galileo HAS Signal-in-Space ICD.

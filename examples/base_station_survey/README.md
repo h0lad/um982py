@@ -28,7 +28,8 @@ The survey averages ECEF coordinates and derives ellipsoidal height. BESTNAV
 To collect a point with the library's GGA survey instead:
 
 ```python
-from um982py import Receiver, survey_point, wait_for_fix
+from um982py import Receiver
+from um982py.survey import survey_point, wait_for_fix
 
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
     wait_for_fix(receiver, timeout=120, rtk_fixed=True, max_correction_age=5)

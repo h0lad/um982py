@@ -4,7 +4,7 @@ from typing import Self
 import pytest
 from examples.time_transfer import pps
 
-from um982py import PpsEdge, PpsSnapshot
+from um982py.pps import PpsEdge, PpsSnapshot
 
 
 def test_example_reports_snapshots(

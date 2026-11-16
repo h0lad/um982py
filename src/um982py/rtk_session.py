@@ -20,6 +20,9 @@ if TYPE_CHECKING:
     from collections.abc import Callable
 
 
+__all__ = ["CorrectionWriteError", "GgaProviderError", "RtkHealth", "RtkSession"]
+
+
 class CorrectionWriteError(RuntimeError):
     """Delivery of a correction to the receiver failed."""
 
@@ -48,7 +51,11 @@ class RtkHealth:
 
 
 class RtkSession:
-    """Relay RTCM until stopped, retrying transient caster failures.
+    """Relay RTCM corrections, retrying transient caster failures.
+
+    This advanced component owns caster connections, not a receiver connection.
+    It does not deliver position updates or reconnect a failed receiver. Start
+    with ``Rover`` or ``rover_session.RoverSession`` for an integrated rover.
 
     ``client_factory`` creates a fresh NtripClient for each connection attempt.
     Set its initial GGA if the caster requires a position during connection.

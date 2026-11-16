@@ -2,6 +2,10 @@
 
 Run these examples to read receiver data and analyze GNSS measurements.
 
+The [API guide](../README.md#find-the-right-api) lists supported imports and
+explains which streaming or reconnecting session to use. Specialist helpers
+are imported from their modules; the package root exposes the main workflows.
+
 Workflow examples demonstrate library integration; scientific
 models and field experiments require the stated data and independent reference
 measurements before their results support an accuracy or physical claim. Short

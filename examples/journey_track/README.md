@@ -15,7 +15,8 @@ python -m examples.journey_track --profile sport --replay /tmp/passage.bin --mov
 To write a GPX track directly from GGA fixes:
 
 ```python
-from um982py import Receiver, TrackWriter
+from um982py import Receiver
+from um982py.track import TrackWriter
 
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
     with TrackWriter("walk.gpx", format="gpx", reference_frame="WGS84") as track:

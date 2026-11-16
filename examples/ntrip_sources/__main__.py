@@ -6,8 +6,8 @@ import os
 from collections.abc import Sequence
 from dataclasses import asdict
 
-from um982py import fetch_sourcetable
 from um982py.geodesy import haversine_distance
+from um982py.ntrip import fetch_sourcetable
 
 
 def main(argv: Sequence[str] | None = None) -> int:

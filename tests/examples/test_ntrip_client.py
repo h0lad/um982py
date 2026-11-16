@@ -20,13 +20,17 @@ from examples.ntrip_client.__main__ import _reference_check, _report, _sample, m
 from examples.ntrip_client.precision import PrecisionMonitor, precision_line
 from examples.position_tracking import TrackPoint
 
-from um982py import NtripClient
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
 from um982py.geodesy import ecef_from_geodetic
 from um982py.messages import Record
 from um982py.messages.navigation import Fix
-from um982py.ntrip import NtripError, ReconnectPolicy, retryable_ntrip_error
+from um982py.ntrip import (
+    NtripClient,
+    NtripError,
+    ReconnectPolicy,
+    retryable_ntrip_error,
+)
 from um982py.protocol import StreamDecoder
 from um982py.protocol.ascii import parse_ascii
 from um982py.protocol.binary import parse_rtcm

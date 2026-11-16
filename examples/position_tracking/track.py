@@ -8,11 +8,11 @@ from dataclasses import asdict, dataclass
 from itertools import pairwise
 
 from examples.position_tracking.quality import summary_statistics
-from um982py import PositionPrecision
 from um982py.capture import record_epoch
 from um982py.geodesy import haversine_distance
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record, Value
+from um982py.precision import PositionPrecision
 from um982py.stats import mean, stddev
 
 

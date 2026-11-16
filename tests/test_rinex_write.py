@@ -2,7 +2,8 @@
 
 from pathlib import Path
 
-from um982py import RinexExport, RinexNavigationExport
+from um982py.rinex import RinexExport
+from um982py.rinex_nav import RinexNavigationExport
 
 
 def test_observation_and_navigation_exports_write_ascii(tmp_path: Path) -> None:

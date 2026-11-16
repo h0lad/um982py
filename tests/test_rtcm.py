@@ -8,11 +8,11 @@ from dataclasses import replace
 import pytest
 
 from conftest import FIXTURES, rtcm
-from um982py import Log, decode_message, decode_rtcm
+from um982py import Log, decode_message
 from um982py.errors import ChecksumError, ProtocolError
 from um982py.messages import Record
 from um982py.protocol.binary import parse_rtcm
-from um982py.rtcm import STANDARD_RTCM_TYPES, UNICORE_RTCM_TYPES
+from um982py.rtcm import STANDARD_RTCM_TYPES, UNICORE_RTCM_TYPES, decode_rtcm
 
 VECTORS = json.loads((FIXTURES / "rtcm-vectors.json").read_text())["vectors"]
 
@@ -156,7 +156,7 @@ def test_msm_empty_masks_and_cell_count_limit() -> None:
 def test_decoder_has_no_optional_imports() -> None:
     code = """
 import sys
-from um982py import decode_rtcm
+from um982py.rtcm import decode_rtcm
 assert not any(name.startswith(("pyrtcm", "pynmeagps")) for name in sys.modules)
 result = decode_rtcm(bytes.fromhex(sys.argv[1]))
 assert result["status"] == "decoded"

@@ -1,8 +1,9 @@
 # um982py
 
-Python 3.12+ library and command-line tools for the Unicore UM982 GNSS receiver.
+Python 3.12+ library and CLI for the Unicore UM982 GNSS receiver: receiver
+control, RTK/PPP positions, observation recording, and offline analysis.
 
-UM960 and UM980 have not been tested but might work to some extend.
+UM960 and UM980 have not been tested.
 
 ## Install and use
 
@@ -10,294 +11,204 @@ From a source checkout:
 
 ```bash
 python -m pip install .
+um982py --port /dev/ttyUSB0 --baud 921600 version
+um982py --port tcp://192.0.2.10:4001 doctor
 ```
 
-Read a position in Python:
+Match the port and baud rate to your receiver; the default is 115200 baud.
+For a transparent TCP-to-UART gateway, configure its UART baud rate separately.
+Use `--help` for commands and `doctor` to investigate connection problems.
+
+### Read one position
+
+Choose a source by setting `service` in either example below:
+
+| `service` | Position source |
+| --- | --- |
+| `None` | Current receiver solution (BESTNAV); leaves configuration unchanged. |
+| `"E6-HAS"` | Enable Galileo E6-HAS and read the PPP solution. |
+| `"B2B-PPP"` | Enable BeiDou PPP-B2b and read the PPP solution. |
+
+Satellite PPP requires a suitable antenna and service reception. Enabling it
+can change the signal group and reboot the receiver; configuration remains active
+after closing the connection. A standard read does not disable existing corrections.
 
 ```python
 from um982py import Receiver
 
-with Receiver.connect("/dev/ttyUSB0") as receiver:
-    position = receiver.fix()
-    if position.valid:
-        print(position.latitude, position.longitude)
+service = None  # Or "E6-HAS" / "B2B-PPP".
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    if service is None:
+        position = receiver.best_navigation()
+    else:
+        position = receiver.start_ppp(service=service).position()
+
+if position.valid:
+    print(position.latitude, position.longitude)
+    print("Solution:", position.position_type)
+    if position.precision is not None:
+        print("Horizontal RMS (m):", position.precision.horizontal_rms_m)
+        print("Vertical std (m):", position.precision.up_std_m)
+else:
+    print("No position available yet")
 ```
 
-The CLI accepts a serial port or a transparent TCP-to-UART gateway:
+`position.valid` means usable coordinates are available; PPP may still be
+converging. A PPP result also has `position.converged`, reflecting the receiver's
+solution state. Starting a service does not wait for convergence.
 
-```bash
-um982py --port /dev/ttyUSB0 --baud 921600 version
-um982py --port /dev/ttyUSB0 --baud 921600 satellites
-um982py --port tcp://192.0.2.10:4001 doctor
-um982py --port /dev/ttyUSB0 --baud 921600 output-rate --log GPGGA --rate-hz 10
+### Watch precision over time
+
+Keep the antenna stationary for a convergence trial. Choose the service, duration
+and polling interval below. Run until the duration expires, or stop with Ctrl+C.
+The output is CSV: save the snippet as `watch_position.py` and run
+`python watch_position.py > precision.csv`. Plot `horizontal_rms_m` and
+`vertical_std_m` against `elapsed_s`, or omit the redirect to watch live output.
+
+```python
+import csv
+import sys
+from time import monotonic, sleep
+
+from um982py import Receiver
+
+service = "E6-HAS"  # Or "B2B-PPP" / None for the current receiver solution.
+duration_s = 600
+interval_s = 5
+writer = csv.writer(sys.stdout)
+writer.writerow(
+    [
+        "elapsed_s",
+        "gps_seconds",
+        "solution",
+        "valid",
+        "converged",
+        "horizontal_rms_m",
+        "vertical_std_m",
+        "correction_age_s",
+    ]
+)
+try:
+    with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+        ppp = receiver.start_ppp(service=service) if service is not None else None
+        read_position = ppp.position if ppp is not None else receiver.best_navigation
+        started = monotonic()
+        while monotonic() - started < duration_s:
+            position = read_position()
+            precision = position.precision
+            writer.writerow(
+                [
+                    round(monotonic() - started, 1),
+                    position.epoch_gps_seconds,
+                    position.position_type,
+                    position.valid,
+                    position.converged if ppp is not None else None,
+                    precision.horizontal_rms_m if precision else None,
+                    precision.up_std_m if precision else None,
+                    position.correction_age_s,
+                ]
+            )
+            sys.stdout.flush()
+            sleep(interval_s)
+except KeyboardInterrupt:
+    pass
 ```
 
-Set the port and baud rate to match your receiver. The default is 115200 baud.
-The examples use 921600 baud.
-
-Use `--augment` to enable augmentation. If the signal group changes, the
-receiver saves it and reboots; other augmentation settings are not explicitly
-saved. The reboot can discard other unsaved receiver settings. Use
-`--augment --sbas-service QZSS` for QZSS SLAS; `AUTO` does not select SLAS.
-Queries otherwise leave augmentation unchanged.
-
-If a query times out, check the port, baud rate, power and serial permissions.
-Use `doctor` to inspect the receiver. Check `valid` before using a position.
-`Fix.possibly_predicted` flags the receiver's GGA signature for Doppler position
-prediction; the signature alone does not prove prediction.
+Watch the PPP state change and the reported deviations settle; convergence time
+and achievable precision depend on reception and conditions. Blank values mean
+unavailable, not zero. Repeated GPS epochs are the same measurement.
+Horizontal RMS is the root-sum-square of east/north deviations, not a 95% radius;
+these are receiver estimates, not verified accuracy. For saved reports with
+precision targets, see the [PPP example](examples/has_b2b_ppp_fix/README.md);
+for GGA/GST statistics, see [position precision](examples/position_precision/README.md).
 
 ## Choose a workflow
 
-| Goal | Requirements and starting point |
+| Goal | Starting point |
 | --- | --- |
-| Track a vehicle or locate a site | One antenna. [Position example](#locate-a-field-site) or [live tracking](examples/live_position/README.md) |
-| Obtain real-time corrected positions | Correction service and coverage. [NTRIP rover](examples/ntrip_client/README.md) or [satellite PPP](#watch-a-precise-position-converge) |
-| Record data for later processing | [RINEX export](#record-observations-for-post-processing) |
-| Determine vehicle orientation | Two fixed antennas and their mounting offset. [Heading example](#get-the-direction-of-a-vehicle) |
-| Diagnose signal reception | [Satellite reception](#check-satellite-reception) or [signal quality report](examples/signal_quality_report/README.md) |
-| Work with precise timing | Linux PPS device and a separately verified time reference. [Time transfer](examples/time_transfer/README.md) |
+| Follow a live position | [Live tracking](examples/live_position/README.md) |
+| Apply real-time corrections | [NTRIP rover](examples/ntrip_client/README.md) or [satellite PPP](examples/has_b2b_ppp_fix/README.md) |
+| Record or export observations | [Research session](examples/research_session/README.md) or [RINEX export](examples/rinex_export/README.md) |
+| Survey a stationary point | [Static occupation](examples/precise_fix/README.md) |
+| Measure dual-antenna orientation | [Heading and attitude](examples/heading_attitude/README.md) |
+| Inspect satellites and reception | [Satellite monitor](examples/satellite_monitor/README.md) or [signal quality](examples/signal_quality_report/README.md) |
+| Work with receiver time and PPS | [Time transfer](examples/time_transfer/README.md) |
+
+The [example catalogue](examples/README.md) covers all workflows, required data,
+and limits of the scientific models. Examples run from the source checkout.
 
 ## Find the right API
 
-| Task | Start here |
+The package root exposes ten names:
+
+| Purpose | Root API |
 | --- | --- |
-| Open a serial port or TCP gateway | `Receiver.connect(target)` |
-| Identify the receiver | `receiver.version()` |
-| Read position, heading, or velocity | `receiver.fix()`, `receiver.heading()`, `receiver.best_navigation()` |
-| Inspect receiver position precision | `position.precision` or [GGA/GST mapping](examples/position_precision/README.md) |
-| Query one receiver log | `receiver.read_log(Log.BESTNAV)` |
-| Inspect satellites and their signals | `receiver.satellites()` |
-| Check live position freshness | `PositionMonitor(LiveLimits(max_gap_s=...)).status()` |
-| Convert a position to ROS 2 | `navsatfix(position, stamp=..., frame_id=..., reference_frame="WGS84")` |
-| Poll positions | `receiver.poll_positions(interval=1)` |
-| Stream receiver output | `with receiver.stream_positions(duration=60) as positions: ...` |
-| Configure periodic receiver output | `receiver.set_output_rate(Log.GPGGA, 10)` |
-| Start satellite PPP | `receiver.start_ppp(service="E6-HAS")` |
-| Capture one log or several logs | `capture_live()` |
-| Read a saved capture or one message | `load_records(path, Log.RANGE)` or `decode_message(data)` |
-| Match a receiver position to an observation epoch | `um982py.capture.select_position(records, epoch, tolerance)` |
-| Decode an already framed message | `decode_log(frame)` |
-| Decode RTCM correction fields | `decode_rtcm(data)` or `decode_message(data)` |
-| Mask an elevation/azimuth sector | `receiver.execute(masking.azimuth(20, 90, 15, 45))` |
-| Convert receiver time to UTC | `message_utc(record, leap_seconds=...)` |
-| Read position and heading while applying NTRIP | `Rover.connect(target, ntrip_url=...)` |
-| Wait for a fixed solution | `wait_for_fix(receiver, rtk_fixed=True)` |
-| Record a track or survey a point | `TrackWriter(...)`, `survey_point(receiver)` |
-| Read motion and calculate waypoint direction | `receiver.best_navigation().motion().waypoint(...)` |
-| Capture, check and export observations | `record_observations(receiver, duration=...).to_rinex()` |
-| Convert coordinates and measure distance | `ecef_from_geodetic()`, `geodetic_from_ecef()`, `haversine_distance()` |
-| Read a Linux PPS timestamp | `with PpsDevice(path) as device: device.fetch()` |
-| Interpret receiver PPS or spoofing status | `receiver.pps_status()` or `receiver.spoof_info()` |
-| Use asyncio | `AsyncReceiver.connect()` |
+| Receiver access | `Receiver`, `AsyncReceiver`, `Rover` |
+| Logs and position interface | `Log`, `Position` |
+| Capture and decoding | `capture_live`, `load_records`, `decode_message` |
+| Observation analysis and export | `Observations`, `record_observations` |
 
-All receiver methods use `antenna=1` for the primary input and `antenna=2` for
-the secondary input. `Fix`, `BestNavigation`, `PppSolution` and `RoverPosition`
-share the `Position` interface: coordinates, validity, `rtk_fixed`, correction
-age, GPS epoch, satellites used, ellipsoidal height and optional precision. Unavailable values are
-`None`. In particular, a GGA fix has UTC time of day but no date, so its GPS
-epoch is unavailable. Source-specific information remains on each model.
-
-A one-shot query preserves frames already read or buffered before the command,
-but matching periodic output can still arrive after the command is sent. Use
-`Receiver.execute(..., accept=...)` for a source-specific acceptance rule, or
-`rover.position(min_epoch_gps_seconds=...)` when a fine GPS epoch is available.
-Neither host frame-completion time nor query time proves measurement freshness.
-
-`poll_positions()` queries the receiver once per iteration and waits between
-queries. For subscribed receiver output, use the context manager below; it
-restores the previous subscription when the block exits:
+Import specialist APIs from their modules:
 
 ```python
-with receiver.stream_positions(duration=60, rate_hz=1, antenna=1) as positions:
+from um982py.antenna import antenna_log, swap_antenna
+from um982py.rtcm import decode_rtcm
+```
+
+Other entry points include `um982py.ntrip`, `um982py.rinex`, `um982py.geodesy`,
+`um982py.measurement`, `um982py.precision`, and `um982py.adapters`.
+Result models live in `um982py.messages.navigation`, exceptions in
+`um982py.errors`. Use `help()` on library objects for parameters and behavior.
+
+Methods that select an antenna use `antenna=1` or `antenna=2`.
+For low-level logs, `antenna_log(Log.RANGE, antenna=2)` selects the secondary
+input; `swap_antenna()` exchanges roles. Both helpers belong to `um982py.antenna`.
+
+GGA, BESTNAV, PPP and rover results share the `Position` interface. Unavailable
+values are `None`; GGA has no date and therefore no absolute GPS epoch.
+A query response or host arrival time does not prove measurement freshness.
+Check receiver epochs and time quality when matching observations.
+
+## Choose a connection and streaming model
+
+Start with `Receiver` for queries and captures, or `Rover` for BESTNAV positions
+with optional NTRIP corrections and heading. Advanced components use explicit
+module imports:
+
+| API | Ownership and behavior | Reconnects |
+| --- | --- | --- |
+| `receiver.poll_positions()` | Repeated GGA queries on the caller's receiver. | No |
+| `receiver.stream_positions()` / `capture_live()` | Temporary output subscriptions; restore settings and leave the receiver open. | No |
+| `Rover` | Owns a worker; `Rover.connect()` also owns the receiver. A supplied receiver stays open unless `close_receiver=True`. | Caster |
+| `um982py.live.PositionSession` | Owns fresh receivers from a factory; reads emitted GGA. Configure output explicitly if needed. | Receiver |
+| `um982py.rover_session.RoverSession` | Owns fresh receivers and rover workers; polls BESTNAV with optional NTRIP. | Receiver and caster |
+| `um982py.streaming.ReceiverStream` | Worker for concurrent commands and bounded subscriptions; receiver closure is configurable. | No |
+| `um982py.rtk_session.RtkSession` | Correction relay borrowing an existing `ReceiverStream`; owns caster connections. | Caster |
+
+`live.PositionSubscription` adapts a worker subscription to GGA updates.
+`session.SessionRecorder` records raw files and manifests. Neither reconnects
+the receiver. Do not read directly from a receiver while a worker owns it.
+Close iterators when stopping early so cleanup runs.
+
+With an open receiver, subscribe to positions for a fixed duration:
+
+```python
+with receiver.stream_positions(duration=60, rate_hz=1) as positions:
     for position in positions:
         if position.valid:
             print(position.latitude, position.longitude)
 ```
 
-The receiver determines the delivered rate; repeated or missing epochs are
-not concealed. `AsyncReceiver` offers the same methods with `async with` and
-`async for`. `capture_live()` always returns a dictionary keyed by log name,
-including when capturing one log; interrupted captures use the same shape.
+`AsyncReceiver` supports `async with` and `async for`. `capture_live()` returns
+a dictionary keyed by log name, even for one log. Captures preserve native
+epochs; they do not interpolate or duplicate samples.
 
-For a reconnecting GGA session, pass each `PositionUpdate` to a
-`PositionMonitor`. An application timer can call `monitor.status()` even when
-no new fix arrives. It reports a missing or stale position and advances the
-reported correction age since host frame completion. It cannot account for
-receiver or transport buffering before the frame was read. Check
-`PositionSession.health()` for connection state. See [live position](examples/live_position/README.md).
-
-The optional ROS 2 `navsatfix()` adapter accepts any `Position`, including
-GGA, BESTNAV, PPP and rover positions. It supplies an east/north/up diagonal
-covariance if all three receiver-reported standard deviations are available;
-otherwise covariance is unknown. The caller supplies the ROS timestamp, frame,
-and, for augmented fixes, the appropriate status and service mask. Install and
-source ROS 2's `sensor_msgs` separately.
-
-For example, inside a ROS 2 node that has chosen the appropriate status:
-
-```python
-from um982py import navsatfix
-
-
-def to_ros_position(node, position, status):
-    return navsatfix(
-        position,
-        stamp=node.get_clock().now().to_msg(),
-        frame_id="gnss_antenna",
-        reference_frame="WGS84",
-        status=status,
-    )
-```
-
-The timestamp in this example is the host's current ROS time, not a
-receiver-derived measurement timestamp. Pass a matched measurement timestamp
-if the application needs one.
-
-## Map position precision
-
-`position.precision` is either `None` or a `PositionPrecision` containing the
-receiver-reported east, north and up standard deviations in metres. Its
-`horizontal_rms_m` is their horizontal root-sum-square, not a 95% accuracy
-radius. Missing fields remain `None`. Precision is withheld for an invalid fix.
-
-Use `assess_position(position, PositionLimits(...))` to check receiver-reported
-precision, correction age and fix class against application limits. These
-checks are not an integrity guarantee. Supply `now_gps_seconds` to check epoch
-age; the receiver timestamp must report documented fine time. Inspect
-`position.receiver_time` for its reference, original status and whether its
-GPS time scale was assumed. GGA has no dated receiver timestamp.
-
-GGA does not report those deviations. To attach GST statistics, call
-`fix.with_gst(gst_record)` for records from the same receiver session. It
-checks the antenna and exact UTC time of day. Neither sentence contains a date,
-so the application must ensure the records are from the same day and session.
-GST can also include the receiver's horizontal error ellipse; it is preserved
-as reported rather than turned into an assumed correlation or confidence bound.
-For batches, `match_precision()` rejects duplicate epoch/antenna pairs. Use
-`match_stream_precision()` with `StreamEvent`s to additionally require the same
-stream session and nearby host frame-completion times. Completion is not the
-receiver measurement epoch, and both methods require checking health and drops.
-
-`geojson_feature()` and `TrackWriter` include available precision in their map
-output. `navsatfix()` maps complete per-axis deviations to a diagonal covariance;
-off-diagonal correlations remain unknown. See the runnable [position precision
-example](examples/position_precision/README.md). Receiver estimates are not
-independent proof of position accuracy.
-
-## Read RTCM correction fields
-
-Decode station coordinates and descriptions, GPS and GLONASS observations,
-MSM messages, and broadcast ephemerides into immutable records:
-
-```python
-from um982py import decode_rtcm
-
-record = decode_rtcm(frame_bytes)
-body = record["fields"]
-station_id = body["DF003"]  # Present in station and observation messages
-```
-
-`decode_message()` and `Log.RTCM1005.decode(message)` use the same decoder.
-Fields use RTCM data-field identifiers and scaled wire units. Repeated
-observations are grouped in `body["satellites"]` and MSM `body["cells"]`;
-each MSM cell includes its satellite and signal mask indices. Epochs and MSM
-ranges retain milliseconds; range rates use metres per second. Invalid-value
-sentinels remain numeric, and weeks are not expanded across rollovers.
-
-Every result retains its raw `payload` and `message_type`. Its `status` is
-`decoded`, `unsupported`, or `unicore_private`. Private types 63, 1104 and 1105
-remain raw, including Unicore's nonstandard use of the latter two IDs. Malformed
-supported bodies raise `ProtocolError`; frame-only streaming and correction
-forwarding continue to preserve raw data.
-
-For an already parsed frame, `um982py.messages.decode_log(frame)` uses the
-same decoder as `decode_message()`. If binary logs share an ID, pass the
-expected log explicitly, for example `decode_log(frame, log=Log.BESTPOS)`.
-Typed models such as `BestNavigation` can also be built with `from_record()`.
-
-## Inspect receiver timing and spoofing status
-
-The PPSSTATUS and SPOOFINFO logs expose their raw fields and documented
-bit masks. For example, with an open receiver:
-
-```python
-from um982py.messages import SpoofSignal
-
-pps = receiver.pps_status()
-spoof = receiver.spoof_info()
-print(pps.gps_week, pps.milliseconds_of_week, pps.pulse_error_ns)
-print(spoof.gps_satellites, bool(spoof.signals & SpoofSignal.GPS_L1CA))
-```
-
-The reported satellite numbers are one-based mask positions; the raw masks
-retain reserved bits. Receiver and firmware support determine availability.
-For C-series L-band receivers, `Log.LBANDBEAM.read(table=True)` and
-`Log.LBANDTRACKSTATUS.output(table=True)` use the documented table format. Table
-frames expose `checksum_verified = False`; the receiver sends no checksum.
-
-## Mask a sky sector
-
-Exclude satellites within an elevation and azimuth range:
-
-```python
-from um982py.commands import masking
-
-receiver.execute(masking.azimuth(20, 90, 15, 45))
-```
-
-Bounds are in degrees and must be ordered. The command uses `MASK AZIMUTH 1`;
-sectors crossing north are rejected. Availability depends on receiver firmware.
-
-## Receiver output rates
-
-Configure periodic output on the receiver's host port:
-
-```python
-from um982py import Log, Receiver
-from um982py.commands import Port
-
-with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
-    receiver.set_output_rate([Log.GPGGA, Log.BESTNAV], 10, port=Port.COM1, verify=True)
-```
-
-The documented N4 rates are 1, 2, 5, 10, 20 and 50 Hz. Unicore specifies
-20 Hz RTK and heading for UM982; 50 Hz applies to specific products and
-firmware. Available rates depend on the signal group and log. The API does not
-change the signal group or save settings. If a command fails, earlier changes
-can remain active. [Unicore UM982 specifications](https://en.unicorecomm.com/products/um982/)
-`FREQJAMSTATUS`, `HWSTATUS`, `JAMSTATUS`, `PPSSTATUS` and `RTCSTATUS` output at
-up to 1 Hz.
-
-`verify=True` requires a port and checks `LOGLIST`, not the delivered rate.
-Check the receiver's time status, then measure the rate from distinct receiver
-timestamps and check for gaps.
-Capture preserves the receiver's messages without interpolation or added
-samples. Repeated queries can return the same epoch; `poll_positions(interval=...)`
-sets the delay between queries, not the receiver output rate.
-
-```python
-from itertools import pairwise
-from statistics import median
-from um982py import Log, Receiver, capture_live
-from um982py.capture import record_epoch
-
-with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
-    records = capture_live(receiver, Log.BESTNAV, duration=10, rate_hz=10)[Log.BESTNAV]
-
-epochs = [record_epoch(record) for record in records]
-intervals = [later - earlier for earlier, later in pairwise(epochs)]
-if intervals and all(interval > 0 for interval in intervals):
-    print("Median Hz:", 1 / median(intervals), "largest gap:", max(intervals))
-else:
-    print("Not enough ordered epochs to measure the rate")
-```
-
-## Examples
+## Common workflows
 
 ### Use a corrected rover
 
-Configure rover mode on the receiver and enter your caster details below.
-On exit, the session closes the receiver connection and stops the correction worker.
+Configure rover mode first and supply your caster details. Pass `username` and
+`password` if required. On exit, this closes the receiver and correction worker.
 
 ```python
 from um982py import Rover
@@ -316,156 +227,11 @@ with Rover.connect(
             )
 ```
 
-Heading and pitch describe the baseline between the antennas. Both are `None`
-if no valid heading matches the position epoch. Apply the offset between the
-baseline and the vehicle's forward direction to get the vehicle's heading.
-Heading queries are optional and default to off, so single-antenna use does not
-wait for a heading response.
-Both matched receiver timestamps must report documented fine GPS time.
-Pass `username` and `password` to `Rover.connect()` when the caster requires
-credentials. See [NTRIP rover](examples/ntrip_client/README.md) for setup.
-
-For a long-running rover, `RoverSession` takes a receiver factory and reconnects
-after receiver transport failures. It recreates the stream and correction relay
-for each connection; `health()` reports both. Each update identifies its stream
-session, so observations from different connections can be kept separate.
-
-```python
-from threading import Event
-from um982py import Receiver, RoverSession
-
-stop = Event()
-session = RoverSession(
-    lambda: Receiver.connect("/dev/ttyUSB0", 921600),
-    ntrip_url="https://caster.example:443/MOUNT",
-)
-for update in session.positions(stop, heading=True):
-    if update.position.valid:
-        print(update.session_id, update.position.latitude, update.position.longitude)
-```
-
-Set `stop` from another thread and close the iterator if stopping early. The
-session does not configure the receiver unless a `configure` callback is given.
-
-For ground motion and a destination:
-
-```python
-from um982py import Rover
-
-with Rover.connect("/dev/ttyUSB0", 921600) as rover:
-    position = rover.position(heading=True)
-    if position.valid:
-        motion = position.motion(heading_offset_deg=0)
-        destination = motion.waypoint(50.0, 8.0)
-        print(motion.ground_speed_m_s, motion.course_deg, motion.heading_deg)
-        print(
-            destination.distance_m,
-            destination.bearing_deg,
-            destination.closing_speed_m_s,
-        )
-```
-
-Supply the measured antenna mounting offset and destination coordinates in the
-same frame as the position. Heading is the adjusted antenna baseline; course
-and speed are over ground. Course is omitted at low speed. Distances use a
-spherical Earth, and the calculation does not plan a route. Receiver-reported
-velocity latency can make its epoch differ from the position and heading epochs;
-`motion.velocity_epoch_gps_seconds` accounts for that latency when available.
-
-### Survey a point
-
-With the receiver configured as a rover, wait for a fixed solution and average
-a stationary occupation:
-
-```python
-from um982py import Rover
-
-with Rover.connect(
-    "/dev/ttyUSB0", 921600, ntrip_url="https://caster.example:443/MOUNT"
-) as rover:
-    rover.wait_for_fix(rtk_fixed=True, max_correction_age=5)
-    point = rover.survey_point(duration=60, rtk_fixed=True, max_correction_age=5)
-
-print(point.latitude, point.longitude, point.ellipsoidal_height_m)
-print(point.samples, point.rejected, point.horizontal_scatter_m)
-```
-
-The scatter describes the collected fixes, not absolute accuracy. Verify the
-base coordinates, reference frame, antenna point and corrections independently.
-
-### Locate a field site
-
-```python
-from um982py import Receiver
-
-with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    position = receiver.best_navigation()
-
-if position.valid:
-    print(f"{position.latitude}, {position.longitude}")
-    print(
-        f"Solution: {position.position_type}, satellites used: {position.satellites_used}"
-    )
-    if position.precision is not None:
-        for axis, std in (
-            ("Latitude", position.precision.north_std_m),
-            ("Longitude", position.precision.east_std_m),
-            ("Height", position.precision.up_std_m),
-        ):
-            if std is not None:
-                print(f"{axis} standard deviation: {std:.2f} m")
-else:
-    print("No position available yet")
-```
-
-### Watch a precise position converge
-
-Keep the antenna stationary. Stop with Ctrl+C:
-
-```python
-from um982py import Receiver, haversine_distance
-
-with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    ppp = receiver.start_ppp(service="E6-HAS")
-    previous = None
-    try:
-        for fix in ppp.poll_positions(interval=5):
-            precision = fix.precision
-            print(
-                f"{fix.position_type}: horizontal RMS "
-                f"{precision.horizontal_rms_m if precision else None} m, "
-                f"height std {precision.up_std_m if precision else None} m, "
-                f"correction age {fix.correction_age_s} s"
-            )
-            if fix.valid and fix.latitude is not None and fix.longitude is not None:
-                position = (fix.latitude, fix.longitude)
-                print(f"Position: {position}")
-                if previous is not None:
-                    print(f"Change: {haversine_distance(*previous, *position):.3f} m")
-                previous = position
-            else:
-                previous = None
-    except KeyboardInterrupt:
-        print("Stopped")
-```
-
-Use `service="B2B-PPP"` for BeiDou PPP-B2b or `service="L6MDCPPP"` for QZSS
-MADOCA PPP. `start_ppp()` changes the signal group and PPP service if needed.
-The receiver saves a changed signal group and reboots; PPP service changes are
-not explicitly saved. The session reports which settings changed. Group 7/0
-supports B2b in base mode; `start_ppp()` checks the mode before using it.
-
-For QZSS MADOCA correction telemetry, run:
-
-```bash
-um982py --port /dev/ttyUSB0 --baud 921600 --madoca ppp-diagnostics
-```
-
-Receiving correction messages does not confirm that the receiver applied them.
+Heading is optional and requires two antennas with a valid, epoch-matched
+baseline. Apply the measured mounting offset for vehicle orientation.
+Receiving corrections alone does not establish an RTK fix.
 
 ### Record observations for post-processing
-
-Collect one minute of observations and save them as a RINEX file:
 
 ```python
 from um982py import Receiver, record_observations
@@ -478,83 +244,37 @@ result.write("field.obs")
 print(f"Saved {result.epochs} epochs; omitted observations: {result.omitted}")
 ```
 
-`result.write()` replaces an existing file. `record_observations()` stores decoded
-records in memory; `InterruptedCapture.records` contains records received before
-Ctrl+C. For long recordings, use `SessionRecorder` or the
-[unattended station example](examples/unattended_station/README.md).
+This holds records in memory and replaces an existing output file. For long
+recordings, use the [unattended station](examples/unattended_station/README.md).
+Keep one receiver session and antenna per series. Review omissions, station
+metadata, and phase alignment before precise processing; compressed OBSV
+carrier phases remain unavailable. See [RINEX export](examples/rinex_export/README.md).
 
-Call `observations.quality(expected_interval=1)` to inspect receiver-reported
-flags, lock resets and gaps against a chosen interval. For uncompressed logs,
-`observations.signals()` groups usable code and phase measurements by signal.
-The signal key includes the native L2C flag to distinguish tracking modes that
-share a signal code. Supply one native log from one receiver session and antenna;
-mixed log names are rejected.
-Inspect the RINEX omissions and establish phase alignment independently before
-precise work.
+## Receiver output rates
 
-For `OBSVMCMP` and `OBSVHCMP` input, RINEX export includes valid pseudorange,
-Doppler and signal strength. Carrier phase remains blank because the compressed
-phase ambiguity has not been independently resolved; the omission count appears
-in `result.omitted`.
-
-For mixed capture rates, pass `intervals={Log.JAMSTATUS: 1}` alongside
-`rate_hz=20` and `logs=[Log.RANGE, Log.JAMSTATUS]`. RANGE then uses 0.05 seconds
-and JAMSTATUS uses 1 second. Both `capture_live()` and `iter_live_records()`
-accept these overrides in seconds and restore previous subscriptions on exit.
-Overrides must name selected periodic logs; event-only logs keep their
-ONCHANGED trigger. When stopping a live iterator early, close it to restore
-subscriptions.
-
-When combining observation and position logs, pass the observation's absolute
-GPS seconds from `um982py.capture.record_epoch()` to `select_position()`. It
-selects the nearest computed, finite receiver position within the supplied
-tolerance in seconds and raises `ValueError` when none qualifies. Absolute
-epochs preserve week boundaries. Keep the records from the same receiver and
-antenna; epoch matching cannot establish their physical provenance.
-
-For low-level log selection, `um982py.antenna.antenna_log(Log.RANGE, antenna=2,
-swapped=True)` applies antenna selection and then exchanges roles, selecting
-physical ANT1 in this example. Decoded records retain the real wire-log identity.
-
-### Get the direction of a vehicle
-
-With two rigidly mounted antennas, read the heading of their baseline:
-
-```python
-from um982py import Receiver
-
-with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    heading = receiver.heading()
-
-if heading.valid:
-    print(f"Heading: {heading.degrees:.1f}° clockwise from true north")
-else:
-    print("Dual-antenna heading is not available yet")
+```bash
+um982py --port /dev/ttyUSB0 --baud 921600 output-rate --log GPGGA --rate-hz 10
 ```
 
-Apply the measured antenna mounting offset if the baseline is not aligned with
-the vehicle's forward direction.
+In Python, use `receiver.set_output_rate(Log.GPGGA, 10)`. N4 rates are
+1, 2, 5, 10, 20 and 50 Hz, subject to receiver, firmware, signal group and log.
+[UM982 specifies up to 20 Hz RTK and heading](https://en.unicorecomm.com/products/um982/);
+50 Hz is product-specific. `FREQJAMSTATUS`, `HWSTATUS`, `JAMSTATUS`, `PPSSTATUS`
+and `RTCSTATUS` are limited to 1 Hz.
 
-### Check satellite reception
+`verify=True` requires a `port` and checks `LOGLIST`. Measure delivered rates
+from distinct receiver epochs and inspect gaps. `poll_positions(interval=...)`
+controls the pause between queries. Rate changes do not save settings or change
+the signal group; a failed multi-log change can leave earlier changes active.
 
-```python
-from um982py import Receiver
-
-with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
-    for satellite in receiver.satellites():
-        print(satellite.constellation, satellite.prn)
-        for signal in satellite.signals:
-            print(f"  {signal.name or signal.signal_id}: SNR {signal.snr}")
-```
-
-See the [example catalogue](examples/README.md) for more applications. Use
-`help()` on library objects for their parameters and behavior.
+`--augment` and `start_ppp()` may change the signal group, which the receiver
+saves before rebooting. A reboot can discard other unsaved settings; other
+augmentation changes are not explicitly saved. See the
+[PPP example](examples/has_b2b_ppp_fix/README.md) for service selection.
 
 ## Development
 
-See [architecture and implementation review](ARCHITECTURE.md) for the layer
-boundaries, numerical and protocol fixes, compatibility notes, and validation
-priorities.
+See [ARCHITECTURE.md](ARCHITECTURE.md) for layer boundaries and validation priorities.
 
 ```bash
 python -m pip install -e '.[dev]'
