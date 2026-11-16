@@ -7,6 +7,7 @@ from collections.abc import Sequence
 from um982py.geodesy import SPEED_OF_LIGHT
 from um982py.stats import correlation as _correlation
 from um982py.stats import finite as _finite
+from um982py.stats import least_squares
 
 C = SPEED_OF_LIGHT
 TECU = 1e16
@@ -227,8 +228,9 @@ def orbit_position_effect(
     n = len(los)
     if n < 4 or not (len(satellite_delta_m) == len(clock_delta_s) == len(weights) == n):
         raise ValueError("at least four matched satellite states required")
-    normal = [[0.0] * 4 for _ in range(4)]
-    rhs = [0.0] * 4
+    rows: list[list[float]] = []
+    values: list[float] = []
+    sigmas: list[float] = []
     for u, dr, dc, weight in zip(
         los, satellite_delta_m, clock_delta_s, weights, strict=True
     ):
@@ -243,23 +245,12 @@ def orbit_position_effect(
             )
         row = [-u[0], -u[1], -u[2], 1.0]
         residual = -math.fsum(x * y for x, y in zip(u, dr, strict=True)) + C * dc
-        for i in range(4):
-            rhs[i] += weight * row[i] * residual
-            for j in range(4):
-                normal[i][j] += weight * row[i] * row[j]
-    matrix = [normal[i] + [rhs[i]] for i in range(4)]
-    for i in range(4):
-        pivot = max(range(i, 4), key=lambda j: abs(matrix[j][i]))
-        if abs(matrix[pivot][i]) < 1e-12 * max(abs(normal[j][j]) for j in range(4)):
-            raise ValueError("satellite geometry is singular or ill-conditioned")
-        matrix[i], matrix[pivot] = matrix[pivot], matrix[i]
-        d = matrix[i][i]
-        matrix[i] = [x / d for x in matrix[i]]
-        for j in range(4):
-            if j != i:
-                k = matrix[j][i]
-                matrix[j] = [
-                    a - k * b for a, b in zip(matrix[j], matrix[i], strict=True)
-                ]
-    x = [row[4] for row in matrix]
-    return {"satellites": n, "ecef_change_m": x[:3], "receiver_clock_change_m": x[3]}
+        rows.append(row)
+        values.append(residual)
+        sigmas.append(1 / math.sqrt(weight))
+    x = least_squares(rows, values, sigmas).parameters
+    return {
+        "satellites": n,
+        "ecef_change_m": list(x[:3]),
+        "receiver_clock_change_m": x[3],
+    }

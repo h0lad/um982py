@@ -208,10 +208,13 @@ def test_lomb_scargle_matches_scipy_for_irregular_samples() -> None:
     )
 
 
-def test_weighted_least_squares_matches_numpy() -> None:
+@pytest.mark.parametrize("separation", [1.0, 1e-7])
+def test_weighted_least_squares_matches_numpy(separation: float) -> None:
     np = pytest.importorskip("numpy")
     rng = random.Random(1441)  # noqa: S311
     rows = [[1.0, rng.uniform(-2, 2), rng.uniform(-3, 3)] for _ in range(50)]
+    if separation < 1:
+        rows = [[a, a + separation * b, c] for a, b, c in rows]
     values = [
         row[0] * 3 + row[1] * 4 - row[2] * 2 + rng.uniform(-0.2, 0.2) for row in rows
     ]
@@ -222,7 +225,8 @@ def test_weighted_least_squares_matches_numpy() -> None:
     )
     assert rank == 3
     result = least_squares(rows, values, sigmas)
-    assert result.parameters == pytest.approx(parameters, rel=1e-12, abs=1e-12)
+    tolerance = 1e-12 if separation == 1 else 1e-7
+    assert result.parameters == pytest.approx(parameters, rel=tolerance, abs=tolerance)
     assert result.residuals == pytest.approx(
-        data - design @ parameters, rel=1e-12, abs=1e-12
+        data - design @ parameters, rel=tolerance, abs=tolerance
     )

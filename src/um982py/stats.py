@@ -77,47 +77,11 @@ def detrend(x: Sequence[float], y: Sequence[float], order: int = 1) -> list[floa
     basis = [
         [((xi - centre) / scale) ** power for power in range(order + 1)] for xi in x
     ]
-    coefficients = _least_squares(basis, y)
+    coefficients = least_squares(basis, y, [1.0] * len(y)).parameters
     return [
         yi - sum(c * b for c, b in zip(coefficients, row, strict=True))
         for yi, row in zip(y, basis, strict=True)
     ]
-
-
-def _least_squares(basis: list[list[float]], y: Sequence[float]) -> list[float]:
-    size = len(basis[0])
-    matrix = [[0.0] * size for _ in range(size)]
-    vector = [0.0] * size
-    for row, yi in zip(basis, y, strict=True):
-        for i in range(size):
-            vector[i] += row[i] * yi
-            for j in range(size):
-                matrix[i][j] += row[i] * row[j]
-    return _solve(matrix, vector)
-
-
-def _solve(matrix: list[list[float]], vector: list[float]) -> list[float]:
-    size = len(vector)
-    augmented = [[*row, vector[i]] for i, row in enumerate(matrix)]
-    for column in range(size):
-        pivot = max(range(column, size), key=lambda r: abs(augmented[r][column]))
-        if abs(augmented[pivot][column]) < 1e-12:
-            raise ValueError("singular system")
-        augmented[column], augmented[pivot] = augmented[pivot], augmented[column]
-        lead = augmented[column][column]
-        augmented[column] = [value / lead for value in augmented[column]]
-        for row in range(size):
-            if row == column:
-                continue
-            factor = augmented[row][column]
-            if factor:
-                augmented[row] = [
-                    value - factor * lead_value
-                    for value, lead_value in zip(
-                        augmented[row], augmented[column], strict=True
-                    )
-                ]
-    return [augmented[i][size] for i in range(size)]
 
 
 def lomb_scargle(
@@ -304,7 +268,13 @@ class LinearSolution:
 def least_squares(
     rows: Sequence[Sequence[float]], values: Sequence[float], sigmas: Sequence[float]
 ) -> LinearSolution:
-    """Solve a full-rank weighted system by modified Gram-Schmidt QR."""
+    """Solve a full-rank weighted system with twice-orthogonalized QR.
+
+    Reject columns whose independent component is at most 1e-10 of their
+    original weighted norm. This is a relative rank check, not a condition
+    number estimate; use an SVD-based scientific solver for demanding systems.
+    Residuals are returned in the original observation units.
+    """
     if not rows or len(rows) != len(values) or len(values) != len(sigmas):
         raise ValueError("design, observations and sigmas must have matching rows")
     columns = len(rows[0])
@@ -326,8 +296,8 @@ def least_squares(
                 upper[previous][column] += projection
                 vector = [v - projection * qi for v, qi in zip(vector, q, strict=True)]
         length = norm(vector)
-        if length <= max(original_norm, 1e-30) * 1e-10:
-            raise ValueError("satellite geometry is singular or ill-conditioned")
+        if length <= original_norm * 1e-10:
+            raise ValueError("design matrix is singular or ill-conditioned")
         upper[column][column] = length
         q = [value / length for value in vector]
         basis.append(q)
