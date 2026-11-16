@@ -41,6 +41,7 @@ def read_observations(
                     lock_seconds=item.real("lock_time"),
                     phase_cycles=item.real("carrier_phase"),
                     doppler_hz=item.real("doppler"),
+                    l2c_flag=bool(item.integer("tracking_status") & (1 << 26)),
                 ),
             )
         )

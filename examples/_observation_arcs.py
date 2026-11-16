@@ -16,6 +16,10 @@ class CarrierState:
     lock_seconds: float
     phase_cycles: float
     doppler_hz: float
+    # N4 RANGE tracking-status bit 26 distinguishes L2C from L2P(Y), which
+    # share the same carrier frequency and signal ID. Joining the two across
+    # epochs would create a false continuous phase arc.
+    l2c_flag: bool = False
 
 
 def continuous(
@@ -44,6 +48,7 @@ def continuous(
     if (
         before.frequency_hz != after.frequency_hz
         or before.signal != after.signal
+        or before.l2c_flag != after.l2c_flag
         or not 0 < dt <= max_gap
         or before.lock_seconds <= 0
         or after.lock_seconds < before.lock_seconds + dt - 0.02
