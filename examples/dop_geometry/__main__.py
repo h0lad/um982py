@@ -1,4 +1,4 @@
-"""Compare receiver-reported DOP with DOP computed from the SATVIS2 geometry."""
+# Compare receiver-reported DOP with DOP computed from the SATVIS2 geometry.
 
 from __future__ import annotations
 

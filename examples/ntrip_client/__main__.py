@@ -1,4 +1,4 @@
-"""Feed NTRIP corrections to a UM982 and show the resulting position."""
+# Feed NTRIP corrections to a UM982 and show the resulting position.
 
 from __future__ import annotations
 

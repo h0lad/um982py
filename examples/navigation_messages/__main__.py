@@ -1,4 +1,4 @@
-"""Build satellite tables, sky views and orbit figures."""
+# Build satellite tables, sky views and orbit figures.
 
 from __future__ import annotations
 

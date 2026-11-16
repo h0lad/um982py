@@ -1,4 +1,4 @@
-"""Compare single-antenna COG with dual-antenna heading on a marine vessel."""
+# Compare single-antenna COG with dual-antenna heading on a marine vessel.
 
 from __future__ import annotations
 

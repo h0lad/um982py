@@ -1,4 +1,4 @@
-"""Record baseband command replies and receiver state changes."""
+# Record baseband command replies and receiver state changes.
 
 from __future__ import annotations
 

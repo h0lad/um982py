@@ -1,4 +1,4 @@
-"""Dump every received navigation message as annotated hexadecimal."""
+# Dump every received navigation message as annotated hexadecimal.
 
 from __future__ import annotations
 

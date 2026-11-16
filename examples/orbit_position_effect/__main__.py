@@ -1,4 +1,4 @@
-"""Estimate the linearized position effect of satellite orbit and clock differences for one epoch."""
+# Estimate the linearized position effect of satellite orbit and clock differences for one epoch.
 
 from examples._scientific_cli import main
 

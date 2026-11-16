@@ -1,4 +1,4 @@
-"""Track code-carrier divergence across continuous arcs."""
+# Track code-carrier divergence across continuous arcs.
 
 from collections.abc import Sequence
 

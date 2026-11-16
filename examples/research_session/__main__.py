@@ -1,4 +1,4 @@
-"""Capture or replay a research session and export reproducible artifacts."""
+# Capture or replay a research session and export reproducible artifacts.
 
 import json
 from collections.abc import Sequence

@@ -1,4 +1,4 @@
-"""Monitor receiver jamming, spoofing and signal indicators."""
+# Monitor receiver jamming, spoofing and signal indicators.
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Solve position from pseudoranges by weighted least squares."""
+# Solve position from pseudoranges by weighted least squares.
 
 from __future__ import annotations
 

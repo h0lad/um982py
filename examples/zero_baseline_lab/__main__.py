@@ -1,4 +1,4 @@
-"""Measure double-difference noise between two receivers."""
+# Measure double-difference noise between two receivers.
 
 import sys
 from collections.abc import Sequence

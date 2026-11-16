@@ -1,4 +1,4 @@
-"""Compare multipath estimates across elevation masks."""
+# Compare multipath estimates across elevation masks.
 
 from __future__ import annotations
 

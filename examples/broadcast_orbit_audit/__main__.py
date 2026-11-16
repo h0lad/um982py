@@ -1,4 +1,4 @@
-"""Compare GPS broadcast orbits with an SP3 product."""
+# Compare GPS broadcast orbits with an SP3 product.
 
 import csv
 import importlib

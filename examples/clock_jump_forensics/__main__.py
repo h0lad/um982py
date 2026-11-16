@@ -1,4 +1,4 @@
-"""Find common code and carrier jumps across satellites."""
+# Find common code and carrier jumps across satellites.
 
 import sys
 from collections.abc import Sequence

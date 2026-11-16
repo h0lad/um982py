@@ -1,4 +1,4 @@
-"""Audit RANGECMP compression against full RANGE observations."""
+# Audit RANGECMP compression against full RANGE observations.
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Smooth pseudorange with carrier phase across continuous arcs."""
+# Smooth pseudorange with carrier phase across continuous arcs.
 
 from collections.abc import Sequence
 

@@ -1,4 +1,4 @@
-"""List advertised NTRIP mountpoints and their distance from a position."""
+# List advertised NTRIP mountpoints and their distance from a position.
 
 import argparse
 import json

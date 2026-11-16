@@ -1,4 +1,4 @@
-"""Collect SATVIS2 frames and report constellation visibility and a sky plot."""
+# Collect SATVIS2 frames and report constellation visibility and a sky plot.
 
 from __future__ import annotations
 

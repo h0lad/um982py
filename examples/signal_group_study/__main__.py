@@ -1,4 +1,4 @@
-"""Compare receiver signals and geometry across signal groups."""
+# Compare receiver signals and geometry across signal groups.
 
 from __future__ import annotations
 

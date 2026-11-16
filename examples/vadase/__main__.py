@@ -1,4 +1,4 @@
-"""Estimate displacement and velocity from carrier-phase differences."""
+# Estimate displacement and velocity from carrier-phase differences.
 
 from collections.abc import Sequence
 

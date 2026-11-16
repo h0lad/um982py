@@ -1,4 +1,4 @@
-"""Capture a journey with GNSS ground speed, course and vertical motion."""
+# Capture a journey with GNSS ground speed, course and vertical motion.
 
 import math
 from collections.abc import Sequence

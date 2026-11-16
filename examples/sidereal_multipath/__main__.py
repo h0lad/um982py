@@ -1,4 +1,4 @@
-"""Compare multipath across repeat tracks."""
+# Compare multipath across repeat tracks.
 
 import sys
 from bisect import bisect_left

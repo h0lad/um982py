@@ -1,4 +1,4 @@
-"""Report satellite health from ephemeris and visibility logs."""
+# Report satellite health from ephemeris and visibility logs.
 
 from collections.abc import Sequence
 from dataclasses import asdict

@@ -1,4 +1,4 @@
-"""Collect dual-antenna baselines and report heading and pitch."""
+# Collect dual-antenna baselines and report heading and pitch.
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Estimate user range error from position uncertainty and DOP."""
+# Estimate user range error from position uncertainty and DOP.
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Benchmark PPP convergence against precision targets and an optional reference."""
+# Benchmark PPP convergence against precision targets and an optional reference.
 
 from __future__ import annotations
 

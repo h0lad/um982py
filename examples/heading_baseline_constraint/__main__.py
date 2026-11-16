@@ -1,10 +1,4 @@
-"""Estimate heading and pitch with a known baseline-length constraint.
-
-The receiver's BSLNENUHD log gives the unconstrained ENU baseline.  When the
-physical antenna separation is known, the constraint removes one degree of
-freedom.  The computed attitude is compared with the UNIHEADING solution the
-receiver reports for the same epochs.
-"""
+# Estimate heading and pitch with a known baseline-length constraint.
 
 from __future__ import annotations
 

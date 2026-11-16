@@ -1,4 +1,4 @@
-"""Capture a position track and write JSON, CSV or GeoJSON."""
+# Capture a position track and write JSON, CSV or GeoJSON.
 
 from __future__ import annotations
 

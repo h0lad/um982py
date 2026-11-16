@@ -1,4 +1,4 @@
-"""Process rover and base RINEX files with RTKLIB rnx2rtkp."""
+# Process rover and base RINEX files with RTKLIB rnx2rtkp.
 
 from collections.abc import Sequence
 from pathlib import Path

@@ -1,4 +1,4 @@
-"""Capture and audit native baseband notices alongside tracking diagnostics."""
+# Capture and audit native baseband notices alongside tracking diagnostics.
 
 import sys
 from collections.abc import Sequence

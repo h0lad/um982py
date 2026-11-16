@@ -1,4 +1,4 @@
-"""Compare both active antenna paths without changing RF power or signal groups."""
+# Compare both active antenna paths without changing RF power or signal groups.
 
 import csv
 import importlib

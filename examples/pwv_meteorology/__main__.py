@@ -1,4 +1,4 @@
-"""Estimate precipitable water vapour from zenith wet delay."""
+# Estimate precipitable water vapour from zenith wet delay.
 
 from __future__ import annotations
 

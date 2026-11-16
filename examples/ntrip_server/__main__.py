@@ -1,4 +1,4 @@
-"""Serves a reference station over NTRIP."""
+# Serves a reference station over NTRIP.
 
 import argparse
 import asyncio

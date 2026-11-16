@@ -1,4 +1,4 @@
-"""Export receiver ephemerides to a RINEX 3.05 navigation file."""
+# Export receiver ephemerides to a RINEX 3.05 navigation file.
 
 from collections.abc import Sequence
 from pathlib import Path

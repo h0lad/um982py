@@ -1,4 +1,4 @@
-"""Inspects live PPP filter residuals, SSR satellite counts and RTOS CPU load."""
+# Inspects live PPP filter residuals, SSR satellite counts and RTOS CPU load.
 
 import sys
 from collections.abc import Sequence

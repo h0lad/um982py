@@ -1,4 +1,4 @@
-"""Measure code-minus-carrier multipath RMS."""
+# Measure code-minus-carrier multipath RMS.
 
 from __future__ import annotations
 

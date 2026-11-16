@@ -1,4 +1,4 @@
-"""Export multi-GNSS RINEX 3.05 observations from one or both antenna inputs."""
+# Export multi-GNSS RINEX 3.05 observations from one or both antenna inputs.
 
 from __future__ import annotations
 

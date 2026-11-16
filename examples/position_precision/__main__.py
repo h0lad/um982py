@@ -1,4 +1,4 @@
-"""Map same-epoch GGA positions and GST precision as GeoJSON."""
+# Map same-epoch GGA positions and GST precision as GeoJSON.
 
 from collections.abc import Sequence
 from pathlib import Path

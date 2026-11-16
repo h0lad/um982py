@@ -1,4 +1,4 @@
-"""Record receiver bytes in segments or replay a completed session."""
+# Record receiver bytes in segments or replay a completed session.
 
 import argparse
 import json

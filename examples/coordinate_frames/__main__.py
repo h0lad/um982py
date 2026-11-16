@@ -1,4 +1,4 @@
-"""Demonstrate ENU/ECEF conversion with an epoch-matched antenna baseline."""
+# Demonstrate ENU/ECEF conversion with an epoch-matched antenna baseline.
 
 from __future__ import annotations
 

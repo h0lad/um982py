@@ -1,4 +1,4 @@
-"""Estimate heading and pitch uncertainty from baseline noise."""
+# Estimate heading and pitch uncertainty from baseline noise.
 
 from __future__ import annotations
 

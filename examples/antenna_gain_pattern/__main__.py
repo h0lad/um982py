@@ -1,4 +1,4 @@
-"""Fit a C/N0 elevation pattern for a selected signal."""
+# Fit a C/N0 elevation pattern for a selected signal.
 
 from __future__ import annotations
 

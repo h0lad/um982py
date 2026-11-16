@@ -1,4 +1,4 @@
-"""Inspect raw baseband containers, messages and tracking fields."""
+# Inspect raw baseband containers, messages and tracking fields.
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Collect RANGE frames and report per-signal quality."""
+# Collect RANGE frames and report per-signal quality.
 
 from __future__ import annotations
 

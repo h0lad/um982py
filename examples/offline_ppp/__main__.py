@@ -1,4 +1,4 @@
-"""Record RINEX observations, download products and run static PPP in Python."""
+# Record RINEX observations, download products and run static PPP in Python.
 
 from __future__ import annotations
 

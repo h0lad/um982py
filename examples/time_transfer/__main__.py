@@ -1,4 +1,4 @@
-"""Convert receiver TIME records between UTC and GPST."""
+# Convert receiver TIME records between UTC and GPST.
 
 from __future__ import annotations
 

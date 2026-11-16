@@ -1,4 +1,4 @@
-"""Audit PPP-B2b correction age and issue data alongside PPP epochs."""
+# Audit PPP-B2b correction age and issue data alongside PPP epochs.
 
 import csv
 import sys

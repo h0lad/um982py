@@ -1,4 +1,4 @@
-"""Track baseband configuration from diagnostic notices."""
+# Track baseband configuration from diagnostic notices.
 
 from __future__ import annotations
 

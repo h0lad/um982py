@@ -1,4 +1,4 @@
-"""Measure RTK fix loss and recovery against correction outages."""
+# Measure RTK fix loss and recovery against correction outages.
 
 import sys
 from collections.abc import Sequence

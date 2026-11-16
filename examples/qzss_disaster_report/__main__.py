@@ -1,4 +1,4 @@
-"""Inspect and validate QZSS disaster reports."""
+# Inspect and validate QZSS disaster reports.
 
 from collections.abc import Sequence
 from dataclasses import asdict

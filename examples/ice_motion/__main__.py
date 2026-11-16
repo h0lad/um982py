@@ -1,4 +1,4 @@
-"""Estimate ECEF and local ENU motion from a position time series."""
+# Estimate ECEF and local ENU motion from a position time series.
 
 import json
 import math

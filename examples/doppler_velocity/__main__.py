@@ -1,4 +1,4 @@
-"""Solve receiver velocity and clock drift from Doppler."""
+# Solve receiver velocity and clock drift from Doppler.
 
 from collections.abc import Sequence
 

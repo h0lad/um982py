@@ -1,4 +1,4 @@
-"""Measure time to first fix after receiver starts."""
+# Measure time to first fix after receiver starts.
 
 from __future__ import annotations
 

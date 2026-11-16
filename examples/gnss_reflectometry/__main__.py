@@ -1,4 +1,4 @@
-"""Capture or replay a multi-GNSS, dual-antenna reflectometry experiment."""
+# Capture or replay a multi-GNSS, dual-antenna reflectometry experiment.
 
 from __future__ import annotations
 

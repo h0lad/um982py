@@ -1,4 +1,4 @@
-"""Stream decoded receiver frames as newline-delimited JSON."""
+# Stream decoded receiver frames as newline-delimited JSON.
 
 from __future__ import annotations
 

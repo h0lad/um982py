@@ -1,4 +1,4 @@
-"""Compare broadcast-orbit azimuth and elevation with SATVIS2."""
+# Compare broadcast-orbit azimuth and elevation with SATVIS2.
 
 from __future__ import annotations
 

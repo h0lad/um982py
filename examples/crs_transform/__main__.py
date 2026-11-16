@@ -1,4 +1,4 @@
-"""Transform a 3D coordinate and print the selected PROJ operation."""
+# Transform a 3D coordinate and print the selected PROJ operation.
 
 import argparse
 import json

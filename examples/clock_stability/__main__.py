@@ -1,4 +1,4 @@
-"""Collect a TIME track and report the Allan deviation of the clock offset."""
+# Collect a TIME track and report the Allan deviation of the clock offset.
 
 from __future__ import annotations
 

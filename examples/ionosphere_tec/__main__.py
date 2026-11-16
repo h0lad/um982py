@@ -1,4 +1,4 @@
-"""Compute slant TEC, ROT and ROTI from dual-frequency ranges."""
+# Compute slant TEC, ROT and ROTI from dual-frequency ranges.
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Capture a BESTXYZ track and report the survey-in average."""
+# Capture a BESTXYZ track and report the survey-in average.
 
 from __future__ import annotations
 

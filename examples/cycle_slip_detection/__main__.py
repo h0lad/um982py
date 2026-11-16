@@ -1,4 +1,4 @@
-"""Collect RANGE frames and detect carrier-phase cycle slips."""
+# Collect RANGE frames and detect carrier-phase cycle slips.
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Propagate every captured ephemeris to a satellite position and sky view."""
+# Propagate every captured ephemeris to a satellite position and sky view.
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Run residual chi-square fault detection and exclusion."""
+# Run residual chi-square fault detection and exclusion.
 
 from __future__ import annotations
 

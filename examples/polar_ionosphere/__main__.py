@@ -1,4 +1,4 @@
-"""Report GPS dual-frequency code TEC and tracking changes together."""
+# Report GPS dual-frequency code TEC and tracking changes together.
 
 import math
 from collections import defaultdict

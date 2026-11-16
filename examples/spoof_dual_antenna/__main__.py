@@ -1,4 +1,4 @@
-"""Compare dual-antenna heading, sky view and spoof indicators."""
+# Compare dual-antenna heading, sky view and spoof indicators.
 
 from __future__ import annotations
 

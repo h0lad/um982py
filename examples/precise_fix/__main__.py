@@ -1,4 +1,4 @@
-"""Estimate a static position from BESTXYZ epochs."""
+# Estimate a static position from BESTXYZ epochs.
 
 from __future__ import annotations
 

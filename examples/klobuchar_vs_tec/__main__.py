@@ -1,4 +1,4 @@
-"""Compare Klobuchar delay with dual-frequency TEC."""
+# Compare Klobuchar delay with dual-frequency TEC.
 
 from __future__ import annotations
 

@@ -1,9 +1,4 @@
-"""Compare independent master/slave RTK baselines with UNIHEADING.
-
-Each antenna of a UM982 runs its own RTK solution when dual-RTK output is
-enabled.  This example forms a baseline from the two reported positions and
-cross-checks it against the receiver's heading solution.
-"""
+# Compare independent master/slave RTK baselines with UNIHEADING.
 
 from __future__ import annotations
 

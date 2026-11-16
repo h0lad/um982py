@@ -1,4 +1,4 @@
-"""Summarize fix type, correction age and availability."""
+# Summarize fix type, correction age and availability.
 
 from __future__ import annotations
 

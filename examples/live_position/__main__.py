@@ -1,4 +1,4 @@
-"""Print GGA positions and reconnect when the receiver disconnects."""
+# Print GGA positions and reconnect when the receiver disconnects.
 
 import argparse
 import json

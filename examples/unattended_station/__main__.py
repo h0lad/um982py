@@ -1,4 +1,4 @@
-"""Record bounded research segments and retain a durable station journal."""
+# Record bounded research segments and retain a durable station journal.
 
 import argparse
 import fcntl

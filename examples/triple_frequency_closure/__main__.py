@@ -1,4 +1,4 @@
-"""Inspect three-frequency residuals without ephemerides or external corrections."""
+# Inspect three-frequency residuals without ephemerides or external corrections.
 
 import sys
 from collections.abc import Sequence

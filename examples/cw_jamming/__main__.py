@@ -1,4 +1,4 @@
-"""Classify continuous-wave jamming from receiver diagnostics."""
+# Classify continuous-wave jamming from receiver diagnostics.
 
 from __future__ import annotations
 
