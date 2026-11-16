@@ -15,7 +15,6 @@ Navigation, 66(6), 653-669. doi:10.1017/S0373463313000169
 
 from __future__ import annotations
 
-import math
 from dataclasses import dataclass
 
 from um982py.messages import Record
@@ -94,9 +93,7 @@ def classify_record(
     satellites = satellites_from_record(record)
     candidates: list[NlosCandidate] = []
     for sat in satellites:
-        candidates.extend(
-            classify_satellite(sat, low_threshold, high_threshold)
-        )
+        candidates.extend(classify_satellite(sat, low_threshold, high_threshold))
     mean_score = (
         sum(c.score for c in candidates) / len(candidates) if candidates else 0.0
     )

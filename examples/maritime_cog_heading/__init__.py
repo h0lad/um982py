@@ -16,9 +16,10 @@ doi:10.3390/app162010228
 
 from __future__ import annotations
 
+import itertools
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from um982py.messages import Record
 
@@ -52,7 +53,9 @@ def cog_from_positions(
     phi_a, phi_b = math.radians(lat_a), math.radians(lat_b)
     delta_lon = math.radians(lon_b - lon_a)
     x = math.sin(delta_lon) * math.cos(phi_b)
-    y = math.cos(phi_a) * math.sin(phi_b) - math.sin(phi_a) * math.cos(phi_b) * math.cos(delta_lon)
+    y = math.cos(phi_a) * math.sin(phi_b) - math.sin(phi_a) * math.cos(
+        phi_b
+    ) * math.cos(delta_lon)
     return math.degrees(math.atan2(x, y)) % 360.0
 
 
@@ -71,7 +74,7 @@ def compute_cog_heading(
             heading_by_epoch[epoch] = h
 
     results: list[MaritimeEpoch] = []
-    for prev, curr in zip(positions, positions[1:]):
+    for prev, curr in itertools.pairwise(positions):
         from um982py.capture import record_epoch
 
         epoch = record_epoch(curr)
@@ -100,8 +103,12 @@ def compute_cog_heading(
                 longitude=lon_b,
                 speed_ms=speed_ms,
                 cog_deg=cog,
-                heading_deg=heading if heading is not None and math.isfinite(heading) else None,
-                pitch_deg=pitch if pitch is not None and math.isfinite(pitch) else None,
+                heading_deg=(
+                    heading if heading is not None and math.isfinite(heading) else None
+                ),
+                pitch_deg=(
+                    pitch if pitch is not None and math.isfinite(pitch) else None
+                ),
                 heading_minus_cog_deg=diff,
             )
         )

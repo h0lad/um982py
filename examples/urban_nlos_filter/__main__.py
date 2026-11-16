@@ -14,6 +14,7 @@ from examples._console_capture import capture_records
 from examples.urban_nlos_filter import classify_record
 from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.messages import Record
 
 
 def _payload(
@@ -26,11 +27,13 @@ def _payload(
     nlos = 0
     unsure = 0
     los = 0
+    mean_scores: list[float] = []
 
     for record in records:
         mean_score, candidates = classify_record(
             record, low_threshold=low_threshold, high_threshold=high_threshold
         )
+        mean_scores.append(mean_score)
         labels = {"LOS": 0, "unsure": 0, "NLOS": 0}
         for c in candidates:
             labels[c.label] += 1
@@ -73,9 +76,7 @@ def _payload(
             "unsure": fraction_unsure,
             "NLOS": fraction_nlos,
         },
-        "mean_score": (
-            sum(e["mean_score"] for e in epochs) / len(epochs) if epochs else None
-        ),
+        "mean_score": (sum(mean_scores) / len(mean_scores) if mean_scores else None),
         "epochs": epochs,
         "limitation": (
             "This is a receiver-only heuristic.  Low elevation and low C/N0 can "
@@ -134,13 +135,15 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not records:
         parser.error("no SATSINFO records captured")
     payload = _payload(records, args.low_threshold, args.high_threshold)
-    print(
-        f"Analysed {len(records)} epochs, {payload['total_signals']} signals: "
-        f"LOS={payload['counts']['LOS']}, "
-        f"unsure={payload['counts']['unsure']}, "
-        f"NLOS={payload['counts']['NLOS']}",
-        file=sys.stderr,
-    )
+    counts = payload["counts"]
+    if isinstance(counts, dict):
+        print(
+            f"Analysed {len(records)} epochs, {payload['total_signals']} signals: "
+            f"LOS={counts['LOS']}, "
+            f"unsure={counts['unsure']}, "
+            f"NLOS={counts['NLOS']}",
+            file=sys.stderr,
+        )
     write_json(payload, args.json)
     return 0
 

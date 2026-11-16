@@ -2,10 +2,7 @@
 
 from __future__ import annotations
 
-import math
-
 import pytest
-
 from examples.dual_rtk_consistency import (
     heading_difference,
     heading_from_enu,

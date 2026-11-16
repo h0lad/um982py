@@ -1,4 +1,4 @@
-# Compare receiver-reported per-axis standard deviations with errors at an independently known point.
+# Compare reported per-axis standard deviations with observed errors.
 
 from examples._scientific_cli import main
 

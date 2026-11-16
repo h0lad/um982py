@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 import pytest
-from um982py.satellites import Satellite, SatelliteSignal
-
 from examples.urban_nlos_filter import classify_satellite, nlos_score
+
+from um982py.satellites import Satellite, SatelliteSignal
 
 
 def test_nlos_score_extremes() -> None:

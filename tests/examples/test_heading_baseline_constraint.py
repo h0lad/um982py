@@ -5,7 +5,6 @@ from __future__ import annotations
 import math
 
 import pytest
-
 from examples.heading_baseline_constraint import (
     constrain_to_length,
     heading_residual,

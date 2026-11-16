@@ -17,6 +17,7 @@ from examples.dual_rtk_consistency import (
 )
 from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.messages import Record
 
 
 def _match_epochs(
@@ -130,6 +131,12 @@ def _payload(epochs: Sequence[ConsistencyEpoch]) -> dict[str, object]:
             return None
         return sum(values) / len(values)
 
+    def _std(values: Sequence[float]) -> float | None:
+        if len(values) < 2:
+            return None
+        mean = sum(values) / len(values)
+        return math.sqrt(sum((v - mean) ** 2 for v in values) / (len(values) - 1))
+
     return {
         "matched_epochs": len(rows),
         "fix_state_counts": {
@@ -140,15 +147,12 @@ def _payload(epochs: Sequence[ConsistencyEpoch]) -> dict[str, object]:
         },
         "epochs": rows,
         "statistics": {
-            "diff_length_mean_m": _mean([e.diff_length_m for e in epochs]) if epochs else None,
-            "diff_length_std_m": (
-                math.sqrt(
-                    sum((e.diff_length_m - (sum(ep.diff_length_m for ep in epochs) / len(epochs))) ** 2 for e in epochs)
-                    / (len(epochs) - 1)
-                )
-                if len(epochs) > 1
-                else None
-            ),
+            "diff_length_mean_m": _mean([e.diff_length_m for e in epochs])
+            if epochs
+            else None,
+            "diff_length_std_m": _std([e.diff_length_m for e in epochs])
+            if len(epochs) > 1
+            else None,
             "heading_residual_mean_deg": _mean(heading_residuals),
             "heading_residual_rms_deg": _rms(heading_residuals),
             "pitch_residual_mean_deg": _mean(pitch_residuals),
@@ -167,8 +171,7 @@ def _parser() -> ExampleParser:
     parser = ExampleParser(
         prog="python -m examples.dual_rtk_consistency",
         description=(
-            "Cross-check the dual-RTK master/slave baseline against "
-            "UNIHEADING."
+            "Cross-check the dual-RTK master/slave baseline against UNIHEADING."
         ),
     )
     add_receiver_arguments(parser)
@@ -205,11 +208,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not epochs:
         parser.error("no matched master/slave/heading epochs")
     payload = _payload(epochs)
+    fix_counts = payload["fix_state_counts"]
+    stats = payload["statistics"]
+    both_fixed = fix_counts["both_rtk_fixed"] if isinstance(fix_counts, dict) else None
+    heading_rms = stats["heading_residual_rms_deg"] if isinstance(stats, dict) else None
+    rms_text = f"{heading_rms:.3f}" if isinstance(heading_rms, float) else "N/A"
     print(
         f"Matched {payload['matched_epochs']} epochs; "
-        f"both fixed: {payload['fix_state_counts']['both_rtk_fixed']}; "
-        f"heading residual RMS = "
-        f"{payload['statistics']['heading_residual_rms_deg']:.3f} deg",
+        f"both fixed: {both_fixed}; heading residual RMS = {rms_text} deg",
         file=sys.stderr,
     )
     write_json(payload, args.json)

@@ -1,4 +1,4 @@
-# Compare shared-antenna and separate-antenna differences with held-out repeat-track measurements.
+# Compare shared and separate antenna differences with repeat-track measurements.
 
 from examples._scientific_cli import main
 

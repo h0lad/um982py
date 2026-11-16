@@ -84,7 +84,8 @@ def attitude_from_record(
     )
 
 
-def heading_residual(receiver_heading_deg: float, estimated_heading_deg: float) -> float:
+def heading_residual(
+    receiver_heading_deg: float, estimated_heading_deg: float
+) -> float:
     """Smallest signed difference between two headings, degrees."""
-    delta = (receiver_heading_deg - estimated_heading_deg + 180.0) % 360.0 - 180.0
-    return delta
+    return (receiver_heading_deg - estimated_heading_deg + 180.0) % 360.0 - 180.0

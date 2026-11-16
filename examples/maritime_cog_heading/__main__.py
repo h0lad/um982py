@@ -9,8 +9,8 @@ from collections.abc import Sequence
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
 from examples.maritime_cog_heading import compute_cog_heading
-from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.messages import Record
 
 
 def _payload(
@@ -19,7 +19,9 @@ def _payload(
     min_speed_ms: float,
 ) -> dict[str, object]:
     epochs = compute_cog_heading(positions, headings, min_speed_ms=min_speed_ms)
-    differences = [e.heading_minus_cog_deg for e in epochs if e.heading_minus_cog_deg is not None]
+    differences = [
+        e.heading_minus_cog_deg for e in epochs if e.heading_minus_cog_deg is not None
+    ]
 
     def _mean(values: Sequence[float]) -> float | None:
         return sum(values) / len(values) if values else None
@@ -104,11 +106,13 @@ def main(argv: Sequence[str] | None = None) -> int:
     if len(positions) < 2:
         parser.error("need at least two BESTNAV positions to compute COG")
     payload = _payload(positions, headings, args.min_speed)
+    stats = payload["statistics"]
+    mean_diff = stats["heading_minus_cog_mean_deg"] if isinstance(stats, dict) else None
+    mean_text = f"{mean_diff:.2f} deg" if isinstance(mean_diff, float) else "N/A"
     print(
         f"Matched {payload['matched_epochs']} epochs; "
         f"COG/heading pairs: {payload['cog_heading_epochs']}; "
-        f"mean heading-COG = "
-        f"{payload['statistics']['heading_minus_cog_mean_deg']:.2f} deg",
+        f"mean heading-COG = {mean_text}",
         file=sys.stderr,
     )
     write_json(payload, args.json)

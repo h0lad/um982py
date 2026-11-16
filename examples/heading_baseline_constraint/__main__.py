@@ -9,12 +9,12 @@ from collections.abc import Sequence
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
 from examples.heading_baseline_constraint import (
-    ConstrainedAttitude,
     attitude_from_record,
     heading_residual,
 )
 from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.messages import Record
 
 
 def _payload(
@@ -164,12 +164,12 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     headings = records.get("UNIHEADING", ())
     payload = _payload(baselines, headings, args.baseline_length)
+    stats = payload["statistics"]
+    heading_rms = stats["heading_residual_rms_deg"] if isinstance(stats, dict) else None
+    rms_text = f"{heading_rms:.3f} deg" if isinstance(heading_rms, float) else "N/A"
     print(
         f"Matched {payload['matched_epochs']} epochs; "
-        f"heading residual RMS = "
-        f"{payload['statistics']['heading_residual_rms_deg']:.3f} deg"
-        if payload["statistics"]["heading_residual_rms_deg"] is not None
-        else "No matched UNIHEADING epochs",
+        f"heading residual RMS = {rms_text}",
         file=sys.stderr,
     )
     write_json(payload, args.json)

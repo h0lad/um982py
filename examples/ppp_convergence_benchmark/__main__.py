@@ -112,7 +112,9 @@ def _payload(
     horizontal_limit: float,
     vertical_limit: float,
 ) -> dict[str, object]:
-    h_errors = [e.horizontal_error_m for e in epochs if e.horizontal_error_m is not None]
+    h_errors = [
+        e.horizontal_error_m for e in epochs if e.horizontal_error_m is not None
+    ]
     v_errors = [abs(e.up_error_m) for e in epochs if e.up_error_m is not None]
     reported_h = [e.horizontal_rms_m for e in epochs if e.horizontal_rms_m is not None]
     reported_v = [e.vertical_std_m for e in epochs if e.vertical_std_m is not None]
@@ -252,13 +254,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.vertical_limit,
     )
     summary = payload["summary"]
-    print(
-        f"Epochs: {summary['total_epochs']}; "
-        f"converged: {summary['converged_epochs']}; "
-        f"first fix: {summary['first_fix_s']}; "
-        f"convergence: {summary['convergence_s']}",
-        file=sys.stderr,
-    )
+    if isinstance(summary, dict):
+        print(
+            f"Epochs: {summary['total_epochs']}; "
+            f"converged: {summary['converged_epochs']}; "
+            f"first fix: {summary['first_fix_s']}; "
+            f"convergence: {summary['convergence_s']}",
+            file=sys.stderr,
+        )
     write_json(payload, args.json)
     return 0
 

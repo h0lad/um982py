@@ -58,9 +58,7 @@ def _is_rtk_fixed(record: Record) -> bool:
     return any(name in pos_type for name in ("NARROW_INT", "WIDE_INT", "L1_INT"))
 
 
-def baseline_from_positions(
-    master: Record, slave: Record
-) -> ConsistencyEpoch | None:
+def baseline_from_positions(master: Record, slave: Record) -> ConsistencyEpoch | None:
     """Build a baseline from matched master and slave BESTNAV records."""
     master_ecef = _ecef_from_bestnav(master)
     slave_ecef = _ecef_from_bestnav(slave)

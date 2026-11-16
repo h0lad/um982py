@@ -15,8 +15,8 @@ doi:10.3390/rs16214008
 from __future__ import annotations
 
 import math
+from collections.abc import Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 from um982py.geodesy import enu_from_ecef
 from um982py.messages import Record
