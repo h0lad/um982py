@@ -31,8 +31,20 @@ stationary site. The live or replay input is the comparison pass. Use
 
 ## Understanding the result
 
-Keep the antenna and surroundings comparable between captures.
+Keep the antenna and surroundings comparable between captures. A validation
+capture must be at least 23 hours after the training capture starts, so that
+it comes from a later repeat pass rather than the same day. GPS sky tracks
+repeat after approximately one sidereal day (86,164 s nominal; measured
+per-satellite lags are around 86,155 s, i.e. 236-245 s less than a solar day).
+The sky-cell comparison does not apply a fixed time shift: it matches the same
+satellite and signal in the same azimuth/elevation cell, and the reported
+improvement is measured on held-out epochs.
 
 ## References
 
-Axelrad, Larson & Jones (2005), sidereal repeat.
+- Axelrad, Larson & Jones (2005), *Use of the Correct Satellite Repeat Period to
+  Characterize and Reduce Site-Specific Multipath Errors*, ION GNSS.
+- Larson, Bilich & Axelrad (2007), *Improving the precision of high-rate GPS*,
+  JGR 112(B05422) (repeat period about 236 s shorter than 24 h).
+- Choi et al. (2004), *Modified sidereal filtering*, GRL 31(L22608)
+  (satellite-specific repeat lags).

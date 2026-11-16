@@ -35,13 +35,21 @@ class Repeatability:
     predictions: tuple[tuple[float, float, float], ...]
 
 
+# A GPS satellite's sky track repeats after about one sidereal day: 86,164 s
+# nominal, with measured satellite-specific lags around 86,155 s (236-245 s
+# shorter than a solar day); Axelrad et al. (2005), Larson et al. (2007).
+# The conservative 23 h lower bound rejects same-day captures without
+# imposing a fixed sidereal lag on the data.
+MINIMUM_REPEAT_SEPARATION_SECONDS = 82_800.0
+
+
 def evaluate_repeatability(
     training: Sequence[SkyResidual],
     validation: Sequence[SkyResidual],
     *,
     cell_degrees: float = 5.0,
     minimum_cell_samples: int = 3,
-    minimum_separation: float = 72000.0,
+    minimum_separation: float = MINIMUM_REPEAT_SEPARATION_SECONDS,
 ) -> Repeatability:
     """Freeze a training-day map and score it without fitting validation residuals."""
     finite(cell_degrees, minimum_separation)

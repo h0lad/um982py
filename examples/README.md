@@ -164,7 +164,7 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`hatch_smoothing`](hatch_smoothing/README.md): Smooths code with carrier phase and resets on cycle slips. Reset on discontinuities; smoothing reduces code noise but retains bias and can accumulate ionospheric divergence.
 - [`multipath_analysis`](multipath_analysis/README.md): Calculates RMS code-minus-carrier residuals as a multipath proxy. Detrend continuous arcs with enough samples; residuals include noise and model error as well as multipath.
 - [`multipath_vs_mask`](multipath_vs_mask/README.md): Sweeps elevation masks and checks receiver state. Replay filters one pass; synthetic inverse-sine behavior is an assumption, and empty masks have no measured RMS.
-- [`sidereal_multipath`](sidereal_multipath/README.md): Checks whether multipath repeats after one sidereal day. Separate training and test captures with aligned signal/geometry; evaluate improvement on held-out data.
+- [`sidereal_multipath`](sidereal_multipath/README.md): Checks whether multipath repeats after one sidereal day. Separate training and test captures from different repeat days (at least 23 h apart), with aligned signal/geometry; evaluate improvement on held-out data.
 - [`triple_frequency_closure`](triple_frequency_closure/README.md): Tests triple-frequency combinations that cancel geometry and ionosphere. Match simultaneous continuous carriers; closure detects some combinations and has insensitive modes.
 
 ### Atmosphere and reflectometry

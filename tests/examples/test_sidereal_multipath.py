@@ -49,3 +49,15 @@ def test_unseen_signal_does_not_inherit_a_different_satellites_map() -> None:
 def test_training_leakage_is_rejected() -> None:
     with pytest.raises(ValueError, match="overlap"):
         evaluate_repeatability(training(), training())
+
+
+def test_same_day_capture_is_not_a_repeat_day() -> None:
+    """A 20 h gap is shorter than any published GPS ground-track repeat lag."""
+    validation = [SkyResidual(KEY, 72000.0, 10, 30, -2)]
+    with pytest.raises(ValueError, match="repeat-day"):
+        evaluate_repeatability(training(), validation)
+
+
+def test_one_sidereal_day_capture_is_accepted() -> None:
+    validation = [SkyResidual(KEY, 86164.0, 10, 30, -2)]
+    assert evaluate_repeatability(training(), validation).coverage == 1
