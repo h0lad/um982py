@@ -2,6 +2,7 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field, replace
+from datetime import datetime
 from typing import Literal
 from uuid import uuid4
 
@@ -75,14 +76,16 @@ class Observations:
         l2c_code: str | None = None,
         week_scale: Literal["GPST", "BDT"] | None = None,
         metadata: RinexMetadata | None = None,
+        created_at: datetime | None = None,
     ) -> RinexExport:
-        """Export observations and return the RINEX text and omission counts."""
+        """Export observations; fix aware ``created_at`` for reproducible text."""
         return export_rinex(
             self.records,
             marker_name=marker_name,
             l2c_code=l2c_code,
             week_scale=week_scale,
             metadata=metadata,
+            created_at=created_at,
         )
 
 

@@ -1,5 +1,6 @@
 from collections.abc import Callable
 from dataclasses import asdict, replace
+from datetime import UTC, datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
@@ -30,9 +31,23 @@ def test_source_tags_survive_slicing_and_wrapping_without_changing_wire_data() -
     assert subset.records[0].message is RECORDS[0].message
     assert dict(subset.records[0]) == dict(RECORDS[0])
     assert ObservationSource(**asdict(SOURCE)) == SOURCE
-    assert captured.to_rinex().text == Observations(RECORDS).to_rinex().text
+    created_at = datetime(2025, 1, 1, tzinfo=UTC)
+    assert (
+        captured.to_rinex(created_at=created_at).text
+        == Observations(RECORDS).to_rinex(created_at=created_at).text
+    )
     assert captured.quality() == Observations(RECORDS).quality()
     assert captured.signals() == Observations(RECORDS).signals()
+
+
+def test_rinex_creation_time_is_explicit_and_normalized() -> None:
+    local = datetime(2025, 1, 1, 2, tzinfo=timezone(timedelta(hours=2)))
+    utc = datetime(2025, 1, 1, tzinfo=UTC)
+    first = export_rinex(RECORDS, created_at=local).text
+    assert first == Observations(RECORDS).to_rinex(created_at=utc).text
+    assert "20250101 000000 UTC" in first
+    with pytest.raises(ValueError, match="timezone-aware"):
+        export_rinex(RECORDS, created_at=datetime(2025, 1, 1))
 
 
 @pytest.mark.parametrize(

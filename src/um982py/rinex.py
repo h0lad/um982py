@@ -214,9 +214,10 @@ def _header_lines(
     first_epoch: float,
     week_scale: Literal["GPST", "BDT"] | None,
     metadata: RinexMetadata,
+    created_at: datetime,
 ) -> list[str]:
     stamp = _GPS_EPOCH + timedelta(seconds=first_epoch)
-    created = datetime.now(UTC).strftime("%Y%m%d %H%M%S UTC")
+    created = created_at.astimezone(UTC).strftime("%Y%m%d %H%M%S UTC")
     lines = [
         _header(f"{'3.05':>9}{'':11}{'OBSERVATION DATA':<20}M", "RINEX VERSION / TYPE"),
         _header(f"{'um982py':<20}{'':20}{created:<20}", "PGM / RUN BY / DATE"),
@@ -373,6 +374,7 @@ def export_rinex(
     l2c_code: str | None = None,
     week_scale: Literal["GPST", "BDT"] | None = None,
     metadata: RinexMetadata | None = None,
+    created_at: datetime | None = None,
 ) -> RinexExport:
     """Export valid observables and report omitted or partially invalid signals.
 
@@ -382,7 +384,13 @@ def export_rinex(
     carrier phase because the stored phase is modulo and its ambiguity has not
     been independently resolved. ``unresolved_compressed_phase`` counts them.
     Records with conflicting receiver/session/antenna source tags are rejected.
+    ``created_at`` must be timezone-aware; supply it for reproducible headers.
+    The default is the current UTC time, not the observation epoch.
     """
+    if created_at is None:
+        created_at = datetime.now(UTC)
+    if created_at.utcoffset() is None:
+        raise ValueError("created_at must be timezone-aware")
     _observation_source(records)
     if not records or any(
         record.name
@@ -407,6 +415,7 @@ def export_rinex(
         epochs[0][0],
         week_scale,
         metadata if metadata is not None else RinexMetadata(),
+        created_at,
     )
     epoch_lines, satellite_count, observation_count = _epoch_lines(epochs, codes)
     lines.extend(epoch_lines)
