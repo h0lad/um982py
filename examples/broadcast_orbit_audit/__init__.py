@@ -64,9 +64,9 @@ def compare_state(
 
 
 RADIAL_WEIGHT = 0.98
-"""Radial weight of a broadcast orbit error in a single-frequency SISRE."""
+"""GPS radial weight of a broadcast orbit error in global-average SISRE."""
 ANGULAR_WEIGHT = 1.0 / 49.0
-"""Along-track and cross-track weight of the same error."""
+"""GPS along/cross-track weight (Montenbruck et al., 2018, table 1)."""
 LIGHT_SPEED = 299_792_458.0
 
 

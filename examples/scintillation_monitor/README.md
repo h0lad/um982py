@@ -29,8 +29,13 @@ sets the requested live output interval. Live capture stops at the frame or
 duration limit, whichever comes first. Collect enough epochs to fill the window.
 
 The receiver filters C/N₀. The calculation does not remove trends or correct
-for thermal noise.
+for thermal noise. The `s4` field is `sqrt(<I^2> - <I>^2)/<I>` of linear
+C/N₀-derived intensity over the window; it is a proxy, not a calibrated S4
+index. `roti_proxy` is the standard deviation of successive S4 increments per
+second: it is **not** the rate-of-TEC index (ROTI).
 
 ## References
 
-Briggs & Parkin (1963), scintillation.
+- Briggs & Parkin (1963), S4 as the normalized standard deviation of intensity.
+- Van Dierendonck et al. (1993), thermal-noise correction of the measured S4.
+- Pi et al. (1997), the distinct rate-of-TEC index (ROTI).

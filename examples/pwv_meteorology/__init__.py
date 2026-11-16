@@ -113,7 +113,11 @@ class WaterVapour:
 
 
 def pi_factor(mean_temperature: float) -> float:
-    """Bevis et al. (1992) conversion factor from zenith wet delay to water vapour."""
+    """Bevis et al. (1994) conversion factor from zenith wet delay to water vapour.
+
+    The refractivity constants are expressed per pascal here, so ``1e6``
+    replaces the ``1e8`` form used when k2' and k3 are quoted per hPa.
+    """
     if mean_temperature <= 0:
         raise ValueError("mean temperature must be positive")
     k2 = REFRACTIVITY_K2_KELVIN_PER_HECTOPASCAL / PASCALS_PER_HECTOPASCAL

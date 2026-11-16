@@ -41,7 +41,15 @@ the corresponding IGS broadcast data and produces a large orbit discrepancy.
 The same coefficients appear in the receiver's binary `GPSEPHB.bin` capture.
 These captures are not independent measurements, and the cause remains unknown.
 
+The optional SISRE score uses the GPS global-average weights
+`SISRE = sqrt((0.98 R - c dT)^2 + (A^2 + C^2)/49)`; other constellations have
+their own weight factors, so do not reuse this score for BeiDou or Galileo
+products without changing them.
+
 ## References
 
 - Hilla (2010), SP3-c.
 - IS-GPS-200.
+- Montenbruck, Steigenberger & Hauschild (2018), *Multi-GNSS signal-in-space
+  range error assessment - Methodology and results*, Advances in Space
+  Research 61(12), 3020-3038 (0.98 and 1/49 GPS weight factors).

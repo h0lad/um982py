@@ -133,7 +133,7 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`dop_geometry`](dop_geometry/README.md): Computes DOP values from satellite geometry. Geometry and weighting determine DOP; it is not a measured position-error distribution.
 - [`doppler_velocity`](doppler_velocity/README.md): Solves receiver velocity and clock drift from Doppler. Match satellite states and time, estimate receiver clock drift; wave interpretation needs external motion validation.
 - [`elevation_optimizer`](elevation_optimizer/README.md): Finds the elevation mask with the best satellite geometry. Noise and geometry vary together; verify the chosen mask on another collection.
-- [`ephemeris_orbit`](ephemeris_orbit/README.md): Propagates broadcast ephemerides for four constellations. Offsets are relative to each ephemeris, not a common epoch; health/age selection and uncertainty are outside this demonstration.
+- [`ephemeris_orbit`](ephemeris_orbit/README.md): Propagates broadcast ephemerides for four constellations with each system's ICD constants and the BeiDou GEO frame rotation. Offsets are relative to each ephemeris, not a common epoch; time-system conversion, health/age selection and uncertainty are outside this demonstration.
 - [`heading_attitude`](heading_attitude/README.md): Turns a dual-antenna baseline into heading and pitch. Respect antenna direction, installation offset and solution status; heading precision depends on baseline geometry.
 - [`vadase`](vadase/README.md): Solves displacement and velocity from time-differenced carrier phase. Continuous carrier arcs, satellite motion and clock estimation; event attribution needs independent motion evidence.
 
