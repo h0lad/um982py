@@ -5,13 +5,6 @@ control, RTK/PPP positions, observation recording, and offline analysis.
 
 UM960 and UM980 have not been tested.
 
-The core is receiver I/O, corrected positioning, and reproducible observation
-recording. It needs only `pyserial`; CRS transforms optionally use `pyproj`.
-Research models and application-specific policies are specialist tools, not
-navigation guarantees. This library is not certified navigation equipment:
-do not use it as the sole source for flight, collision avoidance, or other
-safety-critical decisions.
-
 ## Install and use
 
 From a source checkout:
@@ -158,70 +151,6 @@ Start with one of three paths:
 
 The [example catalogue](examples/README.md) covers all workflows, required data,
 and limits of the scientific models. Examples run from the source checkout.
-
-## Find the right API
-
-The package root exposes ten names:
-
-| Purpose | Root API |
-| --- | --- |
-| Receiver access | `Receiver`, `AsyncReceiver`, `Rover` |
-| Logs and position interface | `Log`, `Position` |
-| Capture and decoding | `capture_live`, `load_records`, `decode_message` |
-| Observation analysis and export | `Observations`, `record_observations` |
-
-Import specialist APIs from their modules:
-
-```python
-from um982py.antenna import antenna_log, swap_antenna
-from um982py.rtcm import decode_rtcm
-```
-
-Other entry points include `um982py.ntrip`, `um982py.rinex`, `um982py.geodesy`,
-`um982py.measurement`, `um982py.precision`, and `um982py.adapters`.
-Result models live in `um982py.messages.navigation`, exceptions in
-`um982py.errors`. Use `help()` on library objects for parameters and behavior.
-
-Methods that select an antenna use `antenna=1` or `antenna=2`.
-For low-level logs, `antenna_log(Log.RANGE, antenna=2)` selects the secondary
-input; `swap_antenna()` exchanges roles. Both helpers belong to `um982py.antenna`.
-
-GGA, BESTNAV, PPP and rover results share the `Position` interface. Unavailable
-values are `None`; GGA has no date and therefore no absolute GPS epoch.
-A query response or host arrival time does not prove measurement freshness.
-Check receiver epochs and time quality when matching observations.
-
-### Specialist boundaries
-
-These modules have different contracts; they are not interchangeable quality
-scores:
-
-| Module | Responsibility |
-| --- | --- |
-| `quality` | Receiver solution classification and offline epoch summaries |
-| `precision` | Receiver-reported standard deviations and error ellipses, not integrity bounds |
-| `precision_matching` | Associate precision reports with position epochs |
-| `assessment` | Apply user-selected limits to an individual position |
-| `live_quality` | Stateful GGA monitoring using host arrival intervals and ongoing outage age |
-| `precise` | SP3 orbit products, not a higher-level position/precision API |
-| `session` | Segmented raw recording and replay |
-| `rtk_session` | Correction relay lifecycle and health |
-| `rover_session` | Combined position and correction subscriptions |
-
-Use `stats.least_squares()` for small, full-rank weighted systems. Detrending
-and orbit-position sensitivity share this QR implementation rather than separate
-normal-equation solvers. Its relative rank check is not a condition-number or
-uncertainty estimate; use an SVD-based scientific solver for demanding fits.
-
-Scientific examples document assumptions and references in their own READMEs.
-They are demonstrations, not independently validated operational instruments.
-No NumPy/SciPy dependency is needed to acquire, decode, or record data.
-
-For reproducible observation exports, pass the same timezone-aware `created_at`
-to `Observations.to_rinex()` or `rinex.export_rinex()`. The default uses current
-UTC for the generation header, independently of the observation epoch.
-
-Before unattended deployment, run the [hardware validation procedure](docs/hardware-validation.md).
 
 ## Choose a connection and streaming model
 
