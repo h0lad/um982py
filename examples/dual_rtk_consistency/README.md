@@ -1,6 +1,6 @@
 # Dual-RTK consistency check
 
-A UM982 with dual-RTK output provides independent RTK position solutions for the
+A UM982 with dual-RTK output provides position solutions for the
 master (ANT1) and slave (ANT2) antennas.  This example takes those two
 positions, forms a baseline vector, and compares the resulting heading and pitch
 with the receiver's own `UNIHEADING` solution.
@@ -52,5 +52,7 @@ RTK fix states across the matched epochs.
 - The position-derived baseline is noisier than a carrier-phase baseline and
   depends on both antennas being RTK fixed.
 - Antenna-specific multipath and antenna offsets are not modelled.
-- Comparisons are against the receiver's `UNIHEADING`, not an independent
-  attitude reference.
+- The outputs may share measurements, corrections and receiver processing;
+  agreement with `UNIHEADING` is not independent validation.
+- Fixed status requires both a computed solution and a documented fixed type,
+  for either ASCII or binary logs.

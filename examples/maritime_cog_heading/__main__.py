@@ -17,8 +17,11 @@ def _payload(
     positions: Sequence[Record],
     headings: Sequence[Record],
     min_speed_ms: float,
+    max_gap_s: float = 5.0,
 ) -> dict[str, object]:
-    epochs = compute_cog_heading(positions, headings, min_speed_ms=min_speed_ms)
+    epochs = compute_cog_heading(
+        positions, headings, min_speed_ms=min_speed_ms, max_gap_s=max_gap_s
+    )
     differences = [
         e.heading_minus_cog_deg for e in epochs if e.heading_minus_cog_deg is not None
     ]
@@ -51,6 +54,8 @@ def _payload(
                 "heading_deg": e.heading_deg,
                 "pitch_deg": e.pitch_deg,
                 "heading_minus_cog_deg": e.heading_minus_cog_deg,
+                "interval_s": e.interval_s,
+                "cog_unavailable_reason": e.unavailable_reason,
             }
             for e in epochs
         ],
@@ -89,6 +94,12 @@ def _parser() -> ExampleParser:
         default=0.5,
         help="minimum speed in m/s for a reliable COG estimate",
     )
+    parser.add_argument(
+        "--max-gap",
+        type=float,
+        default=5.0,
+        help="maximum position interval in seconds",
+    )
     return parser
 
 
@@ -105,7 +116,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     headings = records.get("UNIHEADING", ())
     if len(positions) < 2:
         parser.error("need at least two BESTNAV positions to compute COG")
-    payload = _payload(positions, headings, args.min_speed)
+    payload = _payload(positions, headings, args.min_speed, args.max_gap)
     stats = payload["statistics"]
     mean_diff = stats["heading_minus_cog_mean_deg"] if isinstance(stats, dict) else None
     mean_text = f"{mean_diff:.2f} deg" if isinstance(mean_diff, float) else "N/A"

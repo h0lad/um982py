@@ -1,10 +1,8 @@
 """Dual-RTK consistency check for a UM982 dual-antenna receiver.
 
-The UM982 can compute independent RTK position solutions for the master (ANT1)
-and slave (ANT2) antennas.  The vector between those two positions is a
-second, independent estimate of the dual-antenna baseline.  Comparing it with
-the reported UNIHEADING baseline is useful for magnetometer-free yaw validation
-and for detecting epochs where one antenna has lost RTK fix.
+The master (ANT1) and slave (ANT2) position outputs can form a second
+baseline estimate for comparison with UNIHEADING. These receiver solutions
+may share measurements and errors; the comparison is not independent validation.
 
 Reference
 ---------
@@ -20,6 +18,8 @@ from dataclasses import dataclass
 
 from um982py.geodesy import ecef_from_geodetic, enu_from_ecef, geodetic_from_ecef
 from um982py.messages import Record
+from um982py.messages.enums import SolutionStatus
+from um982py.quality import FixClass, classify, position_type_code, solution_status_code
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,9 +53,14 @@ def _ecef_from_bestnav(record: Record) -> tuple[float, float, float] | None:
 
 
 def _is_rtk_fixed(record: Record) -> bool:
-    """Best-effort RTK-fixed classification from pos_type string."""
-    pos_type = str(record.get("pos_type", "")).upper()
-    return any(name in pos_type for name in ("NARROW_INT", "WIDE_INT", "L1_INT"))
+    """Require computed status and a documented fixed solution in either wire format."""
+    try:
+        return (
+            solution_status_code(record) == SolutionStatus.SOL_COMPUTED
+            and classify(position_type_code(record)) == FixClass.FIXED
+        )
+    except (KeyError, ValueError):
+        return False
 
 
 def baseline_from_positions(master: Record, slave: Record) -> ConsistencyEpoch | None:
@@ -63,6 +68,14 @@ def baseline_from_positions(master: Record, slave: Record) -> ConsistencyEpoch |
     master_ecef = _ecef_from_bestnav(master)
     slave_ecef = _ecef_from_bestnav(slave)
     if master_ecef is None or slave_ecef is None:
+        return None
+    try:
+        if any(
+            solution_status_code(row) != SolutionStatus.SOL_COMPUTED
+            for row in (master, slave)
+        ):
+            return None
+    except (KeyError, ValueError):
         return None
     diff = (
         slave_ecef[0] - master_ecef[0],

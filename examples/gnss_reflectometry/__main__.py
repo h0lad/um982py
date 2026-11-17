@@ -10,7 +10,7 @@ import sys
 from bisect import bisect_left, bisect_right
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
-from dataclasses import asdict
+from dataclasses import asdict, replace
 from pathlib import Path
 from typing import cast
 
@@ -237,6 +237,11 @@ def _parser() -> ExampleParser:
         help="fitted amplitude in linear C/N0 units",
     )
     parser.add_argument("--min-fit-r2", type=float, default=0.0)
+    parser.add_argument(
+        "--sensitivity",
+        action="store_true",
+        help="recompute with alternate elevation, height bounds and detrending order",
+    )
     parser.add_argument(
         "--reference-height-ant1",
         type=float,
@@ -524,7 +529,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     _validate(parser, args)
     reference = None
     if args.reference_json is not None:
-        reference = json.loads(args.reference_json.read_text(encoding="utf-8"))
+        try:
+            reference = json.loads(args.reference_json.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as error:
+            parser.error(f"cannot read reference JSON: {error}")
         if not isinstance(reference, dict) or reference.get("schema_version") != 1:
             parser.error("reference JSON must be a GNSS-IR schema_version 1 report")
     logs: list[DataLog] = (
@@ -609,6 +617,75 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.reference_height_ant2,
         quality=quality,
     )
+    if args.sensitivity:
+        variants = [
+            (
+                "linear_detrend",
+                args.min_elevation,
+                args.max_elevation,
+                args.min_height,
+                args.max_height,
+                replace(quality, detrend_order=1, include_spectra=False),
+            ),
+            (
+                "narrower_elevation",
+                args.min_elevation + (args.max_elevation - args.min_elevation) * 0.1,
+                args.max_elevation - (args.max_elevation - args.min_elevation) * 0.1,
+                args.min_height,
+                args.max_height,
+                replace(quality, include_spectra=False),
+            ),
+            (
+                "wider_height_search",
+                args.min_elevation,
+                args.max_elevation,
+                max(0.01, args.min_height * 0.8),
+                args.max_height * 1.2,
+                replace(quality, include_spectra=False),
+            ),
+        ]
+        report["sensitivity_settings"] = {
+            name: {
+                "min_elevation_deg": lo,
+                "max_elevation_deg": hi,
+                "min_height_m": hmin,
+                "max_height_m": hmax,
+                "detrend_order": variant_quality.detrend_order,
+            }
+            for name, lo, hi, hmin, hmax, variant_quality in variants
+        }
+        report["sensitivity"] = {
+            name: {
+                antenna: {
+                    key: payload[key]
+                    for key in (
+                        "status",
+                        "accepted_arcs",
+                        "automatic_height",
+                        "rejection_counts",
+                        "reference_comparison",
+                    )
+                }
+                for antenna, data_join in joined.items()
+                for payload in [
+                    build_payload(
+                        data_join,
+                        lo,
+                        hi,
+                        hmin,
+                        hmax,
+                        args.azimuth_start,
+                        args.azimuth_end,
+                        args.max_gap or 3 * args.interval,
+                        args.reference_height_ant1
+                        if antenna == "ANT1"
+                        else args.reference_height_ant2,
+                        quality=variant_quality,
+                    )
+                ]
+            }
+            for name, lo, hi, hmin, hmax, variant_quality in variants
+        }
     if args.debug:
         _debug_report(report)
     report["selected_antenna"] = (

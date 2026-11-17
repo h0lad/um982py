@@ -1,4 +1,4 @@
-# Compare independent master/slave RTK baselines with UNIHEADING.
+# Compare master/slave position baselines with UNIHEADING.
 
 from __future__ import annotations
 
@@ -159,10 +159,9 @@ def _payload(epochs: Sequence[ConsistencyEpoch]) -> dict[str, object]:
             "pitch_residual_rms_deg": _rms(pitch_residuals),
         },
         "limitation": (
-            "The master-slave position difference is an independent RTK "
-            "baseline estimate, but its accuracy depends on both RTK fixes "
-            "and on antenna-specific multipath.  Residuals are relative to "
-            "UNIHEADING, not an independent truth."
+            "The position-derived and UNIHEADING baselines can share receiver "
+            "measurements and errors. Agreement is not independent validation; "
+            "accuracy also depends on fix quality and multipath."
         ),
     }
 

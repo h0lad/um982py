@@ -35,6 +35,7 @@ class QualityCriteria:
     min_amplitude: float = 0.0
     min_fit_r2: float = 0.0
     include_spectra: bool = False
+    detrend_order: int = 2
 
 
 def signal_labels(system: int, signal: int) -> tuple[str, str]:
@@ -212,6 +213,7 @@ def build_payload(
             min_duration=quality.min_duration,
             min_amplitude=quality.min_amplitude,
             min_fit_r2=quality.min_fit_r2,
+            order=quality.detrend_order,
         )
         for arc in arcs
     )
@@ -230,6 +232,25 @@ def build_payload(
             Counter(result.rejection for result in results if result.rejection)
         ),
         "automatic_height": automatic_height(results),
+        "reference_comparison": {
+            "reference_height_m": reference_height,
+            "accepted_arc_count": sum(
+                result.estimate is not None for result in results
+            ),
+            "median_error_m": (
+                median(
+                    result.estimate.height - reference_height
+                    for result in results
+                    if result.estimate is not None
+                )
+                if reference_height is not None and accepted
+                else None
+            ),
+            "limitation": (
+                "Comparison is independent only when the height is surveyed "
+                "separately and not used for tuning."
+            ),
+        },
         "observed_sectors": reflection_coverage(arcs, results),
         "arcs": [
             _arc_summary(arc, result, reference_height, quality.include_spectra)

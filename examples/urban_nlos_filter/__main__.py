@@ -6,12 +6,14 @@
 
 from __future__ import annotations
 
+import csv
 import sys
 from collections.abc import Sequence
+from pathlib import Path
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
-from examples.urban_nlos_filter import classify_record
+from examples.urban_nlos_filter import classify_record, evaluate_labelled
 from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.messages import Record
@@ -33,7 +35,8 @@ def _payload(
         mean_score, candidates = classify_record(
             record, low_threshold=low_threshold, high_threshold=high_threshold
         )
-        mean_scores.append(mean_score)
+        if mean_score is not None:
+            mean_scores.append(mean_score)
         labels = {"LOS": 0, "unsure": 0, "NLOS": 0}
         for c in candidates:
             labels[c.label] += 1
@@ -120,6 +123,11 @@ def _parser() -> ExampleParser:
         default=0.75,
         help="score above which a satellite is marked NLOS",
     )
+    parser.add_argument(
+        "--labels-csv",
+        type=Path,
+        help="held-out independent labels: elevation_deg,cn0_db_hz,truth",
+    )
     return parser
 
 
@@ -135,6 +143,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     if not records:
         parser.error("no SATSINFO records captured")
     payload = _payload(records, args.low_threshold, args.high_threshold)
+    if args.labels_csv is not None:
+        with args.labels_csv.open(encoding="utf-8", newline="") as stream:
+            rows = list(csv.DictReader(stream))
+        labelled = [
+            (float(row["elevation_deg"]), float(row["cn0_db_hz"]), row["truth"].upper())
+            for row in rows
+        ]
+        payload["held_out_label_evaluation"] = evaluate_labelled(
+            labelled, args.low_threshold, args.high_threshold
+        )
     counts = payload["counts"]
     if isinstance(counts, dict):
         print(

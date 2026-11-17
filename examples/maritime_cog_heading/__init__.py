@@ -21,7 +21,10 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from um982py.capture import record_epoch
 from um982py.messages import Record
+from um982py.messages.enums import SolutionStatus
+from um982py.quality import FixClass, classify, position_type_code, solution_status_code
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,6 +39,8 @@ class MaritimeEpoch:
     heading_deg: float | None
     pitch_deg: float | None
     heading_minus_cog_deg: float | None
+    interval_s: float | None = None
+    unavailable_reason: str | None = None
 
 
 def _wrap_heading_diff(a: float, b: float) -> float:
@@ -63,37 +68,80 @@ def compute_cog_heading(
     positions: Sequence[Record],
     headings: Sequence[Record],
     min_speed_ms: float = 0.5,
+    *,
+    max_gap_s: float = 5.0,
 ) -> list[MaritimeEpoch]:
-    """Match position and heading epochs and compute COG/heading differences."""
+    """Compare interval-average COG with heading at the interval's end epoch."""
+    if (
+        not math.isfinite(min_speed_ms)
+        or min_speed_ms < 0
+        or not math.isfinite(max_gap_s)
+        or max_gap_s <= 0
+    ):
+        raise ValueError("speed must be nonnegative and max gap positive and finite")
+
+    def timestamp(row: Record) -> float | None:
+        try:
+            epoch = record_epoch(row)
+        except (KeyError, TypeError, ValueError):
+            return None
+        return epoch if math.isfinite(epoch) else None
+
     heading_by_epoch: dict[float, Record] = {}
     for h in headings:
-        from um982py.capture import record_epoch
+        stamp = timestamp(h)
+        if stamp is not None:
+            heading_by_epoch[stamp] = h
 
-        epoch = record_epoch(h)
-        if epoch is not None:
-            heading_by_epoch[epoch] = h
+    def valid(row: Record) -> bool:
+        try:
+            return (
+                solution_status_code(row) == SolutionStatus.SOL_COMPUTED
+                and classify(position_type_code(row)) != FixClass.NONE
+            )
+        except (KeyError, ValueError):
+            return False
 
     results: list[MaritimeEpoch] = []
     for prev, curr in itertools.pairwise(positions):
-        from um982py.capture import record_epoch
-
-        epoch = record_epoch(curr)
-        lat_a = prev.real("lat")
-        lon_a = prev.real("lon")
-        lat_b = curr.real("lat")
-        lon_b = curr.real("lon")
+        epoch, previous_epoch = timestamp(curr), timestamp(prev)
+        dt = (
+            epoch - previous_epoch
+            if epoch is not None and previous_epoch is not None
+            else None
+        )
+        lat_a, lon_a = prev.real("lat"), prev.real("lon")
+        lat_b, lon_b = curr.real("lat"), curr.real("lon")
         speed_ms = curr.real("hor_spd")
-        cog = None
-        if speed_ms >= min_speed_ms and all(
-            math.isfinite(v) for v in (lat_a, lon_a, lat_b, lon_b)
+        reason = None
+        if not valid(prev) or not valid(curr):
+            reason = "invalid_position"
+        elif dt is None:
+            reason = "missing_epoch"
+        elif not math.isfinite(dt) or dt <= 0:
+            reason = "non_increasing_epoch"
+        elif dt > max_gap_s:
+            reason = "gap_exceeded"
+        elif not all(
+            math.isfinite(v) for v in (lat_a, lon_a, lat_b, lon_b, speed_ms)
+        ) or not (
+            -90 <= lat_a <= 90
+            and -90 <= lat_b <= 90
+            and -180 <= lon_a <= 180
+            and -180 <= lon_b <= 180
         ):
-            cog = cog_from_positions(lat_a, lon_a, lat_b, lon_b)
+            reason = "invalid_coordinates_or_speed"
+        elif speed_ms < min_speed_ms:
+            reason = "below_min_speed"
+        elif lat_a == lat_b and (lon_b - lon_a) % 360 == 0:
+            reason = "zero_displacement"
+        cog = cog_from_positions(lat_a, lon_a, lat_b, lon_b) if reason is None else None
 
         heading_rec = heading_by_epoch.get(epoch) if epoch is not None else None
         heading = heading_rec.real("heading") if heading_rec is not None else None
         pitch = heading_rec.real("pitch") if heading_rec is not None else None
         diff = None
-        if heading is not None and cog is not None:
+        if heading is not None and math.isfinite(heading) and cog is not None:
             diff = _wrap_heading_diff(heading, cog)
 
         results.append(
@@ -110,6 +158,8 @@ def compute_cog_heading(
                     pitch if pitch is not None and math.isfinite(pitch) else None
                 ),
                 heading_minus_cog_deg=diff,
+                interval_s=dt,
+                unavailable_reason=reason,
             )
         )
     return results

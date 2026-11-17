@@ -71,6 +71,13 @@ combinations in `automatic_height.distinct_tracks` and
 count once, and passes with the same satellite and direction are grouped.
 Different tracks can still share environmental and model errors.
 
+Add `--sensitivity` to recompute with linear detrending, a narrower elevation
+window and a wider height search. The report retains acceptance and rejection
+counts for each variant; it is not an uncertainty interval. Supply an
+independently surveyed `--reference-height-ant1` or `--reference-height-ant2`
+to report median accepted-arc errors. Keep the survey and test capture held out
+from parameter selection; otherwise the comparison is not independent.
+
 Use new filenames such as `captures/day2.bin`, `day2-arcs.csv` and
 `day2-report.json` for another recording.
 

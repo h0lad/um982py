@@ -19,7 +19,8 @@ approach in
 
 `BESTNAV` positions are sampled at the requested interval.  COG is computed from
 each pair of consecutive positions using the great-circle bearing.  For the
-same epochs `UNIHEADING` provides the dual-antenna true heading.  The report
+end epoch `UNIHEADING` provides the dual-antenna true heading; COG represents
+the preceding interval and is not instantaneous.  The report
 calculates `heading - COG`, which is only meaningful when the vessel is moving
 fast enough; epochs below `--min-speed` are kept but report `cog_deg = null`.
 
@@ -48,6 +49,8 @@ A statistics block reports mean, RMS, min and max of the signed differences.
 ## Limitations
 
 - COG from position differences is noisy at low speed and during turns.
-- Heading and COG are measured at slightly different times; interpolation or
-  synchronisation would reduce latency-induced differences.
+- Duplicate or reversed epochs, invalid fixes, intervals over `--max-gap` and
+  zero displacement have no COG; the reason is retained per row.
+- The endpoint heading and interval COG differ in time; turns and receiver
+  latency can dominate their difference.
 - Current, leeway and vessel yaw rate are confounded with GNSS heading error.

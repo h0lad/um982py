@@ -445,6 +445,7 @@ def assess_arc(
     min_duration: float = 60.0,
     min_amplitude: float = 0.0,
     min_fit_r2: float = 0.0,
+    order: int = DETREND_ORDER,
 ) -> ArcResult:
     """Screen an arc before accepting a bounded spectral height."""
     _bounds(MIN_ELEVATION_DEGREES, MAX_ELEVATION_DEGREES, min_height, max_height)
@@ -490,6 +491,7 @@ def assess_arc(
             max_elevation=max(elevations),
             min_height=min_height,
             max_height=max_height,
+            order=order,
         )
         height = carrier * scan.peak_frequency / 2
         fit = phase_feature(

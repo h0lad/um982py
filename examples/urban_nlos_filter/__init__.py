@@ -15,6 +15,8 @@ Navigation, 66(6), 653-669. doi:10.1017/S0373463313000169
 
 from __future__ import annotations
 
+import math
+from collections.abc import Sequence
 from dataclasses import dataclass
 
 from um982py.messages import Record
@@ -35,13 +37,9 @@ class NlosCandidate:
 
 
 def nlos_score(elevation_deg: float, snr_db_hz: float) -> float:
-    """Return a 0..1 NLOS likelihood score.
-
-    Combines an elevation factor (lower elevation -> higher score) and a C/N0
-    factor (lower C/N0 -> higher score).  Both factors are normalised so that
-    the score reaches 0.5 at typical urban thresholds (~30 deg elevation,
-    ~35 dB-Hz C/N0).
-    """
+    """Return an uncalibrated 0..1 heuristic score, not a probability."""
+    if not math.isfinite(elevation_deg) or not math.isfinite(snr_db_hz):
+        raise ValueError("elevation and C/N0 must be finite")
     elevation = max(0.0, min(90.0, float(elevation_deg)))
     snr = max(0.0, min(60.0, float(snr_db_hz)))
     elevation_factor = 1.0 - (elevation / 90.0) ** 0.5
@@ -57,6 +55,8 @@ def classify_satellite(
     high_threshold: float = 0.75,
 ) -> list[NlosCandidate]:
     """Classify each SATSINFO signal of a satellite."""
+    if not 0 <= low_threshold < high_threshold <= 1:
+        raise ValueError("thresholds must satisfy 0 <= low < high <= 1")
     results: list[NlosCandidate] = []
     for signal in satellite.signals:
         score = nlos_score(satellite.elevation_deg, signal.snr)
@@ -80,21 +80,56 @@ def classify_satellite(
     return results
 
 
+def evaluate_labelled(
+    rows: Sequence[tuple[float, float, str]],
+    low_threshold: float,
+    high_threshold: float,
+) -> dict[str, object]:
+    """Evaluate independently labelled samples, retaining unsure cases."""
+    if not 0 <= low_threshold < high_threshold <= 1:
+        raise ValueError("thresholds must satisfy 0 <= low < high <= 1")
+    counts = {
+        truth: dict.fromkeys(("LOS", "unsure", "NLOS"), 0) for truth in ("LOS", "NLOS")
+    }
+    for elevation, cn0, truth in rows:
+        if truth not in counts:
+            raise ValueError("truth must be LOS or NLOS")
+        score = nlos_score(elevation, cn0)
+        label = (
+            "NLOS"
+            if score >= high_threshold
+            else "unsure"
+            if score >= low_threshold
+            else "LOS"
+        )
+        counts[truth][label] += 1
+    return {
+        "samples": len(rows),
+        "counts_by_truth_and_prediction": counts,
+        "limitation": (
+            "Independent labels and held-out data are required; "
+            "these counts do not calibrate probabilities."
+        ),
+    }
+
+
 def classify_record(
     record: Record,
     *,
     low_threshold: float = 0.45,
     high_threshold: float = 0.75,
-) -> tuple[float, list[NlosCandidate]]:
+) -> tuple[float | None, list[NlosCandidate]]:
     """Classify all tracked satellites in one SATSINFO epoch.
 
     Returns the mean NLOS score across all signals and the per-signal list.
     """
+    if not 0 <= low_threshold < high_threshold <= 1:
+        raise ValueError("thresholds must satisfy 0 <= low < high <= 1")
     satellites = satellites_from_record(record)
     candidates: list[NlosCandidate] = []
     for sat in satellites:
         candidates.extend(classify_satellite(sat, low_threshold, high_threshold))
     mean_score = (
-        sum(c.score for c in candidates) / len(candidates) if candidates else 0.0
+        sum(c.score for c in candidates) / len(candidates) if candidates else None
     )
     return mean_score, candidates

@@ -4,10 +4,23 @@ from __future__ import annotations
 
 import pytest
 from examples.dual_rtk_consistency import (
+    _is_rtk_fixed,
     heading_difference,
     heading_from_enu,
     pitch_from_enu,
 )
+
+
+@pytest.mark.parametrize("position_type", [50, "NARROW_INT", 56, "INS_RTKFIXED"])
+def test_fixed_type_requires_computed_status(position_type: int | str) -> None:
+    from um982py.messages import Record
+
+    assert _is_rtk_fixed(
+        Record("BESTNAV", (("pos_type", position_type), ("p_sol_status", 0)))
+    )
+    assert not _is_rtk_fixed(
+        Record("BESTNAV", (("pos_type", position_type), ("p_sol_status", 1)))
+    )
 
 
 def test_heading_from_enu_cardinal_directions() -> None:

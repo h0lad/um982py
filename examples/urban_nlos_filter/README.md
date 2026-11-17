@@ -41,13 +41,21 @@ python -m examples.urban_nlos_filter \
 
 The JSON report contains per-epoch classifications and aggregate counts:
 
-- `mean_score` – average NLOS likelihood across the epoch
+- `mean_score` – average uncalibrated heuristic score across the epoch
 - `counts` / `fractions` – LOS, unsure and NLOS proportions
 - per-signal `candidates` with PRN, elevation, azimuth, C/N0, score and label
 
+## Independent evaluation
+
+Supply `--labels-csv labels.csv` with columns `elevation_deg,cn0_db_hz,truth`;
+truth is `LOS` or `NLOS`. The report tabulates all three predicted classes,
+including unsure, against the supplied labels. Use independently labelled,
+held-out data, not the same data used to choose thresholds. This does not
+calibrate probabilities or account for correlated samples.
+
 ## Limitations
 
-- This is a heuristic, not a physical NLOS detector.  Low elevation and low C/N0
+- The score is not a probability. This is a heuristic, not a physical NLOS detector.  Low elevation and low C/N0
   can also be caused by foliage, interference, poor antenna placement or
   receiver saturation.
 - The score does not use pseudorange residuals, sky-view geometry or 3-D maps,

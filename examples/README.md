@@ -139,7 +139,7 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`ephemeris_orbit`](ephemeris_orbit/README.md): Propagates broadcast ephemerides for four constellations with each system's ICD constants and the BeiDou GEO frame rotation. Offsets are relative to each ephemeris, not a common epoch; time-system conversion, health/age selection and uncertainty are outside this demonstration.
 - [`heading_attitude`](heading_attitude/README.md): Turns a dual-antenna baseline into heading and pitch. Respect antenna direction, installation offset and solution status; heading precision depends on baseline geometry.
 - [`heading_baseline_constraint`](heading_baseline_constraint/README.md): Estimates heading and pitch while constraining the BSLNENUHD baseline to the measured antenna separation. Residuals are relative to the receiver's UNIHEADING, not independent truth.
-- [`dual_rtk_consistency`](dual_rtk_consistency/README.md): Cross-checks the independent master/slave RTK baselines against UNIHEADING. Useful for magnetometer-free yaw validation; position-derived baselines depend on both antennas being RTK fixed.
+- [`dual_rtk_consistency`](dual_rtk_consistency/README.md): Cross-checks position-derived baselines against UNIHEADING. Receiver outputs can share errors and are not independent truth.
 - [`orbit_position_effect`](orbit_position_effect/README.md): Maps assumed orbit errors into expected horizontal, vertical and 3-D position errors through the current DOP. A first-order scalar approximation, not a rigorous covariance analysis.
 - [`vadase`](vadase/README.md): Solves displacement and velocity from time-differenced carrier phase. Continuous carrier arcs, satellite motion and clock estimation; event attribution needs independent motion evidence.
 
@@ -180,7 +180,7 @@ before rebooting. Other augmentation settings are not explicitly saved.
 ### Atmosphere and reflectometry
 
 - [`gnss_reflectometry`](gnss_reflectometry/README.md): Estimates reflector heights and guides snow-depth and water-level comparisons, including a no-hardware demonstration. Continuous elevation arcs and suitable reflecting surfaces; snow/water interpretations need surveyed datum and field references.
-- [`spatial_tec`](spatial_tec/README.md): Tags slant TEC samples with receiver positions for mobile ionosphere mapping. Uncalibrated and receiver-biased; the receiver-location approximation is reasonable only for high-elevation satellites.
+- [`spatial_tec`](spatial_tec/README.md): Compares matched slant-TEC changes between two stations. Requires synchronized continuous carrier arcs; it does not map pierce points or estimate absolute TEC.
 - [`ionosphere_tec`](ionosphere_tec/README.md): Computes slant TEC, ROT and ROTI from dual-frequency ranges. Ambiguities and hardware biases limit absolute TEC; preserve continuous signal identity.
 - [`klobuchar_vs_tec`](klobuchar_vs_tec/README.md): Compares Klobuchar delay with dual-frequency TEC. Match observer/visibility epochs and valid coefficients; uncalibrated differential code biases remain.
 - [`pwv_meteorology`](pwv_meteorology/README.md): Derives precipitable water vapour from zenith wet delay. Requires valid delay, pressure and temperature assumptions; a manual calculation is not a receiver-derived weather observation.

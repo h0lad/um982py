@@ -20,7 +20,10 @@ This example follows the benchmarking approach in
 ## Method
 
 The example subscribes to `BESTNAV` at the requested rate and feeds each epoch
-into a `ConvergenceMonitor`.  The monitor requires the reported horizontal RMS
+into a `ConvergenceMonitor` only when `--trust-host-clock` is supplied. Only
+valid PPP or PPP-converging solution types enter the statistics; duplicate,
+reversed and missing epochs are counted and excluded. Gaps are counted. The
+monitor requires the reported horizontal RMS
 and vertical standard deviation to stay inside the given limits for a sustained
 `hold_seconds` window.  When this succeeds, the time since start is reported as
 `convergence_s`.
@@ -35,7 +38,7 @@ Static benchmark with default 20 cm horizontal / 40 cm vertical limit:
 ```bash
 python -m examples.ppp_convergence_benchmark \
     --port /dev/ttyUSB0 --baud 921600 \
-    --service E6-HAS \
+    --service E6-HAS --trust-host-clock \
     --duration 600 --interval 1 \
     --reference-ecef 4027891.3,307045.5,4919474.1
 ```
@@ -57,6 +60,9 @@ The JSON report contains:
 
 ## Limitations
 
+- Without `--trust-host-clock` freshness is unknown and convergence is censored.
+  With it, the host UTC clock is assumed accurate; verify it independently and
+  verify the bundled leap-second table. The receiver epoch is never its own now.
 - Convergence is defined by receiver-reported precision, not by comparison with
   an independent truth.
 - If the receiver loses PPP before `hold_seconds` elapse, convergence is not

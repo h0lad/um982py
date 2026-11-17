@@ -6,7 +6,9 @@ import argparse
 import math
 import sys
 import time
+from collections import Counter
 from collections.abc import Sequence
+from datetime import UTC, datetime
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples.ppp_convergence_benchmark import (
@@ -14,12 +16,15 @@ from examples.ppp_convergence_benchmark import (
     epoch_from_navigation,
     percentile,
 )
+from examples.time_transfer import leap_seconds
 from um982py import Receiver
 from um982py.assessment import PositionLimits
 from um982py.commands import Log
 from um982py.convergence import ConvergenceMonitor
 from um982py.messages import Message
+from um982py.messages.enums import PositionType
 from um982py.messages.navigation import BestNavigation
+from um982py.quality import FixClass, classify
 
 
 def _parse_ecef(text: str) -> tuple[float, float, float]:
@@ -35,50 +40,103 @@ def _parse_ecef(text: str) -> tuple[float, float, float]:
 
 def _to_bestnav(message: Message) -> BestNavigation | None:
     """Decode a BESTNAV/PPPNAV message, or return None for other traffic."""
+    from um982py.errors import ProtocolError
+
     try:
         return BestNavigation.from_message(message)
-    except Exception:
+    except ProtocolError:
         return None
 
 
 def _collect_epochs(
     args: argparse.Namespace,
-) -> tuple[list[PppEpoch], float | None, float | None]:
-    """Stream BESTNAV epochs and track convergence."""
+) -> tuple[list[PppEpoch], float | None, float | None, dict[str, int]]:
+    """Stream distinct, valid PPP epochs and track convergence."""
     limits = PositionLimits(
         max_horizontal_rms_m=args.horizontal_limit,
         max_vertical_std_m=args.vertical_limit,
         max_epoch_age_s=args.max_epoch_age,
         max_correction_age_s=None,
+        allowed_fix_classes=frozenset({FixClass.PPP, FixClass.PPP_CONVERGING}),
     )
-    monitor = ConvergenceMonitor(
-        limits,
-        min_epochs=args.min_epochs,
-        hold_seconds=args.hold_seconds,
-        max_gap_seconds=args.max_gap,
-        timeout=args.duration,
-    )
+
+    def new_monitor() -> ConvergenceMonitor:
+        return ConvergenceMonitor(
+            limits,
+            min_epochs=args.min_epochs,
+            hold_seconds=args.hold_seconds,
+            max_gap_seconds=args.max_gap,
+            timeout=args.duration,
+        )
+
+    monitor = new_monitor()
 
     command = Log.BESTNAV.output(args.interval)
     epochs: list[PppEpoch] = []
     first_fix_elapsed: float | None = None
     convergence_elapsed_s: float | None = None
     started = time.monotonic()
+    counts: Counter[str] = Counter()
+    last_epoch: float | None = None
 
     with Receiver.connect(args.port, args.baud, timeout=args.timeout) as receiver:
         receiver.execute(command)
-        while True:
-            message = receiver.receive(timeout=args.timeout)
+        while time.monotonic() - started < args.duration:
+            from um982py.errors import ResponseTimeout
+
+            try:
+                message = receiver.receive(
+                    timeout=min(
+                        args.timeout,
+                        max(0.001, args.duration - (time.monotonic() - started)),
+                    )
+                )
+            except ResponseTimeout:
+                continue
             nav = _to_bestnav(message)
             if nav is None:
                 continue
-
             elapsed = time.monotonic() - started
-            if first_fix_elapsed is None and nav.valid:
+            try:
+                fix_class = (
+                    classify(int(nav.position_type))
+                    if not isinstance(nav.position_type, str)
+                    else classify(int(PositionType[nav.position_type]))
+                )
+            except (ValueError, KeyError):
+                monitor = new_monitor()
+                counts["unknown_type"] += 1
+                continue
+            if not nav.valid or fix_class not in (
+                FixClass.PPP,
+                FixClass.PPP_CONVERGING,
+            ):
+                monitor = new_monitor()
+                counts["non_ppp_or_invalid"] += 1
+                continue
+            stamp = nav.epoch_gps_seconds
+            if stamp is None or not math.isfinite(stamp):
+                monitor = new_monitor()
+                counts["missing_epoch"] += 1
+                continue
+            if last_epoch is not None and stamp <= last_epoch:
+                if stamp < last_epoch:
+                    monitor = new_monitor()
+                counts["duplicate_or_reversed"] += 1
+                continue
+            if last_epoch is not None and stamp - last_epoch > args.max_gap:
+                counts["gaps"] += 1
+            last_epoch = stamp
+            counts["accepted"] += 1
+            if first_fix_elapsed is None:
                 first_fix_elapsed = elapsed
-
-            gps_seconds = nav.epoch_gps_seconds or elapsed
-            status = monitor.observe(nav, now_gps_seconds=gps_seconds)
+            status = None
+            if args.trust_host_clock:
+                now = datetime.now(UTC).replace(tzinfo=None)
+                gps_seconds = (
+                    now - datetime(1980, 1, 6)
+                ).total_seconds() + leap_seconds(now)
+                status = monitor.observe(nav, now_gps_seconds=gps_seconds)
 
             epoch = epoch_from_navigation(nav, elapsed, args.reference_ecef)
             epoch = PppEpoch(
@@ -89,7 +147,7 @@ def _collect_epochs(
                 height_ellipsoidal=epoch.height_ellipsoidal,
                 horizontal_rms_m=epoch.horizontal_rms_m,
                 vertical_std_m=epoch.vertical_std_m,
-                converged=status.converged,
+                converged=status.converged if status is not None else False,
                 east_error_m=epoch.east_error_m,
                 north_error_m=epoch.north_error_m,
                 up_error_m=epoch.up_error_m,
@@ -97,12 +155,16 @@ def _collect_epochs(
                 three_d_error_m=epoch.three_d_error_m,
             )
             epochs.append(epoch)
-            if convergence_elapsed_s is None and status.converged:
+            if (
+                convergence_elapsed_s is None
+                and status is not None
+                and status.converged
+            ):
                 convergence_elapsed_s = elapsed
             if elapsed >= args.duration:
                 break
 
-    return epochs, first_fix_elapsed, convergence_elapsed_s
+    return epochs, first_fix_elapsed, convergence_elapsed_s, dict(counts)
 
 
 def _payload(
@@ -226,6 +288,11 @@ def _parser() -> ExampleParser:
         help="maximum acceptable receiver epoch age in seconds",
     )
     parser.add_argument(
+        "--trust-host-clock",
+        action="store_true",
+        help="assume host UTC is accurate for receiver epoch freshness",
+    )
+    parser.add_argument(
         "--reference-ecef",
         type=_parse_ecef,
         help="optional reference ECEF position as X,Y,Z in metres",
@@ -245,7 +312,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         with Receiver.connect(args.port, args.baud, timeout=args.timeout) as receiver:
             receiver.start_ppp(service=args.service)
             print(f"enabled PPP service: {args.service}", file=sys.stderr)
-    epochs, first_fix, convergence = _collect_epochs(args)
+    epochs, first_fix, convergence, counts = _collect_epochs(args)
     payload = _payload(
         epochs,
         first_fix,
@@ -253,6 +320,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         args.horizontal_limit,
         args.vertical_limit,
     )
+    payload["selection_counts"] = counts
+    payload["freshness_source"] = (
+        "host_clock_assumed_accurate" if args.trust_host_clock else "unavailable"
+    )
+    payload["convergence_censored"] = convergence is None
     summary = payload["summary"]
     if isinstance(summary, dict):
         print(
