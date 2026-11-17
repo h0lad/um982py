@@ -1,10 +1,10 @@
 """Heading and pitch estimation with a fixed baseline-length constraint.
 
 The receiver reports an unconstrained baseline in BSLNENUHD.  When the physical
-distance between the two antennas is known accurately, the estimated baseline
-vector can be forced to that length.  This constraint removes one degree of
-freedom and stabilises heading and pitch, especially for short baselines where
-the up-component is noisy.
+distance between the two antennas is known, the estimated baseline vector can
+be projected onto that length with equal component weights. This projection
+preserves direction and cannot improve heading or pitch; it is not an
+observation-level constrained estimator.
 
 Reference
 ---------
@@ -48,20 +48,21 @@ def constrain_to_length(
 ) -> ConstrainedAttitude:
     """Rescale ENU components so that their length equals *length*.
 
-    The direction of the horizontal component is preserved, giving the same
-    heading as the unconstrained baseline.  The pitch is recomputed from the
-    rescaled up component over the requested length.
+    All three components share one scale factor, the equal-weight projection
+    onto the sphere of radius *length*. The baseline direction, and therefore
+    heading and pitch, is preserved. Solving the horizontal length from the
+    raw up component instead would let up noise beyond *length* collapse the
+    horizontal vector and its heading.
     """
     if length <= 0:
         raise ValueError("constrained baseline length must be positive")
     unconstrained = math.sqrt(east * east + north * north + up * up)
     if unconstrained <= 0:
         raise ValueError("unconstrained baseline has zero length")
-    horizontal = math.sqrt(max(0.0, length * length - up * up))
-    scale = horizontal / math.hypot(east, north) if (east or north) else 0.0
+    scale = length / unconstrained
     constrained_east = east * scale
     constrained_north = north * scale
-    constrained_up = max(-length, min(length, up))
+    constrained_up = up * scale
     heading = _heading_degrees(constrained_east, constrained_north)
     pitch = math.degrees(math.asin(max(-1.0, min(1.0, constrained_up / length))))
     return ConstrainedAttitude(

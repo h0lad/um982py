@@ -18,7 +18,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from um982py.geodesy import enu_from_ecef
+from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
 from um982py.messages import Record
 from um982py.messages.navigation import BestNavigation
 
@@ -51,11 +51,16 @@ def _reference_error(
     position: tuple[float, float, float],
     reference: tuple[float, float, float],
 ) -> tuple[float, float, float]:
-    """Return ENU error of *position* relative to *reference* (ECEF metres)."""
+    """Return ENU error of *position* relative to *reference* (ECEF metres).
+
+    The local frame is rotated at the geodetic latitude and longitude of the
+    reference, not at its Cartesian coordinates.
+    """
     dx = position[0] - reference[0]
     dy = position[1] - reference[1]
     dz = position[2] - reference[2]
-    return enu_from_ecef(dx, dy, dz, reference[0], reference[1])
+    latitude, longitude, _ = geodetic_from_ecef(*reference)
+    return enu_from_ecef(dx, dy, dz, latitude, longitude)
 
 
 def epoch_from_navigation(

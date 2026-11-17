@@ -21,9 +21,14 @@ def test_constrained_length_matches_requested_length() -> None:
     )
 
 
-def test_pitch_respects_requested_length() -> None:
+def test_pitch_preserves_the_baseline_direction() -> None:
     result = constrain_to_length(0.0, 1.0, 0.5, 1.0)
-    assert result.pitch == pytest.approx(30.0, abs=1e-9)
+    assert result.pitch == pytest.approx(math.degrees(math.atan2(0.5, 1.0)), abs=1e-9)
+
+
+def test_long_up_component_keeps_its_heading() -> None:
+    result = constrain_to_length(0.3, 0.4, 2.0, 1.0)
+    assert result.heading == pytest.approx(math.degrees(math.atan2(0.3, 0.4)))
 
 
 def test_heading_residual_wraps_at_north() -> None:

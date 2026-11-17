@@ -71,12 +71,16 @@ def test_monte_carlo_heading_sigma_reproduces_the_budget() -> None:
     assert statistics.stdev(headings) == pytest.approx(budget.heading_sigma, rel=0.05)
 
 
-def test_pitch_sigma_uses_the_full_baseline_length() -> None:
+def test_pitch_sigma_follows_the_pitch_derivative() -> None:
     budget = attitude_budget(Baseline(0.0, 1.0, 1.0), 0.01, 0.01)
     assert budget.horizontal_length == pytest.approx(1.0, rel=1e-12)
     assert budget.baseline_length == pytest.approx(math.sqrt(2.0), rel=1e-12)
+    step = 1e-5
+    numerical_derivative = (
+        math.atan2(1.0 + step, 1.0) - math.atan2(1.0 - step, 1.0)
+    ) / (2 * step)
     assert budget.pitch_sigma == pytest.approx(
-        math.degrees(0.01 / math.sqrt(2.0)), rel=1e-12
+        math.degrees(0.01 * numerical_derivative), rel=1e-9
     )
 
 

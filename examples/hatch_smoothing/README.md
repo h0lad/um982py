@@ -29,7 +29,9 @@ continuous carrier-phase arcs.
 ## Understanding the result
 
 The filter implements the capped Hatch recursion
-`P_k = P_k/k + (1 - 1/k)(P_{k-1} + L_k - L_{k-1})` on continuous phase arcs.
+`S_k = P_k/k + (1 - 1/k)(S_{k-1} + L_k - L_{k-1})` on continuous phase arcs,
+where `P` is raw code, `S` is smoothed code, `L` is range-increasing carrier
+phase in metres and `k` is capped at the window length.
 It resets when a cycle slip or gap breaks an arc. A single-frequency Hatch
 filter is not divergence-free: the ionosphere delays code and advances carrier
 phase, so a changing TEC biases the smoothed code over a long arc. The result

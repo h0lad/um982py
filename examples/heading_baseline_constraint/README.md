@@ -2,19 +2,20 @@
 
 Estimate dual-antenna heading and pitch while forcing the baseline vector to
 the measured physical antenna separation.  The receiver's `BSLNENUHD` log
-reports an unconstrained ENU baseline; for short baselines the up component is
-particularly noisy, so a known baseline length stabilises the solution.
+reports an unconstrained ENU baseline. This example projects it onto the sphere
+of the supplied length using equal component weights; it does not improve the
+measured direction or implement a constrained GNSS estimator.
 
 ## Background
 
-This demonstration follows the approach in
+For a full observation-level baseline-length-constrained estimator, see
 
 > Ding, W., Sun, W., Yan, H., Li, W., & Jiang, Y. (2024). Low-cost dual-antenna
 > GNSS-based heading and pitch angles estimation considering baseline length
 > constraint. *Measurement*, 228, 115492.
 > doi:10.1016/j.measurement.2024.115492
 
-The horizontal direction of the reported baseline is preserved; only its length
+The complete direction of the reported baseline is preserved; only its length
 is rescaled.  The result is compared with the receiver's own `UNIHEADING`
 output for the same epochs.
 
@@ -47,8 +48,8 @@ A statistics block reports RMS and standard deviation of the residuals.
 
 ## Limitations
 
-- The constraint preserves the receiver's reported baseline *direction*.  Any
-  systematic error in that direction is reproduced.
+- Uniform rescaling cannot improve heading or pitch: all directional errors are
+  retained. It assumes equal component weights, not a measured covariance.
 - Residuals are computed against the receiver's own heading solution, not an
   independent truth such as a calibrated total station or IMU.
 - One mismatched epoch can leave a `UNIHEADING` report without a matching

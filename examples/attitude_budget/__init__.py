@@ -107,14 +107,26 @@ def required_baseline(sigma_length: float, target_sigma: float) -> float:
 def attitude_budget(
     baseline: Baseline, latitude_std: float, height_std: float
 ) -> AttitudeBudget:
-    """Budget from the position deviations in metres and the measured baseline."""
+    """Budget from the position deviations in metres and the measured baseline.
+
+    Pitch is ``atan2(up, horizontal)``. This approximation includes only
+    vertical error, holding the horizontal baseline fixed. For independent
+    ENU component uncertainties including horizontal error, use
+    :func:`component_budget`.
+    """
+    if height_std < 0:
+        raise ValueError("length deviation must be non-negative")
+    if baseline.length <= 0:
+        raise ValueError("baseline length must be positive")
     return AttitudeBudget(
         heading=baseline.heading,
         pitch=baseline.pitch,
         heading_sigma=math.degrees(
             angle_sigma(latitude_std, baseline.horizontal_length)
         ),
-        pitch_sigma=math.degrees(angle_sigma(height_std, baseline.length)),
+        pitch_sigma=math.degrees(
+            height_std * baseline.horizontal_length / baseline.length**2
+        ),
         baseline_length=baseline.length,
         horizontal_length=baseline.horizontal_length,
     )

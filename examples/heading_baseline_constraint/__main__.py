@@ -105,10 +105,9 @@ def _payload(
             "unconstrained_length_error_std_m": _std(length_errors),
         },
         "limitation": (
-            "The constraint preserves the horizontal direction of the reported "
-            "baseline, so any receiver horizontal bias is reproduced.  Residuals "
-            "are relative to the receiver's own UNIHEADING output, not an "
-            "independent truth."
+            "Equal-weight rescaling preserves the full baseline direction and "
+            "cannot improve its heading or pitch. Residuals are relative to the "
+            "receiver's own UNIHEADING output, not an independent truth."
         ),
     }
 
