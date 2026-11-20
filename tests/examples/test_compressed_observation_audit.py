@@ -10,9 +10,16 @@ from examples.compressed_observation_audit import (
     agree_epoch,
     summarise_epochs,
 )
+from examples.compressed_observation_audit.rangecmp2 import compare_gps_l1
 
 from test_protocol import binary
-from um982py.experimental import CompressedObservation
+from um982py.experimental import (
+    Compressed2Satellite,
+    Compressed2Signal,
+    CompressedObservation,
+    CompressedRange2,
+)
+from um982py.geodesy import SPEED_OF_LIGHT
 from um982py.messages import BinaryMessage, Record
 from um982py.messages.frames import BinaryHeader
 from um982py.protocol.binary import parse_binary
@@ -167,7 +174,13 @@ def test_same_status_from_different_satellites_keeps_both_observations() -> None
 
 
 @pytest.mark.parametrize(
-    "antenna,range_id,compressed_id", [(1, 43, 140), (2, 6005, 2111)]
+    "antenna,range_id,compressed_id,flags",
+    [
+        (1, 43, 140, []),
+        (2, 6005, 2111, []),
+        (1, 43, 1273, ["--rangecmp2"]),
+        (2, 6005, 2112, ["--rangecmp2"]),
+    ],
 )
 def test_replay_pairs_shared_receiver_epochs(
     monkeypatch: pytest.MonkeyPatch,
@@ -175,6 +188,7 @@ def test_replay_pairs_shared_receiver_epochs(
     antenna: int,
     range_id: int,
     compressed_id: int,
+    flags: list[str],
 ) -> None:
     def frame(message_id: int, milliseconds: int) -> BinaryMessage:
         message = parse_binary(binary(bytes(4), message_id=message_id))
@@ -200,11 +214,41 @@ def test_replay_pairs_shared_receiver_epochs(
                 str(antenna),
                 "--json",
                 str(report),
+                *flags,
             ]
         )
         == 0
     )
     result = json.loads(report.read_text())
     assert result["antenna"] == antenna
-    assert result["summary"]["epochs"] == 1
+    if flags:
+        assert len(result["epochs"]) == 1
+        assert result["summary"]["matched_gps_l1"] == 0
+    else:
+        assert result["summary"]["epochs"] == 1
     assert result["unpaired_range_epochs"] == result["unpaired_compressed_epochs"] == 1
+
+
+def test_second_generation_wrap_and_locked_phase_anchor() -> None:
+    base = 16_000_000
+    code = 20_533_330.125
+    offset = (code - base) % 128
+    l1 = Compressed2Signal((0xFFFFF << 59) | (round(offset * 128) << 45) | 0x81)
+    l2 = Compressed2Signal((256 << 59) | 0x24)
+    gps = Compressed2Satellite(7, 0, base, (l1, l2))
+    message = parse_binary(binary(bytes(4), message_id=1273))
+    compressed = CompressedRange2(message, 1, (gps,))
+    row = observation(1 << 12, code, 0.0, 0.0)
+    l2_cycles = -(base + 0.125) * 1575.42e6 / SPEED_OF_LIGHT
+    l2_row = observation((9 << 21) | (1 << 12) | (1 << 10), 0.0, 0.0, l2_cycles)
+    reference = Record("RANGE", (("observations", (row, l2_row)),))
+    (result,) = compare_gps_l1(reference, compressed)
+    assert result.prn == 7
+    assert result.wrap_count == -35416
+    assert result.l1_phase_at_ceiling
+    assert result.l2_anchored_error_m == 0
+    assert result.l2_phase_distance_error_m == pytest.approx(0, abs=1e-8)
+
+    unlocked = replace(gps, signals=(l1, Compressed2Signal(l2.word & ~0x20)))
+    (result,) = compare_gps_l1(reference, replace(compressed, satellites=(unlocked,)))
+    assert result.l2_anchored_error_m is None
