@@ -7,10 +7,19 @@ from sys import exception
 from um982py.commands import logging
 from um982py.commands.core import Command
 from um982py.commands.types import Port, Trigger
-from um982py.errors import ProtocolError
+from um982py.errors import CommandRejected, ProtocolError, UM982Error
 from um982py.messages import CommandResponse
 from um982py.receiver import Receiver
+from um982py.receiver_models import LogEntry
 from um982py.receiver_queries import log_list
+
+
+def _affected(
+    entries: tuple[LogEntry, ...], name: str, port: Port | None
+) -> frozenset[LogEntry]:
+    return frozenset(
+        entry for entry in entries if entry.name == name and port in (None, entry.port)
+    )
 
 
 @contextmanager
@@ -23,10 +32,7 @@ def temporary_subscriptions(
         parts = command.text.split()
         port = Port(parts[1]) if len(parts) == 3 else None
         if any(
-            entry.name == name
-            and (port is None or entry.port == port)
-            and entry.interval == Trigger.ONCE
-            for entry in existing
+            entry.interval == Trigger.ONCE for entry in _affected(existing, name, port)
         ):
             raise ProtocolError(f"Cannot temporarily replace pending ONCE log {name}")
     started: list[tuple[str, Port | None]] = []
@@ -36,7 +42,18 @@ def temporary_subscriptions(
             port = Port(parts[1]) if len(parts) == 3 else None
             # A failed command may still have changed the receiver's output state.
             started.append((name, port))
-            receiver.execute(command)
+            try:
+                receiver.execute(command)
+            except CommandRejected:
+                try:
+                    current = receiver.execute(log_list()).entries
+                except UM982Error:
+                    pass
+                else:
+                    previous_entries = _affected(existing, name, port)
+                    if _affected(current, name, port) == previous_entries:
+                        started.pop()
+                raise
         yield
     finally:
         errors: list[Exception] = []

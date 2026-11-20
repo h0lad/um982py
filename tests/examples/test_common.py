@@ -63,6 +63,22 @@ def test_missing_acknowledgement_still_restores_applied_change() -> None:
     assert transport.subscriptions == before
 
 
+def test_rejected_subscription_with_unchanged_state_does_not_require_unlog() -> None:
+    transport = SubscriptionTransport()
+    transport.rejected.update({"LBANDUSERDATAA ONCHANGED", "UNLOG LBANDUSERDATAA"})
+    with (
+        Receiver(transport) as receiver,
+        pytest.raises(CommandRejected, match="LBANDUSERDATAA ONCHANGED"),
+        temporary_subscriptions(
+            receiver,
+            ("LBANDUSERDATAA", Log.LBANDUSERDATA.output(Trigger.ON_CHANGED)),
+        ),
+    ):
+        pytest.fail("the rejected subscription must fail on entry")
+    assert b"UNLOG LBANDUSERDATAA\r\n" not in transport.writes
+    assert not transport.subscriptions
+
+
 def test_cleanup_failure_is_reported_and_other_logs_are_restored() -> None:
     transport = SubscriptionTransport()
     transport.subscriptions = {("BESTNAVA", Port.COM1): 10.0}
