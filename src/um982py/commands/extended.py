@@ -96,6 +96,7 @@ EXTENDED_LOGS = MappingProxyType(
             "RXSTATUS",
             "ANTENNA",
             "ANTENNASTATUS",
+            "REMOTEANTENNAPCO",
             "DOPPVEL",
             "DOPPVELH",
             "BESTXYZ",

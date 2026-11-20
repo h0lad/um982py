@@ -177,6 +177,26 @@ RTK fixed solution. Reported heights are above the ellipsoid.
 The example forwards RTCM3 frames and does not configure or monitor Galileo
 E6-HAS or BeiDou PPP-B2b. For receiver PPP diagnostics see [has_b2b_ppp_fix](../has_b2b_ppp_fix/README.md).
 
+## Configure the remote base antenna offset
+
+The UM982 accepts a remote base antenna phase-center offset and reports it
+through `REMOTEANTENNAPCOA`. Supply the calibrated offset from the base
+antenna reference point to its phase center in north, east, up order and in
+millimetres. Use `Log.REMOTEANTENNAPCO` to verify the applied setting. The
+receiver's coordinate shift was outside the write and readback test.
+[Antenna phase-center offset reference](https://en.unicorecomm.com/uploads/file/Unicore%20Reference%20Commands%20Manual%20For%20N4%20High%20Precision%20Products_V2_EN_R1.14.pdf)
+
+```python
+from um982py import Log, Receiver
+from um982py.experimental import remote_antenna_phase_center_offset
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    # Replace these example values with the base antenna's calibration.
+    receiver.execute(remote_antenna_phase_center_offset(0, 0, 85))
+    offset = receiver.read_log(Log.REMOTEANTENNAPCO)
+    print(offset.real("north_mm"), offset.real("east_mm"), offset.real("up_mm"))
+```
+
 ## References
 
 [Unicore N4 commands and logs manual](https://en.unicorecomm.com/uploads/file/Unicore%20Reference%20Commands%20Manual%20For%20N4%20High%20Precision%20Products_V2_EN_R1.14.pdf).

@@ -157,3 +157,13 @@ def rtk_elevation_mask(
 def antenna_power_on() -> Command[CommandResponse]:
     """Request antenna feed power. Delivery depends on the board wiring."""
     return config("ANTENNA", "POWERON")
+
+
+def remote_antenna_phase_center_offset(
+    north_mm: float, east_mm: float, up_mm: float
+) -> Command[CommandResponse]:
+    """Set the remote base antenna's ARP-to-phase-center offset in millimetres."""
+    return config(
+        "REMOTEANTENNAPCO",
+        *(number(value, -1_000_000, 1_000_000) for value in (north_mm, east_mm, up_mm)),
+    )

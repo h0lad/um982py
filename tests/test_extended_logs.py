@@ -9,6 +9,7 @@ from um982py.commands import configuration as documented
 from um982py.commands.extended import EXTENDED_LOGS
 from um982py.errors import ProtocolError
 from um982py.experimental import configuration as config
+from um982py.experimental import remote_antenna_phase_center_offset
 from um982py.messages import AsciiMessage, BinaryMessage, decode_log
 from um982py.protocol import StreamDecoder
 
@@ -34,7 +35,7 @@ FORMATS = [
     for log in Log
     for binary in (False, True)
     if (log.value in EXTENDED_LOGS or log == Log.RTKSTATUS2)
-    and (log != Log.RXSTATUS or not binary)
+    and (not binary or log.definition.binary_command is not None)
     and log not in SENSITIVE
 ]
 
@@ -154,6 +155,18 @@ def test_combined_ionosphere_and_utc_parameters(
         assert record.real("a0") == pytest.approx(alpha0, rel=1e-12, abs=0)
         assert record.integer("deltat_ls") == leap_seconds
         assert record.real("utc_a0") != record.real("a0")
+
+
+def test_remote_antenna_offset_uses_north_east_up_millimetres() -> None:
+    readback = Log.REMOTEANTENNAPCO.decode(captured(Log.REMOTEANTENNAPCO, False))
+    args = tuple(readback.real(field) for field in ("north_mm", "east_mm", "up_mm"))
+    assert args == (12.5, -25, 99.75)
+    assert remote_antenna_phase_center_offset(*args).text == (
+        "CONFIG REMOTEANTENNAPCO 12.5 -25 99.75"
+    )
+    for invalid in (1_000_001, -1_000_001, float("nan"), True):
+        with pytest.raises(ValueError):
+            remote_antenna_phase_center_offset(0, invalid, 0)
 
 
 def test_hidden_configuration_grammar() -> None:

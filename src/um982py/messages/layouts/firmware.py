@@ -184,6 +184,16 @@ LAYOUTS.update(
     }
 )
 LAYOUTS["RANGEH"] = replace(RANGE, name="RANGEH")
+LAYOUTS["REMOTEANTENNAPCO"] = Layout(
+    "REMOTEANTENNAPCO",
+    "extended",
+    (
+        Field("north_mm", "d", 0, 8),
+        Field("east_mm", "d", 8, 8),
+        Field("up_mm", "d", 16, 8),
+    ),
+    24,
+)
 LAYOUTS["HEADINGSTATUSD"] = replace(
     DOCUMENTED["HEADINGSTATUS"], name="HEADINGSTATUSD", table="extended"
 )

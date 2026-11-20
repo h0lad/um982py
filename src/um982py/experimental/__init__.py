@@ -74,7 +74,10 @@ from um982py.experimental.baseband_solution import (
     solution_jump_m,
     solution_separation_m,
 )
-from um982py.experimental.configuration import FirmwareSwitch
+from um982py.experimental.configuration import (
+    FirmwareSwitch,
+    remote_antenna_phase_center_offset,
+)
 from um982py.experimental.debug import (
     DebugOutput,
     InternalDebugLog,
@@ -247,6 +250,7 @@ __all__ = [
     "rangecmp_read",
     "rangecmp_stop",
     "rec_info_enable",
+    "remote_antenna_phase_center_offset",
     "rf_spi_read",
     "rf_spi_register_write",
     "rf_spi_write",
