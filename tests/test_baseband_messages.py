@@ -16,6 +16,7 @@ from um982py.experimental import (
     BasebandMessageSpec,
     build_message,
     decode_message_payload,
+    decode_tracking_message,
 )
 from um982py.experimental._bbmsg_data import CATALOGUE_DATA, IGNORED_IDS
 from um982py.experimental.baseband import RawBasebandPacket
@@ -191,3 +192,13 @@ def test_container_message_with_short_body_raises_on_decode() -> None:
     (framed,) = packet.messages
     with pytest.raises(ProtocolError, match="needs"):
         framed.decode()
+
+
+@pytest.mark.parametrize("message_id,error", [(24, "needs 128"), (23, "message 24")])
+def test_tracking_extractor_checks_message_type_and_length(
+    message_id: int, error: str
+) -> None:
+    message = build_message(message_id, b"x")
+    (framed,) = RawBasebandPacket.build(content=message).messages
+    with pytest.raises(ProtocolError, match=error):
+        decode_tracking_message(framed)

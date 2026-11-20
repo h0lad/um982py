@@ -10,10 +10,16 @@ from um982py import Receiver
 from um982py.commands import Log
 from um982py.corrections import audit_has
 from um982py.diagnostics import DiagnosticCapture, ppp_diagnostics
+from um982py.experimental import (
+    TRACKING_MESSAGE_ID,
+    RawBasebandPacket,
+    build_message,
+    decode_tracking_message,
+)
 from um982py.experimental.capture import receiver_state
 from um982py.experimental.tracking import tracking_slots
 from um982py.measurement import range_samples
-from um982py.messages import Record
+from um982py.messages import BinaryMessage, Record
 from um982py.protocol import StreamDecoder
 from um982py.protocol.checksums import nmea_checksum
 from um982py.rinex import export_rinex, satellite_id
@@ -131,6 +137,20 @@ def test_tracking_slot_mask_does_not_mean_valid_or_average_cn0() -> None:
         assert slot.native_value == record.real(f"field_{index + 12:02}")
     assert slots[9].bank == 1 and slots[9].bank_slot == 0
     assert any(slot.written and slot.native_value < 0 for slot in slots)
+
+
+def test_extract_tracking_body_at_its_native_message_offset() -> None:
+    serial = captured("PTOBSINFO")
+    assert isinstance(serial.message, BinaryMessage)
+    metadata = bytes(range(1, 13))
+    framed = build_message(TRACKING_MESSAGE_ID, metadata + serial.message.payload)
+    assert len(framed) == 132
+    (inner,) = RawBasebandPacket.build(content=framed).messages
+    assert inner.decode()["field_12"] == serial.message.payload
+    extracted = decode_tracking_message(inner)
+    assert extracted.entries == serial.entries
+    assert extracted.message is None
+    assert tracking_slots(extracted) == tracking_slots(serial)
 
 
 def test_live_has_mask_orbit_clock_and_ppp_convergence() -> None:

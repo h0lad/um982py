@@ -151,8 +151,10 @@ from um982py.experimental.rtk_data import (
     rtk_datah_stop,
 )
 from um982py.experimental.tracking import (
+    TRACKING_MESSAGE_ID,
     TrackingField,
     TrackingSlot,
+    decode_tracking_message,
     tracking_fields,
     tracking_slots,
 )
@@ -170,6 +172,7 @@ __all__ = [
     "HEADER_SIZE",
     "MIN_LENGTH",
     "STAGE_ACCESS",
+    "TRACKING_MESSAGE_ID",
     "UNVERIFIED_COMMANDS",
     "BasebandCapture",
     "BasebandCommand",
@@ -237,6 +240,7 @@ __all__ = [
     "decode_rangecmp",
     "decode_rangecmp2",
     "decode_rtk_data",
+    "decode_tracking_message",
     "decode_velocity_data",
     "enter_debug_mode",
     "enter_debug_mode_at",

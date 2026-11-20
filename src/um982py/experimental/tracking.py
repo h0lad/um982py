@@ -2,11 +2,23 @@
 
 from dataclasses import dataclass
 
+from um982py.errors import ProtocolError
+from um982py.experimental.baseband import BasebandMessage
 from um982py.messages import Record
 from um982py.messages.layouts.firmware import LAYOUTS
+from um982py.messages.reader import BodyReader
 from um982py.messages.schema import Field
 
-__all__ = ["TrackingField", "TrackingSlot", "tracking_fields", "tracking_slots"]
+__all__ = [
+    "TRACKING_MESSAGE_ID",
+    "TrackingField",
+    "TrackingSlot",
+    "decode_tracking_message",
+    "tracking_fields",
+    "tracking_slots",
+]
+
+TRACKING_MESSAGE_ID = 24
 
 
 @dataclass(frozen=True, slots=True)
@@ -28,6 +40,21 @@ class TrackingSlot:
     bank_slot: int
     written: bool
     native_value: float
+
+
+def decode_tracking_message(message: BasebandMessage) -> Record:
+    """Read the PTOBSINFO body from an inner tracking message.
+
+    The native message metadata stays on the original frame. The decoded
+    record carries no serial log timestamp.
+    """
+    if message.message_id != TRACKING_MESSAGE_ID:
+        raise ProtocolError("Expected baseband tracking message 24")
+    # The copy starts at wire offset 16, 12 bytes into the framed payload.
+    payload = message.decode()["field_12"]
+    if not isinstance(payload, bytes):
+        raise ProtocolError("Expected a binary PTOBSINFO body")
+    return BodyReader(payload).read(LAYOUTS["PTOBSINFO"])
 
 
 def tracking_slots(record: Record) -> tuple[TrackingSlot, ...]:
