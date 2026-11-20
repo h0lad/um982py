@@ -166,8 +166,15 @@ def test_same_status_from_different_satellites_keeps_both_observations() -> None
     assert agreement.worst_pseudorange_m == 0
 
 
+@pytest.mark.parametrize(
+    "antenna,range_id,compressed_id", [(1, 43, 140), (2, 6005, 2111)]
+)
 def test_replay_pairs_shared_receiver_epochs(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    antenna: int,
+    range_id: int,
+    compressed_id: int,
 ) -> None:
     def frame(message_id: int, milliseconds: int) -> BinaryMessage:
         message = parse_binary(binary(bytes(4), message_id=message_id))
@@ -176,13 +183,28 @@ def test_replay_pairs_shared_receiver_epochs(
             message, header=replace(message.header, milliseconds=milliseconds)
         )
 
-    frames = (frame(43, 1000), frame(140, 2000), frame(43, 2000), frame(140, 3000))
+    frames = (
+        frame(range_id, 1000),
+        frame(compressed_id, 2000),
+        frame(range_id, 2000),
+        frame(compressed_id, 3000),
+    )
     monkeypatch.setattr(cli, "iter_frames", lambda _: iter(frames))
     report = tmp_path / "report.json"
     assert (
-        cli.main(["--replay", str(tmp_path / "capture.bin"), "--json", str(report)])
+        cli.main(
+            [
+                "--replay",
+                str(tmp_path / "capture.bin"),
+                "--antenna",
+                str(antenna),
+                "--json",
+                str(report),
+            ]
+        )
         == 0
     )
     result = json.loads(report.read_text())
+    assert result["antenna"] == antenna
     assert result["summary"]["epochs"] == 1
     assert result["unpaired_range_epochs"] == result["unpaired_compressed_epochs"] == 1

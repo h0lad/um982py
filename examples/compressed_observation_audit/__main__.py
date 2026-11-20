@@ -19,15 +19,13 @@ from examples._console import (
 )
 from examples._console_capture import open_receiver
 from examples.compressed_observation_audit import agree_epoch, summarise_epochs
+from um982py.antenna import antenna_index
 from um982py.capture import epoch_seconds, iter_frames
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
-from um982py.experimental import decode_rangecmp, rangecmp_output
+from um982py.experimental import decode_rangecmp, rangecmp_output, rangecmp_read
 from um982py.messages import BinaryMessage
 from um982py.subscriptions import temporary_subscriptions
-
-_RANGE_ID = 43
-_RANGECMP_ID = 140
 
 
 def _parser() -> ExampleParser:
@@ -41,16 +39,20 @@ def _parser() -> ExampleParser:
 
 def _collect_live_range_frames(
     args: argparse.Namespace,
+    range_log: Log,
+    antenna: int,
 ) -> tuple[list[BinaryMessage], list[BinaryMessage]]:
     receiver = open_receiver(args)
     range_frames: list[BinaryMessage] = []
     compressed_frames: list[BinaryMessage] = []
     recorder = args.record.open("wb") if args.record is not None else None
+    full = range_log.request(binary=True)
+    compressed = rangecmp_read(antenna=antenna)
     try:
         with temporary_subscriptions(
             receiver,
-            ("RANGEB", Log.RANGE.output(args.interval, binary=True)),
-            ("RANGECMPB", rangecmp_output(args.interval)),
+            (full.text, range_log.output(args.interval, binary=True)),
+            (compressed.text, rangecmp_output(args.interval, antenna=antenna)),
         ):
             deadline = monotonic() + args.duration
             while monotonic() < deadline:
@@ -60,15 +62,11 @@ def _collect_live_range_frames(
                     )
                 except ResponseTimeout:
                     continue
-                if (
-                    isinstance(message, BinaryMessage)
-                    and message.header.message_id == _RANGE_ID
-                ):
+                if not isinstance(message, BinaryMessage):
+                    continue
+                if full.matches(message):
                     range_frames.append(message)
-                elif (
-                    isinstance(message, BinaryMessage)
-                    and message.header.message_id == _RANGECMP_ID
-                ):
+                elif compressed.matches(message):
                     compressed_frames.append(message)
                 else:
                     continue
@@ -83,15 +81,19 @@ def _collect_live_range_frames(
 
 def _split_replayed_range_frames(
     path: Path,
+    range_log: Log,
+    antenna: int,
 ) -> tuple[list[BinaryMessage], list[BinaryMessage]]:
     range_frames: list[BinaryMessage] = []
     compressed_frames: list[BinaryMessage] = []
+    full = range_log.request(binary=True)
+    compressed = rangecmp_read(antenna=antenna)
     for message in iter_frames(path):
         if not isinstance(message, BinaryMessage):
             continue
-        if message.header.message_id == _RANGE_ID:
+        if full.matches(message):
             range_frames.append(message)
-        elif message.header.message_id == _RANGECMP_ID:
+        elif compressed.matches(message):
             compressed_frames.append(message)
     return range_frames, compressed_frames
 
@@ -101,12 +103,20 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = _parser()
     args = parser.parse_args(argv)
     debug_header(args, "compressed_observation_audit")
+    antenna = antenna_index(args.antenna)
+    if args.swap_antennas:
+        antenna = 3 - antenna
+    range_log = Log.RANGE if antenna == 1 else Log.RANGEH
     if args.replay is not None:
-        range_frames, compressed_frames = _split_replayed_range_frames(args.replay)
+        range_frames, compressed_frames = _split_replayed_range_frames(
+            args.replay, range_log, antenna
+        )
     else:
         if args.record is not None and args.record.exists():
             parser.error("record path must not exist")
-        range_frames, compressed_frames = _collect_live_range_frames(args)
+        range_frames, compressed_frames = _collect_live_range_frames(
+            args, range_log, antenna
+        )
     ranges = {epoch_seconds(frame): frame for frame in range_frames}
     compressed_ranges = {epoch_seconds(frame): frame for frame in compressed_frames}
     shared = ranges.keys() & compressed_ranges.keys()
@@ -115,7 +125,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     epochs = []
     for epoch in sorted(shared):
         range_frame, compressed_frame = ranges[epoch], compressed_ranges[epoch]
-        reference = Log.RANGE.decode(range_frame)
+        reference = range_log.decode(range_frame)
         compressed = decode_rangecmp(compressed_frame)
         epochs.append(
             agree_epoch(
@@ -127,6 +137,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     summary = summarise_epochs(epochs)
     payload = {
+        "antenna": antenna,
         "epochs": [asdict(epoch) for epoch in epochs],
         "unpaired_range_epochs": len(ranges) - len(epochs),
         "unpaired_compressed_epochs": len(compressed_ranges) - len(epochs),

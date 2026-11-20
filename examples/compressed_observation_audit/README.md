@@ -25,6 +25,7 @@ python -m examples.compressed_observation_audit --replay wire.bin \
 
 Live capture subscribes to RANGEB and RANGECMPB at `--interval` for
 `--duration` seconds and restores the previous subscriptions afterward.
+Use `--antenna 2` for RANGEHB and RANGECMPHB on receivers that provide them.
 Replay requires a capture with both binary logs. The report pairs observations
 by receiver epoch, satellite PRN and native tracking status.
 
