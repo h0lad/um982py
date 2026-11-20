@@ -2,11 +2,13 @@ from struct import pack, pack_into
 
 import pytest
 
+from conftest import ascii_message
 from test_bodies import binary_message
 from um982py.commands import Log
 from um982py.commands.catalog import LOGS, RTCM_LOGS
 from um982py.errors import ProtocolError
 from um982py.messages import Record, decode_log
+from um982py.protocol.ascii import parse_ascii
 
 LENGTHS = {
     "VERSION": 308,
@@ -156,6 +158,15 @@ def test_information_variable_lengths() -> None:
     assert records[0]["data"] == (97, 98, 99)
     assert records[1].integer("info_id") == 2
     assert records[1]["data"] == (100, 101)
+
+
+@pytest.mark.parametrize("log", [Log.INFOPART1, Log.INFOPART2])
+@pytest.mark.parametrize("data", ["abc,2,2,de", "97,98,99,2,2,100,101"])
+def test_ascii_information_matches_binary_bytes(log: Log, data: str) -> None:
+    message = parse_ascii(ascii_message(log.wire_name(), f"2,1,3,{data}"))
+    records = log.decode(message).records("information")
+    binary = binary_message(log.value, b"\x02\x01\x03\0abc\x02\x02\0de")
+    assert records == log.decode(binary).records("information")
 
 
 def test_ppp_nested_corrections() -> None:

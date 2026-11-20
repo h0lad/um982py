@@ -15,6 +15,7 @@ class Field:
     count: int | str | None = None
     ascii_count: int | str | None = None
     limit: int = 4096
+    ascii_bytes: bool = False
 
 
 @dataclass(frozen=True, slots=True)

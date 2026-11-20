@@ -29,6 +29,16 @@ class BodyReader:
         length = context.integer(count) if isinstance(count, str) else count
         self.bound(length, field.limit)
         if (
+            field.ascii_bytes
+            and length > 0
+            and isinstance(self.data, tuple)
+            and self.position < len(self.data)
+            and len(self.data[self.position]) == length
+        ):
+            data = self.data[self.position].encode("ascii")
+            self.position += 1
+            return tuple(data)
+        if (
             length == 0
             and isinstance(self.data, tuple)
             and self.position < len(self.data)
