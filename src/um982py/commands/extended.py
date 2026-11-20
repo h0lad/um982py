@@ -10,6 +10,8 @@ _BINARY_IDS = {
     "PTOBSINFO": 221,
     "BESTPOS": 42,
     "PSRPOS": 47,
+    "MPSRPOS": 3005,
+    "MPSRPOS2": 3006,
     "RTKPOS": 141,
     "BESTVEL": 99,
     "TIME": 101,
@@ -48,7 +50,15 @@ _BINARY_IDS = {
 }
 
 _ONCHANGED_ONLY = frozenset(
-    {"ALIGNDOP", "BSLNENUHD", "BSLNXYZHD", "ALIGNBSLNENU", "ALIGNBSLNXYZ"}
+    {
+        "ALIGNDOP",
+        "BSLNENUHD",
+        "BSLNXYZHD",
+        "ALIGNBSLNENU",
+        "ALIGNBSLNXYZ",
+        "MPSRPOS",
+        "MPSRPOS2",
+    }
 )
 EXTENDED_LOGS = MappingProxyType(
     {
@@ -66,6 +76,8 @@ EXTENDED_LOGS = MappingProxyType(
             "PTOBSINFO",
             "BESTPOS",
             "PSRPOS",
+            "MPSRPOS",
+            "MPSRPOS2",
             "RTKPOS",
             "BESTVEL",
             "TIME",

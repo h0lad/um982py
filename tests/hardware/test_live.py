@@ -13,7 +13,7 @@ import pytest
 from um982py import AsyncReceiver, Receiver
 from um982py._receiver_state import ordered_log_list, receiver_state
 from um982py.commands import Log, configuration, logging, queries
-from um982py.commands.catalog import RTCM_LOGS
+from um982py.commands.catalog import LOGS, RTCM_LOGS
 from um982py.commands.core import action, normalize
 from um982py.commands.types import NmeaVersion, Trigger
 from um982py.errors import CommandRejected, ProtocolError, ResponseTimeout, UM982Error
@@ -79,7 +79,7 @@ def test_firmware_queries(receiver: Receiver, report: dict[str, object]) -> None
             name = log.wire_name(binary=binary)
             if binary and name == log.wire_name():
                 continue
-            if log.onchanged_only:
+            if log.onchanged_only and log.value in LOGS:
                 results[name] = "requires ONCHANGED output"
                 continue
             command = log.read(binary=binary)

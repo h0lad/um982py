@@ -108,7 +108,12 @@ LAYOUTS = {
         RXSTATUS,
     )
 }
-LAYOUTS.update({name: replace(POSITION, name=name) for name in ("PSRPOS", "RTKPOS")})
+LAYOUTS.update(
+    {
+        name: replace(POSITION, name=name)
+        for name in ("PSRPOS", "MPSRPOS", "MPSRPOS2", "RTKPOS")
+    }
+)
 LAYOUTS["RANGEH"] = replace(RANGE, name="RANGEH")
 LAYOUTS["HEADINGSTATUSD"] = replace(
     DOCUMENTED["HEADINGSTATUS"], name="HEADINGSTATUSD", table="extended"

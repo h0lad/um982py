@@ -21,6 +21,8 @@ POSITION_LOGS = {
     Log.BESTPOS,
     Log.BESTPOS2,
     Log.BESTGNSSPOS,
+    Log.MPSRPOS,
+    Log.MPSRPOS2,
     Log.PSRPOS,
     Log.RTKPOS,
     Log.BESTXYZ,

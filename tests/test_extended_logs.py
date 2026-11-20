@@ -2,13 +2,14 @@ from dataclasses import replace
 
 import pytest
 
-from conftest import FIXTURES
-from um982py.commands import Log
+from conftest import FIXTURES, ascii_message
+from test_protocol import binary as binary_frame
+from um982py.commands import Log, Trigger
 from um982py.commands import configuration as documented
 from um982py.commands.extended import EXTENDED_LOGS
 from um982py.errors import ProtocolError
 from um982py.experimental import configuration as config
-from um982py.messages import AsciiMessage, BinaryMessage
+from um982py.messages import AsciiMessage, BinaryMessage, decode_log
 from um982py.protocol import StreamDecoder
 
 SENSITIVE = {
@@ -20,6 +21,8 @@ SENSITIVE = {
     Log.BESTXYZ,
     Log.BSLNENUHD,
     Log.BSLNXYZHD,
+    Log.MPSRPOS,
+    Log.MPSRPOS2,
     Log.PSRPOS,
     Log.RANGE,
     Log.RANGEH,
@@ -85,6 +88,27 @@ def test_truncated_and_extra_fields(log: Log, binary: bool) -> None:
     for changed in bad:
         with pytest.raises(ProtocolError):
             log.decode(changed)
+
+
+@pytest.mark.parametrize("log,message_id", [(Log.MPSRPOS, 3005), (Log.MPSRPOS2, 3006)])
+@pytest.mark.parametrize("binary", [False, True])
+def test_mpsrpos_position_layout(log: Log, message_id: int, binary: bool) -> None:
+    position = captured(Log.BESTPOS, binary)
+    expected = Log.BESTPOS.decode(position)
+    if isinstance(position, BinaryMessage):
+        raw = binary_frame(position.payload, message_id=message_id)
+    else:
+        raw = ascii_message(log.wire_name(), ",".join(position.fields))
+    (frame,) = StreamDecoder(strict=True).feed(raw)
+    query = log.read(binary=binary)
+    assert query.matches(frame)
+    assert query.decode(frame) == decode_log(frame)
+    assert query.decode(frame).entries == expected.entries
+    assert log.output(Trigger.ON_CHANGED, binary=binary).text == (
+        f"{log.wire_name(binary=binary)} ONCHANGED"
+    )
+    with pytest.raises(ValueError, match="requires ONCHANGED"):
+        log.output(1, binary=binary)
 
 
 def test_hidden_configuration_grammar() -> None:
