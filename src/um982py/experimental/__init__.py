@@ -136,6 +136,14 @@ from um982py.experimental.raw_data import (
     capture_internal_debug,
     closest_access,
 )
+from um982py.experimental.rf import (
+    AGC_MESSAGE_ID,
+    AgcReadings,
+    AntennaSignalMask,
+    AntennaSignalProfile,
+    BasebandAgc,
+    decode_agc_message,
+)
 from um982py.experimental.rtk_data import (
     RtkData,
     RtkDataSatellite,
@@ -167,6 +175,7 @@ from um982py.experimental.velocity_data import (
 )
 
 __all__ = [
+    "AGC_MESSAGE_ID",
     "BASEBAND_MESSAGE_CATALOGUE",
     "FIRST_MESSAGE_OFFSET",
     "HEADER_SIZE",
@@ -174,6 +183,10 @@ __all__ = [
     "STAGE_ACCESS",
     "TRACKING_MESSAGE_ID",
     "UNVERIFIED_COMMANDS",
+    "AgcReadings",
+    "AntennaSignalMask",
+    "AntennaSignalProfile",
+    "BasebandAgc",
     "BasebandCapture",
     "BasebandCommand",
     "BasebandField",
@@ -233,6 +246,7 @@ __all__ = [
     "dangerous_single_satellite_tracking",
     "dc_message_enable",
     "debug_write_target",
+    "decode_agc_message",
     "decode_baseband_notice",
     "decode_matched_position",
     "decode_matched_solution",
