@@ -61,6 +61,9 @@ def test_live_captures(log: Log, binary: bool) -> None:
         assert record.records("observations")[0].real("pseudorange") > 1_000_000
     if log == Log.HEADINGOFFSET:
         assert record.real("heading") == record.real("pitch") == 0
+    if log == Log.HEADINGSTATUSD:
+        assert record.real("cfglength") == 0
+        assert record.real("cfgtol") == 5
 
 
 @pytest.mark.parametrize("log,binary", FORMATS)
