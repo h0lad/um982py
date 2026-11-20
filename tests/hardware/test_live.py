@@ -18,6 +18,7 @@ from um982py.commands.types import NmeaVersion, Trigger
 from um982py.errors import CommandRejected, ProtocolError, ResponseTimeout, UM982Error
 from um982py.messages import AsciiHeader, AsciiMessage, CommandResponse, Fix, Sentence
 from um982py.receiver_queries import firmware_info
+from um982py.subscriptions import temporary_subscriptions
 
 pytestmark = pytest.mark.hardware
 
@@ -116,6 +117,47 @@ def test_firmware_queries(receiver: Receiver, report: dict[str, object]) -> None
                     assert len(body.records("satellites")) == body.integer("count")
             results[name] = {"decoded": len(bodies)}
     assert not failures
+
+
+def test_firmware_event_logging(receiver: Receiver, report: dict[str, object]) -> None:
+    before = ordered_log_list(receiver)
+    results: dict[str, object] = {}
+    report["firmware_event_logging"] = results
+    for log in Log:
+        if not log.onchanged_only or log.definition.section == "extended":
+            continue
+        for binary in (False, True):
+            if binary and log.definition.binary_command is None:
+                continue
+            name = log.wire_name(binary=binary)
+            if any(entry.name == name for entry in before.entries):
+                results[name] = "already subscribed"
+                continue
+            output = log.output(Trigger.ON_CHANGED, binary=binary)
+            matches = logging.request(
+                name, message_id=log.definition.message_id
+            ).matches
+            receiver.drain_pending()
+            try:
+                with temporary_subscriptions(receiver, (name, output)):
+                    registered = any(
+                        entry.name == name and entry.interval == Trigger.ON_CHANGED
+                        for entry in receiver.log_list().entries
+                    )
+                    deadline = monotonic() + 0.2
+                    decoded = 0
+                    while (remaining := deadline - monotonic()) > 0:
+                        try:
+                            message = receiver.receive(timeout=remaining)
+                        except ResponseTimeout:
+                            break
+                        if matches(message):
+                            log.decode(message)
+                            decoded += 1
+                    results[name] = {"registered": registered, "decoded": decoded}
+            except CommandRejected as error:
+                results[name] = {"rejected": error.response}
+            assert ordered_log_list(receiver) == before
 
 
 def test_firmware_logging(receiver: Receiver, report: dict[str, object]) -> None:
