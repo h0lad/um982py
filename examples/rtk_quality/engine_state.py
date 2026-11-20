@@ -27,32 +27,45 @@ def _report(samples: Sequence[RtkData]) -> dict[str, object]:
         identifiers = [sat.satellite_id for sat in sample.satellites]
         if len(set(identifiers)) != len(identifiers):
             raise ValueError("duplicate satellite identifiers in RTKDATA")
-        epochs.append(
-            {
-                "gps_seconds": gps_epoch(sample.message),
-                "report": sample.name,
-                "solution_status": sample.solution_status,
-                "position_type": sample.position_type,
-                "covariance": sample.covariance,
-                "variances": [
-                    sample.covariance[0],
-                    sample.covariance[4],
-                    sample.covariance[8],
-                ],
-                "satellites": [
-                    {
-                        "satellite_id": item.satellite_id,
-                        "system": item.system.name if item.system is not None else None,
-                        "prn": item.prn,
-                        "status": item.status,
-                        "status_label": item.status_label,
-                        "ambiguity_fixed": item.ambiguity_fixed,
-                        "value": item.value,
-                    }
+        epoch: dict[str, object] = {
+            "gps_seconds": gps_epoch(sample.message),
+            "report": sample.name,
+            "solution_status": sample.solution_status,
+            "position_type": sample.position_type,
+            "covariance": sample.covariance,
+            "variances": [
+                sample.covariance[0],
+                sample.covariance[4],
+                sample.covariance[8],
+            ],
+            "satellites": [
+                {
+                    "satellite_id": item.satellite_id,
+                    "system": item.system.name if item.system is not None else None,
+                    "prn": item.prn,
+                    "status": item.status,
+                    "status_label": item.status_label,
+                    "ambiguity_fixed": item.ambiguity_fixed,
+                    "value": item.value,
+                }
+                for item in sample.satellites
+            ],
+        }
+        if sample.name == "RTKDATAH":
+            epoch["ambiguities"] = {
+                "float": sum(
+                    item.ambiguity_fixed is False for item in sample.satellites
+                ),
+                "fixed": sum(
+                    item.ambiguity_fixed is True for item in sample.satellites
+                ),
+                "reference_satellite_ids": [
+                    item.satellite_id
                     for item in sample.satellites
+                    if item.status_label == "REFERENCE"
                 ],
             }
-        )
+        epochs.append(epoch)
     return {
         "status": "ok" if samples else "insufficient_data",
         "epochs": epochs,

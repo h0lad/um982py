@@ -70,8 +70,13 @@ python -m examples.rtk_quality.engine_state --replay /tmp/engine.bin \
 For each epoch, the report lists the full row-major covariance, its diagonal,
 and each satellite's identity and ambiguity state. `ambiguity_fixed` indicates
 whether the satellite state is integer or float. References, undefined states
-and unknown codes yield `null`. The covariance coordinate frame and satellite
-value units remain unverified. Live collection without `--heading` requests
+and unknown codes yield `null`. The `ambiguities` summary gives the integer
+and float counts and the reference satellite IDs per heading epoch. Across 12
+matched UM982 epochs, the ASCII and binary logs agreed on all 185 satellite
+states. We observed 149 float states and 36 reference entries across the epochs.
+
+The covariance coordinate frame and satellite value units remain unverified.
+Live collection without `--heading` requests
 `RTKDATAB` and `RTKDATA2B`, which can be absent when the position engine has
 no corrections.
 
