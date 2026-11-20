@@ -65,7 +65,7 @@ def parse_ascii(raw: bytes) -> Sentence | AsciiMessage | CommandResponse | TextL
         if len(checksum) == 2:
             control = line.startswith((b"$command,", b"$CONFIG,", b"#"))
             actual = nmea_checksum(line[:1] + body if control else body)
-        elif len(checksum) == 8 and line.startswith((b"#", b"$GPHPD,")):
+        elif len(checksum) == 8 and line.startswith((b"#", b"$GPHPD,", b"$GNHPD,")):
             actual = unicore_crc32(body)
         else:
             raise ProtocolError("Unsupported ASCII checksum length")

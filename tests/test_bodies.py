@@ -225,10 +225,12 @@ def test_bad_gsv(fields: tuple[str, ...]) -> None:
         decode_log(Sentence("GPGSV", fields, b""))
 
 
-def test_hpd_crc32() -> None:
-    body = EXAMPLES["GPHPD"].split("*", 1)[0][1:].encode()
+@pytest.mark.parametrize("talker", ["GP", "GN"])
+def test_hpd_crc32(talker: str) -> None:
+    body = (talker + EXAMPLES["GPHPD"].split("*", 1)[0][3:]).encode()
     raw = b"$" + body + f"*{unicore_crc32(body):08x}\r\n".encode()
-    record = decode_log(parse_ascii(raw))
+    record = Log.GPHPD.decode(parse_ascii(raw))
+    assert record.name == f"{talker}HPD"
     assert record.integer("gps_week") == 2319
     assert record.real("latitude") == pytest.approx(40.0789783)
     assert record.real("east_velocity_difference") == pytest.approx(-0.001)
