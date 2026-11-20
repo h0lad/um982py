@@ -52,3 +52,17 @@ def test_empty_replay_reports_insufficient_data(tmp_path: Path) -> None:
     capture.write_bytes(b"")
     assert main(["--replay", str(capture), "--json", str(output)]) == 1
     assert json.loads(output.read_text())["status"] == "insufficient_data"
+
+
+def test_heading_replay_reports_reference_satellite(tmp_path: Path) -> None:
+    capture, output = tmp_path / "heading.bin", tmp_path / "heading.json"
+    data = bytearray(_rtk_data_payload(((10, 70, 0),)))
+    data[0:8] = pack("<II", 0, 34)
+    data[104:108] = pack("<I", 1)
+    capture.write_bytes(binary(_rtk_data_payload(()), 215) + binary(bytes(data), 6007))
+    assert main(["--heading", "--replay", str(capture), "--json", str(output)]) == 0
+    (epoch,) = json.loads(output.read_text())["epochs"]
+    assert epoch["report"] == "RTKDATAH"
+    assert epoch["covariance"] == pytest.approx(_COVARIANCE)
+    assert epoch["position_type"] == 34
+    assert epoch["satellites"][0]["status_label"] == "REFERENCE"

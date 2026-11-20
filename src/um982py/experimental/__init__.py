@@ -134,6 +134,9 @@ from um982py.experimental.rtk_data import (
     rtk_data_output,
     rtk_data_read,
     rtk_data_stop,
+    rtk_datah_output,
+    rtk_datah_read,
+    rtk_datah_stop,
 )
 from um982py.experimental.tracking import (
     TrackingField,
@@ -245,6 +248,9 @@ __all__ = [
     "rtk_data_output",
     "rtk_data_read",
     "rtk_data_stop",
+    "rtk_datah_output",
+    "rtk_datah_read",
+    "rtk_datah_stop",
     "sbas_control",
     "scan_notices",
     "scan_packets",

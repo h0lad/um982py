@@ -21,14 +21,21 @@ __all__ = [
     "rtk_data_output",
     "rtk_data_read",
     "rtk_data_stop",
+    "rtk_datah_output",
+    "rtk_datah_read",
+    "rtk_datah_stop",
 ]
 
-_IDS = {215: "RTKDATA", 2027: "RTKDATA2"}
+_HEADING_ID = 6007
+_IDS = {215: "RTKDATA", 2027: "RTKDATA2", _HEADING_ID: "RTKDATAH"}
 _ENTRY = Struct("<III")
 _HEADER_SIZE = 108
-_MATRIX_OFFSET = 28
-_MATRIX_COUNT = 9
-_MAX_ENTRIES = 64
+_HEADING_STATUS_LABELS = {
+    4: "L2_FLOAT",
+    5: "L1_FLOAT",
+    15: "NARROW_FLOAT",
+    70: "REFERENCE",
+}
 _SYSTEM_OFFSETS = (
     (MessageSatelliteSystem.GPS, 1, 32, 0),
     (MessageSatelliteSystem.GALILEO, 75, 110, 74),
@@ -38,24 +45,31 @@ _SYSTEM_OFFSETS = (
 
 @dataclass(frozen=True, slots=True)
 class RtkDataSatellite:
-    """One engine entry with resolved identity and neutral state fields."""
+    """One engine entry with its satellite identity and raw state fields."""
 
     satellite_id: int
     system: MessageSatelliteSystem | None
     prn: int | None
     status: int
     value: int
+    status_label: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
 class RtkData:
-    """One RTKDATA frame with covariance and per-satellite states."""
+    """Engine covariance in native row-major order and per-satellite states.
+
+    Only RTKDATAH has verified solution codes and ambiguity labels. The
+    covariance coordinate frame and per-satellite value units are unresolved.
+    """
 
     message: BinaryMessage
     name: str
     header_fields_raw: bytes
     covariance: tuple[float, ...]
     satellites: tuple[RtkDataSatellite, ...]
+    solution_status: int | None = None
+    position_type: int | None = None
 
 
 def _satellite_system_and_prn(
@@ -70,17 +84,17 @@ def _satellite_system_and_prn(
 def decode_rtk_data(message: Message) -> RtkData:
     """Decode an RTKDATA frame into native fields."""
     if not isinstance(message, BinaryMessage) or message.header.message_id not in _IDS:
-        raise ProtocolError("Expected RTKDATA message ID 215 or RTKDATA2 ID 2027")
+        raise ProtocolError("Expected RTKDATA message ID 215, 2027 or 6007")
     payload = message.payload
+    is_heading = message.header.message_id == _HEADING_ID
     if len(payload) < _HEADER_SIZE or (len(payload) - _HEADER_SIZE) % _ENTRY.size:
         raise ProtocolError("Invalid RTKDATA body length")
     count = (len(payload) - _HEADER_SIZE) // _ENTRY.size
-    if count > _MAX_ENTRIES:
+    if count > (80 if is_heading else 64):
         raise ProtocolError("Invalid RTKDATA entry count")
-    covariance = tuple(
-        unpack_from("<f", payload, _MATRIX_OFFSET + 4 * index)[0]
-        for index in range(_MATRIX_COUNT)
-    )
+    if is_heading and unpack_from("<I", payload, 104)[0] != count:
+        raise ProtocolError("RTKDATAH entry count does not match body length")
+    covariance = unpack_from("<9f", payload, 28)
     if not all(math.isfinite(value) for value in covariance):
         raise ProtocolError("Non-finite RTKDATA covariance value")
     satellites = []
@@ -89,13 +103,21 @@ def decode_rtk_data(message: Message) -> RtkData:
             payload, _HEADER_SIZE + index * _ENTRY.size
         )
         system, prn = _satellite_system_and_prn(satellite_id)
-        satellites.append(RtkDataSatellite(satellite_id, system, prn, status, value))
+        label = _HEADING_STATUS_LABELS.get(status) if is_heading else None
+        satellites.append(
+            RtkDataSatellite(satellite_id, system, prn, status, value, label)
+        )
+    solution_status, position_type = (
+        unpack_from("<2I", payload) if is_heading else (None, None)
+    )
     return RtkData(
         message,
         _IDS[message.header.message_id],
         payload[:_HEADER_SIZE],
         covariance,
         tuple(satellites),
+        solution_status,
+        position_type,
     )
 
 
@@ -140,3 +162,18 @@ def rtk_data2_output(*, port: Port | None = None) -> Command[CommandResponse]:
 def rtk_data2_stop(*, port: Port | None = None) -> Command[CommandResponse]:
     """Stop a previously started RTKDATA2 subscription."""
     return _stop("RTKDATA2B", port)
+
+
+def rtk_datah_read(*, port: Port | None = None) -> Command[RtkData]:
+    """Request one binary heading-engine RTKDATAH frame."""
+    return _read("RTKDATAHB", _HEADING_ID, port)
+
+
+def rtk_datah_output(*, port: Port | None = None) -> Command[CommandResponse]:
+    """Subscribe to heading-engine RTKDATAH changes."""
+    return _output("RTKDATAHB", port)
+
+
+def rtk_datah_stop(*, port: Port | None = None) -> Command[CommandResponse]:
+    """Stop the binary heading-engine RTKDATAH subscription."""
+    return _stop("RTKDATAHB", port)

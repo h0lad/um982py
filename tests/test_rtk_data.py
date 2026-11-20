@@ -6,7 +6,13 @@ import pytest
 
 from test_protocol import binary
 from um982py.errors import ProtocolError
-from um982py.experimental import RtkData, decode_rtk_data
+from um982py.experimental import (
+    RtkData,
+    decode_rtk_data,
+    rtk_datah_output,
+    rtk_datah_read,
+    rtk_datah_stop,
+)
 from um982py.messages.enums import MessageSatelliteSystem
 from um982py.protocol import StreamDecoder
 
@@ -56,9 +62,43 @@ def test_frame_decodes_matrix_and_satellites() -> None:
 def test_secondary_variant_decodes_with_own_name() -> None:
     record = decode(payload(((32, 5, 0),)), message_id=2027)
     assert record.name == "RTKDATA2"
+    assert record.solution_status is None
+    assert record.position_type is None
+    assert record.satellites[0].status_label is None
     assert [(sat.system, sat.prn) for sat in record.satellites] == [
         (MessageSatelliteSystem.GPS, 32)
     ]
+
+
+def test_heading_frame_identifies_ambiguity_states() -> None:
+    data = bytearray(payload(((10, 70, 2), (78, 4, 0), (167, 112, 3)), (0.125,)))
+    struct.pack_into("<2I", data, 0, 0, 34)
+    struct.pack_into("<I", data, 104, 3)
+    (frame,) = StreamDecoder(strict=True).feed(binary(data, message_id=6007))
+    assert rtk_datah_read().matches(frame)
+    record = rtk_datah_read().decode(frame)
+    assert record.name == "RTKDATAH"
+    assert (record.solution_status, record.position_type) == (0, 34)
+    assert record.covariance[0] == 0.125
+    assert [(sat.status, sat.status_label, sat.value) for sat in record.satellites] == [
+        (70, "REFERENCE", 2),
+        (4, "L2_FLOAT", 0),
+        (112, None, 3),
+    ]
+    assert rtk_datah_read().text == "RTKDATAHB"
+    assert rtk_datah_output().text == "RTKDATAHB ONCHANGED"
+    assert rtk_datah_stop().text == "UNLOG RTKDATAHB"
+
+
+def test_heading_frame_uses_declared_count_and_eighty_entry_limit() -> None:
+    data = bytearray(payload(((10, 5, 0),) * 81))
+    struct.pack_into("<I", data, 104, 80)
+    assert len(decode(data[: -ENTRY.size], message_id=6007).satellites) == 80
+    with pytest.raises(ProtocolError, match="count"):
+        decode(data[: -2 * ENTRY.size], message_id=6007)
+    struct.pack_into("<I", data, 104, 81)
+    with pytest.raises(ProtocolError, match="count"):
+        decode(data, message_id=6007)
 
 
 def test_empty_satellite_list_decodes() -> None:

@@ -55,21 +55,23 @@ interpreting these fields. OEM-style message timestamps use GPS time.
 
 ## Inspect engine covariance and satellite states
 
-The experimental `RTKDATAB`/`RTKDATA2B` reader records the engine covariance
-matrix and per-satellite states:
+The experimental reader records the RTK engine covariance matrix and
+per-satellite states. Use `--heading` on the UM982 to inspect `RTKDATAHB`,
+including heading solution codes, float ambiguities and reference satellites.
+This mode was verified on firmware R4.10Build25164.
 
 ```bash
-python -m examples.rtk_quality.engine_state --port /dev/ttyUSB0 --baud 921600 \
+python -m examples.rtk_quality.engine_state --heading --port /dev/ttyUSB0 --baud 921600 \
     --duration 60 --record /tmp/engine.bin --json /tmp/engine.json
 python -m examples.rtk_quality.engine_state --replay /tmp/engine.bin \
     --json /tmp/engine-replay.json
 ```
 
-For each epoch, the report lists covariance diagonals and satellite identities
-with their raw status codes and values. Unknown identifiers stay unresolved.
-The variances describe the engine's state and cannot measure position error.
-RTKDATA frames appear only while the engine uses corrections. Without these
-frames, the report marks the capture as insufficient data.
+For each epoch, the report lists the full row-major covariance, its diagonal,
+and each satellite's identity and ambiguity state. Unknown codes retain their
+raw values. The covariance coordinate frame and satellite value units remain
+unverified. Live collection without `--heading` requests `RTKDATAB` and
+`RTKDATA2B`, which can be absent when the position engine has no corrections.
 
 ## Compare environments or positioning campaigns
 
