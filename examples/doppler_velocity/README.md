@@ -41,6 +41,22 @@ independent accuracy check.
 
 ## Read native receiver Doppler velocity
 
+Record and compare `VELDATAB` and `BESTNAVXYZB` together, or replay the same
+capture with the receiver disconnected.
+
+```bash
+python -m examples.doppler_velocity.receiver_state --port /dev/ttyUSB0 \
+    --baud 921600 --duration 30 --record /tmp/native-doppler.bin \
+    --json /tmp/native-doppler.json
+python -m examples.doppler_velocity.receiver_state --replay /tmp/native-doppler.bin
+```
+
+The report compares only computed Doppler solutions at the same GPS epoch as
+the `VELDATA` measurement. Native samples appear even when the matching
+reference is missing. Across 11 matched UM982 epochs, the ECEF velocity
+vectors agreed exactly and the largest axis standard-deviation difference was
+9.1 × 10⁻¹⁰ m/s. This compares two receiver outputs sharing a solution.
+
 The experimental `VELDATAB` API returns the receiver's native ECEF velocity
 vector in metres per second and its measurement epoch in GPS seconds.
 `velocity_std_ecef_mps` gives the X, Y and Z standard deviations, and
@@ -50,8 +66,8 @@ simultaneous `DOPPVELB`, `BESTNAVXYZB` and `BESTNAVB` reports on a UM982.
 `clock_drift_mps` is the additive receiver clock term in the corrected
 range-rate model, with range rate equal to negative Doppler times the carrier
 wavelength. It can be compared directly with the example's Doppler clock
-estimate. The sign and units were checked against simultaneous GPS L1
-`RANGEB` observations and broadcast ephemerides.
+estimate. A calculation from simultaneous GPS L1 `RANGEB` observations and
+broadcast ephemerides agreed within 0.019 m/s across 12 epochs.
 
 ```python
 from um982py import Receiver

@@ -1,19 +1,47 @@
 """Checks Doppler velocity against a hand-computed observation table."""
 
+import json
 import math
 from argparse import Namespace
 from dataclasses import replace
 from pathlib import Path
+from struct import pack_into
 
 import pytest
 from examples._gps_motion import _observer, _receiver_comparison
 from examples.doppler_velocity import wave_parameters
+from examples.doppler_velocity.receiver_state import main as receiver_state
 
 from tests.examples._specialist import TRUTH
+from tests.test_protocol import binary
 from um982py.capture import decode_records, read_frames, record_epoch
 from um982py.commands import Log
 from um982py.experimental.gps_motion import RateMeasurement, solve_velocity
 from um982py.messages import Record
+
+
+def test_native_doppler_report_joins_by_payload_epoch(tmp_path: Path) -> None:
+    capture, output = tmp_path / "velocity.bin", tmp_path / "velocity.json"
+    payload = bytearray(120)
+    pack_into("<H2xI", payload, 0, 2400, 123000)
+    pack_into("<7d", payload, 16, 1.0, 2.0, 3.0, 0.25, 0.25, 0.5, 0.75)
+    first = binary(bytes(payload), 95)
+    pack_into("<I", payload, 4, 123100)
+    second = binary(bytes(payload), 95)
+    reference = bytearray(112)
+    pack_into("<II3d3f", reference, 44, 0, 8, 1.0, 2.0, 3.125, 0.25, 0.5, 0.625)
+    capture.write_bytes(binary(bytes(reference), 240) + first + second)
+
+    assert receiver_state(["--replay", str(capture), "--json", str(output)]) == 0
+    result = json.loads(output.read_text())
+    assert result["matched_epochs"] == 1
+    assert result["max_velocity_difference_mps"] == 0.125
+    assert result["max_axis_std_difference_mps"] == 0.125
+    matched, unmatched = result["epochs"]
+    assert matched["clock_drift_mps"] == -0.25
+    assert matched["velocity_std_ecef_mps"] == [0.25, 0.5, 0.75]
+    assert matched["bestnavxyz_comparison"]["axis_std_differences_mps"] == [0, 0, 0.125]
+    assert unmatched["bestnavxyz_comparison"] is None
 
 
 def test_observer_ignores_invalid_and_uncomputed_positions(
