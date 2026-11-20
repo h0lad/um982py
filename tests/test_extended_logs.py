@@ -111,6 +111,27 @@ def test_mpsrpos_position_layout(log: Log, message_id: int, binary: bool) -> Non
         log.output(1, binary=binary)
 
 
+def test_gloclock_formats_agree_on_broadcast_parameters() -> None:
+    ascii_record = Log.GLOCLOCK.decode(captured(Log.GLOCLOCK, False))
+    binary_record = Log.GLOCLOCK.decode(captured(Log.GLOCLOCK, True))
+    for field, expected in (
+        ("satellite_type", 1),
+        ("four_year_interval", 8),
+        ("day_number", 1054),
+        ("kp", 0),
+        ("receiver_word", 3),
+    ):
+        assert ascii_record.integer(field) == binary_record.integer(field) == expected
+    for field, expected in (
+        ("tau_gps_s", 1.303851604e-8),
+        ("tau_c_s", 1.396983862e-9),
+        ("beta1", -0.076171875),
+        ("beta2", -0.001800537109),
+    ):
+        assert ascii_record.real(field) == pytest.approx(expected, rel=1e-9, abs=0)
+        assert binary_record.real(field) == pytest.approx(expected, rel=1e-9, abs=0)
+
+
 def test_hidden_configuration_grammar() -> None:
     assert documented.pvt_reliability(1, 2, 3).text == "CONFIG PVT RELIABILITY 1 2 3"
     assert config.best_position_bias().text == "CONFIG BESTPOSBIAS ENABLE"

@@ -37,6 +37,25 @@ TIME = Layout(
     ),
     44,
 )
+GLOCLOCK = Layout(
+    "GLOCLOCK",
+    "extended",
+    (
+        Field("reserved", "u", 0, 4),
+        Field("reserved_2", "d", 4, 8),
+        Field("reserved_3", "d", 12, 8),
+        Field("satellite_type", "u", 20, 1),
+        Field("four_year_interval", "u", 21, 1),
+        Field("tau_gps_s", "d", 24, 8),
+        Field("day_number", "u", 32, 2),
+        Field("tau_c_s", "d", 36, 8),
+        Field("beta1", "d", 44, 8),
+        Field("beta2", "d", 52, 8),
+        Field("kp", "u", 60, 2),
+        Field("receiver_word", "u", 62, 2),
+    ),
+    64,
+)
 RANGE = Layout(
     "RANGE",
     "extended",
@@ -103,6 +122,7 @@ LAYOUTS = {
         POSITION,
         VELOCITY,
         TIME,
+        GLOCLOCK,
         RANGE,
         HEADINGOFFSET,
         RXSTATUS,

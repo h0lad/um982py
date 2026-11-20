@@ -51,6 +51,25 @@ pulses to receiver TIME messages, compensate for pulse delay or establish
 timestamp accuracy. The host clock can step. Match the pulses and measure the
 timing path before comparing them with receiver UTC.
 
+## Read GLONASS broadcast clock parameters
+
+`Log.GLOCLOCK` exposes the receiver's GLONASS navigation-message timing
+parameters in ASCII and binary. The `tau_gps_s` and `tau_c_s` fields are
+broadcast corrections relative to GPS time and UTC(SU). `four_year_interval`
+and `day_number` identify their reference interval. The report also includes
+the beta coefficients, the `kp` leap-second indicator and an uninterpreted
+`receiver_word`. Use `TIME` for the receiver's UTC epoch and leap offset.
+[OEM7 GLOCLOCK field definitions](https://docs.novatel.com/OEM7/Content/Logs/GLOCLOCK.htm)
+
+```python
+from um982py import Log, Receiver
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    clock = receiver.read_log(Log.GLOCLOCK, binary=True)
+    print(clock.real("tau_gps_s"), clock.real("tau_c_s"))
+    print(clock.integer("four_year_interval"), clock.integer("day_number"))
+```
+
 ## References
 
 - Kaplan & Hegarty (2017).
