@@ -65,6 +65,7 @@ def test_secondary_variant_decodes_with_own_name() -> None:
     assert record.solution_status is None
     assert record.position_type is None
     assert record.satellites[0].status_label is None
+    assert record.satellites[0].ambiguity_fixed is None
     assert [(sat.system, sat.prn) for sat in record.satellites] == [
         (MessageSatelliteSystem.GPS, 32)
     ]
@@ -99,6 +100,32 @@ def test_heading_frame_uses_declared_count_and_eighty_entry_limit() -> None:
     struct.pack_into("<I", data, 104, 81)
     with pytest.raises(ProtocolError, match="count"):
         decode(data, message_id=6007)
+
+
+@pytest.mark.parametrize(
+    ("code", "label", "fixed"),
+    [
+        (0, "UNDEFINED", None),
+        (1, "L5_FLOAT", False),
+        (31, "NARROW_FLOAT_L12345", False),
+        (32, "WIDE_INT", True),
+        (47, "NARROW_INT", True),
+        (63, "NARROW_INT_L12345", True),
+        (64, None, None),
+        (69, None, None),
+        (70, "REFERENCE", None),
+        (71, None, None),
+    ],
+)
+def test_heading_uses_firmware_ambiguity_codes(
+    code: int, label: str | None, fixed: bool | None
+) -> None:
+    data = bytearray(payload(((10, code, 0),)))
+    struct.pack_into("<I", data, 104, 1)
+    (satellite,) = decode(bytes(data), message_id=6007).satellites
+    assert satellite.status == code
+    assert satellite.status_label == label
+    assert satellite.ambiguity_fixed is fixed
 
 
 def test_empty_satellite_list_decodes() -> None:

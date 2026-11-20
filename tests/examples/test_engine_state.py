@@ -66,3 +66,4 @@ def test_heading_replay_reports_reference_satellite(tmp_path: Path) -> None:
     assert epoch["covariance"] == pytest.approx(_COVARIANCE)
     assert epoch["position_type"] == 34
     assert epoch["satellites"][0]["status_label"] == "REFERENCE"
+    assert epoch["satellites"][0]["ambiguity_fixed"] is None

@@ -30,10 +30,72 @@ _HEADING_ID = 6007
 _IDS = {215: "RTKDATA", 2027: "RTKDATA2", _HEADING_ID: "RTKDATAH"}
 _ENTRY = Struct("<III")
 _HEADER_SIZE = 108
+# Labels from the R4.10Build25164 RTKDATAHA formatter's ambiguity table.
 _HEADING_STATUS_LABELS = {
+    0: "UNDEFINED",
+    1: "L5_FLOAT",
+    2: "L4_FLOAT",
+    3: "L3_FLOAT",
     4: "L2_FLOAT",
     5: "L1_FLOAT",
+    6: "NARROW_FLOAT_L45",
+    7: "NARROW_FLOAT_L35",
+    8: "NARROW_FLOAT_L25",
+    9: "NARROW_FLOAT_L15",
+    10: "NARROW_FLOAT_L34",
+    11: "NARROW_FLOAT_L24",
+    12: "NARROW_FLOAT_L14",
+    13: "NARROW_FLOAT_L23",
+    14: "NARROW_FLOAT_L13",
     15: "NARROW_FLOAT",
+    16: "NARROW_FLOAT_L345",
+    17: "NARROW_FLOAT_L245",
+    18: "NARROW_FLOAT_L145",
+    19: "NARROW_FLOAT_L235",
+    20: "NARROW_FLOAT_L135",
+    21: "NARROW_FLOAT_L125",
+    22: "NARROW_FLOAT_L234",
+    23: "NARROW_FLOAT_L134",
+    24: "NARROW_FLOAT_L124",
+    25: "NARROW_FLOAT_L123",
+    26: "NARROW_FLOAT_L2345",
+    27: "NARROW_FLOAT_L1345",
+    28: "NARROW_FLOAT_L1245",
+    29: "NARROW_FLOAT_L1235",
+    30: "NARROW_FLOAT_L1234",
+    31: "NARROW_FLOAT_L12345",
+    32: "WIDE_INT",
+    33: "L5_INT",
+    34: "L4_INT",
+    35: "L3_INT",
+    36: "L2_INT",
+    37: "L1_INT",
+    38: "NARROW_INT_L45",
+    39: "NARROW_INT_L35",
+    40: "NARROW_INT_L25",
+    41: "NARROW_INT_L15",
+    42: "NARROW_INT_L34",
+    43: "NARROW_INT_L24",
+    44: "NARROW_INT_L14",
+    45: "NARROW_INT_L23",
+    46: "NARROW_INT_L13",
+    47: "NARROW_INT",
+    48: "NARROW_INT_L345",
+    49: "NARROW_INT_L245",
+    50: "NARROW_INT_L145",
+    51: "NARROW_INT_L235",
+    52: "NARROW_INT_L135",
+    53: "NARROW_INT_L125",
+    54: "NARROW_INT_L234",
+    55: "NARROW_INT_L134",
+    56: "NARROW_INT_L124",
+    57: "NARROW_INT_L123",
+    58: "NARROW_INT_L2345",
+    59: "NARROW_INT_L1345",
+    60: "NARROW_INT_L1245",
+    61: "NARROW_INT_L1235",
+    62: "NARROW_INT_L1234",
+    63: "NARROW_INT_L12345",
     70: "REFERENCE",
 }
 _SYSTEM_OFFSETS = (
@@ -53,6 +115,13 @@ class RtkDataSatellite:
     status: int
     value: int
     status_label: str | None = None
+
+    @property
+    def ambiguity_fixed(self) -> bool | None:
+        """Indicate whether a classified heading ambiguity is integer-fixed."""
+        if self.status_label is None or self.status in (0, 70):
+            return None
+        return 32 <= self.status <= 63
 
 
 @dataclass(frozen=True, slots=True)

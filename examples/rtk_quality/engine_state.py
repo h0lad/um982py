@@ -46,6 +46,7 @@ def _report(samples: Sequence[RtkData]) -> dict[str, object]:
                         "prn": item.prn,
                         "status": item.status,
                         "status_label": item.status_label,
+                        "ambiguity_fixed": item.ambiguity_fixed,
                         "value": item.value,
                     }
                     for item in sample.satellites
