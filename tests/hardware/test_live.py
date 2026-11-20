@@ -10,11 +10,11 @@ from time import monotonic
 import pytest
 
 from um982py import AsyncReceiver, Receiver
+from um982py._receiver_state import ordered_log_list, receiver_state
 from um982py.commands import Log, configuration, logging, queries
 from um982py.commands.core import action
 from um982py.commands.types import NmeaVersion, Trigger
 from um982py.errors import CommandRejected, ResponseTimeout, UM982Error
-from um982py.experimental.capture import ordered_log_list
 from um982py.messages import AsciiHeader, AsciiMessage, Fix, Sentence
 from um982py.receiver_queries import firmware_info
 
@@ -26,16 +26,6 @@ def report() -> dict[str, object]:
     return {}
 
 
-def state(receiver: Receiver) -> dict[str, object]:
-    configuration_records = receiver.collect(queries.configuration())
-    return {
-        "configuration": sorted(m.raw.decode().strip() for m in configuration_records),
-        "mode": receiver.execute(queries.mode()).fields,
-        "masks": tuple(m.fields for m in receiver.collect(queries.masks())),
-        "logs": asdict(ordered_log_list(receiver)),
-    }
-
-
 @pytest.fixture(scope="module")
 def receiver(
     request: pytest.FixtureRequest, report: dict[str, object]
@@ -43,14 +33,14 @@ def receiver(
     port = request.config.getoption("--hardware-port")
     baud = request.config.getoption("--hardware-baud")
     with Receiver.connect(port, baud, timeout=5) as device:
-        before = state(device)
+        before = receiver_state(device)
         report["port"] = port
         report["baud"] = baud
         report["version"] = asdict(device.version())
         try:
             yield device
         finally:
-            after = state(device)
+            after = receiver_state(device)
             report["state_restored"] = before == after
             report["decoder_errors"] = [str(error) for error in device.decoder.errors]
             Path(request.config.getoption("--hardware-report")).write_text(
