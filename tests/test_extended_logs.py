@@ -132,6 +132,30 @@ def test_gloclock_formats_agree_on_broadcast_parameters() -> None:
         assert binary_record.real(field) == pytest.approx(expected, rel=1e-9, abs=0)
 
 
+def test_glonass_almanac_normalizes_time_and_signed_frequency() -> None:
+    for binary in (False, True):
+        record = Log.GLOALMANAC.decode(captured(Log.GLOALMANAC, binary))
+        assert record.integer("satellite_id") == 39
+        assert record.real("reference_tow_s") == 365897.0
+        assert record.integer("frequency_channel") == -4
+
+
+@pytest.mark.parametrize(
+    ("log", "leap_seconds", "alpha0"),
+    [(Log.IONUTC, 18, 1.955777406692505e-8), (Log.BD2IONUTC, 4, 3.166496753692627e-8)],
+)
+def test_combined_ionosphere_and_utc_parameters(
+    log: Log, leap_seconds: int, alpha0: float
+) -> None:
+    for binary in (False, True):
+        frame = captured(log, binary)
+        assert log.decode(frame) == decode_log(frame)
+        record = log.decode(frame)
+        assert record.real("a0") == pytest.approx(alpha0, rel=1e-12, abs=0)
+        assert record.integer("deltat_ls") == leap_seconds
+        assert record.real("utc_a0") != record.real("a0")
+
+
 def test_hidden_configuration_grammar() -> None:
     assert documented.pvt_reliability(1, 2, 3).text == "CONFIG PVT RELIABILITY 1 2 3"
     assert config.best_position_bias().text == "CONFIG BESTPOSBIAS ENABLE"

@@ -45,6 +45,23 @@ ephemeris epochs in UTC(SU), and the receiver epoch in GPST. Verify the
 receiver log's time convention and any leap-second/GPST-BDT offset before
 comparing angles or clock biases across constellations.
 
+## Inspect GLONASS almanac coverage
+
+`Log.GLOALMANAC` returns a burst with one record per available slot. It
+reports coarse orbit parameters, broadcast health and signed FDMA frequency
+channels. The reference week and seconds of week use GPS time. In the tested
+UM982 output, receiver IDs 38 through 61 corresponded to slots 1 through 24.
+[GLONASS almanac field definitions](https://docs.novatel.com/OEM7/Content/Logs/GLOALMANAC.htm)
+
+```python
+from um982py import Log, Receiver
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    for row in receiver.collect(Log.GLOALMANAC.read(binary=True)):
+        print(row.integer("satellite_id"), row.integer("frequency_channel"),
+              row.integer("health"))
+```
+
 ## References
 
 - IS-GPS-200 (GPS user algorithm and constants).

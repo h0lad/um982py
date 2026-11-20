@@ -5,7 +5,7 @@ from dataclasses import replace
 
 from um982py.errors import ProtocolError
 from um982py.messages import AsciiMessage, BinaryMessage, Message, Record
-from um982py.messages.layouts.firmware import LAYOUTS
+from um982py.messages.layouts.firmware import GLOALMANAC_ASCII, LAYOUTS
 from um982py.messages.reader import BodyReader
 
 
@@ -21,6 +21,19 @@ def decode_extended(name: str, message: Message) -> Record:
             values = _visibility_fields(values)
     else:
         raise ProtocolError("Expected an extended data log")
+    if name == "GLOALMANAC":
+        if isinstance(values, tuple):
+            return replace(BodyReader(values).read(GLOALMANAC_ASCII), message=message)
+        record = BodyReader(values).read(LAYOUTS[name])
+        return Record(
+            name,
+            (
+                record.entries[0],
+                ("reference_tow_s", record.integer("reference_tow_s") / 1000),
+                *record.entries[2:],
+            ),
+            message,
+        )
     return replace(BodyReader(values).read(LAYOUTS[name]), message=message)
 
 

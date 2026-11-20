@@ -70,6 +70,15 @@ with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
     print(clock.integer("four_year_interval"), clock.integer("day_number"))
 ```
 
+## Read ionosphere and UTC data together
+
+`Log.IONUTC` returns GPS broadcast ionosphere coefficients `a0` through `a3`
+and `b0` through `b3` together with UTC coefficients `utc_a0` and `utc_a1`,
+their reference epoch and leap-second fields. `Log.BD2IONUTC` exposes the
+corresponding BeiDou-2 report. Both support ASCII and binary reads. Use
+`Log.TIME` for the receiver's current UTC and leap-second offset.
+[IONUTC field definitions](https://docs.novatel.com/OEM7/Content/Logs/IONUTC.htm)
+
 ## References
 
 - Kaplan & Hegarty (2017).

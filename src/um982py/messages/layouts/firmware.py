@@ -56,6 +56,52 @@ GLOCLOCK = Layout(
     ),
     64,
 )
+GLOALMANAC = Layout(
+    "GLOALMANAC",
+    "extended",
+    (
+        Field("reference_week", "u", 0, 4),
+        Field("reference_tow_s", "u", 4, 4),
+        Field("satellite_id", "u", 8, 1),
+        Field("frequency_channel", "i", 9, 1),
+        Field("satellite_type", "u", 10, 1),
+        Field("health", "u", 11, 1),
+        Field("ascending_node_time_s", "d", 12, 8),
+        Field("ascending_node_longitude_rad", "d", 20, 8),
+        Field("inclination_correction_rad", "d", 28, 8),
+        Field("eccentricity", "d", 36, 8),
+        Field("argument_of_perigee_rad", "d", 44, 8),
+        Field("period_correction_s", "d", 52, 8),
+        Field("period_rate", "d", 60, 8),
+        Field("clock_offset_s", "d", 68, 8),
+    ),
+    76,
+)
+GLOALMANAC_ASCII = replace(
+    GLOALMANAC,
+    fields=(
+        GLOALMANAC.fields[0],
+        Field("reference_tow_s", "d", 4, 8),
+        *GLOALMANAC.fields[2:],
+    ),
+)
+IONUTC = Layout(
+    "IONUTC",
+    "extended",
+    (
+        *DOCUMENTED["GPSION"].fields[:8],
+        Field("utc_wn", "u", 64, 4),
+        Field("tot", "u", 68, 4),
+        Field("utc_a0", "d", 72, 8),
+        Field("utc_a1", "d", 80, 8),
+        Field("wn_lsf", "u", 88, 4),
+        Field("dn", "u", 92, 4),
+        Field("deltat_ls", "i", 96, 4),
+        Field("deltat_lsf", "i", 100, 4),
+        Field("reserved", "u", 104, 4),
+    ),
+    108,
+)
 RANGE = Layout(
     "RANGE",
     "extended",
@@ -123,6 +169,9 @@ LAYOUTS = {
         VELOCITY,
         TIME,
         GLOCLOCK,
+        GLOALMANAC,
+        IONUTC,
+        replace(IONUTC, name="BD2IONUTC"),
         RANGE,
         HEADINGOFFSET,
         RXSTATUS,
