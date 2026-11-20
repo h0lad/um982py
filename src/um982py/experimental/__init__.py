@@ -144,6 +144,13 @@ from um982py.experimental.tracking import (
     tracking_fields,
     tracking_slots,
 )
+from um982py.experimental.velocity_data import (
+    VelocityData,
+    decode_velocity_data,
+    velocity_data_output,
+    velocity_data_read,
+    velocity_data_stop,
+)
 
 __all__ = [
     "BASEBAND_MESSAGE_CATALOGUE",
@@ -182,6 +189,7 @@ __all__ = [
     "SideEffect",
     "TrackingField",
     "TrackingSlot",
+    "VelocityData",
     "acquisition_frequency_mask",
     "adr_initial",
     "adr_reliability",
@@ -213,6 +221,7 @@ __all__ = [
     "decode_message_payload",
     "decode_rangecmp",
     "decode_rtk_data",
+    "decode_velocity_data",
     "enter_debug_mode",
     "enter_debug_mode_at",
     "event_config",
@@ -264,4 +273,7 @@ __all__ = [
     "track_mode",
     "tracking_fields",
     "tracking_slots",
+    "velocity_data_output",
+    "velocity_data_read",
+    "velocity_data_stop",
 ]

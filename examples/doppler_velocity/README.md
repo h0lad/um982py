@@ -39,6 +39,23 @@ without a matching `DOPPVEL` record leaves the comparison empty. Because the
 receiver and solver use the same observations, their agreement is not an
 independent accuracy check.
 
+## Read native receiver Doppler velocity
+
+The experimental `VELDATAB` API returns the receiver's native ECEF velocity
+vector in metres per second and its measurement epoch in GPS seconds.
+`uncertainty_3d_mps` is the root-sum-square of the velocity standard
+deviations. The vector and total variance were verified against simultaneous
+`DOPPVELB` and `BESTNAVB` reports on a UM982 running R4.10Build25164.
+
+```python
+from um982py import Receiver
+from um982py.experimental import velocity_data_read
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    sample = receiver.execute(velocity_data_read())
+    print(sample.epoch_gps_seconds, sample.velocity_ecef_mps, sample.uncertainty_3d_mps)
+```
+
 ## References
 
 Kaplan & Hegarty (2017), Understanding GPS/GNSS.
