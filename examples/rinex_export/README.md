@@ -94,6 +94,22 @@ python -m examples.rinex_export \
 Replay exports every captured epoch by default. Pass `--frames` to limit it.
 Live collection defaults to 60 frames unless another limit is supplied.
 
+### Record observations for post-processing
+
+This Python recipe records a short observation session in memory and
+writes the result to `field.obs`. The path is replaced if it already exists.
+
+```python
+from um982py import Receiver, record_observations
+
+with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
+    observations = record_observations(receiver, duration=60)
+
+result = observations.to_rinex(marker_name="FIELD01")
+result.write("field.obs")
+print(f"Saved {result.epochs} epochs; omitted observations: {result.omitted}")
+```
+
 ## Inputs and results
 
 `--output` is the primary observation file. For a second antenna, add

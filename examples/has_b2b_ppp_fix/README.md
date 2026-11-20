@@ -88,6 +88,85 @@ um982py --port /dev/ttyUSB0 --baud 921600 --madoca ppp-diagnostics
 
 Receiving correction messages does not confirm that the receiver applied them.
 
+### Read one position
+
+Set `service` to `None` for the current solution, or choose `E6-HAS` or
+`B2B-PPP` to start satellite PPP and read one sample.
+
+```python
+from um982py import Receiver
+
+service = None  # Or "E6-HAS" / "B2B-PPP".
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    if service is None:
+        position = receiver.best_navigation()
+    else:
+        position = receiver.start_ppp(service=service).position()
+
+if position.valid:
+    print(position.latitude, position.longitude)
+    print("Solution:", position.position_type)
+    if position.precision is not None:
+        print("Horizontal RMS (m):", position.precision.horizontal_rms_m)
+        print("Vertical std (m):", position.precision.up_std_m)
+else:
+    print("No position available yet")
+```
+
+### Watch precision over time
+
+This recipe writes a CSV with fix type, convergence and receiver-reported
+precision. Keep the antenna stationary when evaluating convergence.
+
+```python
+import csv
+import sys
+from time import monotonic, sleep
+
+from um982py import Receiver
+
+service = "E6-HAS"  # Or "B2B-PPP" / None for the current receiver solution.
+duration_s = 600
+interval_s = 5
+writer = csv.writer(sys.stdout)
+writer.writerow(
+    [
+        "elapsed_s",
+        "gps_seconds",
+        "solution",
+        "valid",
+        "converged",
+        "horizontal_rms_m",
+        "vertical_std_m",
+        "correction_age_s",
+    ]
+)
+try:
+    with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+        ppp = receiver.start_ppp(service=service) if service is not None else None
+        read_position = ppp.position if ppp is not None else receiver.best_navigation
+        started = monotonic()
+        while monotonic() - started < duration_s:
+            position = read_position()
+            precision = position.precision
+            writer.writerow(
+                [
+                    round(monotonic() - started, 1),
+                    position.epoch_gps_seconds,
+                    position.position_type,
+                    position.valid,
+                    position.converged if ppp is not None else None,
+                    precision.horizontal_rms_m if precision else None,
+                    precision.up_std_m if precision else None,
+                    position.correction_age_s,
+                ]
+            )
+            sys.stdout.flush()
+            sleep(interval_s)
+except KeyboardInterrupt:
+    pass
+```
+
 ## Require sustained precision
 
 The command-line convergence summary checks the last epoch against its targets.

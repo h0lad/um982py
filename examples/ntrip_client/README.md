@@ -123,6 +123,28 @@ client uses password `none` if `NTRIP_PASSWORD` is unset. The wizard explicitly
 sets `none` for its RTK2go access option. See the [SNIP setup guide](https://www.use-snip.com/newusers/user_setup.html)
 and [RTK2go password guidance](https://github.com/tomojitakasu/RTKLIB_bin/issues/28).
 
+### Use a corrected rover
+
+Use the Python API with your caster URL and the receiver configured as a
+rover. Heading requires a valid dual-antenna baseline.
+
+```python
+from um982py import Rover
+
+with Rover.connect(
+    "/dev/ttyUSB0", 921600, ntrip_url="https://caster.example:443/MOUNT"
+) as rover:
+    for update in rover.poll_positions(interval=1, heading=True):
+        if update.position.valid:
+            print(update.position.latitude, update.position.longitude)
+            print(
+                "Heading:",
+                update.heading_deg,
+                "correction age:",
+                update.correction_age_s,
+            )
+```
+
 ## Read the result
 
 The client prints progress and the final summary to standard error. With

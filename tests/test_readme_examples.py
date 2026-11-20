@@ -32,10 +32,12 @@ SNIPPET_SOURCES = {
         ROOT / "README.md",
         ROOT / "examples/has_b2b_ppp_fix/README.md",
         ROOT / "examples/heading_attitude/README.md",
+        ROOT / "examples/ntrip_client/README.md",
+        ROOT / "examples/rinex_export/README.md",
         ROOT / "examples/satellite_monitor/README.md",
     )
     for title, code in re.findall(
-        r"^### ([^\n]+)\n(?:(?!^### ).)*?```python\n(.*?)```",
+        r"^#{2,6} ([^\n]+)\n(?:(?!^#{2,6} ).)*?^```python\n(.*?)^```",
         path.read_text(encoding="utf-8"),
         re.S | re.M,
     )
@@ -107,6 +109,21 @@ def test_readme_position(
         (2.4576**2 + 2.1854**2) ** 0.5
     )
     assert float(lines[3].split(": ")[1]) == pytest.approx(2.852)
+
+
+def test_readme_quick_start(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    _run_snippet(
+        "Quick start",
+        "bodies/BESTNAVA.bin",
+        b"BESTNAVA\r\n",
+        monkeypatch,
+        tmp_path,
+    )
+    assert capsys.readouterr().out == "52.53369589952 13.37633656974 SINGLE\n"
 
 
 def test_readme_corrected_rover(
