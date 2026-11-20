@@ -225,9 +225,9 @@ def run(main: Callable[[], int]) -> int:
 
 
 def add_receiver_arguments(
-    parser: argparse.ArgumentParser, *, antenna: bool = True
+    parser: argparse.ArgumentParser, *, antenna: bool = True, replay: bool = True
 ) -> None:
-    """Add the shared ``--port`` / ``--baud`` / ``--replay`` options."""
+    """Add connection options and optional antenna, replay and recording options."""
     parser.add_argument(
         "--port", default="/dev/ttyUSB0", help="serial device or tcp://host:port"
     )
@@ -259,20 +259,21 @@ def add_receiver_arguments(
         help="enable augmentation; signal group changes are saved by the receiver",
     )
     parser.add_argument(
-        "--replay",
-        type=Path,
-        default=None,
-        help="read captured bytes from a file instead of the device",
-    )
-    parser.add_argument(
         "--json", type=Path, default=None, help="write the result as JSON here"
     )
-    parser.add_argument(
-        "--record",
-        type=Path,
-        default=None,
-        help="save received wire bytes for replay without overwriting an existing file",
-    )
+    if replay:
+        parser.add_argument(
+            "--replay",
+            type=Path,
+            default=None,
+            help="read captured bytes from a file instead of the device",
+        )
+        parser.add_argument(
+            "--record",
+            type=Path,
+            default=None,
+            help="save received wire bytes for replay to a new file",
+        )
 
 
 def write_json(

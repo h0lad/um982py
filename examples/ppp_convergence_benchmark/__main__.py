@@ -238,7 +238,7 @@ def _parser() -> ExampleParser:
             "precision window, and optional reference error CDF."
         ),
     )
-    add_receiver_arguments(parser)
+    add_receiver_arguments(parser, replay=False)
     parser.add_argument(
         "--duration",
         type=float,
