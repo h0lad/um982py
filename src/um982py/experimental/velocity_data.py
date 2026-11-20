@@ -35,6 +35,8 @@ class VelocityData:
     uncertainty_3d_mps: float
     clock_drift_mps: float | None = None
     """Additive range-rate bias with range rate = -Doppler * wavelength."""
+    velocity_std_ecef_mps: tuple[float, float, float] | None = None
+    """Standard deviations for the ECEF velocity components in X, Y, Z order."""
 
     @property
     def epoch_gps_seconds(self) -> float:
@@ -63,7 +65,13 @@ def decode_velocity_data(message: Message) -> VelocityData:
     if not math.isfinite(uncertainty) or any(value < 0 for value in deviations):
         raise ProtocolError("Invalid VELDATAB velocity uncertainty")
     return VelocityData(
-        message, week, milliseconds, (vx, vy, vz), uncertainty, -native_clock_drift
+        message,
+        week,
+        milliseconds,
+        (vx, vy, vz),
+        uncertainty,
+        -native_clock_drift,
+        deviations,
     )
 
 

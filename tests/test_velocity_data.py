@@ -36,6 +36,7 @@ def test_velocity_data_uses_native_vector_and_payload_epoch() -> None:
     assert velocity.milliseconds_of_week == 463976125
     assert velocity.epoch_gps_seconds == 2445 * 604800 + 463976.125
     assert velocity.velocity_ecef_mps == (-0.005, 0.008, -0.006)
+    assert velocity.velocity_std_ecef_mps == (0.3, 0.4, 1.2)
     assert velocity.uncertainty_3d_mps == pytest.approx(1.3)
     assert velocity.clock_drift_mps == -0.875
     assert command.text == "VELDATAB COM2"

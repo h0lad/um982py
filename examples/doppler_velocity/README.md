@@ -43,9 +43,9 @@ independent accuracy check.
 
 The experimental `VELDATAB` API returns the receiver's native ECEF velocity
 vector in metres per second and its measurement epoch in GPS seconds.
-`uncertainty_3d_mps` is the root-sum-square of the velocity standard
-deviations. The vector and total variance were verified against simultaneous
-`DOPPVELB` and `BESTNAVB` reports on a UM982.
+`velocity_std_ecef_mps` gives the X, Y and Z standard deviations, and
+`uncertainty_3d_mps` is their root-sum-square. These values were checked against
+simultaneous `DOPPVELB`, `BESTNAVXYZB` and `BESTNAVB` reports on a UM982.
 
 `clock_drift_mps` is the additive receiver clock term in the corrected
 range-rate model, with range rate equal to negative Doppler times the carrier
@@ -60,7 +60,7 @@ from um982py.experimental import velocity_data_read
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
     sample = receiver.execute(velocity_data_read())
     print(sample.epoch_gps_seconds, sample.velocity_ecef_mps)
-    print(sample.uncertainty_3d_mps, sample.clock_drift_mps)
+    print(sample.velocity_std_ecef_mps, sample.clock_drift_mps)
 ```
 
 ## References
