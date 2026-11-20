@@ -182,8 +182,8 @@ def _parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--l2c-code",
-        choices=("2S", "2L", "2X"),
-        help="choose a RINEX component for type-9 L2C, otherwise omitted as unverified",
+        choices=("2S", "2L", "2X", "omit"),
+        help="type-9 L2C component (default: inferred 2S; omit excludes it)",
     )
     parser.add_argument(
         "--record", type=Path, help="save live received bytes (new file)"

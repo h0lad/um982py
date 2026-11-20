@@ -67,11 +67,16 @@ def tracking_signal(
     glonass_channel: int | None = None,
     l2c_code: str | None = None,
 ) -> TrackingSignal | None:
-    """Identify the signal in a tracking-status word, or return None."""
+    """Identify a tracking signal; type-9 L2C defaults to inferred L2C-M.
+
+    The manufacturer documents L2C but not its component. RTKLIB and SatPulse
+    interpret it as L2C-M. Pass ``l2c_code="omit"`` to leave it unidentified,
+    or an explicit RINEX code to override the inference.
+    """
     if not 0 <= status <= 0xFFFFFFFF:
         raise ValueError("tracking status must be a u32")
-    if l2c_code not in (None, "2S", "2L", "2X"):
-        raise ValueError("l2c_code must be 2S, 2L, 2X or None")
+    if l2c_code not in (None, "2S", "2L", "2X", "omit"):
+        raise ValueError("l2c_code must be 2S, 2L, 2X, omit or None")
     if glonass_channel is not None and not -7 <= glonass_channel <= 6:
         raise ValueError("GLONASS FDMA channel must be in -7..6")
     system, signal = (status >> 16) & 7, (status >> 21) & 31
@@ -80,7 +85,8 @@ def tracking_signal(
         return None
     name, code, mhz = definition
     if system in (0, 5) and signal == 9 and status & _L2C_COMPONENT_BIT:
-        name, code = "L2C (component unspecified)", l2c_code or ""
+        name = "L2C (component unspecified)"
+        code = "" if l2c_code == "omit" else l2c_code or "2S"
     if system == 5 and signal == 9 and not status & _L2C_COMPONENT_BIT:
         code = ""
     if system == 6 and signal == 14:

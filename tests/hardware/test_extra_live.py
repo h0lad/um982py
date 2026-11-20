@@ -161,8 +161,13 @@ def test_live_both_antenna_carriers_and_doctor(
                 -row.real("doppler") * 299792458 / frequency
             )
         exported = export_rinex(capture.records[name])
-        assert exported.omitted["unverified_l2c_component"] > 0
-        assert "L2S" in export_rinex(capture.records[name], l2c_code="2S").text
+        assert "L2S" in exported.text
+        assert (
+            export_rinex(capture.records[name], l2c_code="omit").omitted[
+                "unverified_l2c_component"
+            ]
+            > 0
+        )
         results[name] = {
             "raw_count": record.integer("count"),
             "valid_samples": len(samples),

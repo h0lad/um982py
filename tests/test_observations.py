@@ -23,7 +23,12 @@ def test_replayed_observations_provide_quality_and_rinex() -> None:
     exported = observations.to_rinex(marker_name="FIELD01")
     assert exported.epochs == 26
     assert "FIELD01" in exported.text
-    assert exported.omitted["unverified_l2c_component"] == 104
+    assert "C2S" in exported.text
+    assert "component unverified" in exported.text
+    assert (
+        observations.to_rinex(l2c_code="omit").omitted["unverified_l2c_component"]
+        == 104
+    )
 
 
 def test_record_observations_restores_subscription(

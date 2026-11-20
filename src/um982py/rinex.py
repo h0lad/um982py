@@ -132,7 +132,13 @@ def _collect_epochs(
             observation = range_observation(native, record.name)
             status = observation.integer("tracking_status")
             signal = tracking_signal(status, l2c_code=l2c_code)
-            if signal is not None and not signal.rinex_code and signal.signal == 9:
+            if (
+                signal is not None
+                and not signal.rinex_code
+                and signal.system in (0, 5)
+                and signal.signal == 9
+                and status & (1 << 26)
+            ):
                 omitted["unverified_l2c_component"] += 1
                 continue
             if signal is not None and signal.system == 5 and signal.signal == 0:
@@ -261,7 +267,9 @@ def _header_lines(
         lines.append(
             _header(f"Input week scale supplied by caller: {week_scale}", "COMMENT")
         )
-    if l2c_code is not None:
+    if l2c_code is None and any("C2S" in codes.get(s, ()) for s in ("G", "J")):
+        lines.append(_header("Type-9 L2C 2S inferred; component unverified", "COMMENT"))
+    elif l2c_code is not None and l2c_code != "omit":
         lines.append(
             _header(f"Type-9 L2C attribute supplied by caller: {l2c_code}", "COMMENT")
         )
@@ -384,6 +392,8 @@ def export_rinex(
     carrier phase because the stored phase is modulo and its ambiguity has not
     been independently resolved. ``unresolved_compressed_phase`` counts them.
     Records with conflicting receiver/session/antenna source tags are rejected.
+    Type-9 L2C defaults to inferred 2S, not manufacturer-verified. Set
+    ``l2c_code="omit"`` to exclude it, or pass an explicit component code.
     ``created_at`` must be timezone-aware; supply it for reproducible headers.
     The default is the current UTC time, not the observation epoch.
     """

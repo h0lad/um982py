@@ -569,8 +569,8 @@ def main() -> int:
     record.add_argument("--retry-max-seconds", type=float, default=30)
     record.add_argument(
         "--l2c-code",
-        choices=("2S", "2L", "2X"),
-        help="L2C RINEX code only when independently established for the receiver",
+        choices=("2S", "2L", "2X", "omit"),
+        help="type-9 L2C component (default: inferred 2S; omit excludes it)",
     )
     download = sub.add_parser(
         "download", help="download CODE orbit, clock, bias and navigation products"

@@ -281,8 +281,8 @@ def _parser() -> ExampleParser:
     )
     parser.add_argument(
         "--l2c-code",
-        choices=("2S", "2L", "2X"),
-        help="independently identified L2C component for RINEX",
+        choices=("2S", "2L", "2X", "omit"),
+        help="type-9 L2C component (default: inferred 2S; omit excludes it)",
     )
     return parser
 

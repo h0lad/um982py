@@ -82,7 +82,7 @@ def _build_parser() -> ExampleParser:
         action="store_true",
         help="verbose server logging to stderr",
     )
-    parser.add_argument("--l2c-code", choices=("2S", "2L", "2X"))
+    parser.add_argument("--l2c-code", choices=("2S", "2L", "2X", "omit"))
     return parser
 
 

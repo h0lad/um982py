@@ -119,6 +119,15 @@ processing because RANGE lacks marker coordinates.
 
 ## Understanding the result
 
+For GPS and QZSS signal type 9 with the L2C flag set, the exporter defaults to
+`2S` (L2C-M), following the [RTKLIB Unicore decoder](https://github.com/rtklibexplorer/RTKLIB/blob/demo5/src/rcv/unicore.c)
+and [SatPulse](https://github.com/jclark/satpulse/blob/d513735b40ca/gps/lib/uncmsg/rinex.go).
+Unicore documents the signal as L2C without specifying the component, so this
+is an inference, not manufacturer verification. The RINEX header marks it as
+unverified. Use `--l2c-code omit` to exclude it, or provide `2S`, `2L` or
+`2X` when the component is established for the receiver. Keep the raw capture
+for reprocessing if the mapping is subsequently confirmed or revised.
+
 Code and carrier phase validity are handled separately: unavailable observables
 are blank, while valid values from the same signal can still be exported. Doppler
 is left blank when carrier phase is invalid. The `invalid_code_or_phase` count

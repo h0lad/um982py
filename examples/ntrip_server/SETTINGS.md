@@ -85,7 +85,7 @@ below so the RINEX header identifies the station unambiguously.
 | `--receiver-firmware` | none | required in survey mode | 1..20 ASCII characters. |
 | `--approx-position` | none | required in survey mode | Approximate marker position as Earth-centred X, Y and Z in metres, used in the RINEX file header. See [rough position](SURVEY.md#2-obtain-a-rough-position). |
 | `--antenna-hen` | none | required in survey mode | Three measured distances in metres **from marker to antenna reference point**, in height/east/north order. Height is vertical and non-negative (`0..100`), while east and north are signed (`-100..100`). [How to measure them](SURVEY.md#what---antenna-hen-h-e-n-means). |
-| `--l2c-code` | none | optional | `2S`, `2L` or `2X` for a known type-9 L2C, leaving omitted values unreported. |
+| `--l2c-code` | inferred `2S` | optional | Override type-9 L2C with `2S`, `2L` or `2X`, or use `omit` to exclude the unverified component. |
 
 ## Station manifest
 

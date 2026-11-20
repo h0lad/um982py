@@ -398,10 +398,9 @@ def test_readme_rinex(
     assert isinstance(result, RinexExport)
     assert result.epochs == 26
     assert result.satellite_records == 898
-    assert result.signal_observations == 1524
+    assert result.signal_observations == 1628
     assert result.omitted == {
         "invalid_code_or_phase": 719,
-        "unverified_l2c_component": 104,
     }
     assert transport.closed
     assert ("RANGEB", Port.COM1) not in transport.subscriptions

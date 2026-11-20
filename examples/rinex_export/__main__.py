@@ -78,7 +78,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="print live capture updates to stderr",
     )
-    parser.add_argument("--l2c-code", choices=("2S", "2L", "2X"))
+    parser.add_argument("--l2c-code", choices=("2S", "2L", "2X", "omit"))
     parser.add_argument("--secondary", action="store_true")
     parser.add_argument("--secondary-output", type=Path)
     parser.add_argument("--secondary-marker", default="UM982-SLAVE")
@@ -199,6 +199,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             "receiver_configuration": None,
             "receiver_configuration_note": "not read or verified by this export",
             "l2c_code_supplied_by_user": args.l2c_code,
+            "type9_l2c_policy": (
+                "inferred_2S" if args.l2c_code is None else args.l2c_code
+            ),
         },
         "files": [
             {

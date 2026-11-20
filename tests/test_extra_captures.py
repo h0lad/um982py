@@ -74,8 +74,11 @@ def test_real_ascii_ff_matches_binary_flag(name: str) -> None:
 def test_l2_discriminator_and_glonass_channel_are_not_l1() -> None:
     assert tracking_signal(9 << 21).frequency_hz == 1227600000  # type: ignore[union-attr]
     l2 = tracking_signal((9 << 21) | (1 << 26))
-    assert l2 is not None and l2.rinex_code == ""
+    assert l2 is not None and l2.rinex_code == "2S"
     assert tracking_signal((9 << 21) | (1 << 26), l2c_code="2S").rinex_code == "2S"  # type: ignore[union-attr]
+    assert tracking_signal((9 << 21) | (1 << 26), l2c_code="omit").rinex_code == ""  # type: ignore[union-attr]
+    assert tracking_signal((5 << 16) | (9 << 21) | (1 << 26)).rinex_code == "2S"  # type: ignore[union-attr]
+    assert tracking_signal((5 << 16) | (9 << 21)).rinex_code == ""  # type: ignore[union-attr]
     glo = tracking_signal(1 << 16, glonass_channel=-7)
     assert glo is not None and glo.frequency_hz == 1598062500
     unknown_frequency = tracking_signal(1 << 16)
@@ -100,9 +103,11 @@ def test_live_captures_include_supported_systems_and_allow_gps_selection(
     assert l2
     export = export_rinex((record,))
     assert export.signal_observations > len(gps)
-    assert export.omitted["unverified_l2c_component"] > 0
-    explicit = export_rinex((record,), l2c_code="2S")
-    assert "C2S" in explicit.text and "L2S" in explicit.text
+    assert "C2S" in export.text and "component unverified" in export.text
+    conservative = export_rinex((record,), l2c_code="omit")
+    assert conservative.omitted["unverified_l2c_component"] > 0
+    explicit = export_rinex((record,), l2c_code="2L")
+    assert "C2L" in explicit.text and "L2L" in explicit.text
     assert "supplied by caller" in explicit.text
     assert "GLONASS SLOT / FRQ #" in export.text
     assert "C5P" in export.text

@@ -82,9 +82,9 @@ later reprocessing.
 
 The export does not verify the receiver's signal configuration. Inspect the
 RINEX GPS observation types for usable L1 and L2 code and carrier phase. The
-exporter omits an L2C component if its RINEX code is unverified. Only supply
-`--l2c-code 2S`, `2L` or `2X` if you have independently established the correct
-component. See the [RINEX export guide](../rinex_export/README.md).
+exporter defaults type-9 L2C to an inferred, unverified `2S` component. Use
+`--l2c-code omit` to exclude it or supply `2S`, `2L` or `2X` for an
+independently established component. See the [RINEX export guide](../rinex_export/README.md).
 
 To regenerate an observation file, use the saved raw capture and the same
 metadata. Include any independently established L2C setting:
