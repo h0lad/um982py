@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Mapping, Sequence
+from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 
 from um982py.experimental import CompressedObservation
@@ -47,20 +47,24 @@ class AuditSummary:
 
 
 def agree_epoch(
-    range_lookup: Mapping[int, Record],
+    observations: Sequence[Record],
     compressed: Sequence[CompressedObservation],
     *,
     range_bytes: int,
     compressed_bytes: int,
 ) -> EpochAgreement:
-    """Match compressed observations by tracking status and score residuals."""
+    """Match compressed observations by PRN and tracking status."""
+    range_lookup = {
+        (row.integer("prn"), row.integer("tracking_status")): row
+        for row in observations
+    }
     worst_pseudorange = 0.0
     worst_doppler = 0.0
     worst_phase: float | None = None
     matched = 0
     saturated = 0
     for observation in compressed:
-        reference = range_lookup.get(observation.tracking_status)
+        reference = range_lookup.get((observation.prn, observation.tracking_status))
         if reference is None:
             continue
         matched += 1

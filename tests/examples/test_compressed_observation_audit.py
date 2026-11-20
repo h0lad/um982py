@@ -23,11 +23,14 @@ def observation(
     pseudorange: float,
     doppler: float,
     phase: float,
+    *,
+    prn: int = 7,
 ) -> Record:
     """Build one synthetic RANGE observation record."""
     return Record(
         "observation",
         (
+            ("prn", prn),
             ("tracking_status", status),
             ("pseudorange", pseudorange),
             ("doppler", doppler),
@@ -42,11 +45,13 @@ def compressed(
     doppler: float,
     phase: float | None,
     saturated: bool = False,
+    *,
+    prn: int = 7,
 ) -> CompressedObservation:
     """Build one synthetic compressed observation."""
     return CompressedObservation(
         tracking_status=status,
-        prn=7,
+        prn=prn,
         doppler_hz=doppler,
         pseudorange_m=pseudorange,
         carrier_phase_cycles=phase,
@@ -60,19 +65,11 @@ def compressed(
     )
 
 
-def lookup(*observations: Record) -> dict[int, Record]:
-    """Index synthetic observations by tracking status."""
-    return {
-        observation.integer("tracking_status"): observation
-        for observation in observations
-    }
-
-
 def test_shared_status_scores_residuals() -> None:
     reference = observation(0x43, 20234567.125, -1234.5, -98765432.0)
     compressed_observation = compressed(0x43, 20234567.1, -1234.4, -98765431.9)
     agreement = agree_epoch(
-        lookup(reference),
+        (reference,),
         (compressed_observation,),
         range_bytes=1000,
         compressed_bytes=600,
@@ -88,7 +85,7 @@ def test_shared_status_scores_residuals() -> None:
 
 def test_unknown_status_counts_as_unmatched() -> None:
     agreement = agree_epoch(
-        lookup(observation(0x43, 20234567.0, 0.0, 0.0)),
+        (observation(0x43, 20234567.0, 0.0, 0.0),),
         (compressed(0x44, 20234567.0, 0.0, 0.0),),
         range_bytes=100,
         compressed_bytes=60,
@@ -100,7 +97,7 @@ def test_unknown_status_counts_as_unmatched() -> None:
 def test_missing_phase_skips_the_phase_residual() -> None:
     reference = observation(0x43, 20234567.0, 0.0, -100.0)
     agreement = agree_epoch(
-        lookup(reference),
+        (reference,),
         (compressed(0x43, 20234567.0, 0.0, None),),
         range_bytes=100,
         compressed_bytes=60,
@@ -116,20 +113,20 @@ def test_saturated_cn0_counts_separately() -> None:
         compressed(0x43, 20234567.0, 0.0, 0.0, saturated=True),
     )
     agreement = agree_epoch(
-        lookup(reference), observations, range_bytes=100, compressed_bytes=60
+        (reference,), observations, range_bytes=100, compressed_bytes=60
     )
     assert agreement.saturated_cn0 == 1
 
 
 def test_summary_combines_epochs_with_wire_ratio() -> None:
     first = agree_epoch(
-        lookup(observation(0x43, 20234567.0, 0.0, 0.0)),
+        (observation(0x43, 20234567.0, 0.0, 0.0),),
         (compressed(0x43, 20234567.05, 0.02, 0.03),),
         range_bytes=1000,
         compressed_bytes=600,
     )
     second = agree_epoch(
-        lookup(observation(0x44, 20234568.0, 1.0, 1.0)),
+        (observation(0x44, 20234568.0, 1.0, 1.0),),
         (compressed(0x44, 20234568.5, 1.5, None),),
         range_bytes=1000,
         compressed_bytes=600,
@@ -150,6 +147,23 @@ def test_empty_summary_has_zero_ratio() -> None:
     assert summary.matched == 0
     assert summary.worst_phase_cycles is None
     assert summary.ratio == pytest.approx(0.0)
+
+
+def test_same_status_from_different_satellites_keeps_both_observations() -> None:
+    agreement = agree_epoch(
+        (
+            observation(0x43, 20234567.0, 0.0, 0.0),
+            observation(0x43, 21234567.0, 0.0, 0.0, prn=9),
+        ),
+        (
+            compressed(0x43, 21234567.0, 0.0, 0.0, prn=9),
+            compressed(0x43, 20234567.0, 0.0, 0.0),
+        ),
+        range_bytes=100,
+        compressed_bytes=60,
+    )
+    assert agreement.matched == 2
+    assert agreement.worst_pseudorange_m == 0
 
 
 def test_replay_pairs_shared_receiver_epochs(

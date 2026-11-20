@@ -23,7 +23,7 @@ from um982py.capture import epoch_seconds, iter_frames
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
 from um982py.experimental import decode_rangecmp, rangecmp_output
-from um982py.messages import BinaryMessage, Record
+from um982py.messages import BinaryMessage
 from um982py.subscriptions import temporary_subscriptions
 
 _RANGE_ID = 43
@@ -96,13 +96,6 @@ def _split_replayed_range_frames(
     return range_frames, compressed_frames
 
 
-def _observations_by_tracking_status(record: Record) -> dict[int, Record]:
-    return {
-        observation.integer("tracking_status"): observation
-        for observation in record.records("observations")
-    }
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     """Compare RANGECMP reconstructions with RANGE over shared epochs."""
     parser = _parser()
@@ -126,7 +119,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         compressed = decode_rangecmp(compressed_frame)
         epochs.append(
             agree_epoch(
-                _observations_by_tracking_status(reference),
+                reference.records("observations"),
                 compressed.observations,
                 range_bytes=len(range_frame.raw),
                 compressed_bytes=len(compressed_frame.raw),
