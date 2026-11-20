@@ -12,10 +12,11 @@ import pytest
 from um982py import AsyncReceiver, Receiver
 from um982py._receiver_state import ordered_log_list, receiver_state
 from um982py.commands import Log, configuration, logging, queries
-from um982py.commands.core import action
+from um982py.commands.catalog import RTCM_LOGS
+from um982py.commands.core import action, normalize
 from um982py.commands.types import NmeaVersion, Trigger
-from um982py.errors import CommandRejected, ResponseTimeout, UM982Error
-from um982py.messages import AsciiHeader, AsciiMessage, Fix, Sentence
+from um982py.errors import CommandRejected, ProtocolError, ResponseTimeout, UM982Error
+from um982py.messages import AsciiHeader, AsciiMessage, CommandResponse, Fix, Sentence
 from um982py.receiver_queries import firmware_info
 
 pytestmark = pytest.mark.hardware
@@ -65,30 +66,56 @@ def test_identity(receiver: Receiver, report: dict[str, object]) -> None:
 
 
 def test_firmware_queries(receiver: Receiver, report: dict[str, object]) -> None:
-    results = []
-    # Query diagnostics before epoch-driven RANGE logs.
-    for log in sorted(Log, key=lambda log: log != Log.HEADINGOFFSET):
+    results: dict[str, object] = {}
+    failures = {}
+    report["firmware_queries"] = results
+    for log in Log:
         for binary in (False, True):
-            if log == Log.RXSTATUS and binary:
+            if binary and log.definition.binary_command is None:
+                continue
+            name = log.wire_name(binary=binary)
+            if binary and name == log.wire_name():
+                continue
+            if log.onchanged_only:
+                results[name] = "requires ONCHANGED output"
                 continue
             command = log.read(binary=binary)
-            sys.stderr.write(f"  query {log.wire_name(binary=binary)}\n")
-            sys.stderr.flush()
-            bodies = (
-                receiver.collect(command)
-                if log == Log.SATVIS2
-                else (receiver.execute(command),)
-            )
+            receiver.drain_pending()
+            try:
+                bodies = (
+                    receiver.collect(command, timeout=2)
+                    if log == Log.SATVIS2
+                    else (receiver.execute(command, timeout=2),)
+                )
+            except CommandRejected as error:
+                results[name] = {"rejected": error.response}
+                continue
+            except ResponseTimeout:
+                acknowledged = any(
+                    isinstance(message, CommandResponse)
+                    and message.accepted
+                    and normalize(message.command) == normalize(command.text)
+                    for message in receiver.drain_pending()
+                )
+                results[name] = {"no_data": True, "acknowledged": acknowledged}
+                continue
+            except ProtocolError as error:
+                failures[name] = results[name] = str(error)
+                continue
             for body in bodies:
-                assert body.name == log.value
+                if log.value in RTCM_LOGS:
+                    assert body.name == "RTCM"
+                    assert body.integer("message_type") == log.definition.message_id
+                elif isinstance(body.message, Sentence):
+                    assert body.name == body.message.name
+                else:
+                    assert body.name == log.value
                 if log in (Log.RANGE, Log.RANGEH):
                     assert len(body.records("observations")) == body.integer("count")
                 if log in (Log.SATVIS, Log.SATVIS2):
                     assert len(body.records("satellites")) == body.integer("count")
-            if log == Log.SATVIS2:
-                report[log.wire_name(binary=binary) + "_frames"] = len(bodies)
-            results.append(log.wire_name(binary=binary))
-    report["firmware_queries"] = results
+            results[name] = {"decoded": len(bodies)}
+    assert not failures
 
 
 def test_firmware_logging(receiver: Receiver, report: dict[str, object]) -> None:
