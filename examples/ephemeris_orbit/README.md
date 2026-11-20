@@ -58,8 +58,11 @@ from um982py import Log, Receiver
 
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
     for row in receiver.collect(Log.GLOALMANAC.read(binary=True)):
-        print(row.integer("satellite_id"), row.integer("frequency_channel"),
-              row.integer("health"))
+        print(
+            row.integer("satellite_id"),
+            row.integer("frequency_channel"),
+            row.integer("health"),
+        )
 ```
 
 ## References
