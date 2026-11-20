@@ -270,6 +270,42 @@ python -m mypy
 python -m pytest
 ```
 
+### Live receiver validation
+
+1. Record the receiver build, baud, receiver COM port, mode, signal groups,
+   masks and subscriptions. Record which antenna and cable feed each input.
+   Keep both antennas fixed and give the receiver an unobstructed view of the
+   sky. Compare the receiver configuration and subscriptions before and after
+   each run.
+2. Run the hardware suite for command replies, ASCII and binary decoding,
+   async access, position acquisition, temporary settings, dual-antenna
+   diagnostics and baseband logs. Track frame errors and delivered output
+   during the soak.
+3. Record and replay both antenna inputs at 1 Hz, then at the intended output
+   rate. Check distinct epochs, gaps and RINEX output. Compare C/N₀, carrier
+   lock and common signals at matched epochs. A nearby helix and patch have
+   separate phase centers and may use different signal groups. Measure the
+   baseline length and orientation before checking heading accuracy.
+4. Run the offline tests for exchanges with TCP/NTRIP peers, failure recovery,
+   numerical workflows and independent reference data. Exercise reconnects
+   through a TCP-to-serial gateway by closing the client connection during
+   streaming. To validate live RTK, PPP or PPK accuracy, supply the
+   corresponding corrections, reference data and surveyed coordinates. Use a
+   timing reference for PPS accuracy and a measured trajectory for motion and
+   dynamic heading. Exercise receiver reset and physical disconnect in a
+   separate run with a saved configuration.
+
+```bash
+report_dir=$(mktemp -d)
+python -m pytest tests/hardware -m hardware --hardware-port /dev/ttyUSB0 \
+    --hardware-baud 921600 --acquisition-seconds 45 --soak-seconds 60 \
+    --hardware-report "$report_dir/hardware-report.json"
+```
+
+Keep the reports and captures local if they contain positions or receiver
+identifiers. See the [test recording guide](tools/test_data_recorder/README.md)
+and the [paired antenna example](examples/dual_antenna_rf_audit/README.md).
+
 ## License
 
 AGPLv3
