@@ -303,9 +303,13 @@ def test_acquisition(
     end = monotonic() + request.config.getoption("--acquisition-seconds")
     fix = receiver.execute(queries.fix())
     while not fix.valid and monotonic() < end:
-        message = receiver.receive(timeout=3)
-        if isinstance(message, Sentence) and message.kind == "GGA":
-            fix = Fix.from_message(message)
+        try:
+            message = receiver.receive(timeout=3)
+        except ResponseTimeout:
+            fix = receiver.execute(queries.fix())
+        else:
+            if isinstance(message, Sentence) and message.kind == "GGA":
+                fix = Fix.from_message(message)
     report["acquisition"] = {
         "valid": fix.valid,
         "quality": fix.quality,
