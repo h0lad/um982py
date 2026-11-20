@@ -36,7 +36,6 @@ def test_source_distribution_contains_examples(tmp_path: Path) -> None:
             assert path.relative_to(project).as_posix() in names
     assert "src/um982py/py.typed" in names
     assert "README.md" in names
-    assert "ARCHITECTURE.md" in names
     assert "examples/_console.py" in names
     assert "examples/_console_capture.py" in names
     with zipfile.ZipFile(next(tmp_path.glob("*.whl"))) as wheel:
