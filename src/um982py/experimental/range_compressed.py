@@ -3,6 +3,7 @@
 from dataclasses import dataclass
 from struct import unpack_from
 
+from um982py.antenna import antenna_index
 from um982py.commands import logging
 from um982py.commands.core import Command
 from um982py.commands.types import Port, Trigger
@@ -19,7 +20,11 @@ __all__ = [
     "rangecmp_stop",
 ]
 
-_MESSAGE_ID = 140
+_BINARY_LOGS = {1: ("RANGECMPB", 140), 2: ("RANGECMPHB", 2111)}
+_BINARY_ANTENNAS = {
+    message_id: antenna for antenna, (_, message_id) in _BINARY_LOGS.items()
+}
+_ASCII_ANTENNAS = {"RANGECMPA": 1, "RANGECMPHA": 2}
 _ENTRY_SIZE = 24
 _HEX_ENTRY_SIZE = 48
 _MAX_OBSERVATIONS = 256
@@ -74,6 +79,7 @@ class CompressedRange:
 
     message: Message
     observations: tuple[CompressedObservation, ...]
+    antenna: int = 1
 
 
 def _unsigned_bits(raw: int, offset: int, width: int) -> int:
@@ -178,31 +184,43 @@ def _decode_ascii_entries(fields: tuple[str, ...]) -> tuple[int, ...]:
 
 
 def decode_rangecmp(message: Message) -> CompressedRange:
-    """Decode a binary or ASCII RANGECMP frame into compressed observations."""
+    """Decode a binary or ASCII RANGECMP or RANGECMPH frame."""
     if isinstance(message, BinaryMessage):
-        if message.header.message_id != _MESSAGE_ID:
-            raise ProtocolError("Expected RANGECMPB message ID 140")
+        binary_antenna = _BINARY_ANTENNAS.get(message.header.message_id)
+        if binary_antenna is None:
+            raise ProtocolError(
+                "Expected RANGECMPB message ID 140 or RANGECMPHB ID 2111"
+            )
+        antenna = binary_antenna
         raws = _decode_binary_entries(message.payload)
-    elif isinstance(message, AsciiMessage) and message.name == "RANGECMPA":
+    elif isinstance(message, AsciiMessage) and message.name in _ASCII_ANTENNAS:
+        antenna = _ASCII_ANTENNAS[message.name]
         raws = _decode_ascii_entries(message.fields)
     else:
         raise ProtocolError("Expected a RANGECMP frame")
-    return CompressedRange(message, tuple(_decode_entry(raw) for raw in raws))
+    return CompressedRange(message, tuple(_decode_entry(raw) for raw in raws), antenna)
 
 
-def rangecmp_read(*, port: Port | None = None) -> Command[CompressedRange]:
-    """Request one binary RANGECMP frame."""
-    request = logging.request("RANGECMPB", port=port, message_id=_MESSAGE_ID)
+def rangecmp_read(
+    *, antenna: int | str = 1, port: Port | None = None
+) -> Command[CompressedRange]:
+    """Request one binary compressed observation frame for the selected antenna."""
+    name, message_id = _BINARY_LOGS[antenna_index(antenna)]
+    request = logging.request(name, port=port, message_id=message_id)
     return Command(request.text, request.matches, decode_rangecmp)
 
 
 def rangecmp_output(
-    interval: float | Trigger = 1, *, port: Port | None = None
+    interval: float | Trigger = 1, *, antenna: int | str = 1, port: Port | None = None
 ) -> Command[CommandResponse]:
-    """Subscribe to binary compressed observations."""
-    return logging.output("RANGECMPB", interval, port=port)
+    """Subscribe to binary compressed observations for the selected antenna."""
+    name, _ = _BINARY_LOGS[antenna_index(antenna)]
+    return logging.output(name, interval, port=port)
 
 
-def rangecmp_stop(*, port: Port | None = None) -> Command[CommandResponse]:
+def rangecmp_stop(
+    *, antenna: int | str = 1, port: Port | None = None
+) -> Command[CommandResponse]:
     """Stop a previously started compressed observation subscription."""
-    return logging.stop("RANGECMPB", port=port)
+    name, _ = _BINARY_LOGS[antenna_index(antenna)]
+    return logging.stop(name, port=port)

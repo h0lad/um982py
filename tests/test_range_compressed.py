@@ -3,8 +3,15 @@
 import pytest
 
 from test_protocol import binary
+from um982py.commands import Port
 from um982py.errors import ProtocolError
-from um982py.experimental import CompressedRange, decode_rangecmp
+from um982py.experimental import (
+    CompressedRange,
+    decode_rangecmp,
+    rangecmp_output,
+    rangecmp_read,
+    rangecmp_stop,
+)
 from um982py.experimental.range_compressed import _PSRSTD
 from um982py.messages import AsciiMessage, OemAsciiHeader
 from um982py.protocol import StreamDecoder
@@ -177,7 +184,12 @@ def test_cn0_saturation_is_flagged_at_both_ends() -> None:
     assert (second.cn0_db_hz, second.cn0_saturated) == (51, True)
 
 
-def test_ascii_hex_entries_decode_like_binary() -> None:
+@pytest.mark.parametrize(
+    "antenna,name,message_id", [(1, "RANGECMPA", 140), (2, "RANGECMPHA", 2111)]
+)
+def test_ascii_hex_entries_decode_like_binary(
+    antenna: int, name: str, message_id: int
+) -> None:
     entry = pack_entry(
         status=STATUS_L5,
         prn=21,
@@ -186,15 +198,35 @@ def test_ascii_hex_entries_decode_like_binary() -> None:
         phase_cycles=-24123456.75 * L5_HZ / LIGHT_SPEED + 1.1,
         frequency_hz=L5_HZ,
     )
-    binary_observation = decode_frame(pack_frame((entry,))).observations[0]
+    (frame,) = StreamDecoder(strict=True).feed(
+        binary(pack_frame((entry,)), message_id=message_id)
+    )
+    compressed = decode_rangecmp(frame)
     hex_entry = entry.hex()
     message = AsciiMessage(
-        OemAsciiHeader("RANGECMPA", ()),
+        OemAsciiHeader(name, ()),
         ("1", hex_entry),
-        f"#RANGECMPA,1;1,{hex_entry}".encode(),
+        f"#{name},1;1,{hex_entry}".encode(),
     )
-    (ascii_observation,) = decode_rangecmp(message).observations
-    assert ascii_observation == binary_observation
+    ascii_range = decode_rangecmp(message)
+    assert ascii_range.antenna == compressed.antenna == antenna
+    assert ascii_range.observations == compressed.observations
+
+
+def test_secondary_rangecmp_routing() -> None:
+    data = pack_frame(())
+    frames = StreamDecoder(strict=True).feed(
+        binary(data, message_id=140) + binary(data, message_id=2111)
+    )
+    primary, secondary = frames
+    query = rangecmp_read(antenna="secondary", port=Port.COM2)
+    assert query.text == "RANGECMPHB COM2"
+    assert query.matches(secondary) and not query.matches(primary)
+    assert query.decode(secondary).antenna == 2
+    assert rangecmp_output(0.2, antenna=2, port=Port.COM2).text == "RANGECMPHB COM2 0.2"
+    assert rangecmp_stop(antenna=2, port=Port.COM2).text == "UNLOG COM2 RANGECMPHB"
+    with pytest.raises(ValueError, match="antenna"):
+        rangecmp_read(antenna=3)
 
 
 def test_wrong_message_id_is_rejected() -> None:
