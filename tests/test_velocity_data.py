@@ -25,7 +25,7 @@ def _frame(payload: bytes, message_id: int = 95) -> Message:
 def test_velocity_data_uses_native_vector_and_payload_epoch() -> None:
     payload = bytearray(120)
     pack_into("<HHI", payload, 0, 2445, 65535, 463976125)
-    pack_into("<4d", payload, 16, -0.005, 0.008, -0.006, 8.0)
+    pack_into("<4d", payload, 16, -0.005, 0.008, -0.006, 0.875)
     pack_into("<3d", payload, 48, 0.3, 0.4, 1.2)
     message = _frame(bytes(payload))
     command = velocity_data_read(port=Port.COM2)
@@ -37,6 +37,7 @@ def test_velocity_data_uses_native_vector_and_payload_epoch() -> None:
     assert velocity.epoch_gps_seconds == 2445 * 604800 + 463976.125
     assert velocity.velocity_ecef_mps == (-0.005, 0.008, -0.006)
     assert velocity.uncertainty_3d_mps == pytest.approx(1.3)
+    assert velocity.clock_drift_mps == -0.875
     assert command.text == "VELDATAB COM2"
     assert velocity_data_output(port=Port.COM2).text == "VELDATAB COM2 1"
     assert velocity_data_output(rate_hz=5).text == "VELDATAB 0.2"
@@ -48,6 +49,7 @@ def test_velocity_data_uses_native_vector_and_payload_epoch() -> None:
     [
         ("<I", 4, 604800000, "milliseconds of week"),
         ("<d", 24, float("nan"), "velocity"),
+        ("<d", 40, float("inf"), "clock drift"),
         ("<d", 48, -1.0, "uncertainty"),
         ("<d", 64, float("inf"), "uncertainty"),
     ],

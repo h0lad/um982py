@@ -47,13 +47,20 @@ vector in metres per second and its measurement epoch in GPS seconds.
 deviations. The vector and total variance were verified against simultaneous
 `DOPPVELB` and `BESTNAVB` reports on a UM982 running R4.10Build25164.
 
+`clock_drift_mps` is the additive receiver clock term in the corrected
+range-rate model, with range rate equal to negative Doppler times the carrier
+wavelength. It can be compared directly with the example's Doppler clock
+estimate. The sign and units were checked against simultaneous GPS L1
+`RANGEB` observations and broadcast ephemerides.
+
 ```python
 from um982py import Receiver
 from um982py.experimental import velocity_data_read
 
 with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
     sample = receiver.execute(velocity_data_read())
-    print(sample.epoch_gps_seconds, sample.velocity_ecef_mps, sample.uncertainty_3d_mps)
+    print(sample.epoch_gps_seconds, sample.velocity_ecef_mps)
+    print(sample.uncertainty_3d_mps, sample.clock_drift_mps)
 ```
 
 ## References
