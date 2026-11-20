@@ -43,7 +43,7 @@ class VelocityData:
 
 
 def decode_velocity_data(message: Message) -> VelocityData:
-    """Decode the fields verified on the UM982 R4.10Build25164."""
+    """Decode native Doppler velocity and clock drift from a VELDATAB frame."""
     if (
         not isinstance(message, BinaryMessage)
         or message.header.message_id != _MESSAGE_ID

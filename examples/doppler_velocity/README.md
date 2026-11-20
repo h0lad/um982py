@@ -45,7 +45,7 @@ The experimental `VELDATAB` API returns the receiver's native ECEF velocity
 vector in metres per second and its measurement epoch in GPS seconds.
 `uncertainty_3d_mps` is the root-sum-square of the velocity standard
 deviations. The vector and total variance were verified against simultaneous
-`DOPPVELB` and `BESTNAVB` reports on a UM982 running R4.10Build25164.
+`DOPPVELB` and `BESTNAVB` reports on a UM982.
 
 `clock_drift_mps` is the additive receiver clock term in the corrected
 range-rate model, with range rate equal to negative Doppler times the carrier

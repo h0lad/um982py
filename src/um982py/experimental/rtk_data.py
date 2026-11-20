@@ -30,7 +30,7 @@ _HEADING_ID = 6007
 _IDS = {215: "RTKDATA", 2027: "RTKDATA2", _HEADING_ID: "RTKDATAH"}
 _ENTRY = Struct("<III")
 _HEADER_SIZE = 108
-# Labels from the R4.10Build25164 RTKDATAHA formatter's ambiguity table.
+# These labels match the receiver's RTKDATAHA output.
 _HEADING_STATUS_LABELS = {
     0: "UNDEFINED",
     1: "L5_FLOAT",

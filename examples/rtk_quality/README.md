@@ -58,8 +58,7 @@ interpreting these fields. OEM-style message timestamps use GPS time.
 The experimental reader records the RTK engine covariance matrix and
 per-satellite states. Use `--heading` on the UM982 to inspect `RTKDATAHB`,
 including heading solution codes, float and integer ambiguity states, and
-reference satellites. Float and reference states were observed live. Integer
-labels come from the R4.10Build25164 firmware's ASCII formatter table.
+reference satellites. The status labels match the receiver's RTKDATAHA report.
 
 ```bash
 python -m examples.rtk_quality.engine_state --heading --port /dev/ttyUSB0 --baud 921600 \

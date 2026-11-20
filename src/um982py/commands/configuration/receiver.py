@@ -13,14 +13,14 @@ SIGNAL_GROUP_BANDS: dict[int, str] = {
     "GAL E1/E5a/E5b, QZSS L1C/A/L1S/L2C/L5, SBAS",
     2: "BDS B1I/B3I/B1C/B2a/B2b, GPS L1C/A/L1C/L2C/L2P(Y)/L5, "
     "GLO G1/G2/G3, GAL E1/E5a/E5b/E6, QZSS L1C/A/L1C/L1S/L2C/L5, NavIC L5, SBAS",
-    3: "BDS B1I/B3I/B2a/B2b-PPP (UM982 before Build23575 uses B1C instead of B2a), "
+    3: "BDS B1I/B3I/B2a/B2b-PPP (B1C or B2a on UM982), "
     "GPS L1C/A/L2C/L2P/L5, GLO G1/G2, GAL E1/E5a/E5b/E6, "
     "QZSS L1C/A/L1C/B/L1S/L2C/L5/L6E/L6D, SBAS, L-band "
     "(UM982 master, 20 Hz with supported firmware and logs; product dependent)",
     4: "BDS B1I/B2a/B3I, GPS L1C/A/L2C/L2P/L5, GLO G1/G2, GAL E1/E5a/E5b, "
     "QZSS L1C/A/L1C/B/L1S/L2C/L5, SBAS (firmware dependent)",
     5: "BDS B1I/B2a/B3I, GPS L1C/A/L2C/L2P, GLO G1/G2, GAL E1/E5b, "
-    "QZSS L1C/A/L1C/B/L2C (UM982 Build25164 and later do not support L2P)",
+    "QZSS L1C/A/L1C/B/L2C (GPS L2P availability varies on UM982)",
     6: "BDS B1I/B3I, GPS L1C/A/L2C, GAL E1/E5b, "
     "QZSS L1C/A/L1C/B/L2C (UM982 slave, 20 Hz; firmware dependent)",
     7: "BDS B1I/B3I/B1C/B2a/B2b, GPS L1C/A/L2C/L2P/L5, GLO G1/G2, "
