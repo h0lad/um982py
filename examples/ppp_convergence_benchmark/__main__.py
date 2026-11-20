@@ -25,6 +25,7 @@ from um982py.messages import Message
 from um982py.messages.enums import PositionType
 from um982py.messages.navigation import BestNavigation
 from um982py.quality import FixClass, classify
+from um982py.subscriptions import temporary_subscriptions
 
 
 def _parse_ecef(text: str) -> tuple[float, float, float]:
@@ -79,8 +80,10 @@ def _collect_epochs(
     counts: Counter[str] = Counter()
     last_epoch: float | None = None
 
-    with Receiver.connect(args.port, args.baud, timeout=args.timeout) as receiver:
-        receiver.execute(command)
+    with (
+        Receiver.connect(args.port, args.baud, timeout=args.timeout) as receiver,
+        temporary_subscriptions(receiver, (Log.BESTNAV.wire_name(), command)),
+    ):
         while time.monotonic() - started < args.duration:
             from um982py.errors import ResponseTimeout
 

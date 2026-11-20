@@ -17,10 +17,12 @@ def test_collection_rejects_non_ppp_and_duplicate_epochs(
 
     from um982py import Receiver
     from um982py.commands import Log
+    from um982py.commands.core import Command
     from um982py.errors import ResponseTimeout
     from um982py.messages.enums import PositionType, SolutionStatus
     from um982py.messages.navigation import BestNavigation
     from um982py.protocol.ascii import parse_ascii
+    from um982py.receiver_models import LogList
 
     data = Path("tests/fixtures/bodies/BESTNAVA.bin").read_bytes()
     base = BestNavigation.from_record(Log.BESTNAV.decode(parse_ascii(data)))
@@ -39,6 +41,8 @@ def test_collection_rejects_non_ppp_and_duplicate_epochs(
         ]
     )
 
+    commands = []
+
     class FakeReceiver:
         def __enter__(self) -> FakeReceiver:
             return self
@@ -46,8 +50,9 @@ def test_collection_rejects_non_ppp_and_duplicate_epochs(
         def __exit__(self, exc_type: object, exc: object, traceback: object) -> None:
             pass
 
-        def execute(self, command: object) -> None:
-            pass
+        def execute(self, command: Command[object]) -> LogList:
+            commands.append(command.text)
+            return LogList(())
 
         def receive(self, timeout: float) -> BestNavigation:
             try:
@@ -73,6 +78,7 @@ def test_collection_rejects_non_ppp_and_duplicate_epochs(
         reference_ecef=None,
     )
     epochs, first_fix, convergence, counts = cli._collect_epochs(args)
+    assert commands == ["LOGLISTA", "BESTNAVA 1", "UNLOG BESTNAVA"]
     assert len(epochs) == 2
     assert first_fix is not None and convergence is None
     assert counts == {
