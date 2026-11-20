@@ -2,6 +2,7 @@
 
 import json
 from pathlib import Path
+from struct import pack
 
 import pytest
 from examples.dual_antenna_rf_audit import (
@@ -11,6 +12,7 @@ from examples.dual_antenna_rf_audit import (
 )
 from examples.dual_antenna_rf_audit.__main__ import main
 
+from test_protocol import binary
 from tests.examples._new_api import observation, record, wire
 from um982py.messages import Record
 
@@ -92,6 +94,29 @@ def test_fdma_channel_change_prevents_pairing() -> None:
     first = record(0, [observation(system=1, channel=6)])
     second = record(0, [observation(system=1, channel=7)])
     assert not compare_antennas([first], [second]).pairs
+
+
+def test_rf_profile_replay_reports_both_groups_and_additional_agc(
+    tmp_path: Path,
+) -> None:
+    path, output = tmp_path / "dual.bin", tmp_path / "result.json"
+    fixtures = Path(__file__).resolve().parents[1] / "fixtures/captures"
+    path.write_bytes(
+        wire(0, [observation()])
+        + wire(0, [observation()], secondary=True)
+        + (fixtures / "ANT1GROUPB.bin").read_bytes()
+        + (fixtures / "ANT2GROUPB.bin").read_bytes()
+        + binary(pack("<10h", 37, 66, 51, 71, -1, 64, 82, -1, -1, -1), message_id=220)
+    )
+    assert main(["--replay", str(path), "--rf-profiles", "--json", str(output)]) == 0
+    result = json.loads(output.read_text())["rf_profiles"]
+    assert [(row["antenna"], row["group"]) for row in result["configured"]] == [
+        (1, 3),
+        (2, 6),
+    ]
+    (agc,) = result["agc_receiver_units"]
+    assert agc["ant1_additional"] == 71
+    assert agc["ant2_l5"] is None
 
 
 def test_signal_band_summary_aggregates_across_satellites() -> None:

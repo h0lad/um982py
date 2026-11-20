@@ -45,6 +45,10 @@ The report validates container checksums and decodes inner message 24 into
 the same fields as `PTOBSINFO`. Each tracking record includes the container
 sequence, native measurement tag and slot-write mask. The native tag is
 preserved as received. A set bit records that a channel wrote the slot.
+When inner message 23 is present, the report also exports its ten AGC words
+with the same container metadata. Python callers can use
+`um982py.experimental.decode_agc_message` to extract the words and
+`BasebandAgc.readings` to obtain the channels reported by the serial AGC log.
 
 Python callers can pass an inner frame from `RawBasebandPacket.messages` to
 `um982py.experimental.decode_tracking_message`, then use `tracking_slots`

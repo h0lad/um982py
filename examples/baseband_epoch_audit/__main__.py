@@ -17,9 +17,11 @@ from um982py.capture import decode_records
 from um982py.commands import Log
 from um982py.errors import ProtocolError
 from um982py.experimental import (
+    AGC_MESSAGE_ID,
     TRACKING_MESSAGE_ID,
     BasebandStream,
     capture_baseband_notices,
+    decode_agc_message,
     decode_tracking_message,
     scan_notices,
 )
@@ -33,6 +35,7 @@ def _replay_containers(raw: bytes) -> tuple[list[Record], dict[str, object]]:
     packets = stream.feed(raw)
     records = []
     tracking = []
+    agc = []
     errors = []
     for packet in packets:
         try:
@@ -41,9 +44,22 @@ def _replay_containers(raw: bytes) -> tuple[list[Record], dict[str, object]]:
             errors.append(f"Container {packet.sequence}: {error}")
             continue
         for index, message in enumerate(messages):
-            if message.message_id != TRACKING_MESSAGE_ID:
+            if message.message_id not in (AGC_MESSAGE_ID, TRACKING_MESSAGE_ID):
                 continue
+            provenance = {
+                "sequence": packet.sequence,
+                "measurement_sync_tag": packet.measurement_sync_tag,
+                "message_index": index,
+            }
             try:
+                if message.message_id == AGC_MESSAGE_ID:
+                    agc.append(
+                        {
+                            **provenance,
+                            "native_words": decode_agc_message(message).native_words,
+                        }
+                    )
+                    continue
                 record = decode_tracking_message(message)
             except ProtocolError as error:
                 errors.append(f"Container {packet.sequence}, message {index}: {error}")
@@ -51,9 +67,7 @@ def _replay_containers(raw: bytes) -> tuple[list[Record], dict[str, object]]:
             records.append(record)
             tracking.append(
                 {
-                    "sequence": packet.sequence,
-                    "measurement_sync_tag": packet.measurement_sync_tag,
-                    "message_index": index,
+                    **provenance,
                     "slot_write_mask": record.integer("field_11"),
                     "fields": dict(record),
                 }
@@ -61,6 +75,7 @@ def _replay_containers(raw: bytes) -> tuple[list[Record], dict[str, object]]:
     return records, {
         "validated_containers": len(packets),
         "tracking_messages": tracking,
+        "agc_messages": agc,
         "decoder_errors": errors,
         "discarded_bytes": stream.discarded,
         "pending_bytes": len(stream.pending),
@@ -125,8 +140,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             "discarded_bytes": decoder.discarded_bytes,
             "pending_bytes": len(decoder.pending),
         }
-    usable = len(result.native_tag_counts) >= 2 or any(
-        s.written_frames for s in result.slot_summaries
+    usable = (
+        bool(details.get("agc_messages"))
+        or len(result.native_tag_counts) >= 2
+        or any(s.written_frames for s in result.slot_summaries)
     )
     cleanup_failed = manifest is not None and not manifest["state_restored"]
     print(

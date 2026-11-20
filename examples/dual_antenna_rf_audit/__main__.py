@@ -23,8 +23,24 @@ from examples.dual_antenna_rf_audit import (
     summarize_by_signal,
 )
 from um982py.antenna import AntennaLog
+from um982py.capture import DataLog, record_epoch
 from um982py.commands import Log
 from um982py.diagnostics import signal_inventory
+from um982py.experimental.rf import AgcReadings, AntennaSignalProfile
+from um982py.messages import Record
+
+
+def _profile_row(record: Record) -> dict[str, object]:
+    profile = AntennaSignalProfile.from_record(record)
+    return {
+        "gps_epoch_s": record_epoch(record),
+        "antenna": profile.antenna,
+        "group": profile.group,
+        "masks": [
+            {**asdict(mask), "bands": mask.bands, "unknown_bits": mask.unknown_bits}
+            for mask in profile.masks
+        ],
+    }
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -39,6 +55,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument("--pairs-csv", type=Path)
     parser.add_argument("--elevation-csv", type=Path)
     parser.add_argument("--measurements-csv", type=Path)
+    parser.add_argument(
+        "--rf-profiles",
+        action="store_true",
+        help="include configured antenna profiles and native AGC readings",
+    )
     parser.add_argument(
         "--plot", type=Path, help="save paired C/N0 differences (requires matplotlib)"
     )
@@ -63,13 +84,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     for cable in (args.ant1_cable_m, args.ant2_cable_m):
         if cable is not None and not 0 <= cable < float("inf"):
             parser.error("cable lengths must be finite and nonnegative")
+    logs: list[DataLog] = [
+        AntennaLog(Log.RANGE, Log.RANGE),
+        AntennaLog(Log.RANGEH, Log.RANGEH),
+        Log.SATVIS2,
+    ]
+    if args.rf_profiles:
+        logs.extend((Log.ANT1GROUP, Log.ANT2GROUP, Log.AGC))
     data = capture_logs(
         args,
-        [
-            AntennaLog(Log.RANGE, Log.RANGE),
-            AntennaLog(Log.RANGEH, Log.RANGEH),
-            Log.SATVIS2,
-        ],
+        logs,
         on_progress=progress_printer("dual_antenna_rf_audit") if args.debug else None,
     )
     selected = 2 if args.antenna in ("secondary", "2") else 1
@@ -173,6 +197,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         },
         **asdict(result),
     }
+    if args.rf_profiles:
+        payload["rf_profiles"] = {
+            "configured": [
+                _profile_row(record)
+                for name in ("ANT1GROUP", "ANT2GROUP")
+                for record in data[name]
+            ],
+            "agc_receiver_units": [
+                {
+                    "gps_epoch_s": record_epoch(record),
+                    **asdict(AgcReadings.from_record(record)),
+                }
+                for record in data["AGC"]
+            ],
+        }
     print(
         f"Dual-antenna RF audit: {len(result.pairs)} synchronous pairs; "
         f"selected antenna {selected}",

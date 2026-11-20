@@ -34,6 +34,13 @@ The paired CSV contains observations from shared epochs. The elevation CSV
 summarizes differences by signal and elevation bin. Antenna type and cable
 length options record the setup.
 
+Add `--rf-profiles` to include the group ID, native constellation masks
+and recognized bands from ANT1GROUP and ANT2GROUP. The report also includes
+timestamped AGC readings for both inputs and an additional ANT1 channel.
+AGC values use receiver units. The additional channel's band is unknown.
+Each profile describes the configured group. The antenna inventories report
+signals observed in RANGE and RANGEH.
+
 ## Understanding the result
 
 Differences include the antennas, cables, receiver inputs and surroundings.

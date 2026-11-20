@@ -91,3 +91,21 @@ def test_container_replay_preserves_tracking_provenance(tmp_path: Path) -> None:
     assert tracking["slot_write_mask"] == 1
     assert tracking["fields"]["field_12"] == 42.25
     assert result["slot_summaries"][0]["median_native"] == 42.25
+
+
+def test_container_replay_exports_agc_without_tracking(tmp_path: Path) -> None:
+    source, output = tmp_path / "fifo.bin", tmp_path / "out.json"
+    body = bytearray(40)
+    pack_into("<i", body, 20, 71)
+    packet = RawBasebandPacket.build(
+        sequence=6,
+        measurement_sync_tag=8192,
+        content=build_message(23, bytes(12) + body),
+    )
+    source.write_bytes(packet.raw)
+    assert (
+        main(["--replay", str(source), "--container-input", "--json", str(output)]) == 0
+    )
+    (agc,) = json.loads(output.read_text())["agc_messages"]
+    assert agc["sequence"] == 6 and agc["measurement_sync_tag"] == 8192
+    assert agc["native_words"][5] == 71
