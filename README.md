@@ -2,8 +2,8 @@
 
 Python 3.12+ library and CLI for the Unicore UM982 GNSS receiver.
 
-The receivers UM980 and UD960 might also work up to some extend
-- but I didn't test due to lack of hardware.
+The receivers UM980 and UD960 might also work up to some extend 
+but I didn't test due to lack of hardware.
 
 Beware that my UM982 used the latest firmware r25164.
 
