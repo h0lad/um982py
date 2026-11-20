@@ -5,6 +5,7 @@ from collections import Counter
 from collections.abc import Iterator
 from dataclasses import asdict
 from pathlib import Path
+from queue import Empty
 from time import monotonic
 
 import pytest
@@ -18,6 +19,7 @@ from um982py.commands.types import NmeaVersion, Trigger
 from um982py.errors import CommandRejected, ProtocolError, ResponseTimeout, UM982Error
 from um982py.messages import AsciiHeader, AsciiMessage, CommandResponse, Fix, Sentence
 from um982py.receiver_queries import firmware_info
+from um982py.streaming import ReceiverStream
 from um982py.subscriptions import temporary_subscriptions
 
 pytestmark = pytest.mark.hardware
@@ -342,34 +344,55 @@ def test_sustained_stream(
     receiver: Receiver, request: pytest.FixtureRequest, report: dict[str, object]
 ) -> None:
     duration = request.config.getoption("--soak-seconds")
+    query_interval = min(2.0, duration / 3)
+    counts: Counter[str] = Counter()
+    gga_epochs: set[str] = set()
+    queries_completed = 0
+    receiver.drain_pending()
+    stream = ReceiverStream(receiver)
+    subscription = stream.subscribe()
+    slow = stream.subscribe(capacity=1)
     start = monotonic()
     end = start + duration
-    query_interval = min(2.0, duration / 3)
     next_query = start + query_interval
-    counts: Counter[str] = Counter()
-    queries_completed = 0
-    maximum_pending = 0
-    while monotonic() < end:
-        try:
-            message = receiver.receive(timeout=2)
-        except ResponseTimeout:
-            pytest.fail("Receiver stopped streaming during soak")
-        if isinstance(message, Sentence):
-            counts[message.name] += 1
-        maximum_pending = max(maximum_pending, len(receiver.decoder.pending))
-        if monotonic() >= next_query:
-            assert receiver.version().build > 0
-            queries_completed += 1
-            next_query += query_interval
+    with stream:
+        while (remaining := end - monotonic()) > 0:
+            try:
+                event = subscription.get_event(timeout=min(2, remaining))
+            except Empty:
+                if monotonic() >= end:
+                    break
+                pytest.fail("Receiver stopped streaming during soak")
+            assert event.session_id == stream.session_id
+            assert event.received_monotonic <= event.dispatched_monotonic
+            message = event.message
+            if isinstance(message, Sentence):
+                counts[message.name] += 1
+                if message.kind == "GGA" and message.fields[0]:
+                    gga_epochs.add(message.fields[0])
+            if monotonic() >= next_query:
+                assert stream.execute(queries.version()).result(timeout=3).build > 0
+                queries_completed += 1
+                next_query += query_interval
+        assert slow.pending == 1
+        slow.get(timeout=1)
+        slow.get(timeout=2)
+    health = stream.health()
     report["soak"] = {
         "seconds": monotonic() - start,
         "sentences": dict(counts),
+        "gga_epochs": len(gga_epochs),
         "queries": queries_completed,
-        "maximum_partial_frame_bytes": maximum_pending,
+        "health": asdict(health),
+        "slow_subscriber_drops": slow.dropped,
     }
-    assert counts["GNGGA"] >= duration * 0.8
+    assert len(gga_epochs) >= duration * 0.8
     assert queries_completed >= 1
-    assert not receiver.decoder.errors
+    assert subscription.dropped == 0
+    assert slow.dropped > 0
+    assert health.subscription_drops == slow.dropped
+    assert health.failure is None and not health.recent_decoder_errors
+    assert receiver.version().build > 0
 
 
 def test_documented_log_catalogue(
