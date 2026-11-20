@@ -3,7 +3,36 @@
 from dataclasses import dataclass
 from enum import IntFlag
 
+from um982py.messages.enums import MessageSatelliteSystem
 from um982py.messages.record import Record
+
+_BESTSATS_BANDS = {
+    MessageSatelliteSystem.GPS: {0x01: "L1", 0x02: "L2", 0x04: "L5"},
+    MessageSatelliteSystem.GLONASS: {0x01: "G1", 0x02: "G2", 0x04: "G3"},
+    MessageSatelliteSystem.GALILEO: {0x01: "E1", 0x02: "E5a", 0x04: "E5b", 0x20: "E6"},
+    MessageSatelliteSystem.BEIDOU: {
+        0x01: "B1I",
+        0x02: "B2I",
+        0x04: "B3I",
+        0x08: "B1C",
+        0x20: "B2a",
+        0x40: "B2b",
+    },
+}
+
+
+def bestsats_signal_bands(satellite: Record) -> tuple[str, ...]:
+    """Return known bands for a GOOD satellite row from UM982 BESTSATS."""
+    system = satellite.get("system")
+    if satellite.get("state") not in (0, "GOOD") or not isinstance(system, (int, str)):
+        return ()
+    try:
+        constellation = MessageSatelliteSystem.from_wire(system)
+    except ValueError:
+        return ()
+    fields = _BESTSATS_BANDS.get(constellation, {})
+    flags = satellite.integer("flags")
+    return tuple(band for bit, band in fields.items() if flags & bit)
 
 
 class GalileoBds3Signals(IntFlag):

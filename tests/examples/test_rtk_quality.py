@@ -148,6 +148,7 @@ def test_diagnostics_preserve_raw_flags_and_separate_timestamps() -> None:
     sats = report["BESTSATS"]
     assert isinstance(sats, list) and len(sats) == 1
     assert sats[0]["satellites"][0]["flags"] == 3
+    assert sats[0]["satellites"][0]["signal_bands"] == ("L1", "L2")
     dop = report["RTKDOP"]
     assert isinstance(dop, list) and dop[0]["pdop"] == 9999
     assert "not matched" in str(report["limitation"])

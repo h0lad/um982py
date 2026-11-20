@@ -26,10 +26,15 @@ older than 10 seconds as `fresh_fixed_epochs`. Class counts distinguish `ppp` an
 `ppp_converging` from float RTK.
 
 Add `--diagnostics` to capture `RTKDOP`, `BESTSATS` and `RTKSTATUS2` alongside
-the position log. The JSON keeps their receiver epochs and raw fields separately,
-including the undecoded BESTSATS flags. It does not assume that records at
-different times describe the same solution. Missing logs remain empty, and DOP
-sentinels such as 9999 do not represent measured geometry.
+the position log. The JSON includes `signal_bands` for GOOD `BESTSATS` rows
+alongside their raw flags. GPS, GLONASS, Galileo and BeiDou bands are supported.
+Labels identify frequency bands. Across 12 matched
+UM982 epochs, the `BESTSATS` satellite count agreed with `BESTNAV`'s solution
+count, and all 272 reported band sets agreed with same-epoch `RANGE` bands
+for those satellites. [BESTSATS protocol reference](https://docs.novatel.com/OEM7/Content/Logs/BESTSATS.htm)
+
+Diagnostic reports retain separate receiver epochs. Missing logs remain empty,
+and DOP sentinels such as 9999 indicate unavailable geometry.
 
 ## References
 

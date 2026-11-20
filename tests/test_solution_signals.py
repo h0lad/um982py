@@ -10,7 +10,27 @@ from um982py.messages.solution_signals import (
     GalileoBds3Signals,
     GpsGlonassBds2Signals,
     SolutionSignals,
+    bestsats_signal_bands,
 )
+
+
+@pytest.mark.parametrize(
+    ("system", "state", "mask", "bands"),
+    [
+        ("GPS", "GOOD", 0x07, ("L1", "L2", "L5")),
+        (1, 0, 0x03, ("G1", "G2")),
+        (5, 0, 0x37, ("E1", "E5a", "E5b", "E6")),
+        ("BEIDOU", "GOOD", 0x6D, ("B1I", "B3I", "B1C", "B2a", "B2b")),
+        ("GPS", "BADHEALTH", 0x07, ()),
+        (0, 1, 0x07, ()),
+        (127, 0, 0x07, ()),
+    ],
+)
+def test_bestsats_maps_bands_for_good_satellites(
+    system: str | int, state: str | int, mask: int, bands: tuple[str, ...]
+) -> None:
+    row = Record("satellite", (("system", system), ("state", state), ("flags", mask)))
+    assert bestsats_signal_bands(row) == bands
 
 
 def test_navigation_masks_match_ascii_and_binary() -> None:

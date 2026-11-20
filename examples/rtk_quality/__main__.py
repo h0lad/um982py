@@ -10,6 +10,7 @@ from examples._console_capture import capture_records
 from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.messages import Record
+from um982py.messages.solution_signals import bestsats_signal_bands
 from um982py.quality import (
     EpochSolution,
     QualitySummary,
@@ -32,7 +33,8 @@ def _diagnostic_rows(captured: dict[str, tuple[Record, ...]]) -> dict[str, objec
             {
                 "epoch": record_epoch(row),
                 "satellites": [
-                    dict(item.entries) for item in row.records("satellites")
+                    {**dict(item.entries), "signal_bands": bestsats_signal_bands(item)}
+                    for item in row.records("satellites")
                 ],
             }
             for row in captured["BESTSATS"]
@@ -43,8 +45,9 @@ def _diagnostic_rows(captured: dict[str, tuple[Record, ...]]) -> dict[str, objec
         ],
         "limitation": (
             "Diagnostic records are not matched to solution epochs. BESTSATS "
-            "flags and RTKSTATUS2 variant scope remain unverified; 9999 DOP "
-            "and zero satellites can indicate unavailable geometry."
+            "band labels cover known flags. RTKSTATUS2 variant scope remains "
+            "unverified. A DOP of 9999 and zero satellites can indicate "
+            "unavailable geometry."
         ),
     }
 
