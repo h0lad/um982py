@@ -2,11 +2,12 @@
 
 import json
 from pathlib import Path
+from struct import pack_into
 
 from examples.baseband_epoch_audit import audit_baseband
 from examples.baseband_epoch_audit.__main__ import main
 
-from um982py.experimental import scan_notices
+from um982py.experimental import RawBasebandPacket, build_message, scan_notices
 from um982py.messages import Record
 
 FIXTURE = Path(__file__).resolve().parents[1] / "fixtures/baseband-notice.bin"
@@ -63,3 +64,30 @@ def test_empty_wire_has_no_success_claim(tmp_path: Path) -> None:
     source.write_bytes(b"")
     assert main(["--replay", str(source), "--json", str(output)]) == 1
     assert json.loads(output.read_text())["status"] == "insufficient_diagnostics"
+
+
+def test_container_replay_preserves_tracking_provenance(tmp_path: Path) -> None:
+    source, output = tmp_path / "fifo.bin", tmp_path / "out.json"
+    truncated = RawBasebandPacket.build(
+        sequence=4, content=build_message(24, bytes(127))
+    )
+    body = bytearray(116)
+    pack_into("<If", body, 40, 1, 42.25)
+    valid = RawBasebandPacket.build(
+        sequence=5,
+        measurement_sync_tag=4096,
+        content=build_message(24, bytes(12) + body),
+    )
+    source.write_bytes(truncated.raw + valid.raw)
+    assert (
+        main(["--replay", str(source), "--container-input", "--json", str(output)]) == 0
+    )
+    result = json.loads(output.read_text())
+    assert result["validated_containers"] == 2
+    assert len(result["decoder_errors"]) == 1
+    assert "Container 4, message 0" in result["decoder_errors"][0]
+    (tracking,) = result["tracking_messages"]
+    assert tracking["sequence"] == 5 and tracking["measurement_sync_tag"] == 4096
+    assert tracking["slot_write_mask"] == 1
+    assert tracking["fields"]["field_12"] == 42.25
+    assert result["slot_summaries"][0]["median_native"] == 42.25

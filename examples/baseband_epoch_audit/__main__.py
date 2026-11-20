@@ -15,9 +15,56 @@ from examples._console_capture import open_receiver, selected_log
 from examples.baseband_epoch_audit import audit_baseband
 from um982py.capture import decode_records
 from um982py.commands import Log
-from um982py.experimental import capture_baseband_notices, scan_notices
+from um982py.errors import ProtocolError
+from um982py.experimental import (
+    TRACKING_MESSAGE_ID,
+    BasebandStream,
+    capture_baseband_notices,
+    decode_tracking_message,
+    scan_notices,
+)
+from um982py.messages import Record
 from um982py.protocol import StreamDecoder
 from um982py.subscriptions import temporary_subscriptions
+
+
+def _replay_containers(raw: bytes) -> tuple[list[Record], dict[str, object]]:
+    stream = BasebandStream()
+    packets = stream.feed(raw)
+    records = []
+    tracking = []
+    errors = []
+    for packet in packets:
+        try:
+            messages = packet.messages
+        except ProtocolError as error:
+            errors.append(f"Container {packet.sequence}: {error}")
+            continue
+        for index, message in enumerate(messages):
+            if message.message_id != TRACKING_MESSAGE_ID:
+                continue
+            try:
+                record = decode_tracking_message(message)
+            except ProtocolError as error:
+                errors.append(f"Container {packet.sequence}, message {index}: {error}")
+                continue
+            records.append(record)
+            tracking.append(
+                {
+                    "sequence": packet.sequence,
+                    "measurement_sync_tag": packet.measurement_sync_tag,
+                    "message_index": index,
+                    "slot_write_mask": record.integer("field_11"),
+                    "fields": dict(record),
+                }
+            )
+    return records, {
+        "validated_containers": len(packets),
+        "tracking_messages": tracking,
+        "decoder_errors": errors,
+        "discarded_bytes": stream.discarded,
+        "pending_bytes": len(stream.pending),
+    }
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -30,8 +77,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="store_true",
         help="enable BBMSG2AP for capture, then disable it. The prior state is unknown",
     )
+    parser.add_argument(
+        "--container-input",
+        action="store_true",
+        help="Read baseband FIFO containers from a replay file",
+    )
     add_debug_argument(parser)
     args = parser.parse_args(argv)
+    if args.container_input and args.replay is None:
+        parser.error("--container-input requires --replay")
     debug_header(args, "baseband_epoch_audit")
     log = selected_log(args, Log.PTOBSINFO)
     manifest = None
@@ -53,9 +107,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             raw, manifest = capture.raw, capture.manifest()
         if args.record is not None:
             raw = args.record.read_bytes()
-    decoder = StreamDecoder()
-    frames = decoder.feed(raw)
-    result = audit_baseband(scan_notices(raw), decode_records(frames, log))
+    if args.container_input:
+        records, details = _replay_containers(raw)
+        result = audit_baseband((), records)
+        scope = "baseband container file"
+    else:
+        decoder = StreamDecoder()
+        frames = decoder.feed(raw)
+        result = audit_baseband(scan_notices(raw), decode_records(frames, log))
+        scope = (
+            "entire recorded wire file"
+            if args.record or args.replay
+            else "bounded notice capture"
+        )
+        details = {
+            "decoder_errors": [str(error) for error in decoder.errors],
+            "discarded_bytes": decoder.discarded_bytes,
+            "pending_bytes": len(decoder.pending),
+        }
     usable = len(result.native_tag_counts) >= 2 or any(
         s.written_frames for s in result.slot_summaries
     )
@@ -74,18 +143,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             else "insufficient_diagnostics",
             "limitation": (
                 "No wrap modulus, counter frequency or notice-to-GNSS epoch "
-                "association is assumed. Slots are overwritten by channels, "
-                "not averaged; write counts reflect channel assignment. Native "
+                "association is assumed. A later channel can overwrite a slot. "
+                "The write mask records assignment. Native "
                 "units, signal identities and bank-to-antenna mapping remain "
                 "unverified."
             ),
-            "analysis_scope": "entire recorded wire file"
-            if args.record or args.replay
-            else "bounded notice capture",
+            "analysis_scope": scope,
             "capture": manifest,
-            "decoder_errors": [str(error) for error in decoder.errors],
-            "discarded_bytes": decoder.discarded_bytes,
-            "pending_bytes": len(decoder.pending),
+            **details,
             **asdict(result),
         },
         args.json,

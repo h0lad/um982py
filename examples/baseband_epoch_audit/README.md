@@ -28,8 +28,28 @@ if it was already enabled. The previous state cannot be queried.
 
 ## Understanding the result
 
-The report groups counters and tracking slots by receiver epoch. Fields with
-unverified meanings remain in their raw form.
+The report summarizes notice counters and slot values across the capture.
+The slot write mask determines which values enter the statistics. Fields
+with unverified meanings remain in their raw form.
+
+## Extract tracking records from baseband containers
+
+If you have a capture of baseband FIFO containers, replay it with:
+
+```bash
+python -m examples.baseband_epoch_audit --replay fifo.bin --container-input \
+    --json fifo-tracking.json
+```
+
+The report validates container checksums and decodes inner message 24 into
+the same fields as `PTOBSINFO`. Each tracking record includes the container
+sequence, native measurement tag and slot-write mask. The native tag is
+preserved as received. A set bit records that a channel wrote the slot.
+
+Python callers can pass an inner frame from `RawBasebandPacket.messages` to
+`um982py.experimental.decode_tracking_message`, then use `tracking_slots`
+with the resulting record. For live UART acquisition, use the
+`PTOBSINFOB` tracking stream in the first example.
 
 ## References
 
