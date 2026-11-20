@@ -233,8 +233,8 @@ BESTSATS = Layout(
             "satellites",
             4,
             (
-                Field("system", "e", 0, 2),
-                Field("satellite", "sat", 2, 4),
+                Field("system", "e", 0, 4),
+                Field("satellite", "sat_channel_first", 4, 4),
                 Field("state", "e", 8, 4),
                 Field("flags", "x", 12, 4),
             ),

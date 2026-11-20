@@ -3,7 +3,9 @@
 from dataclasses import dataclass
 from typing import Literal, Self
 
-type Kind = Literal["u", "i", "f", "d", "s", "x", "X", "e", "b", "sat"]
+type Kind = Literal[
+    "u", "i", "f", "d", "s", "x", "X", "e", "b", "sat", "sat_channel_first"
+]
 
 
 @dataclass(frozen=True, slots=True)

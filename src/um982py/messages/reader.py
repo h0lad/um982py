@@ -70,9 +70,12 @@ class BodyReader:
                         "big" if field.kind == "X" else "little",
                         signed=field.kind == "i",
                     )
-                if field.kind == "sat":
-                    number = int.from_bytes(data[:2], "little")
-                    channel = int.from_bytes(data[2:], "little", signed=True)
+                if field.kind in ("sat", "sat_channel_first"):
+                    prn_bytes, channel_bytes = data[:2], data[2:]
+                    if field.kind == "sat_channel_first":
+                        prn_bytes, channel_bytes = channel_bytes, prn_bytes
+                    number = int.from_bytes(prn_bytes, "little")
+                    channel = int.from_bytes(channel_bytes, "little", signed=True)
                     return Record(
                         "satellite_id", (("prn", number), ("channel", channel))
                     )
@@ -90,7 +93,7 @@ class BodyReader:
                     if len(data) != field.size:
                         raise ValueError("Invalid hexadecimal field length")
                     return data
-                elif field.kind == "sat":
+                elif field.kind in ("sat", "sat_channel_first"):
                     match = re.fullmatch(r"(\d+)([+-]\d+)?", text)
                     if match is None:
                         raise ValueError("Invalid satellite ID")

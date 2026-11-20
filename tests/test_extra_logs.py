@@ -37,6 +37,9 @@ def test_bestsats_fields() -> None:
     assert binary["satellites"][6]["system"] == 5
     assert binary["satellites"][7]["system"] == 6
     assert len(binary["satellites"]) == 10
+    assert [row["satellite"] for row in binary["satellites"]] == [
+        row["satellite"] for row in body["satellites"]
+    ]
 
 
 def test_aligndop_fields() -> None:
