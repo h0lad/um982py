@@ -13,6 +13,7 @@ from um982py.protocol.binary import (
     parse_binary,
     parse_rtcm,
 )
+from um982py.protocol.binex import BINEX_SYNC, binex_frame_size, parse_binex
 from um982py.protocol.listing import (
     listing_size,
     parse_abbreviated_table,
@@ -49,6 +50,9 @@ class StreamDecoder:
             first = self._buffer[0]
             binary = first == 0xAA
             rtcm = first == 0xD3
+            binex = first == BINEX_SYNC[0] and (
+                len(self._buffer) == 1 or self._buffer.startswith(BINEX_SYNC)
+            )
             # UNILOGLIST uses a multiline response with its own framing.
             listing = (
                 self._buffer.startswith(b"#UNILOGLIST,")
@@ -101,6 +105,15 @@ class StreamDecoder:
                     self._discard(1)
                     continue
                 size = ((self._buffer[1] & 3) << 8 | self._buffer[2]) + 6
+            elif binex:
+                try:
+                    length = binex_frame_size(self._buffer)
+                except ProtocolError as error:
+                    self._fail(error, self._verified_resync(6))
+                    continue
+                if length is None:
+                    break
+                size = length
             else:
                 newline = self._buffer.find(b"\n")
                 if first not in (ord("$"), ord("#")):
@@ -112,6 +125,7 @@ class StreamDecoder:
                             BINARY_SYNC,
                             OEM_BINARY_SYNC,
                             b"\xd3",
+                            BINEX_SYNC,
                         )
                         if (pos := self._buffer.find(marker)) > 0
                         and (newline < 0 or pos < newline)
@@ -146,6 +160,8 @@ class StreamDecoder:
                     message = parse_binary(raw)
                 elif rtcm:
                     message = parse_rtcm(raw)
+                elif binex:
+                    message = parse_binex(raw)
                 else:
                     message = parse_ascii(raw)
             except ProtocolError as error:
@@ -162,7 +178,7 @@ class StreamDecoder:
     def _resync(self, limit: int) -> int:
         positions = [
             position
-            for marker in (b"$", b"#", b"\xaa", b"\xd3")
+            for marker in (b"$", b"#", b"\xaa", b"\xd3", BINEX_SYNC)
             if 0 < (position := self._buffer.find(marker, 1)) < limit
         ]
         return min(positions, default=min(limit, len(self._buffer)))
@@ -172,7 +188,7 @@ class StreamDecoder:
         # If none is complete yet, preserve a plausible partial frame: a damaged
         # length may overlap the next frame, independently of read boundaries.
         incomplete = min(limit, len(self._buffer))
-        for match in re.finditer(rb"[$#\xaa\xd3]", self._buffer, 0):
+        for match in re.finditer(rb"[$#\xaa\xd3\xe2]", self._buffer, 0):
             position = match.start()
             if position == 0:
                 continue
@@ -233,6 +249,18 @@ class StreamDecoder:
                         incomplete = min(incomplete, position)
                         continue
                     parse_rtcm(candidate[:length])
+                elif candidate[0] == BINEX_SYNC[0]:
+                    if len(candidate) > 1 and not candidate.startswith(BINEX_SYNC):
+                        continue
+                    binex_size = binex_frame_size(candidate)
+                    if binex_size is None or (
+                        len(candidate) < binex_size <= self.max_frame_size
+                    ):
+                        incomplete = min(incomplete, position)
+                        continue
+                    if binex_size > self.max_frame_size:
+                        continue
+                    parse_binex(candidate[:binex_size])
                 else:
                     continue
             except ProtocolError:

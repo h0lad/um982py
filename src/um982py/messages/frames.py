@@ -99,6 +99,14 @@ class RtcmMessage:
 
 
 @dataclass(frozen=True, slots=True)
+class BinexMessage:
+    """A checked BINEX 0x7f-05 observation record."""
+
+    payload: bytes
+    raw: bytes
+
+
+@dataclass(frozen=True, slots=True)
 class CommandResponse:
     command: str
     status: str
@@ -134,6 +142,7 @@ type Message = (
     | AsciiMessage
     | BinaryMessage
     | RtcmMessage
+    | BinexMessage
     | CommandResponse
     | TextLine
     | LogListMessage
