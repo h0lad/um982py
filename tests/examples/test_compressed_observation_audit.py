@@ -1,13 +1,21 @@
 from __future__ import annotations
 
+import json
+from dataclasses import replace
+from pathlib import Path
+
 import pytest
+from examples.compressed_observation_audit import __main__ as cli
 from examples.compressed_observation_audit import (
     agree_epoch,
     summarise_epochs,
 )
 
+from test_protocol import binary
 from um982py.experimental import CompressedObservation
-from um982py.messages import Record
+from um982py.messages import BinaryMessage, Record
+from um982py.messages.frames import BinaryHeader
+from um982py.protocol.binary import parse_binary
 
 
 def observation(
@@ -142,3 +150,25 @@ def test_empty_summary_has_zero_ratio() -> None:
     assert summary.matched == 0
     assert summary.worst_phase_cycles is None
     assert summary.ratio == pytest.approx(0.0)
+
+
+def test_replay_pairs_shared_receiver_epochs(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    def frame(message_id: int, milliseconds: int) -> BinaryMessage:
+        message = parse_binary(binary(bytes(4), message_id=message_id))
+        assert isinstance(message.header, BinaryHeader)
+        return replace(
+            message, header=replace(message.header, milliseconds=milliseconds)
+        )
+
+    frames = (frame(43, 1000), frame(140, 2000), frame(43, 2000), frame(140, 3000))
+    monkeypatch.setattr(cli, "iter_frames", lambda _: iter(frames))
+    report = tmp_path / "report.json"
+    assert (
+        cli.main(["--replay", str(tmp_path / "capture.bin"), "--json", str(report)])
+        == 0
+    )
+    result = json.loads(report.read_text())
+    assert result["summary"]["epochs"] == 1
+    assert result["unpaired_range_epochs"] == result["unpaired_compressed_epochs"] == 1

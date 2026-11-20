@@ -26,7 +26,7 @@ python -m examples.compressed_observation_audit --replay wire.bin \
 Live capture subscribes to RANGEB and RANGECMPB at `--interval` for
 `--duration` seconds and restores the previous subscriptions afterward.
 Replay requires a capture with both binary logs. The report pairs epochs by
-arrival order and observations by tracking status.
+receiver epoch and observations by tracking status.
 
 For each epoch, the report gives the match count and largest pseudorange,
 Doppler and carrier-phase residuals. It also gives totals for the capture and

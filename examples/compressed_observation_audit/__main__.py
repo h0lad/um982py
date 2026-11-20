@@ -19,7 +19,7 @@ from examples._console import (
 )
 from examples._console_capture import open_receiver
 from examples.compressed_observation_audit import agree_epoch, summarise_epochs
-from um982py.capture import iter_frames
+from um982py.capture import epoch_seconds, iter_frames
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
 from um982py.experimental import decode_rangecmp, rangecmp_output
@@ -114,12 +114,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.record is not None and args.record.exists():
             parser.error("record path must not exist")
         range_frames, compressed_frames = _collect_live_range_frames(args)
-    if not range_frames or not compressed_frames:
+    ranges = {epoch_seconds(frame): frame for frame in range_frames}
+    compressed_ranges = {epoch_seconds(frame): frame for frame in compressed_frames}
+    shared = ranges.keys() & compressed_ranges.keys()
+    if not shared:
         parser.error("capture contains no shared RANGE and RANGECMP epochs")
     epochs = []
-    for range_frame, compressed_frame in zip(
-        range_frames, compressed_frames, strict=False
-    ):
+    for epoch in sorted(shared):
+        range_frame, compressed_frame = ranges[epoch], compressed_ranges[epoch]
         reference = Log.RANGE.decode(range_frame)
         compressed = decode_rangecmp(compressed_frame)
         epochs.append(
@@ -133,8 +135,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     summary = summarise_epochs(epochs)
     payload = {
         "epochs": [asdict(epoch) for epoch in epochs],
-        "unpaired_range_epochs": len(range_frames) - len(epochs),
-        "unpaired_compressed_epochs": len(compressed_frames) - len(epochs),
+        "unpaired_range_epochs": len(ranges) - len(epochs),
+        "unpaired_compressed_epochs": len(compressed_ranges) - len(epochs),
         "summary": asdict(summary),
     }
     print(
