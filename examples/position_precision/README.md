@@ -18,6 +18,9 @@ same receiver session; matching time alone cannot distinguish different days.
 The example matches exactly on time and antenna and does not attach ambiguous
 duplicates. An unmatched fix has `"precision": null` in the GeoJSON. An exit
 status of 1 means no fix had matched position precision.
+The default batch limit is 10,000 combined GGA and GST records. Use
+`--max-records` for longer single-session captures with a known time span.
+The report includes counts for both input logs.
 
 The ellipse and deviations are receiver estimates, not independently verified
 accuracy or a 95% confidence region. GST's pseudorange RMS is retained separately

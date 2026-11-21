@@ -29,7 +29,13 @@ python -m examples.broadcast_orbit_audit --replay captures/ephemerides.bin \
 
 Use `--sp3` to provide a matching SP3-c or SP3-d product that explicitly uses
 GPS time. Predicted orbit epochs are excluded unless `--include-predicted` is
-set.
+set. The audit uses the SP3 point prediction flags. For a product that omits
+them, use `--predicted-from-gps-seconds` with the documented start of its
+prediction interval.
+Use `--start-gps-seconds` and `--end-gps-seconds` to restrict comparisons
+to the intended interval. Use `--causal` to select only ephemerides received
+by each comparison epoch. The report records actual epoch bounds, ephemeris
+receipt times, reference prediction flags and the SP3 file's SHA-256.
 
 ## Understanding the result
 

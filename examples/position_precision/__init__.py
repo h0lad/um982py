@@ -8,10 +8,10 @@ from um982py.precision_matching import match_precision
 
 
 def map_precision(
-    fixes: Sequence[Record], statistics: Sequence[Record]
+    fixes: Sequence[Record], statistics: Sequence[Record], *, max_records: int = 10_000
 ) -> dict[str, object]:
     """Match unambiguous time-of-day and antenna pairs from one session."""
-    result = match_precision(fixes, statistics)
+    result = match_precision(fixes, statistics, max_records=max_records)
     features = [
         feature
         for fix in result.fixes
@@ -19,6 +19,7 @@ def map_precision(
     ]
     return {
         "status": "ok" if result.matched else "no_matched_precision",
+        "gga_records": len(fixes),
         "valid_fixes": len(result.fixes),
         "gst_records": result.statistics,
         "matched_precision": result.matched,

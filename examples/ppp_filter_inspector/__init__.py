@@ -7,7 +7,7 @@ from statistics import fmean
 
 from um982py.experimental import PosDebugData, PppDebugData
 from um982py.receiver_models import PerformanceStatus
-from um982py.stats import norm, rms
+from um982py.stats import norm, percentile, rms
 
 __all__ = [
     "FrequencyResidualSummary",
@@ -25,6 +25,8 @@ class FrequencyResidualSummary:
     satellites: int
     rms_m: float
     max_abs_m: float
+    p95_abs_m: float
+    epochs_with_samples: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,6 +52,7 @@ def analyse_ppp_filter(
 ) -> PppFilterAnalysis:
     """Aggregate PPPDEBUGMSG residuals, FASTDEBUGMSG ADR lock ratios and CPU load."""
     residuals_by_frequency: dict[int, list[tuple[int, float]]] = defaultdict(list)
+    epochs_by_frequency: dict[int, int] = defaultdict(int)
     position_steps: list[float] = []
     for record in ppp_records:
         if record.delta_position_m is not None:
@@ -58,16 +61,21 @@ def analyse_ppp_filter(
             residuals_by_frequency[residual.frequency_index].append(
                 (residual.slot, residual.residual_m)
             )
+        for frequency in {residual.frequency_index for residual in record.residuals}:
+            epochs_by_frequency[frequency] += 1
     frequency_summaries: list[FrequencyResidualSummary] = []
     for frequency_index, entries in sorted(residuals_by_frequency.items()):
         residual_values = [value for _, value in entries]
+        magnitudes = [abs(value) for value in residual_values]
         frequency_summaries.append(
             FrequencyResidualSummary(
                 frequency_index=frequency_index,
                 samples=len(residual_values),
                 satellites=len({slot for slot, _ in entries}),
                 rms_m=rms(residual_values),
-                max_abs_m=max(abs(value) for value in residual_values),
+                max_abs_m=max(magnitudes),
+                p95_abs_m=percentile(magnitudes, 0.95),
+                epochs_with_samples=epochs_by_frequency[frequency_index],
             )
         )
     adr_ratios = [

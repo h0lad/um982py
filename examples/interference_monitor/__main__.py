@@ -17,6 +17,7 @@ from examples._console import (
 from examples._console_capture import capture_records
 from examples.interference_monitor import (
     COLLAPSE_THRESHOLD,
+    MINIMUM_SERIES,
     Alert,
     AntennaReport,
     antenna_report,
@@ -25,12 +26,20 @@ from examples.interference_monitor import (
     status_alerts,
 )
 from um982py.commands import Log
+from um982py.measurement import receiver_time
 from um982py.messages import Record, SpoofInfo
 
 
-def _alert_payload(alert: Alert) -> dict[str, object]:
+def _gps_seconds(record: Record) -> float | None:
+    time = receiver_time(record.message)
+    return time.gps_seconds if time is not None else None
+
+
+def _alert_payload(alert: Alert, record: Record) -> dict[str, object]:
     return {
         "epoch": alert.epoch,
+        "gps_seconds": _gps_seconds(record),
+        "source": record.name,
         "kind": str(alert.kind),
         "severity": str(alert.severity),
         "satellites": list(alert.satellites),
@@ -77,26 +86,48 @@ def _payload(
     range_records: Sequence[Record],
     threshold: float,
 ) -> dict[str, object]:
-    spoof = SpoofInfo.from_record(spoof_records[0]) if spoof_records else None
-    antenna = antenna_report(antenna_records[0]) if antenna_records else None
+    spoof = [SpoofInfo.from_record(record) for record in spoof_records]
+    antenna = [antenna_report(record) for record in antenna_records]
     samples = cn0_samples(range_records)
-    alerts = (
-        *detect_cn0_collapse(samples, threshold=threshold),
-        *status_alerts(max(len(range_records) - 1, 0), spoof, antenna),
+    alerts = [
+        (alert, range_records[alert.epoch])
+        for alert in detect_cn0_collapse(samples, threshold=threshold)
+    ]
+    alerts.extend(
+        (alert, record)
+        for index, (report, record) in enumerate(zip(spoof, spoof_records, strict=True))
+        for alert in status_alerts(index, report, None)
+    )
+    alerts.extend(
+        (alert, record)
+        for index, (report, record) in enumerate(
+            zip(antenna, antenna_records, strict=True)
+        )
+        for alert in status_alerts(index, None, report)
     )
     return {
         "epochs": len(range_records),
-        "cn0_scope": "GPS L1 C/A; epochs are record indices",
-        "minimum_cn0_history_epochs": 5,
+        "cn0_scope": "GPS L1 C/A; session-wide per-satellite reference",
+        "epoch_index": "zero-based index within each source log",
+        "minimum_cn0_history_epochs": MINIMUM_SERIES,
         "satellites": len({sample.satellite for sample in samples}),
-        "spoof": _spoof_payload(spoof),
-        "antenna": _antenna_payload(antenna),
-        "alerts": [_alert_payload(alert) for alert in sorted(alerts, key=_alert_order)],
+        "spoof": _spoof_payload(spoof[-1] if spoof else None),
+        "spoof_gps_seconds": _gps_seconds(spoof_records[-1]) if spoof_records else None,
+        "antenna": _antenna_payload(antenna[-1] if antenna else None),
+        "antenna_gps_seconds": (
+            _gps_seconds(antenna_records[-1]) if antenna_records else None
+        ),
+        "alerts": [
+            _alert_payload(alert, record)
+            for alert, record in sorted(alerts, key=_alert_order)
+        ],
     }
 
 
-def _alert_order(alert: Alert) -> tuple[int, str]:
-    return (alert.epoch, str(alert.kind))
+def _alert_order(item: tuple[Alert, Record]) -> tuple[float, str, int]:
+    alert, record = item
+    when = _gps_seconds(record)
+    return (when if when is not None else math.inf, str(alert.kind), alert.epoch)
 
 
 def main(argv: Sequence[str] | None = None) -> int:

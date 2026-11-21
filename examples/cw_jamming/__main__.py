@@ -24,11 +24,13 @@ from examples.cw_jamming import (
     alerts,
     band_samples,
     fingerprint,
+    freq_jam_states,
     jam_state,
     timeline,
     worst_flag,
 )
 from um982py.commands import Log
+from um982py.measurement import receiver_time
 from um982py.messages import Record
 
 
@@ -51,9 +53,15 @@ def _timeline_payload(summary: JamTimeline) -> dict[str, object]:
     }
 
 
-def _alert_payload(alert: JamAlert) -> dict[str, object]:
+def _gps_seconds(record: Record) -> float | None:
+    time = receiver_time(record.message)
+    return time.gps_seconds if time is not None else None
+
+
+def _alert_payload(alert: JamAlert, record: Record) -> dict[str, object]:
     return {
         "epoch": alert.epoch,
+        "gps_seconds": _gps_seconds(record),
         "band": str(alert.band),
         "previous": str(alert.previous),
         "current": str(alert.current),
@@ -66,9 +74,17 @@ def _summary_payload(records: Sequence[Record]) -> dict[str, object] | None:
     if not records:
         return None
     states = [jam_state(record) for record in records]
+    summary = timeline(states)
     return {
         **_state_payload(states[-1]),
-        "timeline": _timeline_payload(timeline(states)),
+        "timeline": {
+            **_timeline_payload(summary),
+            "first_jam_gps_seconds": (
+                _gps_seconds(records[summary.first_jam_epoch])
+                if summary.first_jam_epoch is not None
+                else None
+            ),
+        },
     }
 
 
@@ -88,10 +104,11 @@ def _band_payload(samples: Sequence[JamSample]) -> list[dict[str, object]]:
     ]
 
 
-def _fingerprint_payload(item: BandFingerprint) -> dict[str, object]:
+def _fingerprint_payload(item: BandFingerprint, record: Record) -> dict[str, object]:
     """Serialise one epoch's source class and evidence."""
     return {
         "epoch": item.epoch,
+        "gps_seconds": _gps_seconds(record),
         "interference": str(item.interference),
         "evidence": str(item.evidence),
         "jammed_bands": [str(band) for band in item.jammed_bands],
@@ -109,13 +126,36 @@ def _jamming_payload(
     classified = [
         fingerprint(epoch, states) for epoch, states in sorted(by_epoch.items())
     ]
-    fingerprints = [_fingerprint_payload(item) for item in classified]
+    fingerprints = [
+        _fingerprint_payload(item, band_records[item.epoch]) for item in classified
+    ]
     classes = [str(item.interference) for item in classified]
     return {
         "epochs": max(len(summary_records), len(band_records)),
+        "epoch_index": "zero-based report index within each receiver log",
+        "interpretation": (
+            "Per-band receiver flag occupancy. RF source and bandwidth are unverified."
+        ),
         "summary": _summary_payload(summary_records),
         "bands": _band_payload(samples),
-        "alerts": [_alert_payload(alert) for alert in alerts(samples)],
+        "alerts": [
+            _alert_payload(alert, band_records[alert.epoch])
+            for alert in alerts(samples)
+        ],
+        "jamstatus": [
+            {"gps_seconds": _gps_seconds(record), **_state_payload(jam_state(record))}
+            for record in summary_records
+        ],
+        "freqjamstatus": [
+            {
+                "gps_seconds": _gps_seconds(record),
+                "bands": {
+                    str(band): _state_payload(state)
+                    for band, state in freq_jam_states(record)
+                },
+            }
+            for record in band_records
+        ],
         "fingerprints": fingerprints,
         "interference_classes": sorted(set(classes)),
     }

@@ -21,11 +21,15 @@ python -m examples.dop_geometry --replay tests/fixtures/captures/SATVIS2A.bin
 
 ## Inputs and results
 
-The calculation uses SATVIS2 geometry and compares DOP with receiver-reported
-values. `--mask` excludes satellites below the given elevation in degrees.
+The calculation uses unweighted SATVIS2 geometry with one clock state per
+constellation. The output also includes the shared-clock calculation for
+comparison. `--mask` excludes satellites below the given elevation in degrees
+when a matched receiver DOP report does not supply a mask.
 
 DOP does not measure the underlying errors. Differences from receiver reports
-may reflect different satellite selections.
+may reflect different satellite selections, weights and clock models. GDOP and
+TDOP include all estimated clock states. For a multi-constellation fit the
+example leaves their receiver differences blank.
 
 ## References
 

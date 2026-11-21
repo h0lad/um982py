@@ -23,6 +23,10 @@ python -m examples.pwv_meteorology --manual
 
 `--tm` sets the water-vapour-weighted mean temperature in kelvin. The
 `--manual` option uses published demonstration values instead of receiver data.
+Replay exports all TROPINFO epochs unless limited with `--frames`. Each
+epoch includes its raw delays and the receiver's GPST timestamp when available.
+Negative wet delays and nonfinite inputs are counted and retained with a null
+PWV value. The default 280 K is recorded as an assumption.
 
 The conversion uses `PWV = Pi x ZWD` with
 `Pi = 10^6 / (rho_w R_v (k3/Tm + k2'))`. The refractivity constants are the

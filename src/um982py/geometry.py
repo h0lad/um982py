@@ -48,11 +48,29 @@ class DilutionOfPrecision:
 
     @classmethod
     def from_geometry(
-        cls, satellites: Sequence[SatelliteGeometry]
+        cls,
+        satellites: Sequence[SatelliteGeometry],
+        *,
+        clock_groups: Sequence[str] | None = None,
     ) -> DilutionOfPrecision:
-        """DOP from the covariance ``inverse(G^T G)`` of the ranging geometry."""
-        covariance = invert(normal_matrix(design_matrix(satellites)))
-        east, north, up, clock = (covariance[index][index] for index in range(4))
+        """Compute unweighted DOP with a shared clock or independent group clocks.
+
+        TDOP and GDOP include the variance of every estimated clock state.
+        """
+        rows = design_matrix(satellites)
+        if clock_groups is not None:
+            if len(clock_groups) != len(rows):
+                raise ValueError("one clock group is required per satellite")
+            groups = tuple(dict.fromkeys(clock_groups))
+            if len(rows) < 3 + len(groups):
+                raise ValueError("too few satellites for separate clock groups")
+            rows = tuple(
+                (*row[:3], *(float(group == item) for item in groups))
+                for row, group in zip(rows, clock_groups, strict=True)
+            )
+        covariance = invert(normal_matrix(rows))
+        east, north, up = (covariance[index][index] for index in range(3))
+        clock = sum(covariance[index][index] for index in range(3, len(covariance)))
         return cls(
             gdop=math.sqrt(east + north + up + clock),
             pdop=math.sqrt(east + north + up),

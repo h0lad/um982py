@@ -29,8 +29,11 @@ Replay needs RANGE observations and companion ionosphere, satellite-visibility
 and position captures. Supply these with `--ionosphere`, `--satvis` and
 `--position`. The selected position must be computed and lie within
 `--position-tolerance` (default one second) of the RANGE epoch. Visibility is
-joined at that RANGE epoch; supply ionosphere coefficients valid for the same
-period. Both live and replay modes honor the selected antenna and role swap.
+joined at that RANGE epoch. The example skips startup records without a
+complete match and uses the most recent recorded GPSION at or before the
+selected epoch. Supply coefficients valid for the same period. The report
+includes separate GPST timestamps for the observations, position and GPSION.
+Both live and replay modes honor the selected antenna and role swap.
 
 ## Understanding the result
 

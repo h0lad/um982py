@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+import json
+from pathlib import Path
+from struct import pack
+
 import pytest
 from examples.pwv_meteorology import (
     MANUAL_TROPINFO_LINE,
@@ -12,7 +16,10 @@ from examples.pwv_meteorology import (
     tropinfo_record,
     zwd_to_pwv_ratio,
 )
+from examples.pwv_meteorology.__main__ import main
 
+from test_protocol import binary
+from um982py.commands import Log
 from um982py.messages import Record
 
 MANUAL_ZENITH_TOTAL = 2.354103
@@ -93,6 +100,26 @@ def test_pi_rejects_a_non_positive_temperature() -> None:
 def test_precipitable_water_rejects_a_negative_delay() -> None:
     with pytest.raises(ValueError, match="negative"):
         precipitable_water_millimetres(-0.001, 280.0)
+
+
+def test_replay_preserves_negative_wet_delay_and_converts_later_sample(
+    tmp_path: Path,
+) -> None:
+    wire = tmp_path / "trop.bin"
+    report = tmp_path / "trop.json"
+    ident = Log.TROPINFO.definition.message_id
+    wire.write_bytes(
+        binary(pack("<I5f", 1, 2.0, 2.2, -0.2, 0.1, 0), ident)
+        + binary(pack("<I5f", 1, 2.3, 2.2, 0.1, 0.1, 0), ident)
+    )
+    assert main(["--replay", str(wire), "--json", str(report)]) == 0
+    payload = json.loads(report.read_text())
+    assert payload["status"] == "partial"
+    first, second = payload["epochs"]
+    assert first["wet"] == pytest.approx(-0.2)
+    assert first["precipitable_water_mm"] is None
+    assert second["precipitable_water_mm"] == pytest.approx(15.9622, abs=1e-4)
+    assert first["gps_seconds"] == 2400 * 604800 + 123
 
 
 def test_binary_model_code_maps_to_the_named_model() -> None:

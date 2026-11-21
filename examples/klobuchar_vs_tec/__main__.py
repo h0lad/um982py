@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import sys
+from bisect import bisect_right
 from collections.abc import Sequence
 from pathlib import Path
 
@@ -27,7 +28,7 @@ from um982py.capture import (
     gps_signals,
     read_frames,
     record_epoch,
-    select_position,
+    select_position_pair,
 )
 from um982py.commands import Log
 from um982py.geodesy import geodetic_from_ecef
@@ -48,7 +49,7 @@ SIGNAL_TYPE_MASK = 0b11111
 def gps_pairs(record: Record) -> dict[int, tuple[Observation, Observation]]:
     """L1/L5 observation pair of every dual-frequency GPS satellite."""
     by_prn: dict[int, dict[int, Observation]] = {}
-    for observation, frequency in gps_signals(record):
+    for observation, frequency in gps_signals(record, phase=False):
         signal = GPS_L1_SIGNAL_TYPE if frequency == GPS_L1_HZ else GPS_L5_SIGNAL_TYPE
         by_prn.setdefault(observation.integer("prn"), {})[signal] = Observation(
             prn=observation.integer("prn"),
@@ -72,6 +73,7 @@ def _geometry(record: Record) -> dict[int, tuple[float, float]]:
             satellite.real("azimuth"),
         )
         for satellite in record.records("satellites")
+        if 0 <= satellite.real("elevation") <= 90
     }
 
 
@@ -207,12 +209,24 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     if not range_records or not ionosphere or not satellites or not positions:
         parser.error("RANGE, GPSION, SATVIS2 and BESTPOS/BESTXYZ frames are required")
-    range_record = range_records[0]
+    gps_geometry = {
+        record_epoch(record): _geometry(record)
+        for record in satellites
+        if record.get("constellation") in (0, "GPS")
+    }
+    coefficients_by_epoch = {record_epoch(record): record for record in ionosphere}
+    coefficient_epochs = sorted(coefficients_by_epoch)
+    eligible = (
+        record
+        for record in range_records
+        if record_epoch(record) >= coefficient_epochs[0]
+        and gps_geometry.get(record_epoch(record), {}).keys() & gps_pairs(record).keys()
+    )
+    range_record, position = select_position_pair(
+        eligible, positions, args.position_tolerance
+    )
     if range_record.message is None:
         parser.error("RANGE frame carries no timestamp")
-    position = select_position(
-        positions, record_epoch(range_record), args.position_tolerance
-    )
     if "lat" in position:
         latitude, longitude = position.real("lat"), position.real("lon")
     else:
@@ -221,21 +235,21 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     pairs = gps_pairs(range_record)
     epoch = gps_epoch(range_record.message) % 604800.0
-    geometry: dict[int, tuple[float, float]] = {}
-    for record in satellites:
-        if record.message is None:
-            continue
-        if abs(record_epoch(record) - record_epoch(range_record)) >= 1e-6:
-            continue
-        geometry.update(_geometry(record))
+    gps_seconds = record_epoch(range_record)
+    coefficient_epoch = coefficient_epochs[
+        bisect_right(coefficient_epochs, gps_seconds) - 1
+    ]
     payload = build_payload(
-        KlobucharCoefficients.from_record(ionosphere[0]),
+        KlobucharCoefficients.from_record(coefficients_by_epoch[coefficient_epoch]),
         epoch,
         latitude,
         longitude,
         pairs,
-        geometry,
+        gps_geometry[gps_seconds],
     )
+    payload["gps_seconds"] = gps_seconds
+    payload["position_gps_seconds"] = record_epoch(position)
+    payload["ionosphere_gps_seconds"] = coefficient_epoch
     sigma_fields = (
         ("lat_std", "lon_std", "hgt_std")
         if "lat" in position

@@ -115,9 +115,10 @@ def median(values: Sequence[float]) -> float:
 
 def median_absolute_deviation(values: Sequence[float]) -> float:
     """Median absolute deviation of a sequence from its own median."""
-    if not values:
-        return math.nan
-    middle = median(values)
+    return _deviation(values, median(values))
+
+
+def _deviation(values: Sequence[float], middle: float) -> float:
     return median([abs(value - middle) for value in values])
 
 
@@ -126,7 +127,11 @@ def robust_z_score(value: float, reference: Sequence[float]) -> float:
     if len(reference) < 2:
         raise ValueError("a reference series needs at least two values")
     middle = median(reference)
-    deviation = median_absolute_deviation(reference)
+    deviation = _deviation(reference, middle)
+    return _z_score(value, middle, deviation)
+
+
+def _z_score(value: float, middle: float, deviation: float) -> float:
     if deviation == 0.0:
         return 0.0 if value == middle else math.copysign(math.inf, value - middle)
     return MAD_SCALE * (value - middle) / deviation
@@ -162,8 +167,10 @@ def detect_cn0_collapse(
         if len(owned) < MINIMUM_SERIES:
             continue
         reference = [sample.cn0 for sample in owned]
+        middle = median(reference)
+        deviation = _deviation(reference, middle)
         for sample in owned:
-            z_score = robust_z_score(sample.cn0, reference)
+            z_score = _z_score(sample.cn0, middle, deviation)
             if z_score > -threshold:
                 continue
             satellites, worst = collapsed.get(sample.epoch, ([], math.inf))

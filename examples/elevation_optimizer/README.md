@@ -1,6 +1,6 @@
 # Elevation mask optimizer
 
-Find the elevation mask with the best satellite geometry.
+Find the highest elevation mask that meets the chosen geometry constraints.
 
 ## Run
 
@@ -24,6 +24,8 @@ python -m examples.elevation_optimizer \
 
 `--minimum-satellites` sets the minimum satellite count for candidate masks.
 `--ceiling` sets the highest mask to consider, in degrees.
+`--max-pdop` sets an optional bound on the unweighted common-clock PDOP.
+The report includes the mask sweep and geometry epoch for comparison.
 
 The selected mask applies to the captured sky geometry.
 

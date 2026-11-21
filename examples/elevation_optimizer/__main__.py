@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import sys
 from collections.abc import Iterable, Sequence
 
@@ -19,8 +20,9 @@ from examples.elevation_optimizer import (
     brute_force_mask,
     highest_feasible_mask,
     sky_from_satvis_log,
+    solution_at,
 )
-from um982py.capture import latest_epoch
+from um982py.capture import latest_epoch, record_epoch
 from um982py.commands import Log
 from um982py.messages import Record
 
@@ -45,6 +47,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--ceiling", type=float, default=90.0, help="highest mask to consider"
     )
     parser.add_argument(
+        "--max-pdop", type=float, help="maximum acceptable common-clock PDOP"
+    )
+    parser.add_argument(
         "--duration", type=float, default=5.0, help="live collection time in seconds"
     )
     parser.add_output_interval(default=1.0, help="output interval in seconds")
@@ -57,6 +62,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     debug_header(args, "elevation_optimizer")
     if args.minimum_satellites < 4:
         parser.error("--minimum-satellites must be at least 4")
+    if args.max_pdop is not None and (
+        not math.isfinite(args.max_pdop) or args.max_pdop <= 0
+    ):
+        parser.error("--max-pdop must be finite and positive")
     records = capture_records(
         args,
         [Log.SATVIS2],
@@ -64,16 +73,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         interval=args.interval,
         on_progress=progress_printer("elevation_optimizer") if args.debug else None,
     )["SATVIS2"]
-    satellites = _satellites_from(latest_epoch(records))
+    frames = latest_epoch(records)
+    satellites = _satellites_from(frames)
+    max_pdop = args.max_pdop if args.max_pdop is not None else math.inf
     chosen = highest_feasible_mask(
         satellites,
         minimum_satellites=args.minimum_satellites,
         ceiling=args.ceiling,
+        max_pdop=max_pdop,
     )
     scanned = brute_force_mask(
         satellites,
         minimum_satellites=args.minimum_satellites,
         ceiling=args.ceiling,
+        max_pdop=max_pdop,
     )
     chosen_payload = None if chosen is None else chosen.manifest()
     scanned_payload = None if scanned is None else scanned.manifest()
@@ -88,8 +101,23 @@ def main(argv: Sequence[str] | None = None) -> int:
             "satellites": len(satellites),
             "minimum_satellites": args.minimum_satellites,
             "ceiling": args.ceiling,
+            "gps_seconds": record_epoch(frames[0]) if frames else None,
+            "clock_model": "one shared clock across visible satellites",
+            "maximum_pdop": args.max_pdop,
             "chosen": chosen_payload,
             "grid_search": scanned_payload,
+            "mask_sweep": [
+                solution.manifest()
+                for step in range(math.floor(args.ceiling) + 1)
+                if (
+                    solution := solution_at(
+                        satellites,
+                        float(step),
+                        minimum_satellites=args.minimum_satellites,
+                    )
+                )
+                is not None
+            ],
         },
         args.json,
     )

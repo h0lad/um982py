@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable, Sequence
+from dataclasses import asdict
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
+from examples.satellite_monitor import constellation_of
 from um982py.capture import latest_epoch, record_epoch
 from um982py.commands import Log
 from um982py.geometry import (
     DilutionOfPrecision,
     ReportedDilution,
-    geometry_from_records,
+    geometry_from_record,
 )
 from um982py.messages.record import Record
 
@@ -59,10 +61,16 @@ def _progress_callback() -> Callable[[dict[str, tuple[Record, ...]]], None]:
 
 
 def _payload(
-    computed: DilutionOfPrecision, reported: ReportedDilution | None, mask: float
+    computed: DilutionOfPrecision,
+    reported: ReportedDilution | None,
+    mask: float,
+    *,
+    clock_groups: Sequence[str],
 ) -> dict[str, object]:
     payload: dict[str, object] = {
         "elevation_mask": mask,
+        "clock_groups": sorted(set(clock_groups)),
+        "geometry": "unweighted visible SATVIS2 satellites",
         "computed": {
             "gdop": computed.gdop,
             "pdop": computed.pdop,
@@ -85,10 +93,10 @@ def _payload(
         "satellites": reported.satellites,
     }
     payload["difference"] = {
-        "gdop": computed.gdop - reported.gdop,
+        "gdop": computed.gdop - reported.gdop if len(set(clock_groups)) == 1 else None,
         "pdop": computed.pdop - reported.pdop,
         "hdop": computed.hdop - reported.hdop,
-        "tdop": computed.tdop - reported.tdop,
+        "tdop": computed.tdop - reported.tdop if len(set(clock_groups)) == 1 else None,
     }
     return payload
 
@@ -124,18 +132,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             reported = ReportedDilution.from_record(matching[-1], name)
             break
     mask = reported.elevation_mask if reported is not None else args.mask
-    satellites = geometry_from_records(frames, mask)
-    if len(satellites) < 4:
+    grouped = [
+        (str(constellation_of(frame)), satellite)
+        for frame in frames
+        for satellite in geometry_from_record(frame, mask)
+    ]
+    groups = [group for group, _ in grouped]
+    satellites = [satellite for _, satellite in grouped]
+    try:
+        computed = DilutionOfPrecision.from_geometry(satellites, clock_groups=groups)
+    except ValueError as error:
         write_json(
             {
                 "status": "insufficient_data",
                 "satellites": len(satellites),
-                "reason": "at least four satellites at one epoch are required",
+                "reason": str(error),
+                "clock_groups": sorted(set(groups)),
             },
             args.json,
         )
         return 1
-    computed = DilutionOfPrecision.from_geometry(satellites)
     reported_text = (
         f"; receiver {reported.source} PDOP {reported.pdop:.2f}" if reported else ""
     )
@@ -144,7 +160,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         f"from {len(satellites)} satellites above {mask:g} deg" + reported_text,
         file=sys.stderr,
     )
-    write_json(_payload(computed, reported, mask), args.json)
+    payload = _payload(computed, reported, mask, clock_groups=groups)
+    payload["gps_seconds"] = record_epoch(frames[0])
+    payload["visible_satellites"] = len(satellites)
+    payload["common_clock_assumption"] = asdict(
+        DilutionOfPrecision.from_geometry(satellites)
+    )
+    write_json(payload, args.json)
     return 0
 
 

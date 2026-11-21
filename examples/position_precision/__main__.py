@@ -21,11 +21,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="confirm the receiver positions use WGS84",
     )
     parser.add_argument("--geojson", type=Path, help="write mapped positions here")
+    parser.add_argument(
+        "--max-records",
+        type=int,
+        default=10_000,
+        help="maximum combined GGA and GST records from a single session",
+    )
     args = parser.parse_args(argv)
+    if args.max_records < 1:
+        parser.error("--max-records must be positive")
     data = capture_records(
         args, [Log.GPGGA, Log.GPGST], duration=args.duration, interval=args.interval
     )
-    report = map_precision(data["GPGGA"], data["GPGST"])
+    report = map_precision(data["GPGGA"], data["GPGST"], max_records=args.max_records)
     if args.geojson is not None:
         write_json(report["geojson"], args.geojson)
     write_json(report, args.json)

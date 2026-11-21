@@ -6,6 +6,7 @@ from examples.ppp_filter_inspector import analyse_ppp_filter
 from examples.ppp_filter_inspector.__main__ import main
 
 from conftest import ascii_message
+from test_protocol import binary
 from um982py.experimental import parse_pos_debug, parse_ppp_debug
 from um982py.protocol import StreamDecoder
 from um982py.receiver_models import (
@@ -101,13 +102,36 @@ def test_ppp_filter_inspector_analysis_and_replay(tmp_path: Path) -> None:
 
     replay_path = tmp_path / "capture.bin"
     output_path = tmp_path / "out.json"
-    replay_path.write_bytes(perf_wire + ppp_line + pos_line)
+    replay_path.write_bytes(
+        perf_wire
+        + binary(b"\x01\x02\x03", message_id=12)
+        + ppp_line
+        + binary(b"\x01\x02\x03", message_id=12)
+        + pos_line
+        + ppp_line.replace(b"$PPPDEBUGMSG,", b"$PPPHDEBUGMSG,", 1)
+    )
     assert main(["--replay", str(replay_path), "--json", str(output_path)]) == 0
     payload = json.loads(output_path.read_text())
     assert payload["status"] == "ppp_observed"
     assert payload["telemetry_sources"]["ppp_debug_epochs"] == 1
+    assert payload["telemetry_sources"]["other_antenna_ppp_debug_epochs"] == 1
     assert payload["analysis"]["cpu_load_percent"] == pytest.approx(12.0)
     assert payload["analysis"]["max_corrected_galileo"] == 26
+    assert (
+        main(
+            [
+                "--replay",
+                str(replay_path),
+                "--json",
+                str(output_path),
+                "--swap-antennas",
+            ]
+        )
+        == 0
+    )
+    secondary = json.loads(output_path.read_text())
+    assert secondary["antenna"] == 2
+    assert [row["source"] for row in secondary["ppp_epochs"]] == ["PPPHDEBUGMSG"]
     replay_path.write_bytes(perf_wire)
     assert main(["--replay", str(replay_path), "--json", str(output_path)]) == 0
     auxiliary = json.loads(output_path.read_text())

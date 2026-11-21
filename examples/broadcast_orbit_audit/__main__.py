@@ -1,7 +1,9 @@
 # Compare GPS broadcast orbits with an SP3 product.
 
 import csv
+import hashlib
 import importlib
+import math
 import sys
 from collections import defaultdict
 from collections.abc import Sequence
@@ -19,15 +21,25 @@ from examples._console import (
 )
 from examples._console_capture import capture_logs
 from examples.broadcast_orbit_audit import (
+    LIGHT_SPEED,
     OrbitDifference,
     compare_state,
     sisre_summary,
 )
+from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.experimental.gps_motion import choose_ephemeris
 from um982py.experimental.orbit import KeplerElements, orbit_state
+from um982py.messages import Record
 from um982py.precise import parse_sp3
 from um982py.stats import rms
+
+_PROVENANCE_FIELDS = (
+    "ephemeris_toe_gps_seconds",
+    "ephemeris_received_gps_seconds",
+    "predicted_reference_orbit",
+    "predicted_reference_clock",
+)
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -49,11 +61,32 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="include predicted ultra-rapid orbit epochs",
     )
     parser.add_argument(
+        "--start-gps-seconds", type=float, help="first comparison epoch"
+    )
+    parser.add_argument("--end-gps-seconds", type=float, help="last comparison epoch")
+    parser.add_argument(
+        "--predicted-from-gps-seconds",
+        type=float,
+        help="documented first prediction epoch for a product without point flags",
+    )
+    parser.add_argument(
+        "--causal",
+        action="store_true",
+        help="use only broadcast ephemerides received by each comparison epoch",
+    )
+    parser.add_argument(
         "--differences-csv", type=Path, help="export per-epoch RAC differences"
     )
     parser.add_argument("--plot", type=Path, help="save RAC plot (requires matplotlib)")
     add_debug_argument(parser)
     args = parser.parse_args(argv)
+    start, end = args.start_gps_seconds, args.end_gps_seconds
+    predicted_from = args.predicted_from_gps_seconds
+    if any(
+        value is not None and not math.isfinite(value)
+        for value in (start, end, predicted_from)
+    ) or (start is not None and end is not None and start > end):
+        parser.error("comparison bounds must be finite and in chronological order")
     paths = [
         path
         for path in (
@@ -69,29 +102,57 @@ def main(argv: Sequence[str] | None = None) -> int:
     if len({path.resolve() for path in paths}) != len(paths):
         parser.error("input, output and report paths must be distinct")
     debug_header(args, "broadcast_orbit_audit")
-    product = parse_sp3(args.sp3.read_text(encoding="ascii"))
+    sp3 = args.sp3.read_bytes()
+    product = parse_sp3(sp3.decode("ascii"))
     data = capture_logs(
         args,
         [Log.GPSEPH],
         on_progress=progress_printer("broadcast_orbit_audit") if args.debug else None,
     )
     rows: list[OrbitDifference] = []
+    metadata: list[dict[str, float | bool]] = []
+    ephemerides: dict[int, list[tuple[float, Record]]] = defaultdict(list)
+    for record in data["GPSEPH"]:
+        ephemerides[record.integer("prn")].append((record_epoch(record), record))
     skipped: dict[str, int] = defaultdict(int)
     for point in product.points:
         if not point.satellite.startswith("G"):
             continue
-        if point.predicted_orbit and not args.include_predicted:
+        if (start is not None and point.epoch < start) or (
+            end is not None and point.epoch > end
+        ):
+            skipped["outside_comparison_window"] += 1
+            continue
+        predicted_by_epoch = (
+            predicted_from is not None and point.epoch >= predicted_from
+        )
+        predicted_orbit = point.predicted_orbit or predicted_by_epoch
+        predicted_clock = point.predicted_clock or predicted_by_epoch
+        if predicted_orbit and not args.include_predicted:
             skipped["predicted_orbit"] += 1
             continue
         try:
-            record = choose_ephemeris(
-                data["GPSEPH"], int(point.satellite[1:]), point.epoch
-            )
+            prn = int(point.satellite[1:])
+            candidates = [
+                record
+                for received, record in ephemerides[prn]
+                if not args.causal or received <= point.epoch
+            ]
+            record = choose_ephemeris(candidates, prn, point.epoch)
         except ValueError:
             skipped["no_healthy_matching_ephemeris"] += 1
             continue
         elements = KeplerElements.from_record(record)
-        dt = point.epoch - (record.integer("week") * 604800 + elements.toe)
+        toe = record.integer("week") * 604800 + elements.toe
+        dt = point.epoch - toe
+        metadata.append(
+            {
+                "ephemeris_toe_gps_seconds": toe,
+                "ephemeris_received_gps_seconds": record_epoch(record),
+                "predicted_reference_orbit": predicted_orbit,
+                "predicted_reference_clock": predicted_clock,
+            }
+        )
         state = orbit_state(elements, dt)
         before, after = orbit_state(elements, dt - 0.5), orbit_state(elements, dt + 0.5)
         rows.append(
@@ -103,7 +164,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 (after.x - before.x, after.y - before.y, after.z - before.z),
                 broadcast_clock=state.clock_bias + elements.tgd,
                 reference_clock=None
-                if point.predicted_clock and not args.include_predicted
+                if predicted_clock and not args.include_predicted
                 else point.clock_seconds,
             )
         )
@@ -132,6 +193,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "cross_m",
                     "norm_m",
                     "clock_difference_seconds",
+                    *_PROVENANCE_FIELDS,
                 )
             )
             writer.writerows(
@@ -143,8 +205,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                     r.cross_m,
                     r.norm_m,
                     r.clock_difference_seconds,
+                    *(details[name] for name in _PROVENANCE_FIELDS),
                 )
-                for r in rows
+                for r, details in zip(rows, metadata, strict=True)
             )
     if args.plot is not None:
         try:
@@ -171,8 +234,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         {
             "status": "ok" if rows else "insufficient_overlap",
             "ground_truth": str(args.sp3),
+            "reference_sha256": hashlib.sha256(sp3).hexdigest(),
             "reference_frame": product.coordinate_system,
             "reference_agency": product.agency,
+            "comparison_window": {
+                "requested_start_gps_seconds": start,
+                "requested_end_gps_seconds": end,
+                "first_compared_gps_seconds": min(
+                    (row.epoch for row in rows), default=None
+                ),
+                "last_compared_gps_seconds": max(
+                    (row.epoch for row in rows), default=None
+                ),
+                "causal": args.causal,
+                "include_predicted": args.include_predicted,
+                "predicted_from_gps_seconds": predicted_from,
+            },
             "limitation": (
                 "product differences include reference-frame and antenna "
                 "reference-point differences, while clocks use broadcast "
@@ -183,15 +260,16 @@ def main(argv: Sequence[str] | None = None) -> int:
             "differences": [
                 {
                     **asdict(row),
+                    **details,
                     "common_clock_aligned_m": (
                         row.clock_difference_seconds - median(clocks[row.epoch])
                     )
-                    * 299792458.0
+                    * LIGHT_SPEED
                     if row.clock_difference_seconds is not None
                     and len(clocks[row.epoch]) >= 4
                     else None,
                 }
-                for row in rows
+                for row, details in zip(rows, metadata, strict=True)
             ],
             "sisre": asdict(sisre_summary(aligned)),
             "skipped": dict(skipped),

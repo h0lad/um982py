@@ -23,6 +23,10 @@ python -m examples.ppp_filter_inspector --replay /tmp/ppp-debug.bin \
 ## Inputs and results
 
 Missing fields are `null`.
+The selected antenna controls which PPP filter stream is analysed in both
+live and replay modes. POSDEBUG and receiver-wide telemetry retain their
+own scope. Each native frequency index reports residual RMS, the 95th
+percentile of absolute residuals and the number of epochs with samples.
 
 ## Understanding the result
 

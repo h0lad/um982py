@@ -159,7 +159,11 @@ def sky_from_satvis_log(
 
 
 def solution_at(
-    satellites: Sequence[SkySatellite], mask: float, *, minimum_satellites: int
+    satellites: Sequence[SkySatellite],
+    mask: float,
+    *,
+    minimum_satellites: int,
+    max_pdop: float = math.inf,
 ) -> MaskSolution | None:
     """Evaluate one mask, or ``None`` when it keeps too few satellites."""
     kept = retained(satellites, mask)
@@ -169,7 +173,7 @@ def solution_at(
         [satellite.azimuth for satellite in kept],
         [satellite.elevation for satellite in kept],
     )
-    if math.isinf(value):
+    if not math.isfinite(value) or value > max_pdop:
         return None
     return MaskSolution(mask=mask, pdop=value, satellites=len(kept))
 
@@ -179,19 +183,24 @@ def highest_feasible_mask(
     *,
     minimum_satellites: int = MINIMUM_SATELLITES_FOR_PDOP,
     ceiling: float = 90.0,
+    max_pdop: float = math.inf,
 ) -> MaskSolution | None:
     """Highest grid mask keeping the minimum count, from the order statistic."""
     if minimum_satellites < MINIMUM_SATELLITES_FOR_PDOP:
         raise ValueError("PDOP needs at least four satellites")
     if not math.isfinite(ceiling) or not 0 <= ceiling <= 90:
         raise ValueError("ceiling must be in 0..90 degrees")
+    if not max_pdop > 0:
+        raise ValueError("maximum PDOP must be positive")
     ordered = sorted(satellites, key=lambda satellite: -satellite.elevation)
     if len(ordered) < minimum_satellites:
         return None
     reference = ordered[minimum_satellites - 1].elevation
     mask = float(min(math.floor(reference), math.floor(ceiling)))
     while mask >= 0:
-        solution = solution_at(satellites, mask, minimum_satellites=minimum_satellites)
+        solution = solution_at(
+            satellites, mask, minimum_satellites=minimum_satellites, max_pdop=max_pdop
+        )
         if solution is not None:
             return solution
         mask -= GRID
@@ -203,16 +212,22 @@ def brute_force_mask(
     *,
     minimum_satellites: int = MINIMUM_SATELLITES_FOR_PDOP,
     ceiling: float = 90.0,
+    max_pdop: float = math.inf,
 ) -> MaskSolution | None:
     """Highest grid mask that keeps the minimum count, found by scanning every step."""
     if minimum_satellites < MINIMUM_SATELLITES_FOR_PDOP:
         raise ValueError("PDOP needs at least four satellites")
     if not math.isfinite(ceiling) or not 0 <= ceiling <= 90:
         raise ValueError("ceiling must be in 0..90 degrees")
+    if not max_pdop > 0:
+        raise ValueError("maximum PDOP must be positive")
     best: MaskSolution | None = None
     for step in range(math.floor(ceiling) + 1):
         solution = solution_at(
-            satellites, float(step), minimum_satellites=minimum_satellites
+            satellites,
+            float(step),
+            minimum_satellites=minimum_satellites,
+            max_pdop=max_pdop,
         )
         if solution is not None:
             best = solution

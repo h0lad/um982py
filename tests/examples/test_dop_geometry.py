@@ -103,6 +103,17 @@ def test_closed_form_dop_for_four_zenith_and_three_horizon_satellites() -> None:
     assert dop.tdop == pytest.approx(math.sqrt(0.5), abs=1e-9)
 
 
+def test_second_constellation_with_one_satellite_only_constrains_its_clock() -> None:
+    gps = ZENITH_AND_HORIZON
+    base = DilutionOfPrecision.from_geometry(gps)
+    geometry = [*gps, SatelliteGeometry(45.0, 30.0)]
+    groups = ["GPS"] * len(gps) + ["GALILEO"]
+    result = DilutionOfPrecision.from_geometry(geometry, clock_groups=groups)
+    assert result.pdop == pytest.approx(base.pdop)
+    assert result.tdop > base.tdop
+    assert DilutionOfPrecision.from_geometry(geometry).pdop < base.pdop
+
+
 def test_covariance_of_the_documented_geometry_is_hand_computable() -> None:
     covariance = (
         (1.5, 0.0, 0.5, 0.5),
