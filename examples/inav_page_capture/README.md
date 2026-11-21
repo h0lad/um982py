@@ -10,12 +10,24 @@ carry.
 Run from the repository root after [installation](../README.md#running-the-examples).
 
 `--helper` is the path of the RAM-resident reader image accepted by the
-receiver boot menu. Close other serial clients first:
+receiver boot menu. This repository ships one at
+`tools/boot-reader/reader.bin` (380 bytes, with its assembly source and
+protocol notes next to it); the option defaults to that path, so from the
+repository root no extra argument is needed:
 
 ```bash
 python -m examples.inav_page_capture --port /dev/ttyUSB0 --baud 921600 \
-    --helper /path/to/reader.bin --snapshots 3 --pause 10 --json pages.json
+    --snapshots 3 --pause 10 --json pages.json
 ```
+
+Pass `--helper` explicitly only when you keep the image somewhere else:
+
+```bash
+python -m examples.inav_page_capture --port /dev/ttyUSB0 \
+    --helper /path/to/reader.bin --snapshots 3 --json pages.json
+```
+
+Close other serial clients first.
 
 ## Inputs and results
 

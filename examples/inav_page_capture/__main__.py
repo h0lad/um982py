@@ -13,6 +13,11 @@ from um982py.experimental import (
     capture_inav_pages,
 )
 
+DEFAULT_READER = (
+    Path(__file__).resolve().parents[2] / "tools" / "boot-reader" / "reader.bin"
+)
+"""Reader image shipped with the repository, used when --helper is omitted."""
+
 
 def build_parser() -> ExampleParser:
     parser = ExampleParser(
@@ -21,8 +26,10 @@ def build_parser() -> ExampleParser:
     add_receiver_arguments(parser, antenna=False, replay=False)
     parser.add_argument(
         "--helper",
-        required=True,
-        help="path of the RAM-resident reader image for the boot menu",
+        type=Path,
+        default=DEFAULT_READER,
+        help="path of the RAM-resident reader image for the boot menu; "
+        "defaults to tools/boot-reader/reader.bin of this repository",
     )
     parser.add_argument(
         "--snapshots",
@@ -57,7 +64,11 @@ def main() -> int:
     args = parser.parse_args(sys.argv[1:])
     helper = Path(args.helper)
     if not helper.exists():
-        parser.error(f"helper image not found: {helper}")
+        parser.error(
+            f"reader image not found: {helper}; pass --helper with the "
+            "path of the RAM-resident reader image "
+            "(tools/boot-reader/reader.bin in this repository)"
+        )
     if args.snapshots > 1:
         campaign = capture_inav_campaign(
             args.port,

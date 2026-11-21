@@ -71,7 +71,10 @@ from a supplied trace. It preserves the native timing values and field order.
 `capture_inav_pages()` reads the tracking window through the boot-menu
 helper protocol and returns the decoded Galileo E1-B I/NAV page part stored
 per signal, including the odd-part OSNMA protocol data. The session is
-read-only and ends with a reset back into the application.
+read-only and ends with a reset back into the application. Both capture
+functions take the reader image path explicitly; a ready-to-use image ships
+at `tools/boot-reader/reader.bin` with its assembly source, checksum and
+protocol notes (see [the reader image readme](tools/boot-reader/README.md)).
 
 Use `um982py.binex.BinexEphemerisType` to subscribe to broadcast ephemerides
 by constellation, alongside `binex_output()` for observations. `write_binex()`
