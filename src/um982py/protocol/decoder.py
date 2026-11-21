@@ -13,7 +13,12 @@ from um982py.protocol.binary import (
     parse_binary,
     parse_rtcm,
 )
-from um982py.protocol.binex import BINEX_SYNC, binex_frame_size, parse_binex
+from um982py.protocol.binex import (
+    BINEX_MARKERS,
+    BINEX_SYNC,
+    binex_frame_size,
+    parse_binex,
+)
 from um982py.protocol.listing import (
     listing_size,
     parse_abbreviated_table,
@@ -51,7 +56,7 @@ class StreamDecoder:
             binary = first == 0xAA
             rtcm = first == 0xD3
             binex = first == BINEX_SYNC[0] and (
-                len(self._buffer) == 1 or self._buffer.startswith(BINEX_SYNC)
+                len(self._buffer) == 1 or self._buffer.startswith(BINEX_MARKERS)
             )
             # UNILOGLIST uses a multiline response with its own framing.
             listing = (
@@ -125,7 +130,7 @@ class StreamDecoder:
                             BINARY_SYNC,
                             OEM_BINARY_SYNC,
                             b"\xd3",
-                            BINEX_SYNC,
+                            *BINEX_MARKERS,
                         )
                         if (pos := self._buffer.find(marker)) > 0
                         and (newline < 0 or pos < newline)
@@ -178,7 +183,7 @@ class StreamDecoder:
     def _resync(self, limit: int) -> int:
         positions = [
             position
-            for marker in (b"$", b"#", b"\xaa", b"\xd3", BINEX_SYNC)
+            for marker in (b"$", b"#", b"\xaa", b"\xd3", *BINEX_MARKERS)
             if 0 < (position := self._buffer.find(marker, 1)) < limit
         ]
         return min(positions, default=min(limit, len(self._buffer)))
@@ -250,7 +255,7 @@ class StreamDecoder:
                         continue
                     parse_rtcm(candidate[:length])
                 elif candidate[0] == BINEX_SYNC[0]:
-                    if len(candidate) > 1 and not candidate.startswith(BINEX_SYNC):
+                    if len(candidate) > 1 and not candidate.startswith(BINEX_MARKERS):
                         continue
                     binex_size = binex_frame_size(candidate)
                     if binex_size is None or (

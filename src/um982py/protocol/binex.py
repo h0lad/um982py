@@ -1,4 +1,4 @@
-"""Framing for forward-readable big-endian BINEX observation records."""
+"""Framing for forward-readable big-endian BINEX records."""
 
 from binascii import crc_hqx
 
@@ -7,14 +7,16 @@ from um982py.messages.frames import BinexMessage
 from um982py.protocol.checksums import nmea_checksum
 
 BINEX_SYNC = b"\xe2\x7f"
+BINEX_NAV_SYNC = b"\xe2\x01"
+BINEX_MARKERS = (BINEX_SYNC, BINEX_NAV_SYNC)
 
 
 def _bounds(data: bytes | bytearray) -> tuple[int, int, int] | None:
     """Return the payload bounds and total size once the length is available."""
     if len(data) < len(BINEX_SYNC):
         return None
-    if not data.startswith(BINEX_SYNC):
-        raise ProtocolError("Expected a forward BINEX 0x7f record")
+    if not data.startswith(BINEX_MARKERS):
+        raise ProtocolError("Expected a forward BINEX observation or navigation record")
     length = 0
     for index, byte in enumerate(data[2:6], start=2):
         if index == 5:
@@ -25,7 +27,8 @@ def _bounds(data: bytes | bytearray) -> tuple[int, int, int] | None:
                 continue
         start = index + 1
         end = start + length
-        if length < 8 or end - 1 >= 4096:
+        minimum = 8 if data[1] == BINEX_SYNC[1] else 2
+        if length < minimum or end - 1 >= 4096:
             raise ProtocolError("Unsupported BINEX record length")
         checksum_size = 1 if end - 1 < 128 else 2
         return start, end, end + checksum_size
@@ -44,14 +47,14 @@ def _checksum(data: bytes) -> bytes:
 
 
 def parse_binex(raw: bytes) -> BinexMessage:
-    """Validate the record length, checksum and observation subrecord ID."""
+    """Validate the record length, checksum and supported observation subtype."""
     bounds = _bounds(raw)
     if bounds is None or bounds[2] != len(raw):
         raise ProtocolError("Incomplete or overlong BINEX record")
     start, end, _ = bounds
     if raw[end:] != _checksum(raw[1:end]):
         raise ChecksumError("BINEX checksum mismatch")
-    if raw[start] != 0x05:
+    if raw[1] == BINEX_SYNC[1] and raw[start] != 0x05:
         raise ProtocolError("Expected BINEX observation subrecord 0x05")
     return BinexMessage(raw[start:end], raw)
 

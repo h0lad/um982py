@@ -2,13 +2,17 @@ from struct import pack
 
 import pytest
 
-from conftest import FIXTURES, ReplayTransport, ascii_message
+from conftest import FIXTURES, ReplayTransport, ascii_message, rtcm
 from test_protocol import binary
 from um982py import Log, Receiver
 from um982py.commands import Port, Trigger
 from um982py.errors import ProtocolError
-from um982py.experimental import base_mask_report, observation_mask_report
-from um982py.messages import decode_log
+from um982py.experimental import (
+    base_mask_report,
+    iter_correction_audit,
+    observation_mask_report,
+)
+from um982py.messages import Record, decode_log
 from um982py.protocol import StreamDecoder
 from um982py.protocol.binary import parse_binary
 from um982py.protocol.checksums import nmea_checksum
@@ -90,6 +94,73 @@ def test_ssr_tables_preserve_native_entries_and_padding() -> None:
         decode_log(parse_binary(binary(orbit[:-1], 11278)))
     with pytest.raises(ProtocolError):
         decode_log(parse_binary(binary(bytes(24) + pack("<I", 65), 11278)))
+
+
+@pytest.mark.parametrize(
+    ("name", "message_id", "header", "body", "row"),
+    [
+        (
+            "SSR1ORBIT",
+            11278,
+            "G,0,0,0,0,0,0,0,0,1,0,0",
+            pack("<Bi6d", 12, 9, 1, -2, 3, 4, 5, 6),
+            "12,9,1,-2,3,4,5,6",
+        ),
+        (
+            "SSR1CLOCK",
+            11279,
+            "G,0,0,0,0,0,0,1",
+            pack("<B3d", 12, 1, -2, 3),
+            "12,1,-2,3",
+        ),
+    ],
+)
+def test_ssr_ascii_and_binary_agree(
+    name: str, message_id: int, header: str, body: bytes, row: str
+) -> None:
+    prefix = bytes(24) + pack("<I", 1)
+    if name == "SSR1ORBIT":
+        prefix += b"\0\0"
+    decoder = StreamDecoder(strict=True)
+    binary_message, text = decoder.feed(
+        binary(prefix + body, message_id) + ascii_message(name + "A", f"{header},{row}")
+    )
+    assert decode_log(binary_message).records("satellites") == decode_log(text).records(
+        "satellites"
+    )
+
+
+def test_rtcm1032_input_and_receiver_output_in_transcript_order() -> None:
+    bits = 0
+    for value, width in (
+        (1032, 12),
+        (1, 12),
+        (2, 12),
+        (20, 6),
+        (-10000, 38),
+        (20000, 38),
+        (30000, 38),
+        (0, 4),
+    ):
+        bits = (bits << width) | (value & ((1 << width) - 1))
+    wire = (
+        rtcm(bits.to_bytes(20, "big"))
+        + binary(b"", 65000)
+        + binary(pack("<4i3d", 0, 1, 2, 20, -1, 2, 3), 2078)
+        + ascii_message("RTCM1032A", "0,1,2,20,-1,2,3")
+    )
+    events = tuple(iter_correction_audit(StreamDecoder(strict=True).feed(wire)))
+    assert [event.frame_index for event in events] == [0, 2, 3]
+    source, native, text = [event.data for event in events]
+    assert isinstance(source, Record)
+    assert isinstance(native, Record)
+    assert isinstance(text, Record)
+    fields = source["fields"]
+    assert isinstance(fields, Record)
+    assert (fields["DF003"], fields["DF226"], fields["DF021"]) == (1, 2, 20)
+    assert fields["DF025"] == native["ecef_x"] == -1.0
+    assert native.entries == text.entries
+    assert Log.RTCM1032.read(binary=True).text == "RTCM1032B"
 
 
 @pytest.mark.parametrize(

@@ -192,6 +192,14 @@ FIXED = MappingProxyType(
     {
         1005: COORDINATES,
         1006: (*COORDINATES, F(28, 16, 0.0001)),
+        1032: (
+            *STATION,
+            F(226, 12),
+            F(21, 6),
+            F(25, -38, 0.0001),
+            F(26, -38, 0.0001),
+            F(27, -38, 0.0001),
+        ),
         1019: GPS_EPHEMERIS,
         1020: GLO_EPHEMERIS,
         1042: BDS_EPHEMERIS,

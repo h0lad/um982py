@@ -1,9 +1,12 @@
+from binascii import crc_hqx
 from io import BytesIO
 
 import pytest
 
 from test_protocol import binary
 from um982py.binex import (
+    BinexEphemerisType,
+    binex_ephemeris_type,
     binex_epoch,
     binex_output,
     binex_satellites,
@@ -101,3 +104,28 @@ def test_incomplete_optional_and_satellite_fields_are_rejected() -> None:
 def test_binex_commands_use_native_name() -> None:
     assert binex_output(1).text == "BINEX7F05 1"
     assert binex_stop().text == "UNLOG BINEX7F05"
+
+
+@pytest.mark.parametrize("kind", list(BinexEphemerisType))
+def test_binex_navigation_and_observations_share_a_stream(
+    kind: BinexEphemerisType,
+) -> None:
+    payload = bytes([kind, 15]) + bytes(130)
+    checked = b"\x01\x81\x04" + payload
+    navigation = b"\xe2" + checked + crc_hqx(checked, 0).to_bytes(2, "big")
+    observations = frame_binex_observations(_header() + _satellite(13))
+    decoder = StreamDecoder(strict=True)
+    wire = navigation + observations
+    nav, obs = tuple(
+        message for byte in wire for message in decoder.feed(bytes([byte]))
+    )
+    decoder.finish()
+    assert isinstance(nav, BinexMessage) and binex_ephemeris_type(nav) is kind
+    assert isinstance(obs, BinexMessage) and binex_epoch(obs).satellite_count == 1
+    output = BytesIO()
+    assert write_binex((nav, obs), output, drop_zero_prn=True) == 2
+    assert output.getvalue() == wire
+    assert kind.output().text == f"BINEX01{kind:02X} ONCHANGED"
+    assert kind.stop().text == f"UNLOG BINEX01{kind:02X}"
+    with pytest.raises(ChecksumError):
+        parse_binex(navigation[:-1] + bytes([navigation[-1] ^ 1]))

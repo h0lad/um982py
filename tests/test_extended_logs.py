@@ -40,6 +40,7 @@ AUDIT_LOGS = {
     Log.JAMSTATUSD,
     Log.PVTSOL,
     Log.RTCSTATUSD,
+    Log.RTCM1032,
     Log.SATINFO,
     Log.SATXYZ2,
     Log.SSR1CLOCK,

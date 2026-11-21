@@ -1,8 +1,9 @@
 {
-  "provenance": "Synthetic nonzero payloads packed using independent RTCM data-field definitions; expected values decoded with pyrtcm 1.2.1. GLONASS clock terms use their physical scale factors, which pyrtcm 1.2.1 omits. No production decoder tables used to generate these vectors.",
+  "provenance": "Synthetic nonzero payloads packed using independent RTCM data-field definitions. Expected values were decoded with pyrtcm 1.2.1, with RTCM 1032 calculated from RTCM 10403.2 and GLONASS clock terms scaled per their physical units. No production decoder tables used to generate these vectors.",
   "references": [
     "https://github.com/semuconsulting/pyrtcm/tree/v1.2.1",
-    "https://github.com/tomojitakasu/RTKLIB/blob/master/src/rtcm3.c"
+    "https://github.com/tomojitakasu/RTKLIB/blob/master/src/rtcm3.c",
+    "https://ge0mlib.com/papers/Protocols/RTCM_SC-104_v3.2.pdf"
   ],
   "vectors": [
     {
@@ -376,6 +377,19 @@
         "DF134": 7,
         "DF135": -2.7939677238464355e-09,
         "DF136": 1
+      }
+    },
+    {
+      "message_type": 1032,
+      "hex": "d3001440801101953cd780c4d91dcfc75a00af7f98d80052020f",
+      "fields": {
+        "DF002": 1032,
+        "DF003": 17,
+        "DF226": 25,
+        "DF021": 20,
+        "DF025": -1356432.8743,
+        "DF026": 3201000.0,
+        "DF027": 4711000.0
       }
     },
     {

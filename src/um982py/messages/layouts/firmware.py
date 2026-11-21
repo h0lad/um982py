@@ -199,6 +199,20 @@ LAYOUTS.update(
         )
     }
 )
+LAYOUTS["RTCM1032"] = Layout(
+    "RTCM1032",
+    "extended",
+    (
+        Field("field_01", "i", 0, 4),
+        Field("field_02", "i", 4, 4),
+        Field("field_03", "i", 8, 4),
+        Field("field_04", "i", 12, 4),
+        Field("ecef_x", "d", 16, 8),
+        Field("ecef_y", "d", 24, 8),
+        Field("ecef_z", "d", 32, 8),
+    ),
+    40,
+)
 LAYOUTS["BASESATS"] = Layout(
     "BASESATS",
     "extended",

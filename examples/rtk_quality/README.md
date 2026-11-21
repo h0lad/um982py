@@ -36,6 +36,28 @@ for those satellites. [BESTSATS protocol reference](https://docs.novatel.com/OEM
 Diagnostic reports retain separate receiver epochs. Missing logs remain empty,
 and DOP sentinels such as 9999 indicate unavailable geometry.
 
+## Inspect a mixed correction transcript
+
+Use `iter_correction_audit()` with a transcript that contains both incoming RTCM
+and receiver outputs. It preserves capture order and the original wire messages.
+Subscribe to `Log.RTCM1032`, `Log.BASESATS`, `Log.SSR1ORBIT`, and
+`Log.SSR1CLOCK` for receiver-side data and use the existing `rtk_datah_output()`
+and `velocity_data_output()` commands for solver diagnostics.
+
+```python
+from um982py.capture import iter_frames
+from um982py.experimental import iter_correction_audit
+
+for event in iter_correction_audit(iter_frames("mixed.bin")):
+    print(event.frame_index, event.data)
+```
+
+RTCM 1032 identifies the physical reference station behind a network RTK stream.
+The receiver reports its ECEF coordinates and four additional native fields.
+SSR outputs expose the satellite identifiers and native coefficients. A table
+entry shows what the receiver reports for that satellite. Solver application
+requires separate evidence.
+
 ## References
 
 Unicore N4 R1.4 interface guide.

@@ -1,7 +1,8 @@
-"""Receive and export the UM982 BINEX observation stream."""
+"""Receive and export BINEX observations and navigation records."""
 
 from collections.abc import Iterable
 from dataclasses import dataclass
+from enum import IntEnum
 from typing import BinaryIO
 
 from um982py.commands import logging
@@ -9,7 +10,41 @@ from um982py.commands.core import Command
 from um982py.commands.types import Port, Trigger
 from um982py.errors import ProtocolError
 from um982py.messages import BinexMessage, CommandResponse, Message
-from um982py.protocol.binex import frame_binex_observations
+from um982py.protocol.binex import BINEX_NAV_SYNC, BINEX_SYNC, frame_binex_observations
+
+
+class BinexEphemerisType(IntEnum):
+    """Decoded broadcast ephemeris subrecords supported by the receiver."""
+
+    GPS = 1
+    GLONASS = 2
+    GALILEO = 4
+    BEIDOU = 5
+    QZSS = 6
+    NAVIC = 7
+
+    def output(
+        self,
+        interval: float | Trigger = Trigger.ON_CHANGED,
+        *,
+        port: Port | None = None,
+    ) -> Command[CommandResponse]:
+        """Subscribe to broadcast ephemeris for this constellation."""
+        return logging.output(f"BINEX01{self:02X}", interval, port=port)
+
+    def stop(self, *, port: Port | None = None) -> Command[CommandResponse]:
+        """Stop broadcast ephemeris output for this constellation."""
+        return logging.stop(f"BINEX01{self:02X}", port=port)
+
+
+def binex_ephemeris_type(message: BinexMessage) -> BinexEphemerisType:
+    """Identify the constellation while retaining the original BINEX payload."""
+    if message.record_id != BINEX_NAV_SYNC[1] or not message.payload:
+        raise ProtocolError("Expected a BINEX navigation record")
+    try:
+        return BinexEphemerisType(message.payload[0])
+    except ValueError as error:
+        raise ProtocolError("Unsupported BINEX ephemeris subrecord") from error
 
 
 @dataclass(frozen=True, slots=True)
@@ -42,7 +77,7 @@ class BinexSatellite:
 
 def _epoch_header(message: BinexMessage) -> tuple[BinexEpoch, int]:
     data = message.payload
-    if len(data) < 8 or data[0] != 5:
+    if message.record_id != BINEX_SYNC[1] or len(data) < 8 or data[0] != 5:
         raise ProtocolError("Incomplete BINEX observation header")
     minutes = int.from_bytes(data[1:5], "big")
     milliseconds = int.from_bytes(data[5:7], "big")
@@ -167,7 +202,7 @@ def write_binex(
         if not isinstance(message, BinexMessage):
             continue
         raw = message.raw
-        if drop_zero_prn:
+        if drop_zero_prn and message.record_id == BINEX_SYNC[1]:
             epoch, start = _epoch_header(message)
             satellites = _satellites(message.payload, start, epoch.satellite_count)
             valid = tuple(block.raw for block in satellites if block.prn)

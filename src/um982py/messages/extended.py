@@ -2,11 +2,13 @@
 
 import re
 from dataclasses import replace
+from struct import Struct
 
 from um982py.errors import ProtocolError
 from um982py.messages import AsciiMessage, BinaryMessage, Message, Record
 from um982py.messages.layouts.firmware import GLOALMANAC_ASCII, LAYOUTS
 from um982py.messages.reader import BodyReader
+from um982py.messages.record import Value
 from um982py.messages.satellites import satellite_information
 
 # The firmware renders these native bodies at fixed lengths.
@@ -25,7 +27,10 @@ _RAW_BODY_SIZES = {
     "SBAS28": 56,
     "SBASALMANAC": 40,
 }
-_SSR_TABLE_SHAPES = {"SSR1ORBIT": (30, 53), "SSR1CLOCK": (28, 25)}
+_SSR_TABLE_SHAPES = {
+    "SSR1ORBIT": (30, Struct("<Bi6d"), 12, 9, 2),
+    "SSR1CLOCK": (28, Struct("<B3d"), 8, 7, 1),
+}
 
 
 def decode_extended(name: str, message: Message) -> Record:
@@ -65,28 +70,63 @@ def decode_extended(name: str, message: Message) -> Record:
     return replace(BodyReader(values).read(LAYOUTS[name]), message=message)
 
 
+def _ssr_entry(values: tuple[int | float, ...], integer_fields: int) -> Record:
+    fields: tuple[tuple[str, Value], ...] = (("satellite_id", values[0]),)
+    if integer_fields == 2:
+        fields += (("native_field", values[1]),)
+    return Record("satellite", (*fields, ("coefficients", values[integer_fields:])))
+
+
 def _ssr_table(name: str, values: bytes | tuple[str, ...]) -> Record:
+    prefix_size, entry, ascii_prefix, count_index, integer_fields = _SSR_TABLE_SHAPES[
+        name
+    ]
     if isinstance(values, tuple):
-        return Record(name, (("fields", values),))
-    prefix_size, stride = _SSR_TABLE_SHAPES[name]
+        if len(values) < ascii_prefix:
+            raise ProtocolError(f"Truncated {name} ASCII header")
+        count = int(values[count_index])
+        BodyReader.bound(count, 64)
+        width = 8 if integer_fields == 2 else 4
+        if len(values) != ascii_prefix + count * width:
+            raise ProtocolError(f"Invalid {name} ASCII count")
+        satellites = tuple(
+            _ssr_entry(
+                (
+                    *(int(value) for value in values[offset : offset + integer_fields]),
+                    *(
+                        float(value)
+                        for value in values[offset + integer_fields : offset + width]
+                    ),
+                ),
+                integer_fields,
+            )
+            for offset in range(ascii_prefix, len(values), width)
+        )
+        return Record(
+            name, (("fields", values), ("count", count), ("satellites", satellites))
+        )
+    if len(values) < prefix_size:
+        raise ProtocolError(f"Truncated {name} binary header")
+    stride = entry.size
     count = int.from_bytes(values[24:28], "little")
     BodyReader.bound(count, 64)
     end = prefix_size + stride * count
     if len(values) not in (end, prefix_size + stride * 64):
         raise ProtocolError(f"Invalid {name} count or body size")
+    entries = tuple(
+        values[offset : offset + stride] for offset in range(prefix_size, end, stride)
+    )
     return Record(
         name,
         (
             ("count", count),
             ("native_header", values[:prefix_size]),
-            (
-                "native_entries",
-                tuple(
-                    values[offset : offset + stride]
-                    for offset in range(prefix_size, end, stride)
-                ),
-            ),
+            ("native_entries", entries),
             ("native_tail", values[end:]),
+            (
+                "satellites",
+                tuple(_ssr_entry(entry.unpack(raw), integer_fields) for raw in entries),
+            ),
         ),
     )
 

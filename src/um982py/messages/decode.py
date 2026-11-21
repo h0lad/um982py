@@ -59,6 +59,14 @@ def decode_log(message: Message, *, log: "Log | None" = None) -> Record:
     if log is not None:
         if not isinstance(log, Log):
             raise TypeError("log must be a Log")
+        if (
+            log is Log.RTCM1032
+            and isinstance(message, RtcmMessage)
+            and message.message_type == 1032
+        ):
+            from um982py.rtcm import decode_rtcm
+
+            return decode_rtcm(message)
         binary = isinstance(message, BinaryMessage)
         if binary and log.definition.binary_command is None:
             raise ProtocolError(f"{log.value} has no binary body")

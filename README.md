@@ -52,11 +52,18 @@ See the [example catalogue](examples/README.md) for setup and more workflows.
 
 The UM982 exposes additional logs through the existing `Log` API.
 Examples include hardware and RTC status variants (`HWSTATUSD`, `RTCSTATUSD`),
-PVT (`PVTSOL`), base-station observations (`BASESATS`), and internal correction
-tables (`SSR1ORBIT`, `SSR1CLOCK`). SSR entries retain their native bytes.
+PVT (`PVTSOL`), base-station observations (`BASESATS`), physical reference
+station coordinates (`RTCM1032`), and internal correction tables
+(`SSR1ORBIT`, `SSR1CLOCK`). SSR entries expose native coefficients and retain
+their binary bytes. See the [mixed correction replay](examples/rtk_quality/README.md#inspect-a-mixed-correction-transcript)
+for RTCM input and receiver-side diagnostics.
 `SBAS1` and `SBAS18` expose masks, and the other SBAS logs retain their raw
 bodies. `parse_mpt_debug()` exposes `time_pair_s` and
 `diagnostic_blocks` alongside the original tokens.
+
+Use `um982py.binex.BinexEphemerisType` to subscribe to broadcast ephemerides
+by constellation, alongside `binex_output()` for observations. `write_binex()`
+exports both record families in capture order.
 
 ```python
 from um982py import Log, Receiver

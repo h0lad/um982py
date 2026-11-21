@@ -100,10 +100,14 @@ class RtcmMessage:
 
 @dataclass(frozen=True, slots=True)
 class BinexMessage:
-    """A checked BINEX 0x7f-05 observation record."""
+    """A checked BINEX observation or navigation record."""
 
     payload: bytes
     raw: bytes
+
+    @property
+    def record_id(self) -> int:
+        return self.raw[1]
 
 
 @dataclass(frozen=True, slots=True)

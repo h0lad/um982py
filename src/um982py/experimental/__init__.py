@@ -80,6 +80,11 @@ from um982py.experimental.configuration import (
     observation_mask_report,
     remote_antenna_phase_center_offset,
 )
+from um982py.experimental.correction_audit import (
+    CORRECTION_AUDIT_LOGS,
+    CorrectionAuditFrame,
+    iter_correction_audit,
+)
 from um982py.experimental.debug import (
     DebugOutput,
     InternalDebugLog,
@@ -180,6 +185,7 @@ from um982py.experimental.velocity_data import (
 __all__ = [
     "AGC_MESSAGE_ID",
     "BASEBAND_MESSAGE_CATALOGUE",
+    "CORRECTION_AUDIT_LOGS",
     "FIRST_MESSAGE_OFFSET",
     "HEADER_SIZE",
     "MIN_LENGTH",
@@ -207,6 +213,7 @@ __all__ = [
     "CompressedObservation",
     "CompressedRange",
     "CompressedRange2",
+    "CorrectionAuditFrame",
     "DebugOutput",
     "FirmwareSwitch",
     "InternalDebugLog",
@@ -264,6 +271,7 @@ __all__ = [
     "enter_debug_mode",
     "enter_debug_mode_at",
     "event_config",
+    "iter_correction_audit",
     "jam_status_enable",
     "leap_second_config",
     "log_config",
