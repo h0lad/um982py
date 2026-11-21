@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+import json
+import sys
 from pathlib import Path
 
+import examples.inav_page_capture.__main__ as cli
+import pytest
 from examples.inav_page_capture import (
     render_audit,
     render_campaign,
@@ -11,6 +15,8 @@ from examples.inav_page_capture import (
 from examples.inav_page_capture.__main__ import _report
 
 from um982py.experimental import (
+    GlonassFdmaString,
+    GpsLnavSubframe,
     InavCampaign,
     InavSnapshot,
     InavWord,
@@ -47,6 +53,39 @@ def test_report_lists_pages_and_osnma_counts() -> None:
     assert sorted(report["prns"]) == [6, 7, 11, 12, 14, 15, 16, 20, 29, 36]
     assert report["application_restored"] is True
     assert "OSNMA" in str(report["interpretation"])
+
+
+@pytest.mark.parametrize("option", [None, "--native-nav", "--no-native-nav"])
+def test_live_report_native_navigation(
+    option: str | None,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    tmp_path: Path,
+) -> None:
+    dest = tmp_path / "nav.json"
+    argv = ["inav_page_capture", "--json", str(dest)]
+    if option is not None:
+        argv.append(option)
+    monkeypatch.setattr(sys, "argv", argv)
+    monkeypatch.setattr(cli, "capture_inav_pages", lambda *args, **kwargs: _snapshot())
+    gps = GpsLnavSubframe(26, 1, 3, 577038, (0x22C18D0D,), (0x8B0634,))
+    glonass = GlonassFdmaString(65, 34, 11, 0x0B7EDAA35FFFFDD9EFD682)
+    monkeypatch.setattr(cli, "extract_native_nav", lambda regions: ((gps,), (glonass,)))
+
+    assert cli.main() == 0
+    output = capsys.readouterr().out
+    report = json.loads(dest.read_text())
+    if option == "--no-native-nav":
+        assert "native_nav" not in report
+        assert "GPS LNAV" not in output
+        assert "GLONASS FDMA" not in output
+    else:
+        assert "GPS LNAV (1 parity-checked subframes)" in output
+        assert "GLONASS FDMA (1 Hamming-checked strings)" in output
+        assert "22c18d0d" in output and "0b7edaa35ffffdd9efd682" in output
+        assert report["native_nav"] == [
+            {"gps_lnav": [gps.manifest()], "glonass_fdma": [glonass.manifest()]}
+        ]
 
 
 def test_report_details_carry_the_decoded_part_fields() -> None:

@@ -71,11 +71,12 @@ report leaves the legacy JSON `headers` list empty.
 
 ## Dump native GPS and GLONASS navigation
 
-Use the same tracking snapshot to include parity-checked native GPS and
-GLONASS bits in the JSON report.
+Live snapshots include parity-checked GPS and GLONASS bits in the terminal
+tables and JSON by default. Pass `--no-native-nav` for a Galileo-only
+report.
 
 ```bash
-PYTHONPATH=src python3 -m examples.inav_page_capture --port /dev/ttyUSB0 --native-nav --json nav.json
+PYTHONPATH=src python3 -m examples.inav_page_capture --port /dev/ttyUSB0 --json nav.json
 ```
 
 A saved tracking window collected from `TRACKING_MEMORY_BASE` can also

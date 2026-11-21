@@ -5,6 +5,8 @@ from typing import cast
 
 from um982py.experimental import (
     TRACKING_MEMORY_BASE,
+    GlonassFdmaString,
+    GpsLnavSubframe,
     InavCampaign,
     InavPage,
     InavWord,
@@ -21,6 +23,7 @@ __all__ = [
     "campaign_window_audits",
     "render_audit",
     "render_campaign",
+    "render_native_nav",
     "render_page",
     "render_word",
 ]
@@ -121,6 +124,38 @@ def campaign_window_audits(
         for index, snapshot in enumerate(campaign.snapshots)
     }
     return audit_page_windows(extract_channel_states(regions))
+
+
+def render_native_nav(
+    gps: Sequence[GpsLnavSubframe], glonass: Sequence[GlonassFdmaString]
+) -> str:
+    """Render the parity-checked native navigation records of one snapshot."""
+    lines = [
+        f"GPS LNAV ({len(gps)} parity-checked subframes)",
+        "PRN    Ch  Subframe  Next TOW (s)  30-bit words (hex)",
+    ]
+    for frame in gps:
+        words = " ".join(f"{word:08x}" for word in frame.words)
+        lines.append(
+            f"{frame.prn:>3}  {frame.channel:>4}  {frame.subframe:>8}"
+            f"  {frame.next_subframe_tow_s:>12}  {words}"
+        )
+    if not gps:
+        lines.append("-")
+
+    lines += [
+        "",
+        f"GLONASS FDMA ({len(glonass)} Hamming-checked strings)",
+        "SVID    Ch  String  85-bit string (hex)",
+    ]
+    lines.extend(
+        f"{record.receiver_svid:>4}  {record.channel:>4}"
+        f"  {record.string_number:>6}  {record.bits:022x}"
+        for record in glonass
+    )
+    if not glonass:
+        lines.append("-")
+    return "\n".join(lines)
 
 
 def render_campaign(

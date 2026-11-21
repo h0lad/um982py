@@ -1,14 +1,22 @@
-"""Capture Galileo E1-B I/NAV pages or replay navigation, OSNMA and SAR data."""
+"""Capture Galileo, GPS and GLONASS navigation or replay Galileo streams."""
 
 from __future__ import annotations
 
 import sys
+from argparse import BooleanOptionalAction
+from collections.abc import Sequence
 from pathlib import Path
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
-from examples.inav_page_capture import campaign_window_audits, render_campaign
+from examples.inav_page_capture import (
+    campaign_window_audits,
+    render_campaign,
+    render_native_nav,
+)
 from um982py.experimental import (
     TRACKING_MEMORY_BASE,
+    GlonassFdmaString,
+    GpsLnavSubframe,
     InavCampaign,
     InavSnapshot,
     capture_inav_campaign,
@@ -63,8 +71,8 @@ def build_parser() -> ExampleParser:
     )
     parser.add_argument(
         "--native-nav",
-        action="store_true",
-        help="include parity-checked GPS and GLONASS bits in live snapshot JSON",
+        action=BooleanOptionalAction,
+        help="show parity-checked GPS and GLONASS bits in snapshots (default: on)",
     )
     parser.add_argument(
         "--helper",
@@ -102,8 +110,9 @@ def _report(campaign: InavCampaign) -> dict[str, object]:
     return report
 
 
-def _native_nav(tracking: bytes) -> dict[str, object]:
-    gps, glonass = extract_native_nav({"tracking": (TRACKING_MEMORY_BASE, tracking)})
+def _native_nav_manifest(
+    gps: Sequence[GpsLnavSubframe], glonass: Sequence[GlonassFdmaString]
+) -> dict[str, object]:
     return {
         "gps_lnav": [subframe.manifest() for subframe in gps],
         "glonass_fdma": [string.manifest() for string in glonass],
@@ -114,8 +123,8 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args(sys.argv[1:])
     if args.stream_csv is not None:
-        if args.native_nav:
-            parser.error("--native-nav requires a receiver snapshot or --tracking-ram")
+        if args.native_nav is not None:
+            parser.error("--native-nav and --no-native-nav require a tracking snapshot")
         if not (args.public_key or args.sar_only or args.ced_only):
             parser.error("--stream-csv requires --public-key, --sar-only or --ced-only")
         if args.json is not None and args.json.resolve() in {
@@ -163,9 +172,18 @@ def main() -> int:
     if args.public_key or args.sar_only or args.ced_only:
         parser.error("--public-key, --sar-only and --ced-only require --stream-csv")
     if args.tracking_ram is not None:
+        if args.native_nav is False:
+            parser.error("--tracking-ram requires native navigation extraction")
         if args.json is not None and args.json.resolve() == args.tracking_ram.resolve():
             parser.error("--json must not overwrite the tracking window")
-        report = {"native_nav": [_native_nav(args.tracking_ram.read_bytes())]}
+        gps, glonass = extract_native_nav(
+            {"tracking": (TRACKING_MEMORY_BASE, args.tracking_ram.read_bytes())}
+        )
+        print(
+            render_native_nav(gps, glonass),
+            file=sys.stdout if args.json is not None else sys.stderr,
+        )
+        report = {"native_nav": [_native_nav_manifest(gps, glonass)]}
         write_json(report, args.json)
         return 0
     helper = Path(args.helper)
@@ -183,19 +201,27 @@ def main() -> int:
             snapshots=args.snapshots,
             pause_seconds=args.pause,
         )
-        report = _report(campaign)
     else:
         snapshot: InavSnapshot = capture_inav_pages(
             args.port, helper=helper, baud=args.baud
         )
         campaign = InavCampaign((snapshot,))
-        report = _report(campaign)
-    if args.native_nav:
-        report["native_nav"] = [
-            _native_nav(snapshot.regions["tracking"]) for snapshot in campaign.snapshots
+    report = _report(campaign)
+    text = [render_campaign(campaign, audits=campaign_window_audits(campaign))]
+    if args.native_nav is not False:
+        native = [
+            extract_native_nav(
+                {"tracking": (TRACKING_MEMORY_BASE, snapshot.regions["tracking"])}
+            )
+            for snapshot in campaign.snapshots
         ]
-    text = render_campaign(campaign, audits=campaign_window_audits(campaign))
-    print(text, file=sys.stdout if args.json is not None else sys.stderr)
+        report["native_nav"] = [
+            _native_nav_manifest(gps, glonass) for gps, glonass in native
+        ]
+        for index, (gps, glonass) in enumerate(native, start=1):
+            heading = f"Snapshot {index}\n" if len(native) > 1 else ""
+            text.append(heading + render_native_nav(gps, glonass))
+    print("\n\n".join(text), file=sys.stdout if args.json is not None else sys.stderr)
     write_json(report, args.json)
     words = campaign.words()
     with_osnma = sum(
