@@ -91,8 +91,11 @@ from um982py.experimental.debug import (
     MptDebugBlock,
     MptDebugData,
     PosDebugData,
+    PppDebugAmbiguity,
     PppDebugData,
     PppDebugResidual,
+    PppDebugSatellite,
+    PppDebugUpdateFailure,
     bb_command,
     bb_debug,
     bb_log_enable,
@@ -102,6 +105,7 @@ from um982py.experimental.debug import (
     parse_mpt_debug,
     parse_pos_debug,
     parse_ppp_debug,
+    ppp_debug_satellite,
 )
 from um982py.experimental.matched_position import (
     decode_matched_position,
@@ -117,6 +121,7 @@ from um982py.experimental.matched_solution import (
     matched_solution_read,
     matched_solution_stop,
 )
+from um982py.experimental.ppp_trace import parse_ppp_solver_trace
 from um982py.experimental.range_compressed import (
     CompressedObservation,
     CompressedRange,
@@ -222,8 +227,11 @@ __all__ = [
     "MptDebugBlock",
     "MptDebugData",
     "PosDebugData",
+    "PppDebugAmbiguity",
     "PppDebugData",
     "PppDebugResidual",
+    "PppDebugSatellite",
+    "PppDebugUpdateFailure",
     "RawBasebandPacket",
     "RawDataLog",
     "RtkData",
@@ -289,6 +297,8 @@ __all__ = [
     "parse_mpt_debug",
     "parse_pos_debug",
     "parse_ppp_debug",
+    "parse_ppp_solver_trace",
+    "ppp_debug_satellite",
     "ppp_enable",
     "ppp_rtk_enable",
     "rangecmp2_output",

@@ -164,6 +164,46 @@ class PppDebugResidual:
     frequency_index: int
     residual_m: float
 
+    @property
+    def satellite(self) -> "PppDebugSatellite":
+        """Resolve the satellite identity where the native slot is known."""
+        return ppp_debug_satellite(self.slot)
+
+
+@dataclass(frozen=True, slots=True)
+class PppDebugSatellite:
+    """Native satellite slot and its resolved identity, when available."""
+
+    slot: int
+    system: str | None
+    prn: int | None
+
+
+def ppp_debug_satellite(slot: int) -> PppDebugSatellite:
+    """Resolve a native PPP slot in the GPS and Galileo ranges."""
+    if 1 <= slot <= 32:
+        return PppDebugSatellite(slot, "GPS", slot)
+    if 75 <= slot <= 110:
+        return PppDebugSatellite(slot, "GALILEO", slot - 74)
+    return PppDebugSatellite(slot, None, None)
+
+
+@dataclass(frozen=True, slots=True)
+class PppDebugUpdateFailure:
+    """A failed update identified by its native system and frequency indices."""
+
+    system_index: int
+    frequency_index: int
+
+
+@dataclass(frozen=True, slots=True)
+class PppDebugAmbiguity:
+    """A native ambiguity diagnostic for one system and frequency."""
+
+    system_index: int
+    frequency_index: int
+    native_value: int
+
 
 @dataclass(frozen=True, slots=True)
 class PppDebugData:
@@ -179,6 +219,13 @@ class PppDebugData:
     processed_satellites: int | None
     delta_position_m: tuple[float, float, float] | None
     residuals: tuple[PppDebugResidual, ...]
+    update_failures: tuple[PppDebugUpdateFailure, ...] = ()
+    ambiguity_diagnostics: tuple[PppDebugAmbiguity, ...] = ()
+
+    @property
+    def iode_satellites(self) -> tuple[PppDebugSatellite, ...]:
+        """Identify the satellites listed by the ephemeris check."""
+        return tuple(ppp_debug_satellite(slot) for slot in self.iode_slots)
 
 
 _PPP_HEADER = re.compile(
@@ -194,6 +241,8 @@ _PPP_VEL = re.compile(r"Vel:(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?
 _PPP_PRC = re.compile(r"PrcNum(\d+);")
 _PPP_DX = re.compile(r"dX(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)")
 _PPP_RES = re.compile(r"S(\d+)F(\d):(-?\d+(?:\.\d+)?)")
+_PPP_FAILURE = re.compile(r"Sy(\d+)F(\d+)False;")
+_PPP_AMBIGUITY = re.compile(r"Amb(\d+)F(\d+):(-?\d+)")
 
 
 def parse_ppp_debug(raw: bytes | str) -> PppDebugData | None:
@@ -267,6 +316,14 @@ def parse_ppp_debug(raw: bytes | str) -> PppDebugData | None:
         processed_satellites=processed,
         delta_position_m=delta_pos,
         residuals=residuals,
+        update_failures=tuple(
+            PppDebugUpdateFailure(int(match[1]), int(match[2]))
+            for match in _PPP_FAILURE.finditer(tail)
+        ),
+        ambiguity_diagnostics=tuple(
+            PppDebugAmbiguity(int(match[1]), int(match[2]), int(match[3]))
+            for match in _PPP_AMBIGUITY.finditer(tail)
+        ),
     )
 
 
