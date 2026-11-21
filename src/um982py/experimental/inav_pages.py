@@ -645,6 +645,8 @@ def assemble_inav_word(even: bytes, odd: bytes) -> InavWord | None:
     protected fields of both parts; ``None`` is returned when it does not
     match, which also rejects mismatched part pairs.
     """
+    if len(even) < 15 or len(odd) < 15:
+        return None
     even_bits = bits_of(even)
     odd_bits = bits_of(odd)
     if even_bits[0] != "0" or odd_bits[0] != "1":
@@ -694,24 +696,28 @@ def pair_inav_words(
 def read_inav_stream_csv(path: Path) -> dict[int, tuple[bytes, ...]]:
     """Read page parts of one or more satellites from a stream capture.
 
-    The file holds one line per satellite with a hexadecimal E1-B stream
-    of consecutive page parts, the format used by the official Galileo
-    OSNMA test vectors. Every part contributes 120 bits.
+    The file holds one line per satellite with a decimal SVID and a
+    hexadecimal E1-B stream of consecutive 120-bit page parts, the
+    format used by the official Galileo OSNMA test vectors.
     """
     streams: dict[int, tuple[bytes, ...]] = {}
     with path.open(encoding="ascii") as handle:
         reader = csv.reader(handle)
         header = next(reader, None)
-        if header is None or header[:1] != ["SVID"]:
+        if header is None or header[:3] != ["SVID", "NumNavBits", "NavBitsHEX"]:
             raise ValueError("The stream file starts with the SVID header line")
         for row in reader:
-            if len(row) < 3:
+            if not row:
                 continue
-            svid = int(row[0], 16)
+            if len(row) < 3:
+                raise ValueError(f"Missing stream fields on line {reader.line_num}")
+            svid = int(row[0])
+            if svid in streams:
+                raise ValueError(f"Duplicate stream for SV {svid:02d}")
             bit_count = int(row[1])
             stream = bytes.fromhex(row[2])
-            if bit_count % 120 or bit_count // 8 > len(stream) * 8:
-                raise ValueError(f"Stream of SV {svid:02x} is not a part sequence")
+            if bit_count < 0 or bit_count % 120 or bit_count > len(stream) * 8:
+                raise ValueError(f"Stream of SV {svid:02d} is not a part sequence")
             parts = tuple(
                 stream[index * 15 : (index + 1) * 15]
                 for index in range(bit_count // 120)
@@ -727,38 +733,24 @@ def osnma_activity(
 
     Satellites that do not transmit OSNMA data send an all-zero OSNMA
     field, so a satellite with any non-zero field is observed to carry
-    OSNMA data at the captured instant. The reported header values are
-    the HKROOT bytes of the captured fields interpreted as authentication
-    headers; only the first odd page of a sub-frame carries the actual
-    header, later pages carry digital signature message blocks.
+    OSNMA data at the captured instant. Snapshots lack sub-frame
+    alignment, so the legacy ``headers`` list is empty.
     """
     odd_pages: dict[int, int] = {}
     nonzero: dict[int, int] = {}
-    headers: dict[int, list[NmaHeader]] = {}
     for page in pages:
         if page.part.osnma is None:
             continue
         odd_pages[page.prn] = odd_pages.get(page.prn, 0) + 1
         if any(page.part.osnma):
             nonzero[page.prn] = nonzero.get(page.prn, 0) + 1
-            header = parse_nma_header(page.part.hkroot_portion or b"")
-            known = headers.setdefault(page.prn, [])
-            if header not in known:
-                known.append(header)
     return {
         "prns": {
             prn: {
                 "odd_pages": odd_pages.get(prn, 0),
                 "osnma_nonzero": nonzero.get(prn, 0),
                 "observed_osnma": nonzero.get(prn, 0) > 0,
-                "headers": [
-                    {
-                        "status": header.status.value,
-                        "chain_id": header.chain_id,
-                        "public_key_status": header.public_key_status.value,
-                    }
-                    for header in headers.get(prn, [])
-                ],
+                "headers": [],
             }
             for prn in odd_pages
         }

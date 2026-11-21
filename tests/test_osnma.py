@@ -131,6 +131,15 @@ def test_chain_key_verification_against_the_root(dsm: DsmKroot) -> None:
         )
 
 
+@pytest.mark.parametrize("week", [0, 1251])
+def test_chain_key_verification_across_gst_week_boundary(week: int) -> None:
+    disclosed = bytes.fromhex(CHAIN_KEYS[1])
+    alpha = bytes.fromhex(ALPHA_HEX)
+    root_time = gst_subframe((week - 1) % 4096, 604770)
+    root = tesla_chain_key(disclosed, root_time, alpha, 128)
+    assert verify_chain_key(disclosed, 1, root, gst_subframe(week, 0), alpha)
+
+
 def test_mack_first_message_matches_the_official_table() -> None:
     mack = parse_mack_message(bytes.fromhex(MACK_FIRST_HEX), 128, 40)
     assert mack.tag0.hex().upper() == "4DA9D1D763"
@@ -158,19 +167,23 @@ def test_mack_second_message_carries_the_next_key() -> None:
     assert mack.key.hex().upper() == CHAIN_KEYS[3].upper()
 
 
+@pytest.mark.parametrize(
+    ("tag_hex", "tag_bits"), [("E37BC4F858", None), ("E37BC0", 20), ("E37BC4F0", 28)]
+)
 def test_tag0_verification_of_the_official_example(
-    example_words: dict[int, object],
+    example_words: dict[int, object], tag_hex: str, tag_bits: int | None,
 ) -> None:
     navdata = word_authenticated_data(example_words, 0)
     assert navdata is not None
     assert verify_tag(
-        bytes.fromhex("E37BC4F858"),
+        bytes.fromhex(tag_hex),
         key=bytes.fromhex(CHAIN_KEYS[4]),
         prn_transmitting=2,
         subframe=gst_subframe(1248, 345660),
         counter=1,
         nma_status=2,
         navdata=navdata,
+        tag_bits=tag_bits,
     )
 
 

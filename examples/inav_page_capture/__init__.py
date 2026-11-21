@@ -1,6 +1,6 @@
 """Human-readable rendering of the captured I/NAV page data."""
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from typing import cast
 
 from um982py.experimental import (
@@ -43,7 +43,7 @@ AUDIT_HEADER = (
 """Column header of the window decode table."""
 
 ACTIVITY_HEADER = (
-    f"{'PRN':>3}  {'Odd':>3}  {'Nonzero':>7}  {'Observed':<8}  Headers"
+    f"{'PRN':>3}  {'Odd':>3}  {'Nonzero':>7}  Observed"
 )
 """Column header of the OSNMA activity table."""
 
@@ -55,16 +55,6 @@ def _dash(value: object) -> str:
 def _part_label(page: InavPage) -> str:
     half = "even" if page.part.even else "odd"
     return f"{half}/{'nom' if page.part.nominal else 'alert'}"
-
-
-def _headers_label(headers: Sequence[Mapping[str, object]]) -> str:
-    if not headers:
-        return "-"
-    return "; ".join(
-        f"{header['status']}/{header['chain_id']}"
-        f"/{header['public_key_status']}"
-        for header in headers
-    )
 
 
 def _activity_entries(
@@ -171,13 +161,9 @@ def render_campaign(
         for prn in sorted(entries):
             entry = entries[prn]
             observed = "yes" if entry["observed_osnma"] else "no"
-            headers = cast(
-                "list[dict[str, object]]", entry["headers"]
-            )
             lines.append(
                 f"{prn:>3}  {entry['odd_pages']:>3}"
-                f"  {entry['osnma_nonzero']:>7}  {observed:<8}"
-                f"  {_headers_label(headers)}"
+                f"  {entry['osnma_nonzero']:>7}  {observed}"
             )
     else:
         lines.append("-")
@@ -199,8 +185,8 @@ def render_campaign(
     lines += [
         "",
         "Part: page half and page type of the stored page part.",
-        "OSNMA: field of odd nominal parts; the header interpretation",
-        "comes from the HKROOT byte of each captured field.",
+        "OSNMA: raw field of odd nominal parts. Header decoding requires",
+        "the first odd part of a GST-aligned sub-frame.",
         "Words: even and odd parts of one page that pass its checksum.",
         "Audits: independent decode of the demodulation symbol window.",
     ]

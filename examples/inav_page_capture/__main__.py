@@ -12,6 +12,9 @@ from um982py.experimental import (
     InavSnapshot,
     capture_inav_campaign,
     capture_inav_pages,
+    load_public_key,
+    read_inav_stream_csv,
+    verify_osnma_stream,
 )
 
 DEFAULT_READER = (
@@ -25,6 +28,18 @@ def build_parser() -> ExampleParser:
         prog="python -m examples.inav_page_capture", description=__doc__
     )
     add_receiver_arguments(parser, antenna=False, replay=False)
+    parser.add_argument(
+        "--stream-csv",
+        type=Path,
+        help="verify a Galileo test-vector format stream without opening the receiver",
+    )
+    parser.add_argument(
+        "--public-key",
+        type=Path,
+        action="append",
+        default=[],
+        help="trusted Galileo public-key XML for offline replay, repeatable",
+    )
     parser.add_argument(
         "--helper",
         type=Path,
@@ -63,6 +78,41 @@ def _report(campaign: InavCampaign) -> dict[str, object]:
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args(sys.argv[1:])
+    if args.stream_csv is not None:
+        if not args.public_key:
+            parser.error("--stream-csv requires at least one --public-key")
+        if args.json is not None and args.json.resolve() in {
+            path.resolve() for path in (args.stream_csv, *args.public_key)
+        }:
+            parser.error("--json must not overwrite a replay input file")
+        keys = {}
+        for path in args.public_key:
+            key_id, _, point = load_public_key(path)
+            if key_id in keys and keys[key_id] != point:
+                parser.error(f"conflicting public keys for PKID {key_id}")
+            keys[key_id] = point
+        replay = verify_osnma_stream(read_inav_stream_csv(args.stream_csv), keys)
+        write_json(
+            {
+                "osnma_subframes": replay.osnma_subframes,
+                "verified_roots": [root.manifest() for root in replay.roots],
+                "verified_tag0": [
+                    {
+                        "svid": tag.svid,
+                        "tag_gst": tag.tag_gst,
+                        "data_gst": tag.data_gst,
+                        "status": tag.status.value,
+                        "tag": tag.tag.hex(),
+                        "tag_bits": tag.tag_bits,
+                    }
+                    for tag in replay.verified_tags
+                ],
+            },
+            args.json,
+        )
+        return 0
+    if args.public_key:
+        parser.error("--public-key requires --stream-csv")
     helper = Path(args.helper)
     if not helper.exists():
         parser.error(

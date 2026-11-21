@@ -6,6 +6,7 @@ import xml.etree.ElementTree
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from itertools import pairwise
 from pathlib import Path
 
 from um982py.experimental.ecdsa_p256 import verify_ecdsa_p256
@@ -13,6 +14,12 @@ from um982py.experimental.inav_coding import bits_of, pack_bits
 from um982py.experimental.inav_pages import (
     InavWord,
     NmaHeader,
+    NmaStatus,
+    OsnmaSubframe,
+    PublicKeyStatus,
+    assemble_inav_word,
+    assemble_osnma_subframe,
+    decode_inav_page_part,
 )
 
 __all__ = [
@@ -21,7 +28,9 @@ __all__ = [
     "MacFunction",
     "MackMessage",
     "MackTag",
+    "OsnmaReplay",
     "TagInfo",
+    "VerifiedTag0",
     "collect_dsm",
     "dsm_kroot_signed_message",
     "gst_subframe",
@@ -37,6 +46,7 @@ __all__ = [
     "verify_dsm_kroot_padding",
     "verify_dsm_kroot_signature",
     "verify_macseq",
+    "verify_osnma_stream",
     "verify_tag",
     "word_authenticated_data",
 ]
@@ -102,6 +112,10 @@ TAG_SIZES = {5: 20, 6: 24, 7: 28, 8: 32, 9: 40}
 KROOT_BLOCKS = {0: None, 1: 7, 2: 8, 3: 9, 4: 10, 5: 11, 6: 12, 7: 13, 8: 14}
 """Number of DSM-KROOT blocks indexed by the NB field."""
 
+PKR_BLOCKS = {7: 13, 8: 14, 9: 15, 10: 16}
+WEEK_SECONDS = 604800
+SUBFRAME_SECONDS = 30
+
 DSM_KROOT_FIXED_BITS = 104
 """Bits of the fixed field block of a DSM-KROOT message."""
 
@@ -144,6 +158,11 @@ def gst_subframe(week_number: int, time_of_week: int) -> int:
 def gst_subframe_bits(week_number: int, time_of_week: int) -> bytes:
     """Return the packed 32-bit sub-frame time as bytes."""
     return gst_subframe(week_number, time_of_week).to_bytes(4, "big")
+
+
+def _pack_gst_seconds(seconds: int) -> int:
+    week, tow = divmod(seconds, WEEK_SECONDS)
+    return gst_subframe(week % 4096, tow)
 
 
 def _truncate(length: int, data: bytes) -> bytes:
@@ -264,6 +283,17 @@ class DsmKroot:
         }
 
 
+def _dsm_payload(dsm_id: int, blocks: Mapping[int, bytes]) -> bytes | None:
+    first = blocks.get(0)
+    if first is None:
+        return None
+    sizes = KROOT_BLOCKS if dsm_id < 12 else PKR_BLOCKS
+    count = sizes.get(first[0] >> 4)
+    if count is None or any(index not in blocks for index in range(count)):
+        return None
+    return b"".join(blocks[index] for index in range(count))
+
+
 def collect_dsm(
     subframes: Sequence[bytes], nma_headers: Sequence[NmaHeader]
 ) -> dict[tuple[int, int], bytes]:
@@ -272,21 +302,21 @@ def collect_dsm(
     ``subframes`` holds the 15-byte HKROOT message of consecutive
     sub-frames and ``nma_headers`` their authentication headers. The first
     byte of each HKROOT message is the header portion; the remaining bytes
-    are DSM blocks addressed by their header. Returns complete messages
-    keyed by the DSM identifier and the opening authentication header.
+    are DSM blocks addressed by their header. Pass one transmission of
+    each DSM identifier. The second element of each returned key is zero
+    for compatibility.
     """
     blocks: dict[int, dict[int, bytes]] = {}
     for subframe, _header in zip(subframes, nma_headers, strict=True):
+        if len(subframe) != 15:
+            raise ValueError("An HKROOT message is 15 bytes")
         dsm_header = parse_dsm_header(subframe[1:2])
         block = subframe[2:]
         blocks.setdefault(dsm_header.dsm_id, {})[dsm_header.block_id] = block
     messages: dict[tuple[int, int], bytes] = {}
     for dsm_id, message_blocks in blocks.items():
-        count = max(message_blocks) + 1
-        if all(index in message_blocks for index in range(count)):
-            messages[(dsm_id, 0)] = b"".join(
-                message_blocks[index] for index in range(count)
-            )
+        if (payload := _dsm_payload(dsm_id, message_blocks)) is not None:
+            messages[(dsm_id, 0)] = payload
     return messages
 
 
@@ -425,11 +455,14 @@ def verify_chain_key(
     """
     key_bits = len(key) * 8
     current = key
-    subframe = gst_start + (key_index - 2) * 30
+    if key_index < 0 or len(key) != len(kroot) or not key:
+        return False
+    week, tow = gst_start >> 20, gst_start & 0xFFFFF
+    seconds = week * WEEK_SECONDS + tow + (key_index - 2) * SUBFRAME_SECONDS
     for _ in range(key_index):
-        current = tesla_chain_key(current, subframe, alpha, key_bits)
-        subframe -= 30
-    return current == kroot
+        current = tesla_chain_key(current, _pack_gst_seconds(seconds), alpha, key_bits)
+        seconds -= SUBFRAME_SECONDS
+    return hmac.compare_digest(current, kroot)
 
 
 def tag_key_offset(adkd: int) -> int:
@@ -606,6 +639,7 @@ def verify_tag(
     navdata: str,
     function: int = 0,
     prn_data: int | None = None,
+    tag_bits: int | None = None,
 ) -> bool:
     """Verify one tag against locally regenerated navigation data.
 
@@ -615,9 +649,13 @@ def verify_tag(
     sub-frame, as returned by :func:`word_authenticated_data`. The
     optional ``prn_data`` identifies the satellite that transmitted the
     authenticated data; it is omitted for the first tag, which
-    authenticates the transmitting satellite itself.
+    authenticates the transmitting satellite itself. Pass ``tag_bits``
+    for a non-byte-aligned tag, encoded with zero padding on the right.
     """
-    tag_bits = len(tag) * 8
+    if tag_bits is None:
+        tag_bits = len(tag) * 8
+    if not 0 < tag_bits <= 256 or len(tag) != (tag_bits + 7) // 8:
+        return False
     bits = f"{prn_transmitting:08b}"
     if prn_data is not None:
         bits = f"{prn_data:08b}" + bits
@@ -626,7 +664,7 @@ def verify_tag(
     bits += f"{nma_status:02b}"
     bits += navdata
     mac = _mac(key, pack_bits(bits), function)
-    return _truncate(tag_bits, mac) == tag
+    return hmac.compare_digest(pack_bits(bits_of(mac)[:tag_bits]), tag)
 
 
 def verify_macseq(
@@ -671,3 +709,214 @@ def load_public_key(path: Path) -> tuple[int, str, bytes]:
     algorithm = record.findtext("PKType", default="")
     point = bytes.fromhex(record.findtext("point", default=""))
     return pkid, algorithm, point
+
+
+@dataclass(frozen=True, slots=True)
+class VerifiedTag0:
+    """One matching ADKD 0 tag and the GST of the data it covers."""
+
+    svid: int
+    tag_gst: int
+    """Packed GST of the sub-frame containing the tag."""
+
+    data_gst: int
+    """Packed GST of the sub-frame containing the matching navigation data."""
+
+    status: NmaStatus
+    tag: bytes
+    tag_bits: int
+
+
+@dataclass(frozen=True, slots=True)
+class OsnmaReplay:
+    """Results of offline signature, chain key and Tag0 checks."""
+
+    osnma_subframes: int
+    """Count of complete, nonzero OSNMA sub-frames across all satellites."""
+
+    roots: tuple[DsmKroot, ...]
+    verified_tags: tuple[VerifiedTag0, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class _ReplaySubframe:
+    words: dict[int, InavWord]
+    osnma: OsnmaSubframe | None
+
+
+def _replay_subframes(parts: Sequence[bytes]) -> dict[int, _ReplaySubframe]:
+    # The E1 even parts start at GST_SF + 1, +3, ... +29. WT5
+    # reports the GST of its even part and anchors the page positions.
+    paired = [assemble_inav_word(even, odd) for even, odd in pairwise(parts)]
+    frames: dict[int, _ReplaySubframe] = {}
+    ambiguous: set[int] = set()
+    for index, word in enumerate(paired):
+        if word is None or word.timing is None:
+            continue
+        tow = word.timing.time_of_week
+        phase = tow % SUBFRAME_SECONDS
+        if tow >= WEEK_SECONDS or phase % 2 != 1:
+            continue
+        start = index - phase + 1
+        end = start + SUBFRAME_SECONDS
+        if start < 0 or end > len(parts):
+            continue
+        seconds = word.timing.gst_seconds - phase
+        page_words = paired[start:end:2]
+        words = {entry.word_type: entry for entry in page_words if entry is not None}
+        fields = b""
+        if None not in page_words:
+            fields = b"".join(
+                decode_inav_page_part(part).osnma or b""
+                for part in parts[start + 1 : end : 2]
+            )
+        frame = _ReplaySubframe(
+            words=words,
+            osnma=assemble_osnma_subframe(fields) if any(fields) else None,
+        )
+        if seconds in frames and frames[seconds] != frame:
+            ambiguous.add(seconds)
+        frames[seconds] = frame
+    return {
+        seconds: frame for seconds, frame in frames.items() if seconds not in ambiguous
+    }
+
+
+def _replay_roots(
+    subframes: Sequence[OsnmaSubframe], public_keys: Mapping[int, bytes]
+) -> tuple[DsmKroot, ...]:
+    groups: dict[tuple[int, int], dict[int, bytes]] = {}
+    checked: set[tuple[int, bytes]] = set()
+    roots: list[DsmKroot] = []
+    for subframe in subframes:
+        header_byte = subframe.hkroot[0]
+        dsm = parse_dsm_header(subframe.hkroot[1:2])
+        if dsm.dsm_id >= 12:
+            continue
+        blocks = groups.setdefault((header_byte, dsm.dsm_id), {})
+        blocks[dsm.block_id] = subframe.hkroot[2:]
+        payload = _dsm_payload(dsm.dsm_id, blocks)
+        if payload is None or (header_byte, payload) in checked:
+            continue
+        checked.add((header_byte, payload))
+        public_key = public_keys.get(payload[0] & 0xF)
+        if public_key is None:
+            continue
+        try:
+            root = parse_dsm_kroot(payload, subframe.header)
+        except ValueError:
+            continue
+        signed = dsm_kroot_signed_message(root)
+        if (
+            len(root.signature) == 64
+            and len(root.padding) < 13
+            and signed[1:] == payload[1 : len(signed)]
+            and root.hours_of_week < 168
+            and verify_dsm_kroot_padding(root)
+            and verify_dsm_kroot_signature(root, public_key)
+        ):
+            roots.append(root)
+    return tuple(sorted(roots, key=lambda root: root.gst_start))
+
+
+def _nominal_header(header: NmaHeader, chain_id: int) -> bool:
+    return (
+        header.chain_id == chain_id
+        and header.status in (NmaStatus.TEST, NmaStatus.OPERATIONAL)
+        and header.public_key_status == PublicKeyStatus.NOMINAL
+    )
+
+
+def verify_osnma_stream(
+    streams: Mapping[int, Sequence[bytes]], public_keys: Mapping[int, bytes]
+) -> OsnmaReplay:
+    """Replay consecutive Galileo E1-B page parts keyed by decimal SVID.
+
+    Supply trusted P-256 public points keyed by OSNMA public key ID. Input
+    parts occupy consecutive one-second slots. Use empty bytes for missing
+    parts to preserve their positions. GST is taken from checksum-verified
+    WT5 in each sub-frame.
+
+    This checks self-authenticating ADKD 0 tags on nominal SHA-256 /
+    HMAC-SHA-256 chains using the same satellite's key in the next
+    sub-frame. Results are historical cryptographic matches. Capture-time
+    freshness, service transitions and tag accumulation are outside this
+    offline check.
+    """
+    frames = {
+        (seconds, svid): frame
+        for svid, parts in streams.items()
+        if 1 <= svid <= 36
+        for seconds, frame in _replay_subframes(parts).items()
+    }
+    ordered = sorted(frames.items())
+    subframes = [frame.osnma for _, frame in ordered if frame.osnma is not None]
+    roots = _replay_roots(subframes, public_keys)
+    matches: list[VerifiedTag0] = []
+    verified_keys: dict[DsmKroot, tuple[int, bytes]] = {}
+    for (seconds, svid), frame in ordered:
+        following = frames.get((seconds + SUBFRAME_SECONDS, svid))
+        previous = frames.get((seconds - SUBFRAME_SECONDS, svid))
+        if (
+            frame.osnma is None
+            or following is None
+            or following.osnma is None
+            or previous is None
+        ):
+            continue
+        tag_gst = _pack_gst_seconds(seconds)
+        key_gst = _pack_gst_seconds(seconds + SUBFRAME_SECONDS)
+        applicable = [root for root in roots if root.gst_start <= key_gst]
+        if not applicable:
+            continue
+        root = applicable[-1]
+        if (
+            root.gst_start > tag_gst
+            or root.hash_function != 0
+            or root.mac_function != 0
+            or root.mac_lookup not in MACLT_SEQUENCES
+            or not _nominal_header(root.nma_header, root.chain_id)
+            or not _nominal_header(frame.osnma.header, root.chain_id)
+            or not _nominal_header(following.osnma.header, root.chain_id)
+        ):
+            continue
+        message = parse_mack_message(frame.osnma.mack, root.key_bits, root.tag_bits)
+        if message.cut_off == 0:
+            continue
+        navdata = word_authenticated_data(previous.words, 0)
+        if navdata is None or previous.words[4].svid != svid:
+            continue
+        if len({previous.words[index].iod_nav for index in (1, 2, 3, 4)}) != 1:
+            continue
+        key = parse_mack_message(following.osnma.mack, root.key_bits, root.tag_bits).key
+        start = root.week_number * WEEK_SECONDS + root.hours_of_week * 3600
+        last_seconds, last_key = verified_keys.get(
+            root, (start - SUBFRAME_SECONDS, root.kroot)
+        )
+        steps = (seconds + SUBFRAME_SECONDS - last_seconds) // SUBFRAME_SECONDS
+        next_gst = _pack_gst_seconds(last_seconds + SUBFRAME_SECONDS)
+        if not verify_chain_key(key, steps, last_key, next_gst, root.alpha):
+            continue
+        verified_keys[root] = (seconds + SUBFRAME_SECONDS, key)
+        status = frame.osnma.header.status
+        if verify_tag(
+            message.tag0,
+            key=key,
+            prn_transmitting=svid,
+            subframe=tag_gst,
+            counter=1,
+            nma_status=frame.osnma.hkroot[0] >> 6,
+            navdata=navdata,
+            tag_bits=root.tag_bits,
+        ):
+            matches.append(
+                VerifiedTag0(
+                    svid=svid,
+                    tag_gst=tag_gst,
+                    data_gst=_pack_gst_seconds(seconds - SUBFRAME_SECONDS),
+                    status=status,
+                    tag=message.tag0,
+                    tag_bits=root.tag_bits,
+                )
+            )
+    return OsnmaReplay(len(subframes), roots, tuple(matches))

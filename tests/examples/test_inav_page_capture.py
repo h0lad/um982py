@@ -102,12 +102,16 @@ def test_render_campaign_renders_all_sections() -> None:
     assert text.count("-") >= 2
 
 
-def test_render_campaign_activity_carries_header_interpretation() -> None:
+def test_snapshot_activity_reports_presence_without_header_status() -> None:
     text = render_campaign(_campaign())
     assert " 11 " in text
-    assert "test/0/end_of_chain" in text
+    assert "test/0/end_of_chain" not in text
     assert "Observed" in text
     assert "yes" in text
+    activity = _report(_campaign())["osnma_activity"]
+    assert isinstance(activity, dict)
+    assert activity["prns"][11]["observed_osnma"] is True
+    assert activity["prns"][11]["headers"] == []
 
 
 def test_render_word_row_shows_fields_and_timing() -> None:

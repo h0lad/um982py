@@ -63,16 +63,34 @@ secondary synchronisation pattern. The decoded part is the one in flight at
 the capture instant and is not expected to equal the stored page of the
 same record.
 
-Assembling a complete OSNMA sub-frame needs fifteen consecutive odd pages
-of one satellite; the campaign accumulates parts toward that goal, but a
-boot-menu capture per page is slow and the official stream format of the
-Galileo OSNMA test vectors exercises the same verification chain much more
-directly. The library modules
-`um982py.experimental.osnma` and `um982py.experimental.ecdsa_p256` verify a
-DSM-KROOT signature with a public key from the Galileo key directory,
-derive and verify the TESLA chain keys, and verify the tag and sequence
-fields of a MACK message; the module tests demonstrate every step with
-the published worked example and a stream test vector.
+The boot-menu snapshots provide raw OSNMA activity counts. The NMA header
+occupies the first odd part of a GST-aligned sub-frame, so the snapshot
+report leaves the legacy JSON `headers` list empty.
+
+## Replay a continuous Galileo stream
+
+Pass an official-format I/NAV CSV and the corresponding trusted Galileo
+public-key XML. This mode runs offline without opening the serial port.
+
+```bash
+python -m examples.inav_page_capture --stream-csv capture.csv \
+    --public-key trusted-key.xml --json replay.json
+```
+
+The verifier uses CRC-checked word type 5 to align each satellite's
+30-second sub-frames. It checks the assembled DSM-KROOT signature with
+the supplied P-256 key, verifies the disclosed TESLA key from the next
+sub-frame, and checks Tag0 against the preceding sub-frame's ADKD 0
+navigation data. The JSON lists the signed roots and matching tags,
+including the authenticated NMA status (`test` or `operational`).
+GST fields pack the 12-bit week number above the 20-bit time of week.
+
+The Python entry point is `um982py.experimental.verify_osnma_stream`.
+Supply page parts in consecutive one-second slots per decimal SVID,
+with empty bytes marking missing parts. The verifier covers nominal
+SHA-256/HMAC-SHA-256 chains and reports historical cryptographic
+matches. Capture-time freshness, key or chain lifecycle handling, and
+multi-tag authentication thresholds require additional receiver logic.
 
 ## Understanding the result
 
@@ -104,8 +122,8 @@ PRN    Ch  Part        Word  Valid  Page                              OSNMA
 
 OSNMA activity
 --------------
-PRN  Odd  Nonzero  Observed  Headers
- 11    1        1  yes       test/0/end_of_chain
+PRN  Odd  Nonzero  Observed
+ 11    1        1  yes
 
 Checksum-verified words
 ----------------------
@@ -124,6 +142,7 @@ recalls what the part labels, the OSNMA field and the audits describe.
 
 Galileo Open Service SIS ICD: I/NAV page layout, convolutional code,
 interleaving and page checksum.
-Galileo OSNMA SIS ICD: OSNMA data message, HKROOT, MACK, TESLA chain and
-tag verification.
-Galileo OSNMA Receiver Guidelines: worked example and test vectors.
+[Galileo OSNMA SIS ICD](https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo-OSNMA-SIS-ICD_in_force.pdf)
+defines HKROOT, MACK, the TESLA chain and tag verification.
+The [Galileo OSNMA Receiver Guidelines and Annex B test vectors](https://www.gsc-europa.eu/electronic-library/programme-reference-documents/galileo-in-force/osnma)
+provide worked examples and replay streams.
