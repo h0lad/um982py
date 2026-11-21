@@ -11,6 +11,7 @@ from um982py.experimental import (
     AgcReadings,
     AntennaSignalProfile,
     RawBasebandPacket,
+    TrackingSlot,
     build_message,
     decode_agc_message,
 )
@@ -54,12 +55,21 @@ def test_agc_serial_conversion_matches_baseband_mapping() -> None:
     (inner,) = RawBasebandPacket.build(content=framed).messages
     direct = decode_agc_message(inner)
     assert direct.native_words == words
+    assert direct.rf_channels == (64, -1, 82, 71, 15, 37, 51, 66)
     serial = pack("<10h", 37, 66, 51, 71, -1, 64, 82, -1, -1, -1)
     record = Log.AGC.decode(parse_binary(binary(serial, message_id=220)))
     assert direct.readings(secondary_enabled=True) == AgcReadings.from_record(record)
     assert direct.readings(secondary_enabled=False) == AgcReadings(
         37, 66, 51, 71, None, None, None
     )
+
+
+def test_tracking_slot_matches_native_group_fields() -> None:
+    slot = TrackingSlot(16, 1, 7, False, 0.0)
+    assert slot.matches_rf_group(antenna=1, signal_code=0x1B, status=0, mode=0)
+    assert slot.matches_rf_group(antenna=1, signal_code=0x1A, status=0x400, mode=13)
+    assert not slot.matches_rf_group(antenna=1, signal_code=0x1A, status=0, mode=13)
+    assert not slot.matches_rf_group(antenna=0, signal_code=0x1B, status=0, mode=0)
 
 
 @pytest.mark.parametrize("message_id,error", [(23, "needs 52"), (24, "message 23")])

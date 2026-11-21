@@ -9,6 +9,7 @@ from um982py.experimental.baseband import BasebandMessage
 from um982py.messages import Record
 
 AGC_MESSAGE_ID = 23
+_RF_WORDS_BY_CHANNEL = (6, 8, 7, 5, 4, 1, 3, 2)
 
 _SYSTEMS = (
     Constellation.GPS,
@@ -127,6 +128,11 @@ class BasebandAgc:
     """The ten native words of a baseband AGC block."""
 
     native_words: tuple[int, ...]
+
+    @property
+    def rf_channels(self) -> tuple[int, ...]:
+        """Return all eight native AGC readings in RF index order."""
+        return tuple(self.native_words[index] for index in _RF_WORDS_BY_CHANNEL)
 
     def readings(self, *, secondary_enabled: bool) -> AgcReadings:
         """Select the AGC words rendered for the given antenna configuration."""

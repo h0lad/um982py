@@ -10,6 +10,32 @@ from um982py.experimental import (
 )
 
 
+def test_baseband_diagnostic_fields_from_mixed_text() -> None:
+    week, utc, rf, sample, point, position = (
+        notice.decode()
+        for notice in scan_notices(
+            b"$GPSWeekRoll: 1a,0,2\r\n"
+            b"$SIMUTC, 9,2441,7,18,18\r\n"
+            b"$RF Chan AGC: 10,20,30,40,50,60,70,80,\r\n"
+            b"$PD L6D,5,33,0xFFFFFFFF,0x1,\r\n"
+            b"$PT,2,18,0,120,00001400,4,38.50,-800,1a,200,300,1,2,3,4,ff,-5,6\r\n"
+            b"$NAVPOS2,1 2 3.000 4.000 5.000 6.000;7.000 8.000 9.000\r\n"
+        )
+    )
+    assert week["value_1"] == week["flags"] == 26
+    assert tuple(utc[key] for key in ("flag", "wnlsf", "dn", "tls", "tlsf")) == (
+        9,
+        2441,
+        7,
+        18,
+        18,
+    )
+    assert rf["rf_4"] == 50
+    assert sample["word_values"] == (0xFFFFFFFF, 1)
+    assert point["detail_values"] == (26, 200, 300, 1, 2, 3, 4, 255, -5, 6)
+    assert position["value_9"] == 9.0
+
+
 @pytest.mark.parametrize(
     ("raw", "name", "fields"),
     [

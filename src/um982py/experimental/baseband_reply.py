@@ -95,6 +95,16 @@ _PATTERNS: tuple[
         ),
     ),
     (
+        "NAVPOS2",
+        re.compile(
+            rb"\$NAVPOS2,(-?\d+) (-?\d+)"
+            + rb" (-?\d+\.\d{3})" * 4
+            + rb";(-?\d+\.\d{3}) (-?\d+\.\d{3}) (-?\d+\.\d{3})$"
+        ),
+        tuple((f"value_{index}", FieldKind.SIGNED) for index in range(1, 3))
+        + tuple((f"value_{index}", FieldKind.FLOAT) for index in range(3, 10)),
+    ),
+    (
         "NAVVEL",
         re.compile(
             rb"\$NAVVEL,(-?\d+\.\d{3}),(-?\d+\.\d{3}),(-?\d+\.\d{3}),(-?\d+\.\d{3}),"
@@ -136,8 +146,12 @@ _PATTERNS: tuple[
     ),
     (
         "GPS_WEEK_ROLL",
-        re.compile(rb"\$GPSWeekRoll: *(-?\d+),(-?\d+),(-?\d+)$"),
-        tuple((f"value_{i}", FieldKind.SIGNED) for i in range(1, 4)),
+        re.compile(rb"\$GPSWeekRoll: *([0-9A-Fa-f]{1,8}),(-?\d+),(-?\d+)$"),
+        (
+            ("value_1", FieldKind.HEXADECIMAL),
+            ("value_2", FieldKind.SIGNED),
+            ("value_3", FieldKind.SIGNED),
+        ),
     ),
     (
         "SIMUTC",
@@ -393,7 +407,7 @@ _PATTERNS: tuple[
         "POINT_TRACKING_COMPACT",
         re.compile(
             rb"\$PT,(-?\d+),(-?\d+),(-?\d+),(\d+),([0-9A-Fa-f]{8}),(-?\d+),"
-            rb"(-?\d+\.\d+),(-?\d+),([^\r\n]+)$"
+            rb"(-?\d+\.\d+),(-?\d+)(?:,([^\r\n]*))?$"
         ),
         (
             ("channel", FieldKind.SIGNED),
@@ -437,6 +451,11 @@ _PATTERNS: tuple[
             ("length", FieldKind.UNSIGNED),
             ("words", FieldKind.TEXT),
         ),
+    ),
+    (
+        "RF_CHANNEL_AGC",
+        re.compile(rb"\$RF Chan AGC: *(\d{1,3})" + rb", *(\d{1,3})" * 7 + rb",? *$"),
+        tuple((f"rf_{index}", FieldKind.UNSIGNED) for index in range(8)),
     ),
     (
         "SENSOR_ADC",
@@ -584,6 +603,32 @@ def decode_baseband_notice(notice: BasebandNotice) -> Record:
             entries: list[tuple[str, Value]] = []
             for field_name, kind in field_specs:
                 entries.append((field_name, kind.convert(notice.fields[len(entries)])))
+            if name == "GPS_WEEK_ROLL":
+                entries.append(("flags", entries[0][1]))
+            elif name == "SIMUTC":
+                entries.extend(
+                    (key, entries[index][1])
+                    for index, key in enumerate(("flag", "wnlsf", "dn", "tls", "tlsf"))
+                )
+            elif name in {"POINT_DATA", "POINT_DATA_L6"}:
+                words = notice.fields[-1].rstrip(",").split(",")
+                if all(
+                    re.fullmatch(r"(?:0[xX])?[0-9A-Fa-f]{1,8}", word) for word in words
+                ):
+                    entries.append(
+                        ("word_values", tuple(int(word, 16) for word in words))
+                    )
+            elif name in {"POINT_TRACKING", "POINT_TRACKING_COMPACT"}:
+                tail = notice.fields[-1]
+                if re.fullmatch(
+                    r"[0-9A-Fa-f]+,\d+,\d+(?:,-?\d+){4}(?:,[0-9A-Fa-f]+,-?\d+,-?\d+)?",
+                    tail,
+                ):
+                    values = tuple(
+                        int(value, 16 if index in (0, 7) else 10)
+                        for index, value in enumerate(tail.split(","))
+                    )
+                    entries.append(("detail_values", values))
             return Record(notice.name, tuple(entries))
     raise ProtocolError(f"Unknown baseband notice: {notice.name}")
 

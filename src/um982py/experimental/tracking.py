@@ -20,6 +20,30 @@ __all__ = [
 
 TRACKING_MESSAGE_ID = 24
 
+# Each entry gives the native code and the required masked status value.
+_STANDARD_SIGNALS = (
+    (0x00, 0x400, 0),
+    (0x08, 0x100, 0x100),
+    (0x34, 0, 0),
+    (0x3C, 0, 0),
+    (0x22, 0, 0),
+    (0x2A, 0, 0),
+    (0x03, 0, 0),
+    (0x1B, 0, 0),
+    (0x13, 0, 0),
+)
+_ALTERNATE_SIGNALS = (
+    None,
+    None,
+    None,
+    None,
+    (0x22, 0, 0),
+    (0x2A, 0, 0),
+    (0x02, 0, 0),
+    (0x1A, 0x400, 0x400),
+    (0x12, 0, 0),
+)
+
 
 @dataclass(frozen=True, slots=True)
 class TrackingField:
@@ -40,6 +64,19 @@ class TrackingSlot:
     bank_slot: int
     written: bool
     native_value: float
+
+    def matches_rf_group(
+        self, *, antenna: int, signal_code: int, status: int, mode: int
+    ) -> bool:
+        """Check the slot mapping for native group fields and receiver mode."""
+        signals = _ALTERNATE_SIGNALS if mode in (11, 13, 14, 17) else _STANDARD_SIGNALS
+        if self.bank != int(antenna == 1) or not 0 <= self.bank_slot < len(signals):
+            return False
+        mapping = signals[self.bank_slot]
+        if mapping is None:
+            return False
+        code, mask, masked_status = mapping
+        return signal_code == code and status & mask == masked_status
 
 
 def decode_tracking_message(message: BasebandMessage) -> Record:
