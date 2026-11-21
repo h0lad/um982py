@@ -40,5 +40,9 @@ class CommandRejected(UM982Error):
         super().__init__(f"{command}: {response}")
 
 
+class BootMenuError(TransportError):
+    """A boot-menu session did not reach the stage required for memory reads."""
+
+
 class BufferOverflow(UM982Error):
     pass

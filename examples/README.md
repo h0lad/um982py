@@ -207,6 +207,7 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`baseband_conformance`](baseband_conformance/README.md): Sends baseband commands and records ACKs, rejects and state changes. Attribute actual baseband notices; missing families are incomplete, and disruptive probes are explicit.
 - [`baseband_epoch_audit`](baseband_epoch_audit/README.md): Audits diagnostic counters and PTOBSINFO tracking slots. Native tags have no assumed counter frequency, wrap modulus or guaranteed GPST relationship.
 - [`baseband_notice_console`](baseband_notice_console/README.md): Reports baseband state transitions from diagnostic notices. Silence does not establish state; notice-gate cleanup is not readback of its unknown original state.
+- [`inav_page_capture`](inav_page_capture/README.md): Captures the decoded Galileo E1-B I/NAV pages stored per signal, including odd-part OSNMA data. One snapshot returns one page per signal; sub-frame assembly needs repeated captures.
 - [`raw_data_tracking`](raw_data_tracking/README.md): Parses raw baseband containers, inner messages and notices. Retain epoch, signal, validity and lock identity; raw observations alone do not solve position.
 - [`tracking_field_lab`](tracking_field_lab/README.md): Correlates unknown tracking fields with your own labels. Independent event labels and continuous capture; receiver indicators alone cannot create ground-truth labels.
 
