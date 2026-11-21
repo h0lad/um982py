@@ -6,6 +6,7 @@ import sys
 from pathlib import Path
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
+from examples.inav_page_capture import campaign_window_audits, render_campaign
 from um982py.experimental import (
     InavCampaign,
     InavSnapshot,
@@ -84,6 +85,8 @@ def main() -> int:
         )
         campaign = InavCampaign((snapshot,))
         report = _report(campaign)
+    text = render_campaign(campaign, audits=campaign_window_audits(campaign))
+    print(text, file=sys.stdout if args.json is not None else sys.stderr)
     write_json(report, args.json)
     words = campaign.words()
     with_osnma = sum(

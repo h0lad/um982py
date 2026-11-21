@@ -82,6 +82,44 @@ whether any non-zero OSNMA field was observed. `window_audits` lists the
 independent decodes. `application_restored` reports whether the
 application responded after every closing reset.
 
+## Human-readable dump
+
+Without `--json`, stdout is the single JSON report and the human-readable
+dump goes to stderr. With `--json FILE`, the report goes to the file and
+the dump goes to stdout. The dump renders the same data as aligned tables:
+
+```text
+Galileo I/NAV page capture
+==========================
+
+Snapshots:             1
+Pages:                 10 (10 unique)
+PRNs:                  6, 7, 11, 12, 14, 15, 16, 20, 29, 36
+Application restored:  yes
+
+Captured page parts
+-------------------
+PRN    Ch  Part        Word  Valid  Page                              OSNMA
+ 11    76  odd/nom        -  yes    96c71102e24928a55246905500c0ebed  440b8924a2
+
+OSNMA activity
+--------------
+PRN  Odd  Nonzero  Observed  Headers
+ 11    1        1  yes       test/0/end_of_chain
+
+Checksum-verified words
+----------------------
+Word  IODnav  SVID  GST WN  TOW
+   4      58     2       -  -
+
+Window decode audits
+--------------------
+PRN  Sync  Errors  Tail    SSP  Decoded
+```
+
+Each section prints `-` when it has no rows. The legend below the tables
+recalls what the part labels, the OSNMA field and the audits describe.
+
 ## References
 
 Galileo Open Service SIS ICD: I/NAV page layout, convolutional code,
