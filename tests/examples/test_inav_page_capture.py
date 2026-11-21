@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 import examples.inav_page_capture.__main__ as cli
@@ -165,6 +166,64 @@ def test_campaign_report_lists_raw_sar_fields() -> None:
     assert isinstance(fields, list)
     assert len(fields) == 3
     assert next(field for field in fields if field["prn"] == 11)["sar"] == "954918"
+
+
+def test_campaign_report_keeps_raw_parts_and_audits_per_snapshot() -> None:
+    first = _snapshot()
+    regions = first.memory_windows
+    base, page_states = regions["page_states"]
+    regions["page_states"] = (base, bytes(len(page_states)))
+    second = InavSnapshot.from_regions(regions, application_restored=True)
+
+    report = _report(InavCampaign((first, second)))
+    details = report["snapshot_details"]
+    assert isinstance(details, list)
+    assert details[0]["snapshot_index"] == 1 and len(details[0]["details"]) == 10
+    assert details[1]["snapshot_index"] == 2 and details[1]["details"] == []
+    audits = report["window_audits"]
+    assert isinstance(audits, list)
+    assert any(row["snapshot_index"] == 1 and row["decoded"] for row in audits)
+    assert all(row["decoded"] is None for row in audits if row["snapshot_index"] == 2)
+
+
+def test_archived_tracking_replays_raw_pages_and_utc_bounds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    first = _snapshot()
+    tracking, states = first.regions["tracking"], first.regions["page_states"]
+    window = tracking.ljust(PAGE_STATE_BASE - TRACKING_BASE, b"\0") + states
+    started = datetime(2026, 11, 21, 17, tzinfo=UTC)
+    finished = datetime(2026, 11, 21, 17, 0, 3, tzinfo=UTC)
+    snapshot = InavSnapshot.from_regions(
+        {"tracking": (TRACKING_BASE, window)},
+        application_restored=True,
+        capture_started_utc=started,
+        capture_finished_utc=finished,
+    )
+    monkeypatch.setattr(cli, "capture_inav_pages", lambda *args, **kwargs: snapshot)
+    archive, result = tmp_path / "ram", tmp_path / "nav.json"
+    monkeypatch.setattr(sys, "argv", [
+        "capture", "--save-tracking", str(archive), "--summary", "--json", str(result)
+    ])
+
+    assert cli.main() == 0
+    assert "Captured page parts" not in capsys.readouterr().out
+    bin_path = archive / "tracking-0001.bin"
+    assert bin_path.read_bytes() == window
+    original = json.loads(result.read_text())
+    assert original["tracking_archive"][0]["capture_started_utc"] == started.isoformat()
+
+    monkeypatch.setattr(sys, "argv", [
+        "capture", "--tracking-ram", str(bin_path), "--summary", "--json", str(result)
+    ])
+    assert cli.main() == 0
+    replayed = json.loads(result.read_text())
+    assert replayed["snapshot_details"] == original["snapshot_details"]
+    assert replayed["native_nav"] == original["native_nav"]
+    assert replayed["window_audits"] == original["window_audits"]
+    bin_path.write_bytes(window + b"\0")
+    with pytest.raises(ValueError, match="checksum"):
+        cli.main()
 
 
 def test_render_word_row_shows_fields_and_timing() -> None:

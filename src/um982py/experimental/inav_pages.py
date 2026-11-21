@@ -1,10 +1,12 @@
 """Galileo E1-B I/NAV page capture from receiver memory snapshots."""
 
 import csv
-from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Mapping, Sequence
+from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from enum import StrEnum
 from itertools import pairwise
+from math import isfinite
 from pathlib import Path
 from typing import Self
 
@@ -252,18 +254,39 @@ class InavSnapshot:
     application_restored: bool | None
     """Whether the application responded after the closing reset."""
 
+    capture_started_utc: datetime | None = None
+    capture_finished_utc: datetime | None = None
+    region_bases: Mapping[str, int] = field(default_factory=dict)
+
     @classmethod
     def from_regions(
         cls,
         regions: Mapping[str, tuple[int, bytes]],
         *,
         application_restored: bool | None = None,
+        capture_started_utc: datetime | None = None,
+        capture_finished_utc: datetime | None = None,
     ) -> Self:
         return cls(
             extract_inav_pages(regions),
             {name: content for name, (_, content) in regions.items()},
             application_restored,
+            capture_started_utc,
+            capture_finished_utc,
+            {name: base for name, (base, _) in regions.items()},
         )
+
+    @property
+    def memory_windows(self) -> dict[str, tuple[int, bytes]]:
+        """Captured regions with their receiver memory base addresses."""
+        return {
+            name: (self.region_bases.get(name, TRACKING_MEMORY_BASE), data)
+            for name, data in self.regions.items()
+        }
+
+    def window_audits(self) -> tuple["PageWindowAudit", ...]:
+        """Audit only the symbol windows captured in this snapshot."""
+        return audit_page_windows(extract_channel_states(self.memory_windows))
 
     def manifest(self) -> dict[str, object]:
         return {
@@ -274,7 +297,14 @@ class InavSnapshot:
             "regions": {
                 name: len(content) for name, content in self.regions.items()
             },
+            "region_bases": {
+                name: base for name, (base, _) in self.memory_windows.items()
+            },
             "application_restored": self.application_restored,
+            "capture_started_utc": self.capture_started_utc.isoformat()
+            if self.capture_started_utc is not None else None,
+            "capture_finished_utc": self.capture_finished_utc.isoformat()
+            if self.capture_finished_utc is not None else None,
             "details": [
                 {
                     "prn": page.prn,
@@ -494,11 +524,14 @@ def capture_inav_pages(
     No flash write or erase is performed, and the closing reset restarts
     the application from flash.
     """
+    started = datetime.now(UTC)
     with BootMemoryReader.connect(port, baud, helper=helper) as reader:
         region = reader.read_range(TRACKING_MEMORY_BASE, TRACKING_MEMORY_LENGTH)
     return InavSnapshot.from_regions(
         {"tracking": (TRACKING_MEMORY_BASE, region)},
         application_restored=reader.application_restored,
+        capture_started_utc=started,
+        capture_finished_utc=datetime.now(UTC),
     )
 @dataclass(frozen=True, slots=True)
 class SarField:
@@ -1128,8 +1161,12 @@ class InavCampaign:
         return tuple(unique)
 
     @property
-    def application_restored(self) -> bool:
+    def application_restored(self) -> bool | None:
         """Whether every closing reset returned the application."""
+        if self.snapshots and all(
+            snapshot.application_restored is None for snapshot in self.snapshots
+        ):
+            return None
         return all(
             snapshot.application_restored for snapshot in self.snapshots
         )
@@ -1137,29 +1174,32 @@ class InavCampaign:
     def words(self) -> tuple[InavWord, ...]:
         """Assemble checksum-verified words across all snapshots.
 
-        Every captured even part is paired with every captured odd part of
-        the same PRN; the page checksum accepts exactly the matching pair.
+        Test each distinct pair of nominal parts of the same PRN once.
         """
-        words: list[InavWord] = []
-        for prn in {page.prn for page in self.pages}:
-            even_parts = [
-                page.page for page in self.pages
-                if page.prn == prn and page.part.even and page.part.nominal
-            ]
-            odd_parts = [
-                page.page for page in self.pages
-                if page.prn == prn
-                and not page.part.even
-                and page.part.nominal
-                and page.part.crc is not None
-            ]
-            words.extend(pair_inav_words(even_parts, odd_parts))
-        return tuple(words)
+        pairs: dict[int, tuple[list[bytes], list[bytes]]] = {}
+        for page in self.unique_pages:
+            if page.part.nominal:
+                even, odd = pairs.setdefault(page.prn, ([], []))
+                if page.part.even:
+                    even.append(page.page)
+                elif page.part.crc is not None:
+                    odd.append(page.page)
+        return tuple(
+            word for prn in sorted(pairs) for word in pair_inav_words(*pairs[prn])
+        )
 
-    def manifest(self) -> dict[str, object]:
+    def manifest(
+        self, *, audits: Sequence[Sequence[PageWindowAudit]] | None = None
+    ) -> dict[str, object]:
         pages = self.pages
+        if audits is None:
+            audits = [snapshot.window_audits() for snapshot in self.snapshots]
         return {
             "snapshots": len(self.snapshots),
+            "snapshot_details": [
+                {"snapshot_index": index, **snapshot.manifest()}
+                for index, snapshot in enumerate(self.snapshots, start=1)
+            ],
             "pages": len(pages),
             "unique_pages": len(self.unique_pages),
             "prns": sorted({page.prn for page in pages}),
@@ -1178,18 +1218,9 @@ class InavCampaign:
                 if page.part.sar is not None
             ],
             "window_audits": [
-                audit.manifest()
-                for audit in audit_page_windows(
-                    extract_channel_states(
-                        {
-                            f"snapshot{index}": (
-                                TRACKING_MEMORY_BASE,
-                                snapshot.regions["tracking"],
-                            )
-                            for index, snapshot in enumerate(self.snapshots)
-                        }
-                    )
-                )
+                {"snapshot_index": index, **audit.manifest()}
+                for index, group in enumerate(audits, start=1)
+                for audit in group
             ],
             "application_restored": self.application_restored,
         }
@@ -1202,6 +1233,7 @@ def capture_inav_campaign(
     baud: int = 921600,
     snapshots: int = 2,
     pause_seconds: float = 5.0,
+    on_snapshot: Callable[[InavSnapshot], None] | None = None,
 ) -> InavCampaign:
     """Capture several snapshots of the stored Galileo pages.
 
@@ -1210,12 +1242,21 @@ def capture_inav_campaign(
     between snapshots so the demodulator advances to new page parts; the
     stored part of a channel changes with every completed page. Repeated
     snapshots therefore accumulate the even and odd parts needed for
-    checksum-verified word assembly. No flash write or erase is performed.
+    checksum-verified word assembly. If given, ``on_snapshot`` runs after
+    each completed capture and before the next pause.
     """
     from time import sleep
 
+    if snapshots < 1 or not isfinite(pause_seconds) or pause_seconds < 0:
+        raise ValueError(
+            "Capture needs at least one snapshot and a finite, nonnegative pause"
+        )
     collected = []
-    for _ in range(snapshots):
-        collected.append(capture_inav_pages(port, helper=helper, baud=baud))
-        sleep(pause_seconds)
+    for index in range(snapshots):
+        if index:
+            sleep(pause_seconds)
+        snapshot = capture_inav_pages(port, helper=helper, baud=baud)
+        collected.append(snapshot)
+        if on_snapshot is not None:
+            on_snapshot(snapshot)
     return InavCampaign(tuple(collected))

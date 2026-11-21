@@ -97,6 +97,37 @@ multiple channels.
 [GPS IS-GPS-200N, §20.3.5](https://www.gps.gov/sites/default/files/2025-07/IS-GPS-200N.pdf)
 · [GLONASS FDMA ICD, §4.7](https://www.unavco.org/help/glossary/docs/ICD_GLONASS_5.1_%282008%29_en.pdf)
 
+## Record an experiment for offline analysis
+
+```bash
+PYTHONPATH=src python3 -m examples.inav_page_capture --port /dev/ttyUSB0 \
+    --snapshots 3 --pause 10 --summary --save-tracking run/ram --json run/nav.json
+```
+
+`--summary` prints counts while the JSON keeps all raw fields. The
+`snapshot_details` array includes the original Galileo parts, receiver
+channel and time counter, the receiver's validity flag, and host UTC
+bounds for each capture. The `native_nav` array follows the same snapshot
+order. Galileo words listed under `words` have passed the page CRC.
+Window audits include their one-based snapshot index.
+
+`--save-tracking` creates a new directory and writes each completed
+capture before the next pause. Each tracking window takes about 0.9 MiB.
+Keep the `.metadata.json` sidecar with its `.bin` file to preserve the
+capture bounds and let replay verify the SHA-256 checksum.
+
+```bash
+PYTHONPATH=src python3 -m examples.inav_page_capture \
+    --tracking-ram run/ram/tracking-0001.bin --summary --json run/replay.json
+```
+
+Replay reconstructs the Galileo, GPS and GLONASS report without a serial
+connection. Host UTC bounds cover the capture operation. Broadcast
+message times and the receiver's tracking counters are separate fields.
+Each live snapshot restarts the receiver. Measurements that require
+uninterrupted page cadence, including complete SAR and OSNMA assembly,
+need a continuous page stream.
+
 ## Replay a continuous Galileo stream
 
 Pass an official-format I/NAV CSV and the corresponding trusted Galileo

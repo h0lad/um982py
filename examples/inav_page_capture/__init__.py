@@ -4,15 +4,12 @@ from collections.abc import Sequence
 from typing import cast
 
 from um982py.experimental import (
-    TRACKING_MEMORY_BASE,
     GlonassFdmaString,
     GpsLnavSubframe,
     InavCampaign,
     InavPage,
     InavWord,
     PageWindowAudit,
-    audit_page_windows,
-    extract_channel_states,
     osnma_activity,
 )
 
@@ -112,18 +109,11 @@ def campaign_window_audits(
 ) -> tuple[PageWindowAudit, ...]:
     """Return the window decodes of a campaign captured from a receiver.
 
-    Campaigns built with :func:`um982py.experimental.capture_inav_pages`
-    store the tracking window under the region name ``tracking``; the
-    audits are computed against that window.
+    Each audit uses only the memory regions of its own snapshot.
     """
-    regions = {
-        f"snapshot{index}": (
-            TRACKING_MEMORY_BASE,
-            snapshot.regions["tracking"],
-        )
-        for index, snapshot in enumerate(campaign.snapshots)
-    }
-    return audit_page_windows(extract_channel_states(regions))
+    return tuple(
+        audit for snapshot in campaign.snapshots for audit in snapshot.window_audits()
+    )
 
 
 def render_native_nav(
@@ -172,6 +162,8 @@ def render_campaign(
     pages = campaign.pages
     prns = sorted({page.prn for page in pages})
     restored = "yes" if campaign.application_restored else "no"
+    if campaign.application_restored is None:
+        restored = "-"
     lines = [
         "Galileo I/NAV page capture",
         "==========================",
@@ -221,6 +213,7 @@ def render_campaign(
     lines += [
         "",
         "Part: page half and page type of the stored page part.",
+        "Valid: receiver flag for the stored part.",
         "OSNMA: raw field of odd nominal parts. Header decoding requires",
         "the first odd part of a GST-aligned sub-frame.",
         "SAR: raw 22-bit field in hex with two trailing padding bits.",
