@@ -28,6 +28,11 @@ The solver uses Doppler observations and broadcast ephemerides. Use
 For comparison, `--truth-velocity VX VY VZ` accepts an independent ECEF
 velocity in metres per second.
 
+The example reports the formal 3D velocity standard deviation implied by
+satellite geometry and `--sigma`. It rejects epochs above
+`--max-velocity-std` (2 m/s by default). The formal value models independent
+range-rate noise. Multipath and other biases can still affect accepted epochs.
+
 With `--compare-receiver`, capture primary-antenna `DOPPVEL` and compare speeds
 with the nearest computed receiver solution. The comparison uses horizontal
 and vertical speeds. `--receiver-tolerance` limits the difference between header

@@ -263,17 +263,23 @@ class LinearSolution:
 
     parameters: tuple[float, ...]
     residuals: tuple[float, ...]
+    parameter_standard_deviations: tuple[float, ...] = ()
 
 
 def least_squares(
-    rows: Sequence[Sequence[float]], values: Sequence[float], sigmas: Sequence[float]
+    rows: Sequence[Sequence[float]],
+    values: Sequence[float],
+    sigmas: Sequence[float],
+    *,
+    uncertainty: bool = False,
 ) -> LinearSolution:
     """Solve a full-rank weighted system with twice-orthogonalized QR.
 
     Reject columns whose independent component is at most 1e-10 of their
     original weighted norm. This is a relative rank check, not a condition
     number estimate; use an SVD-based scientific solver for demanding systems.
-    Residuals are returned in the original observation units.
+    Residuals are returned in the original observation units. When requested,
+    standard deviations use the supplied independent measurement sigmas.
     """
     if not rows or len(rows) != len(values) or len(values) != len(sigmas):
         raise ValueError("design, observations and sigmas must have matching rows")
@@ -302,16 +308,31 @@ def least_squares(
         q = [value / length for value in vector]
         basis.append(q)
         right.append(dot(q, weighted))
-    parameters = [0.0] * columns
-    for i in reversed(range(columns)):
-        parameters[i] = (
-            right[i]
-            - math.fsum(upper[i][j] * parameters[j] for j in range(i + 1, columns))
-        ) / upper[i][i]
+
+    def back_substitute(rhs: Sequence[float]) -> tuple[float, ...]:
+        result = [0.0] * columns
+        for i in reversed(range(columns)):
+            result[i] = (
+                rhs[i]
+                - math.fsum(upper[i][j] * result[j] for j in range(i + 1, columns))
+            ) / upper[i][i]
+        return tuple(result)
+
+    parameters = back_substitute(right)
+    standard_deviations: tuple[float, ...] = ()
+    if uncertainty:
+        inverse_columns = [
+            back_substitute([float(i == j) for j in range(columns)])
+            for i in range(columns)
+        ]
+        standard_deviations = tuple(
+            math.hypot(*row) for row in zip(*inverse_columns, strict=True)
+        )
     return LinearSolution(
-        tuple(parameters),
+        parameters,
         tuple(
             value - dot(row, parameters)
             for row, value in zip(rows, values, strict=True)
         ),
+        standard_deviations,
     )

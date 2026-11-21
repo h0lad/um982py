@@ -139,6 +139,12 @@ def motion_main(name: str, argv: Sequence[str] | None) -> int:
     )
     if name == "doppler_velocity":
         parser.add_argument(
+            "--max-velocity-std",
+            type=float,
+            default=2.0,
+            help="maximum formal 3D velocity standard deviation in m/s",
+        )
+        parser.add_argument(
             "--compare-receiver",
             action="store_true",
             help="compare matched primary-antenna DOPPVEL solutions",
@@ -150,6 +156,10 @@ def motion_main(name: str, argv: Sequence[str] | None) -> int:
     if args.max_gap <= 0 or args.phase_tolerance <= 0 or args.sigma <= 0:
         parser.error("gap, phase tolerance and sigma must be positive")
     compare_receiver = bool(getattr(args, "compare_receiver", False))
+    if name == "doppler_velocity" and (
+        not math.isfinite(args.max_velocity_std) or args.max_velocity_std <= 0
+    ):
+        parser.error("maximum formal velocity standard deviation must be positive")
     if compare_receiver and args.receiver_tolerance < 0:
         parser.error("receiver tolerance must be nonnegative")
     logs: list[Log] = [Log.RANGE, Log.BESTXYZ, Log.GPSEPH]
@@ -196,7 +206,9 @@ def motion_main(name: str, argv: Sequence[str] | None) -> int:
                                 "reason": str(failure),
                             }
                         )
-                velocity = solve_velocity(measurements)
+                velocity = solve_velocity(
+                    measurements, max_velocity_std_mps=args.max_velocity_std
+                )
                 result: dict[str, object] = {"epoch": epoch, **asdict(velocity)}
                 if compare_receiver:
                     result["receiver_comparison"] = _receiver_comparison(

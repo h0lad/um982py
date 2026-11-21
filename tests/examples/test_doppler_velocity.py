@@ -117,6 +117,20 @@ def test_singular_geometry_is_rejected() -> None:
         )
 
 
+def test_full_rank_weak_geometry_can_fail_velocity_uncertainty_limit() -> None:
+    weak = [
+        replace(
+            item,
+            line_of_sight=(math.cos(i), math.sin(i), 0.001 * (-1) ** i),
+        )
+        for i, item in enumerate(measurements())
+    ]
+    result = solve_velocity(weak)
+    assert result.formal_3d_std_mps is not None and result.formal_3d_std_mps > 100
+    with pytest.raises(ValueError, match="formal 3D velocity standard deviation"):
+        solve_velocity(weak, max_velocity_std_mps=2.0)
+
+
 def test_duplicate_signals_cannot_count_as_independent_satellites() -> None:
     with pytest.raises(ValueError, match="distinct"):
         solve_velocity([replace(item, prn=1) for item in measurements()])

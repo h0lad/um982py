@@ -32,10 +32,19 @@ class VelocitySolution:
     clock_mps: float
     residual_rms_mps: float
     satellites: int
+    formal_3d_std_mps: float | None = None
 
 
-def solve_velocity(measurements: Sequence[RateMeasurement]) -> VelocitySolution:
-    """Solve range rate after removing satellite motion and satellite clock drift."""
+def solve_velocity(
+    measurements: Sequence[RateMeasurement],
+    *,
+    max_velocity_std_mps: float | None = None,
+) -> VelocitySolution:
+    """Solve range rate and optionally reject large formal velocity uncertainty."""
+    if max_velocity_std_mps is not None and (
+        not math.isfinite(max_velocity_std_mps) or max_velocity_std_mps <= 0
+    ):
+        raise ValueError("maximum formal velocity standard deviation must be positive")
     if len(measurements) < 4 or len({item.prn for item in measurements}) != len(
         measurements
     ):
@@ -51,10 +60,18 @@ def solve_velocity(measurements: Sequence[RateMeasurement]) -> VelocitySolution:
             - dot(direction, measurement.satellite_velocity)
             + measurement.satellite_clock_mps
         )
-    solution = least_squares(rows, values, [item.sigma_mps for item in measurements])
+    solution = least_squares(
+        rows, values, [item.sigma_mps for item in measurements], uncertainty=True
+    )
+    formal_3d_std = math.hypot(*solution.parameter_standard_deviations[:3])
+    if max_velocity_std_mps is not None and formal_3d_std > max_velocity_std_mps:
+        raise ValueError(
+            f"formal 3D velocity standard deviation {formal_3d_std:.3g} m/s "
+            f"exceeds {max_velocity_std_mps:g} m/s"
+        )
     vx, vy, vz, clock = solution.parameters
     return VelocitySolution(
-        (vx, vy, vz), clock, rms(solution.residuals), len(measurements)
+        (vx, vy, vz), clock, rms(solution.residuals), len(measurements), formal_3d_std
     )
 
 
