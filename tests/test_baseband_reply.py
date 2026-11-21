@@ -8,6 +8,8 @@ from um982py.experimental import (
     parse_baseband_notice,
     scan_notices,
 )
+from um982py.messages import TextLine
+from um982py.protocol import StreamDecoder
 
 
 def test_baseband_diagnostic_fields_from_mixed_text() -> None:
@@ -34,6 +36,35 @@ def test_baseband_diagnostic_fields_from_mixed_text() -> None:
     assert sample["word_values"] == (0xFFFFFFFF, 1)
     assert point["detail_values"] == (26, 200, 300, 1, 2, 3, 4, 255, -5, 6)
     assert position["value_9"] == 9.0
+
+
+def test_clock_adjust_and_pps_trace_replay() -> None:
+    data = (
+        b"ClockAdjust Tag: 123, -2, 1a,     -4,        5,        6,"
+        b"        7,        8,9\r\n"
+        b"$PPSDebug,Cmp: 1, -2, 3, 4\r\n"
+        b"$PPSDebug,SetLength: 1, 2, 3, 4\r\n"
+        b"$PPSDebug,DelayUpate: 1, -2, 3, 4, 5, 6, 7\r\n"
+        b"$PPSDebug,Int: 1, 2, 3, 4, 5, 6, 7\r\n"
+    )
+    stream = StreamDecoder(strict=True)
+    assert all(isinstance(frame, TextLine) for frame in stream.feed(data))
+    stream.finish()
+    clock, compare, length, delay, interrupt = (
+        notice.decode() for notice in scan_notices(data)
+    )
+    assert [item.name for item in (clock, compare, length, delay, interrupt)] == [
+        "CLOCK_ADJUST",
+        "PPS_DEBUG_COMPARE",
+        "PPS_DEBUG_SET_LENGTH",
+        "PPS_DEBUG_DELAY_UPDATE",
+        "PPS_DEBUG_INTERRUPT",
+    ]
+    assert clock["tag"] == 123 and clock["hex_word"] == 0x1A
+    assert clock["value_4"] == -4 and clock["value_9"] == 9
+    assert compare["value_2"] == -2 and length["value_4"] == 4
+    assert delay["value_2"] == -2 and interrupt["value_7"] == 7
+    assert parse_baseband_notice(b"$PPSDebug,Int: 1, 2, 3, 4\n") is None
 
 
 @pytest.mark.parametrize(

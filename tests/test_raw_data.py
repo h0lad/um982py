@@ -18,8 +18,47 @@ from um982py.experimental import (
     parse_ppp_debug,
 )
 from um982py.experimental.baseband import RawBasebandPacket
-from um982py.messages import TextLine
+from um982py.messages import Record, TextLine
 from um982py.protocol import StreamDecoder
+
+
+def test_mpt_ionosphere_snapshots_and_native_status() -> None:
+    raw = (
+        b"$MPTDEBUG,1;ae689,2445,520657.000,SatCnt:41,26,520657.000,rsk0,0;"
+        b"Ifg,0;1013,A;1.583e-08;3.166e-08;"
+        b"#gpIon,1e-08,-2e-08,-3e-08,4e-08,5e+05,6e+05,-7e+05,8e+05;"
+        b"#bdIon,1,2,3,4,5,6,7,8;#gaIon,103.25,-0.15625,-0.0012817383;"
+        b"tm1,520657.000,520656.000;4159100.0,682828.1,4771452.5;"
+        b"0,1,0,1,10,6,7;1,1,0,1,8,7,0;2,1,0,1,10,10,8;3,1,0,2,12,0,11;"
+        b"basCor0,0,0.0,136,33.9,0;sav10,sav21;basIon0,0,136;1,454*End\r\n"
+    )
+    record = parse_mpt_debug(raw)
+    assert record is not None and record.ionosphere_status is not None
+    assert record.ionosphere_status.words == (0, 0x1013, 0xA)
+    assert record.ionosphere_status.gps_alpha0 == 1.583e-08
+    assert record.ionosphere_status.beidou_alpha0 == 3.166e-08
+    assert record.correction_status == (0, 1)
+    assert [group.index for group in record.group_rows] == [0, 1, 2, 3]
+    assert record.group_rows[-1].values == (1, 0, 2, 12, 0, 11)
+    gps, beidou, galileo = record.ionosphere_snapshots
+    assert (gps.constellation, beidou.constellation, galileo.constellation) == (
+        "GPS",
+        "BEIDOU",
+        "GALILEO",
+    )
+    assert galileo.week == 2445 and galileo.seconds_of_week == 520657.0
+    assert galileo.source == "MPTDEBUGMSG"
+    public = Record(
+        "GALION", (("a0", 103.25), ("a1", -0.15625), ("a2", -0.00128173828125))
+    )
+    assert galileo.matches_public_log(public)
+    assert not galileo.matches_public_log(
+        Record("GALION", (("a0", 107.0), *public.entries[1:]))
+    )
+    with pytest.raises(ValueError):
+        gps.matches_public_log(public)
+    malformed = parse_mpt_debug(raw.replace(b"#gaIon,103.25,", b"#gaIon,nan,"))
+    assert malformed is not None and malformed.ionosphere_snapshots == (gps, beidou)
 
 
 def test_raw_data_log_builders() -> None:

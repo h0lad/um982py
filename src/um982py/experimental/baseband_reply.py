@@ -53,6 +53,27 @@ class FieldKind(StrEnum):
                 return text
 
 
+_PPS_DEBUG_PATTERNS = tuple(
+    (
+        name,
+        re.compile(
+            rb"\$PPSDebug,"
+            + wire_name
+            + rb": *(-?\d+)"
+            + rb", *(-?\d+)" * (count - 1)
+            + rb"$"
+        ),
+        tuple((f"value_{index}", FieldKind.SIGNED) for index in range(1, count + 1)),
+    )
+    for name, wire_name, count in (
+        ("PPS_DEBUG_COMPARE", b"Cmp", 4),
+        ("PPS_DEBUG_SET_LENGTH", b"SetLength", 4),
+        ("PPS_DEBUG_DELAY_UPDATE", b"DelayUpate", 7),
+        ("PPS_DEBUG_INTERRUPT", b"Int", 7),
+    )
+)
+
+
 _PATTERNS: tuple[
     tuple[str, re.Pattern[bytes], tuple[tuple[str, FieldKind], ...]], ...
 ] = (
@@ -368,6 +389,21 @@ _PATTERNS: tuple[
         re.compile(rb"\$DOPPS AP (-?\d+) (-?\d+)$"),
         (("value_1", FieldKind.SIGNED), ("value_2", FieldKind.SIGNED)),
     ),
+    (
+        "CLOCK_ADJUST",
+        re.compile(
+            rb"ClockAdjust Tag: *(-?\d+), *(-?\d+), *([0-9A-Fa-f]+)"
+            + rb", *(-?\d+)" * 6
+            + rb"$"
+        ),
+        (
+            ("tag", FieldKind.SIGNED),
+            ("value_2", FieldKind.SIGNED),
+            ("hex_word", FieldKind.HEXADECIMAL),
+            *((f"value_{index}", FieldKind.SIGNED) for index in range(4, 10)),
+        ),
+    ),
+    *_PPS_DEBUG_PATTERNS,
     (
         "PPSCONFIG",
         re.compile(rb"\$PPSConfigUpdate: (.*)$"),

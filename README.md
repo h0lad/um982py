@@ -59,7 +59,14 @@ their binary bytes. See the [mixed correction replay](examples/rtk_quality/READM
 for RTCM input and receiver-side diagnostics.
 `SBAS1` and `SBAS18` expose masks, and the other SBAS logs retain their raw
 bodies. `parse_mpt_debug()` exposes `time_pair_s` and
-`diagnostic_blocks` alongside the original tokens.
+`diagnostic_blocks` alongside the original tokens. It also exposes the
+positioning context's `ionosphere_snapshots`, `ionosphere_status`,
+`correction_status` in `sav1`, `sav2` order, and `group_rows`. Pair each
+snapshot with the corresponding public log epoch before comparing coefficients
+with `snapshot.matches_public_log(record)`.
+
+`scan_notices()` decodes `ClockAdjust Tag` and the four `$PPSDebug` forms
+from a supplied trace. It preserves the native timing values and field order.
 
 Use `um982py.binex.BinexEphemerisType` to subscribe to broadcast ephemerides
 by constellation, alongside `binex_output()` for observations. `write_binex()`

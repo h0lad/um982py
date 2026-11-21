@@ -9,7 +9,7 @@ from um982py.commands import logging
 from um982py.commands.core import Command, action
 from um982py.commands.types import Port, Trigger
 from um982py.commands.validation import config, integer, text
-from um982py.messages import CommandResponse
+from um982py.messages import CommandResponse, Record
 
 _WORD_MASK = (1 << 32) - 1
 
@@ -810,6 +810,58 @@ class MptDebugBlock:
     values: tuple[int | float, ...]
 
 
+_MPT_ION_MODELS = {
+    "#gpIon": ("GPS", 8),
+    "#bdIon": ("BEIDOU", 8),
+    "#gaIon": ("GALILEO", 3),
+}
+_MPT_ION_LOGS = {
+    "GPS": ("GPSION", "IONUTC"),
+    "GALILEO": ("GALION",),
+    "BEIDOU": ("BDSION", "BD2IONUTC"),
+}
+_MPT_ION_FIELDS = ("a0", "a1", "a2", "a3", "b0", "b1", "b2", "b3")
+
+
+@dataclass(frozen=True, slots=True)
+class MptIonosphereSnapshot:
+    """Ionospheric coefficients from the positioning context at one epoch."""
+
+    week: int
+    seconds_of_week: float
+    constellation: str
+    coefficients: tuple[float, ...]
+    source: str = "MPTDEBUGMSG"
+
+    def matches_public_log(self, record: Record) -> bool:
+        """Compare coefficients at MPT output precision. The caller pairs epochs."""
+        if record.name not in _MPT_ION_LOGS.get(self.constellation, ()):
+            raise ValueError(
+                "Expected an ionosphere log for the snapshot constellation"
+            )
+        fields = _MPT_ION_FIELDS[: 3 if self.constellation == "GALILEO" else 8]
+        return tuple(f"{value:.7e}" for value in self.coefficients) == tuple(
+            f"{record.real(field):.7e}" for field in fields
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class MptIonosphereStatus:
+    """The three native Ifg words and the first GPS and BeiDou coefficients."""
+
+    words: tuple[int, int, int]
+    gps_alpha0: float
+    beidou_alpha0: float
+
+
+@dataclass(frozen=True, slots=True)
+class MptGroupRow:
+    """A group index and six native counters in wire order."""
+
+    index: int
+    values: tuple[int, ...]
+
+
 @dataclass(frozen=True, slots=True)
 class MptDebugData:
     """Parsed internal multi-GNSS point-positioning state from MPTDEBUGMSG."""
@@ -822,6 +874,10 @@ class MptDebugData:
     tokens: tuple[str, ...]
     time_pair_s: tuple[float, float] | None = None
     diagnostic_blocks: tuple[MptDebugBlock, ...] = ()
+    ionosphere_snapshots: tuple[MptIonosphereSnapshot, ...] = ()
+    ionosphere_status: MptIonosphereStatus | None = None
+    correction_status: tuple[int, int] | None = None
+    group_rows: tuple[MptGroupRow, ...] = ()
 
 
 _MPT_SAT = re.compile(
@@ -838,6 +894,39 @@ _MPT_BLOCK_TYPES = {
     "asvd,": (int,),
     "ssf:": (int, int, int, int, float),
 }
+_MPT_CORRECTION_STATUS = re.compile(r"sav1(-?\d+),sav2(-?\d+)")
+_MPT_GROUP_FIELDS = re.compile(r"([0-3]),(\d{1,5}(?:,\d{1,5}){5})")
+_MPT_IFG = re.compile(
+    r"Ifg,([0-9a-fA-F]{1,8});([0-9a-fA-F]{1,8}),([0-9a-fA-F]{1,8});([^;]+);([^;]+)"
+)
+
+
+def _mpt_ifg(tokens: tuple[str, ...]) -> MptIonosphereStatus | None:
+    match = _MPT_IFG.fullmatch(";".join(tokens))
+    if match is None:
+        return None
+    try:
+        gps, beidou = float(match[4]), float(match[5])
+    except ValueError:
+        return None
+    if not (isfinite(gps) and isfinite(beidou)):
+        return None
+    return MptIonosphereStatus(
+        (int(match[1], 16), int(match[2], 16), int(match[3], 16)), gps, beidou
+    )
+
+
+def _mpt_group_rows(tokens: tuple[str, ...]) -> tuple[MptGroupRow, ...]:
+    rows = []
+    for expected_index, token in enumerate(tokens):
+        match = _MPT_GROUP_FIELDS.fullmatch(token)
+        if match is None or int(match[1]) != expected_index:
+            break
+        values = tuple(map(int, match[2].split(",")))
+        if max(values) > 0xFFFF:
+            break
+        rows.append(MptGroupRow(expected_index, values))
+    return tuple(rows)
 
 
 def _mpt_block(token: str) -> MptDebugBlock | None:
@@ -875,6 +964,10 @@ def parse_mpt_debug(raw: bytes | str) -> MptDebugData | None:
     ecef: tuple[float, float, float] | None = None
     time_pair: tuple[float, float] | None = None
     blocks: list[MptDebugBlock] = []
+    coefficients: list[tuple[str, tuple[float, ...]]] = []
+    ionosphere_status: MptIonosphereStatus | None = None
+    correction_status: tuple[int, int] | None = None
+    group_rows: tuple[MptGroupRow, ...] = ()
     for index, token in enumerate(tokens):
         sat_match = _MPT_SAT.match(token)
         if sat_match is not None:
@@ -886,6 +979,20 @@ def parse_mpt_debug(raw: bytes | str) -> MptDebugData | None:
         block = _mpt_block(token[sat_match.end() :] if sat_match else token)
         if block is not None:
             blocks.append(block)
+        if token.startswith("#"):
+            tag, _, values = token.partition(",")
+            if tag in _MPT_ION_MODELS:
+                system, count = _MPT_ION_MODELS[tag]
+                try:
+                    model = tuple(map(float, values.split(",")))
+                except ValueError:
+                    continue
+                if len(model) == count and all(map(isfinite, model)):
+                    coefficients.append((system, model))
+        if token.startswith("Ifg,"):
+            ionosphere_status = _mpt_ifg(tokens[index : index + 4])
+        if (status_match := _MPT_CORRECTION_STATUS.fullmatch(token)) is not None:
+            correction_status = (int(status_match[1]), int(status_match[2]))
         if token.startswith("tm1,"):
             try:
                 first, second = map(float, token[4:].split(","))
@@ -898,6 +1005,7 @@ def parse_mpt_debug(raw: bytes | str) -> MptDebugData | None:
             if len(coords) == 3:
                 try:
                     ecef = (float(coords[0]), float(coords[1]), float(coords[2]))
+                    group_rows = _mpt_group_rows(tokens[index + 2 : index + 6])
                 except ValueError:
                     ecef = None
     if not found:
@@ -911,4 +1019,11 @@ def parse_mpt_debug(raw: bytes | str) -> MptDebugData | None:
         tokens=tokens,
         time_pair_s=time_pair,
         diagnostic_blocks=tuple(blocks),
+        ionosphere_snapshots=tuple(
+            MptIonosphereSnapshot(week, sow, system, model)
+            for system, model in coefficients
+        ),
+        ionosphere_status=ionosphere_status,
+        correction_status=correction_status,
+        group_rows=group_rows,
     )

@@ -30,6 +30,7 @@ _UNCHECKSUMMED_TEXT_PREFIXES = (
     b"$AvgSensorADC:",
     b"$SensorADCCheckSumE:",
     b"$MonitorCorAcqChan,",
+    b"$PPSDebug,",
     b"$BD2IONChErr,",
     b"$MsAjust_",
     b"$ERROR: PosReset",
