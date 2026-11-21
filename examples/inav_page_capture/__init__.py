@@ -27,7 +27,7 @@ __all__ = [
 
 PAGE_HEADER = (
     f"{'PRN':>3}  {'Ch':>4}  {'Part':<10}  {'Word':>4}  {'Valid':<5}"
-    f"  {'Page':<32}  OSNMA"
+    f"  {'Page':<32}  {'OSNMA':<10}  SAR"
 )
 """Column header of the captured page part table."""
 
@@ -67,11 +67,12 @@ def _activity_entries(
 def render_page(page: InavPage) -> str:
     """Return one table row of a captured page part."""
     osnma = "-" if page.part.osnma is None else page.part.osnma.hex()
+    sar = "-" if page.part.sar is None else page.part.sar.hex()
     valid = "yes" if page.page_valid else "no"
     return (
         f"{page.prn:>3}  {page.channel:>4}  {_part_label(page):<10}"
         f"  {_dash(page.part.word_type):>4}  {valid:<5}"
-        f"  {page.page.hex()}  {osnma}"
+        f"  {page.page.hex()}  {osnma:<10}  {sar}"
     )
 
 
@@ -130,7 +131,7 @@ def render_campaign(
     """Return the human-readable report of one capture campaign.
 
     The report lists every captured page part, the OSNMA activity per
-    satellite with the header interpretations, the checksum-verified word
+    satellite, the raw SAR fields, the checksum-verified word
     assemblies and the independent window decodes.
     """
     pages = campaign.pages
@@ -187,6 +188,7 @@ def render_campaign(
         "Part: page half and page type of the stored page part.",
         "OSNMA: raw field of odd nominal parts. Header decoding requires",
         "the first odd part of a GST-aligned sub-frame.",
+        "SAR: raw 22-bit field in hex with two trailing padding bits.",
         "Words: even and odd parts of one page that pass its checksum.",
         "Audits: independent decode of the demodulation symbol window.",
     ]

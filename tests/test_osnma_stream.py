@@ -8,11 +8,13 @@ from osnma_example import PUBLIC_KEY_HEX
 from um982py.experimental.inav_coding import bits_of, inav_crc24, pack_bits
 from um982py.experimental.inav_pages import (
     NmaStatus,
+    SarService,
     assemble_inav_word,
     assemble_osnma_subframe,
     decode_inav_page_part,
     parse_nma_header,
     read_inav_stream_csv,
+    replay_sar_stream,
 )
 from um982py.experimental.osnma import (
     collect_dsm,
@@ -120,6 +122,27 @@ def test_page_checksums_hold_for_every_page(
             assert word is not None, index
             checked += 1
     assert checked >= 360
+
+
+def test_sar_replay_recovers_test_messages_and_spare_fields(
+    streams: dict[int, tuple[bytes, ...]],
+) -> None:
+    replay = replay_sar_stream(streams[2])
+    assert replay.crc_checked_fields == 180
+    assert replay.spare_fields == 155
+    assert [index for index, _ in replay.messages] == [23, 83, 141, 203, 261, 323]
+    index, message = replay.messages[0]
+    assert message.service == SarService.TEST
+    assert message.beacon_hex == "9A22BE29630F010"
+    assert message.parameters == bytes.fromhex("3402")
+
+    # Preserve the time slot while corrupting the first continuation.
+    parts = list(streams[2])
+    damaged = parts[index + 2]
+    parts[index + 2] = damaged[:9] + bytes([damaged[9] ^ 1]) + damaged[10:]
+    replay = replay_sar_stream(parts)
+    assert replay.crc_checked_fields == 179
+    assert [position for position, _ in replay.messages] == [83, 141, 203, 261, 323]
 
 
 def test_dsm_kroot_assembles_and_its_signature_verifies(

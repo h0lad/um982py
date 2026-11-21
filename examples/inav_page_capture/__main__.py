@@ -1,4 +1,4 @@
-"""Capture Galileo E1-B I/NAV pages and verify their authentication data."""
+"""Capture Galileo E1-B I/NAV pages or replay navigation, OSNMA and SAR data."""
 
 from __future__ import annotations
 
@@ -14,6 +14,8 @@ from um982py.experimental import (
     capture_inav_pages,
     load_public_key,
     read_inav_stream_csv,
+    replay_inav_ced,
+    replay_sar_stream,
     verify_osnma_stream,
 )
 
@@ -33,12 +35,23 @@ def build_parser() -> ExampleParser:
         type=Path,
         help="verify a Galileo test-vector format stream without opening the receiver",
     )
-    parser.add_argument(
+    replay_mode = parser.add_mutually_exclusive_group()
+    replay_mode.add_argument(
         "--public-key",
         type=Path,
         action="append",
         default=[],
         help="trusted Galileo public-key XML for offline replay, repeatable",
+    )
+    replay_mode.add_argument(
+        "--sar-only",
+        action="store_true",
+        help="decode SAR return-link messages from --stream-csv",
+    )
+    replay_mode.add_argument(
+        "--ced-only",
+        action="store_true",
+        help="decode RedCED and recover clock and ephemeris using FEC2",
     )
     parser.add_argument(
         "--helper",
@@ -66,11 +79,12 @@ def _report(campaign: InavCampaign) -> dict[str, object]:
     report: dict[str, object] = campaign.manifest()
     report["interpretation"] = (
         "Pages are the decoded E1-B page parts stored per signal at each "
-        "capture instant. Odd nominal parts carry the OSNMA field. Word "
+        "capture instant. Odd nominal parts carry OSNMA and SAR fields. Word "
         "assembly pairs even and odd parts across snapshots; only pairs "
         "that pass the page checksum are reported as words. A full "
         "OSNMA sub-frame needs fifteen consecutive odd parts of one "
-        "satellite and a public key from the Galileo key directory."
+        "satellite and a public key from the Galileo key directory. SAR "
+        "message assembly requires a continuous stream."
     )
     return report
 
@@ -79,19 +93,31 @@ def main() -> int:
     parser = build_parser()
     args = parser.parse_args(sys.argv[1:])
     if args.stream_csv is not None:
-        if not args.public_key:
-            parser.error("--stream-csv requires at least one --public-key")
+        if not (args.public_key or args.sar_only or args.ced_only):
+            parser.error("--stream-csv requires --public-key, --sar-only or --ced-only")
         if args.json is not None and args.json.resolve() in {
             path.resolve() for path in (args.stream_csv, *args.public_key)
         }:
             parser.error("--json must not overwrite a replay input file")
+        streams = read_inav_stream_csv(args.stream_csv)
+        if args.ced_only:
+            ced = {svid: replay_inav_ced(parts) for svid, parts in streams.items()}
+            write_json({"ced": ced}, args.json)
+            return 0
+        if args.sar_only:
+            sar = {
+                svid: replay_sar_stream(parts).manifest()
+                for svid, parts in streams.items()
+            }
+            write_json({"sar": sar}, args.json)
+            return 0
         keys = {}
         for path in args.public_key:
             key_id, _, point = load_public_key(path)
             if key_id in keys and keys[key_id] != point:
                 parser.error(f"conflicting public keys for PKID {key_id}")
             keys[key_id] = point
-        replay = verify_osnma_stream(read_inav_stream_csv(args.stream_csv), keys)
+        replay = verify_osnma_stream(streams, keys)
         write_json(
             {
                 "osnma_subframes": replay.osnma_subframes,
@@ -111,8 +137,8 @@ def main() -> int:
             args.json,
         )
         return 0
-    if args.public_key:
-        parser.error("--public-key requires --stream-csv")
+    if args.public_key or args.sar_only or args.ced_only:
+        parser.error("--public-key, --sar-only and --ced-only require --stream-csv")
     helper = Path(args.helper)
     if not helper.exists():
         parser.error(

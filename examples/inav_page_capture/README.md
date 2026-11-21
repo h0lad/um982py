@@ -92,6 +92,57 @@ SHA-256/HMAC-SHA-256 chains and reports historical cryptographic
 matches. Capture-time freshness, key or chain lifecycle handling, and
 multi-tag authentication thresholds require additional receiver logic.
 
+## Replay search and rescue data
+
+```bash
+python -m examples.inav_page_capture --stream-csv capture.csv --sar-only
+```
+
+SAR replay counts CRC-checked fields and reports complete return-link
+messages by satellite. Four consecutive I/NAV pages carry a short
+message and eight carry a long message. The decoder checks even parity
+across the 60-bit beacon ID, message code and all parameters. A short
+message with code `1` and parameter prefix `10` is a Type 1
+acknowledgement. Code `15` marks a test. The other code and parameter
+combinations are spare, as are all long-message codes in the current
+ICD. [Galileo Open Service SIS ICD, §§4.3.8 and 5.3](https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_OS_SIS_ICD_v2.2.pdf)
+
+Spare fields are identified by two consecutive start bits of 1. The
+bundled test stream uses alternating bits in those fields. Snapshot
+reports show the raw 22-bit SAR field as six hex digits with two trailing
+padding bits. The boot-menu captures sample isolated page parts, so
+message assembly and spare classification require continuous replay.
+
+The replay JSON includes the country code and protocol bits interpreted
+as a first-generation Cospas-Sarsat beacon ID. For orbitography IDs with
+valid modified-Baudot characters and a zero suffix, it also gives the
+transmitted beacon label. The raw beacon ID and message parameters are
+retained alongside the decoded fields. Snapshot JSON includes the raw
+SAR field and a decoded start bit, length bit and twenty-bit payload.
+[Cospas-Sarsat T.001, Annex A](https://sar.mot.go.th/document/THMCC/T001-MAR-26-2021%20SPECIFICATION%20FOR%20COSPAS-SARSAT%20406%20MHz%20DISTRESS%20BEACONS.pdf)
+
+## Replay Galileo clock and ephemeris data
+
+```bash
+python -m examples.inav_page_capture --stream-csv capture.csv --ced-only
+```
+
+The replay decodes the eight signed RedCED parameters from CRC-checked
+word 16 records. It reports the word bits, the scaled parameters and the
+reference time when the stream has consistent Galileo timing words.
+The reduced clock terms include radial-error compensation and belong
+with the orbit parameters from the same RedCED word.
+
+FEC2 replay groups CRC-checked clock, ephemeris and parity words by
+satellite and GST sub-frame. It reports the four complete navigation
+words when the available parity verifies or recovers them.
+`recovered_types` identifies the words reconstructed from parity. The
+Python function `um982py.experimental.recover_fec2_ced` can also work with
+words assembled across sub-frames when the caller knows they belong to
+the same satellite and issue of data. It handles erasures, with missing
+or CRC-rejected pages treated as absent.
+[Galileo Open Service SIS ICD, §§5.1.11, 5.1.13 and Annex F](https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_OS_SIS_ICD_v2.2.pdf)
+
 ## Understanding the result
 
 `pages_with_osnma` counts the odd nominal parts. `words` lists the
@@ -117,8 +168,8 @@ Application restored:  yes
 
 Captured page parts
 -------------------
-PRN    Ch  Part        Word  Valid  Page                              OSNMA
- 11    76  odd/nom        -  yes    96c71102e24928a55246905500c0ebed  440b8924a2
+PRN    Ch  Part        Word  Valid  Page                              OSNMA       SAR
+ 11    76  odd/nom        -  yes    96c71102e24928a55246905500c0ebed  440b8924a2  954918
 
 OSNMA activity
 --------------

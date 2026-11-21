@@ -4,6 +4,7 @@ import csv
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum
+from itertools import pairwise
 from pathlib import Path
 from typing import Self
 
@@ -33,6 +34,8 @@ __all__ = [
     "PublicKeyStatus",
     "SarField",
     "SarLongRlm",
+    "SarReplay",
+    "SarService",
     "SarShortRlm",
     "WordTiming",
     "assemble_inav_word",
@@ -42,12 +45,15 @@ __all__ = [
     "audit_page_windows",
     "capture_inav_pages",
     "decode_inav_page_part",
+    "decode_sar_beacon_id",
+    "decode_sar_field",
     "extract_channel_states",
     "extract_inav_pages",
     "osnma_activity",
     "pair_inav_words",
     "parse_nma_header",
     "read_inav_stream_csv",
+    "replay_sar_stream",
 ]
 
 TRACKING_MEMORY_BASE = 0x318000
@@ -280,6 +286,8 @@ class InavSnapshot:
                     "word_type": page.part.word_type,
                     "page": page.page.hex(),
                     "osnma": page.part.osnma.hex() if page.part.osnma else None,
+                    "sar": page.part.sar.hex() if page.part.sar else None,
+                    "sar_decoded": _sar_field_manifest(page.part),
                 }
                 for page in self.pages
             ],
@@ -497,15 +505,30 @@ class SarField:
     """Search and rescue field of one nominal E1-B odd page part."""
 
     start: bool
-    """Start bit: true opens a return-link message sequence."""
+    """True at a possible message start or on a spare field."""
+
+    long_rlm: bool
+    """Short or long return-link message identifier of the part."""
 
     data: bytes
-    """Twenty-one data bits, right-padded to whole bytes."""
+    """Twenty return-link data bits, right-padded to whole bytes."""
 
     @property
-    def spare(self) -> bool:
-        """Whether the part carries the spare pattern instead of a message."""
-        return self.start and int.from_bytes(self.data, "big") >> 13 == 0
+    def data_hex(self) -> str:
+        """The twenty data bits as five hexadecimal digits."""
+        return self.data.hex()[:5].upper()
+
+    def is_spare_before(self, following: "SarField") -> bool:
+        """Check the start bits of two consecutive fields of one satellite."""
+        return self.start and following.start
+
+
+class SarService(StrEnum):
+    """Return-link service defined by the Galileo Open Service SIS ICD."""
+
+    ACKNOWLEDGEMENT_TYPE_1 = "acknowledgement_type_1"
+    TEST = "test"
+    SPARE = "spare"
 
 
 @dataclass(frozen=True, slots=True)
@@ -519,7 +542,25 @@ class SarShortRlm:
     """Four-bit message code."""
 
     parameters: bytes
-    """Sixteen bits of message parameters, right-padded to whole bytes."""
+    """Sixteen bits of message parameters, including the parity bit."""
+
+    @property
+    def beacon_hex(self) -> str:
+        """The beacon identification as its fifteen hexadecimal digits.
+
+        This is the identity format of the 406 MHz distress beacons of
+        the Cospas-Sarsat system that Galileo relays and acknowledges.
+        """
+        return self.beacon_id.hex()[:15].upper()
+
+    @property
+    def service(self) -> SarService:
+        """Return-link service identified by the code and parameter bits."""
+        if self.message_code == 1 and self.parameters[0] >> 6 == 2:
+            return SarService.ACKNOWLEDGEMENT_TYPE_1
+        if self.message_code == 15:
+            return SarService.TEST
+        return SarService.SPARE
 
 
 @dataclass(frozen=True, slots=True)
@@ -533,32 +574,116 @@ class SarLongRlm:
     """Four-bit message code."""
 
     parameters: bytes
-    """Eighty bits of message parameters, right-padded to whole bytes."""
+    """Ninety-six bits of message parameters, including the parity bit."""
+
+    @property
+    def beacon_hex(self) -> str:
+        """The beacon identification as its fifteen hexadecimal digits."""
+        return self.beacon_id.hex()[:15].upper()
+
+    @property
+    def service(self) -> SarService:
+        """Return-link service. Long-RLM codes are spare in SIS ICD v2.2."""
+        return SarService.SPARE
 
 
 def decode_sar_field(sar: bytes) -> SarField:
-    """Decode the twenty-two-bit SAR field of an odd nominal page part."""
-    bits = bits_of(sar)
+    """Decode the twenty-two-bit SAR field of an odd nominal page part.
+
+    The field carries one start bit, the short or long return-link
+    message identifier and twenty bits of return-link data, as specified
+    by the Open Service SIS ICD.
+    """
+    if len(sar) != 3:
+        raise ValueError("A SAR field occupies three bytes with two padding bits")
+    bits = bits_of(sar)[:SAR_FIELD_BITS]
     return SarField(
         start=bits[0] == "1",
-        data=pack_bits(bits[1:]),
+        long_rlm=bits[1] == "1",
+        data=pack_bits(bits[2:]),
     )
 
 
-def _sar_payload(parts: Sequence[SarField], count: int) -> str | None:
+def _sar_field_manifest(part: InavPagePart) -> dict[str, object] | None:
+    field = part.sar_field
+    if field is None:
+        return None
+    return {
+        "start": field.start,
+        "long_rlm": field.long_rlm,
+        "data_hex": field.data_hex,
+    }
+
+
+# Cospas-Sarsat T.001 Annex A, Table A3. Each character occupies six bits.
+_MODIFIED_BAUDOT = {
+    0b111000: "A", 0b110011: "B", 0b101110: "C", 0b110010: "D",
+    0b110000: "E", 0b110110: "F", 0b101011: "G", 0b100101: "H",
+    0b101100: "I", 0b111010: "J", 0b111110: "K", 0b101001: "L",
+    0b100111: "M", 0b100110: "N", 0b100011: "O", 0b101101: "P",
+    0b111101: "Q", 0b101010: "R", 0b110100: "S", 0b100001: "T",
+    0b111100: "U", 0b101111: "V", 0b111001: "W", 0b110111: "X",
+    0b110101: "Y", 0b110001: "Z", 0b100100: " ", 0b011000: "-",
+    0b010111: "/", 0b001101: "0", 0b011101: "1", 0b011001: "2",
+    0b010000: "3", 0b001010: "4", 0b000001: "5", 0b010101: "6",
+    0b011100: "7", 0b001100: "8", 0b000011: "9",
+}
+
+
+def decode_sar_beacon_id(beacon_hex: str) -> dict[str, int | str | None]:
+    """Interpret a 15-hex beacon ID under the first-generation T.001 layout.
+
+    The protocol flag precedes a ten-bit country code. User protocol
+    codes are three bits wide and location protocol codes are four bits
+    wide. For the orbitography protocol, T.006 defines seven characters
+    followed by four zero bits. The label is null if that layout fails.
+    """
+    if len(beacon_hex) != 15 or any(
+        digit not in "0123456789ABCDEFabcdef" for digit in beacon_hex
+    ):
+        raise ValueError("A SAR beacon ID requires exactly fifteen hexadecimal digits")
+    bits = f"{int(beacon_hex, 16):060b}"
+    user_protocol = bits[0] == "1"
+    code = bits[11:14] if user_protocol else bits[11:15]
+    decoded: dict[str, int | str | None] = {
+        "country_code": int(bits[1:11], 2),
+        "protocol_family": "user" if user_protocol else "location",
+        "protocol_code_bits": code,
+    }
+    if user_protocol and code == "000":
+        label = "".join(
+            _MODIFIED_BAUDOT.get(int(bits[index : index + 6], 2), "?")
+            for index in range(14, 56, 6)
+        ).lstrip()
+        decoded["orbitography_label"] = (
+            label if label and "?" not in label and bits[56:] == "0000" else None
+        )
+    return decoded
+
+
+def _sar_payload(
+    parts: Sequence[SarField], count: int, long_rlm: bool
+) -> str | None:
     if len(parts) != count:
         raise ValueError(f"A return-link message needs {count} parts")
     if not parts[0].start or any(part.start for part in parts[1:]):
         return None
-    return "".join(bits_of(part.data)[:21] for part in parts)
+    if any(part.long_rlm != long_rlm for part in parts):
+        return None
+    if any(len(part.data) != 3 for part in parts):
+        return None
+    payload = "".join(bits_of(part.data)[:20] for part in parts)
+    return payload if payload.count("1") % 2 == 0 else None
 
 
 def assemble_sar_short_rlm(parts: Sequence[SarField]) -> SarShortRlm | None:
     """Assemble a short return-link message from four SAR fields.
 
-    Returns ``None`` when the fields do not open a message sequence.
+    The fields must be consecutive, carry the short identifier and a
+    single start bit on the first field, and pass even parity.
+    Invalid sequences return ``None``.
     """
-    payload = _sar_payload(parts, 4)
+    payload = _sar_payload(parts, 4, False)
     if payload is None:
         return None
     return SarShortRlm(
@@ -571,15 +696,17 @@ def assemble_sar_short_rlm(parts: Sequence[SarField]) -> SarShortRlm | None:
 def assemble_sar_long_rlm(parts: Sequence[SarField]) -> SarLongRlm | None:
     """Assemble a long return-link message from eight SAR fields.
 
-    Returns ``None`` when the fields do not open a message sequence.
+    The fields must be consecutive, carry the long identifier and a
+    single start bit on the first field, and pass even parity.
+    Invalid sequences return ``None``.
     """
-    payload = _sar_payload(parts, 8)
+    payload = _sar_payload(parts, 8, True)
     if payload is None:
         return None
     return SarLongRlm(
         beacon_id=pack_bits(payload[:60]),
         message_code=int(payload[60:64], 2),
-        parameters=pack_bits(payload[64:144]),
+        parameters=pack_bits(payload[64:]),
     )
 
 
@@ -724,6 +851,69 @@ def read_inav_stream_csv(path: Path) -> dict[int, tuple[bytes, ...]]:
             )
             streams[svid] = parts
     return streams
+
+
+@dataclass(frozen=True, slots=True)
+class SarReplay:
+    """Search and rescue data recovered from one satellite's E1-B stream."""
+
+    crc_checked_fields: int
+    spare_fields: int
+    messages: tuple[tuple[int, SarShortRlm | SarLongRlm], ...]
+    """Pairs of zero-based odd-part index and parity-checked message."""
+
+    def manifest(self) -> dict[str, object]:
+        return {
+            "crc_checked_fields": self.crc_checked_fields,
+            "spare_fields": self.spare_fields,
+            "messages": [
+                {
+                    "start_part_index": index,
+                    "length": "long" if isinstance(message, SarLongRlm) else "short",
+                    "beacon_hex": message.beacon_hex,
+                    "beacon_header": decode_sar_beacon_id(message.beacon_hex),
+                    "message_code": message.message_code,
+                    "service": message.service.value,
+                    "parameters": message.parameters.hex(),
+                    "parity_bit": message.parameters[-1] & 1,
+                }
+                for index, message in self.messages
+            ],
+        }
+
+
+def replay_sar_stream(parts: Sequence[bytes]) -> SarReplay:
+    """Recover SAR messages from consecutive one-second E1-B page-part slots.
+
+    Keep missing parts as empty bytes. A gap, alert page or failed CRC
+    interrupts the sequence. Spare classification needs two consecutive
+    CRC-checked fields.
+    """
+    fields: dict[int, SarField] = {}
+    for index, (even, odd) in enumerate(pairwise(parts), start=1):
+        if assemble_inav_word(even, odd) is not None:
+            field = decode_inav_page_part(odd).sar_field
+            if field is not None:
+                fields[index] = field
+
+    spare_fields = 0
+    messages: list[tuple[int, SarShortRlm | SarLongRlm]] = []
+    for index, field in fields.items():
+        following = fields.get(index + 2)
+        if not field.start or following is None:
+            continue
+        if field.is_spare_before(following):
+            spare_fields += 1
+            continue
+        count = 8 if field.long_rlm else 4
+        window = range(index, index + 2 * count, 2)
+        if any(position not in fields for position in window):
+            continue
+        sequence = [fields[position] for position in window]
+        assemble = assemble_sar_long_rlm if field.long_rlm else assemble_sar_short_rlm
+        if (message := assemble(sequence)) is not None:
+            messages.append((index, message))
+    return SarReplay(len(fields), spare_fields, tuple(messages))
 
 
 def osnma_activity(
@@ -975,6 +1165,18 @@ class InavCampaign:
             "prns": sorted({page.prn for page in pages}),
             "words": [word.manifest() for word in self.words()],
             "osnma_activity": osnma_activity(pages),
+            "sar_fields": [
+                {
+                    "prn": page.prn,
+                    "channel": page.channel,
+                    "time_counter": page.time_counter,
+                    "page_valid": page.page_valid,
+                    "sar": page.part.sar.hex(),
+                    "sar_decoded": _sar_field_manifest(page.part),
+                }
+                for page in pages
+                if page.part.sar is not None
+            ],
             "window_audits": [
                 audit.manifest()
                 for audit in audit_page_windows(

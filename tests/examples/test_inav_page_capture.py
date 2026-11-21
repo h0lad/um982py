@@ -53,6 +53,12 @@ def test_report_details_carry_the_decoded_part_fields() -> None:
     report = _report(_snapshot())
     details = {detail["prn"]: detail for detail in report["details"]}
     assert details[11]["osnma"] == "440b8924a2"
+    assert details[11]["sar"] == "954918"
+    assert details[11]["sar_decoded"] == {
+        "start": True,
+        "long_rlm": False,
+        "data_hex": "55246",
+    }
     assert details[29]["word_type"] == 1
     assert details[11]["even"] is False
     assert details[29]["even"] is True
@@ -78,6 +84,7 @@ def test_render_page_row_shows_part_word_and_osnma() -> None:
     assert "odd/nom" in row
     assert "96c71102e24928a55246905500c0ebed" in row
     assert "440b8924a2" in row
+    assert row.endswith("954918")
     assert "yes" in row
 
 
@@ -112,6 +119,13 @@ def test_snapshot_activity_reports_presence_without_header_status() -> None:
     assert isinstance(activity, dict)
     assert activity["prns"][11]["observed_osnma"] is True
     assert activity["prns"][11]["headers"] == []
+
+
+def test_campaign_report_lists_raw_sar_fields() -> None:
+    fields = _report(_campaign())["sar_fields"]
+    assert isinstance(fields, list)
+    assert len(fields) == 3
+    assert next(field for field in fields if field["prn"] == 11)["sar"] == "954918"
 
 
 def test_render_word_row_shows_fields_and_timing() -> None:

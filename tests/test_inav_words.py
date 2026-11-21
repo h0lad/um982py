@@ -1,3 +1,4 @@
+import pytest
 
 from osnma_example import AUTHENTICATED_DATA_HEX
 from um982py.experimental.inav_coding import (
@@ -11,9 +12,11 @@ from um982py.experimental.inav_coding import (
 )
 from um982py.experimental.inav_pages import (
     SarField,
+    SarService,
     assemble_inav_word,
     assemble_sar_long_rlm,
     assemble_sar_short_rlm,
+    decode_sar_beacon_id,
     decode_sar_field,
     pair_inav_words,
 )
@@ -71,28 +74,116 @@ def test_authenticated_data_of_the_official_example(
     assert navdata == expected
 
 
-def test_sar_field_decodes_start_bit_and_data() -> None:
-    field = decode_sar_field(bytes.fromhex("AAAAAAAAAB"))
+def test_sar_field_decodes_start_identifier_and_data() -> None:
+    bits = "1" + "1" + "01001" + "0" * 15  # start, long, 20 data bits
+    field = decode_sar_field(pack_bits(bits))
     assert isinstance(field, SarField)
-    assert field.start is (bits_of(bytes.fromhex("AAAAAAAAAB"))[0] == "1")
-    assert field.spare is False or field.spare is True
+    assert field.start
+    assert field.long_rlm
+    assert bits_of(field.data)[:20] == bits[2:22]
+    assert field.data[-1] & 0xF == 0
 
 
-def test_sar_spare_pattern_is_recognised() -> None:
-    spare = decode_sar_field(pack_bits("1" + "0" * 21))
-    assert spare.start and spare.spare
+def test_sar_spare_classification_uses_the_following_start_bit() -> None:
+    alternating = decode_sar_field(pack_bits("10" * 11))
+    next_start = decode_sar_field(pack_bits("1" + "0" * 21))
+    continuation = decode_sar_field(bytes(3))
+    assert alternating.is_spare_before(next_start)
+    assert not alternating.is_spare_before(continuation)
 
 
-def test_sar_short_rlm_assembles_from_four_parts() -> None:
-    parts = [SarField(start=False, data=bytes(3))] * 4
-    parts[0] = SarField(start=True, data=pack_bits("0" * 21))
+@pytest.mark.parametrize(
+    ("beacon", "country_code", "label"),
+    [
+        ("9A22BE29630F010", 209, "GAL-EU5"),
+        ("9c02be29630f0a0", 224, "GAL-EU4"),
+        ("9C62FFFFFFFFF03", 227, None),
+    ],
+)
+def test_decode_sar_orbitography_label(
+    beacon: str, country_code: int, label: str | None,
+) -> None:
+    assert decode_sar_beacon_id(beacon) == {
+        "country_code": country_code,
+        "protocol_family": "user",
+        "protocol_code_bits": "000",
+        "orbitography_label": label,
+    }
+
+
+def test_decode_sar_location_protocol_code() -> None:
+    assert decode_sar_beacon_id("193BF6A028BFDFF") == {
+        "country_code": 201,
+        "protocol_family": "location",
+        "protocol_code_bits": "1101",
+    }
+
+
+def _sar_parts(
+    beacon: str, code: int, parameters: str, *, long_rlm: bool
+) -> list[SarField]:
+    payload = f"{int(beacon, 16):060b}{code:04b}{parameters}"
+    payload += str(payload.count("1") % 2)
+    return [
+        SarField(
+            start=index == 0,
+            long_rlm=long_rlm,
+            data=pack_bits(payload[index : index + 20]),
+        )
+        for index in range(0, len(payload), 20)
+    ]
+
+
+@pytest.mark.parametrize(
+    ("code", "parameters", "service"),
+    [
+        (1, 0x4000, SarService.ACKNOWLEDGEMENT_TYPE_1),
+        (1, 0x2000, SarService.SPARE),
+        (5, 0x091A, SarService.SPARE),
+        (15, 0x091A, SarService.TEST),
+    ],
+)
+def test_sar_short_rlm_assembles_from_four_parts(
+    code: int, parameters: int, service: SarService,
+) -> None:
+    beacon = "0C621A74630F1D0"
+    parts = _sar_parts(beacon, code, f"{parameters:015b}", long_rlm=False)
     rlm = assemble_sar_short_rlm(parts)
     assert rlm is not None
-    assert rlm.message_code == 0
+    assert rlm.beacon_hex == beacon
+    assert rlm.message_code == code
+    assert int.from_bytes(rlm.parameters, "big") >> 1 == parameters
+    assert rlm.service == service
+
+
+def test_sar_short_rlm_rejects_inconsistent_identifier() -> None:
+    parts = [
+        SarField(start=index == 0, long_rlm=index == 0, data=bytes(3))
+        for index in range(4)
+    ]
+    assert assemble_sar_short_rlm(parts) is None
+
+
+def test_sar_long_rlm_assembles_from_eight_parts() -> None:
+    beacon = "A0434CEB630F190"
+    parameters = 0x5BCD_EF01_2345_6789_ABCD_EF01
+    parts = _sar_parts(beacon, 3, f"{parameters:095b}", long_rlm=True)
+    rlm = assemble_sar_long_rlm(parts)
+    assert rlm is not None
+    assert rlm.beacon_hex == beacon
+    assert rlm.message_code == 3
+    assert len(rlm.parameters) == 12
+    assert int.from_bytes(rlm.parameters, "big") >> 1 == parameters
+    assert rlm.service == SarService.SPARE
+    last = parts[-1].data
+    parts[-1] = SarField(
+        start=False, long_rlm=True, data=last[:2] + bytes([last[2] ^ 0x10])
+    )
+    assert assemble_sar_long_rlm(parts) is None
 
 
 def test_sar_long_rlm_requires_message_sequence() -> None:
-    parts = [SarField(start=False, data=bytes(3))] * 8
+    parts = [SarField(start=False, long_rlm=True, data=bytes(3))] * 8
     assert assemble_sar_long_rlm(parts) is None
 
 
