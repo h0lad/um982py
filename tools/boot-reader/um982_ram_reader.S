@@ -1,4 +1,16 @@
-/* NDS32 RAM reader; protocol in FIRMWARE_DUMP.md. */
+/*
+ * NDS32 RAM reader for the receiver boot menu; load address 0x200000.
+ * After upload it prints the banner "UM982RAM1\r\n" and answers
+ * requests built from little-endian u32 words:
+ *   'M' + address + length -> read receiver memory, 1..4096 bytes;
+ *                             replies "URD1", the echoed address and
+ *                             length, the bytes and their word sum.
+ *   'F' + routine + offset + length -> read SPI flash through the
+ *                             resident read routine, 32 bytes per call.
+ *   'Q' -> reset; the receiver restarts the application from flash.
+ * Rebuild with an NDS32 binutils (as/ld/objcopy) using -Ttext=0x200000
+ * and compare the result against the shipped reader.bin before use.
+ */
  .macro tx reg
 1: lwi $t0, [$s7 + 0x14]
  andi $t0, $t0, 0x20

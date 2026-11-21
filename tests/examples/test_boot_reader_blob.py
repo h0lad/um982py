@@ -26,12 +26,14 @@ def test_reader_source_is_shipped_next_to_the_image() -> None:
     text = source.read_text(encoding="ascii")
     assert "NDS32" in text
     assert "UM982RAM1" in text
+    assert "0x200000" in text
 
 
-def test_reader_readme_documents_the_pinned_checksum() -> None:
-    readme = (READER / "README.md").read_text(encoding="utf-8")
-    assert READER_SHA256 in readme
-    assert "0x200000" in readme
+def test_reader_directory_keeps_only_image_and_source() -> None:
+    assert sorted(path.name for path in READER.iterdir()) == [
+        "reader.bin",
+        "um982_ram_reader.S",
+    ]
 
 
 def test_example_defaults_to_the_shipped_reader_image() -> None:

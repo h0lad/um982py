@@ -11,9 +11,10 @@ Run from the repository root after [installation](../README.md#running-the-examp
 
 `--helper` is the path of the RAM-resident reader image accepted by the
 receiver boot menu. This repository ships one at
-`tools/boot-reader/reader.bin` (380 bytes, with its assembly source and
-protocol notes next to it); the option defaults to that path, so from the
-repository root no extra argument is needed:
+`tools/boot-reader/reader.bin` (380 bytes; its NDS32 assembly source
+`um982_ram_reader.S` sits next to it and documents the upload protocol,
+the read and reset requests and the rebuild steps); the option defaults to
+that path, so from the repository root no extra argument is needed:
 
 ```bash
 python -m examples.inav_page_capture --port /dev/ttyUSB0 --baud 921600 \
