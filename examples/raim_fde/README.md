@@ -41,11 +41,16 @@ single-fault position-error slopes multiplied by the square root of the
 residual detection threshold. They do not include a missed-detection
 probability, multiple-fault risk allocation or calibrated measurement-error
 overbounds. They are teaching quantities, not operational protection levels.
-The pseudorange sigma model also omits atmosphere and other systematic errors.
+The default pseudorange sigmas come from the receiver. An atmospheric
+modelling error can trigger alarms or mask faults. Use `--range-model-sigma`
+to add independently justified range uncertainty in quadrature.
 
-`alarm` describes the initial residual test, while `integrity_passed` describes
-the remaining set after greedy exclusion. Neither certifies integrity. Exit
-code 0 means the report was computed; consumers must inspect both fields.
+`alarm` describes the initial residual test. At each exclusion step the
+example refits leave-one-out sets in descending order of the weighted residual
+of the removed observation. It takes the first set that passes the test, or
+the set with the smallest statistic if none passes. `integrity_passed`
+describes the remaining set.
+Exit code 0 means the report was computed. Inspect both fields.
 
 ## References
 

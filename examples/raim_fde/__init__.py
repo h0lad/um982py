@@ -107,7 +107,7 @@ def raim_fde(
     false_alarm_probability: float = DEFAULT_FALSE_ALARM_PROBABILITY,
     max_exclusions: int = 2,
 ) -> RaimResult:
-    """Run residual chi-square RAIM with greedy exclusion and protection levels."""
+    """Run residual chi-square RAIM with leave-one-out fault exclusion."""
     if len(measurements) < MINIMUM_FDE_SATELLITES:
         raise ValueError("at least five measurements are required")
     if max_exclusions < 0:
@@ -127,17 +127,16 @@ def raim_fde(
         and len(active) > MINIMUM_FDE_SATELLITES
         and len(excluded) < max_exclusions
     ):
-        index = _largest_residual(active, solution)
+        next_threshold = chi_square_threshold(
+            len(active) - 1 - STATE_SIZE, 1.0 - false_alarm_probability
+        )
+        best = _best_exclusion(active, solution, next_threshold)
+        if best is None:
+            break
+        index, solution, final_statistic = best
         excluded.append((active[index].system, active[index].prn))
         active.pop(index)
-        solution = solve_position(
-            active, (solution.x, solution.y, solution.z, solution.clock_bias)
-        )
-        if not solution.converged:
-            raise ValueError("least-squares solution did not converge")
-        final_statistic, final_threshold = _test_statistic(
-            active, solution, false_alarm_probability
-        )
+        final_threshold = next_threshold
     hpl, vpl = _protection_levels(active, solution, final_threshold)
     passed = (
         final_statistic <= final_threshold and math.isfinite(hpl) and math.isfinite(vpl)
@@ -164,7 +163,7 @@ def _test_statistic(
     if dof < 1:
         raise ValueError("at least five measurements are required")
     threshold = chi_square_threshold(dof, 1.0 - false_alarm_probability)
-    return sum(residual * residual for residual in residuals), threshold
+    return math.fsum(residual * residual for residual in residuals), threshold
 
 
 def _weighted_residuals(
@@ -181,11 +180,31 @@ def _weighted_residuals(
     return residuals
 
 
-def _largest_residual(
-    measurements: Sequence[RangeMeasurement], solution: PositionSolution
-) -> int:
+def _best_exclusion(
+    measurements: Sequence[RangeMeasurement],
+    solution: PositionSolution,
+    threshold: float,
+) -> tuple[int, PositionSolution, float] | None:
+    initial = (solution.x, solution.y, solution.z, solution.clock_bias)
     residuals = _weighted_residuals(measurements, solution)
-    return max(range(len(residuals)), key=lambda index: abs(residuals[index]))
+    order = sorted(range(len(measurements)), key=lambda i: -abs(residuals[i]))
+    best = None
+    for index in order:
+        remaining = [*measurements[:index], *measurements[index + 1 :]]
+        try:
+            candidate = solve_position(remaining, initial)
+        except ValueError:
+            continue
+        if not candidate.converged:
+            continue
+        statistic = math.fsum(
+            residual**2 for residual in _weighted_residuals(remaining, candidate)
+        )
+        if statistic <= threshold:
+            return index, candidate, statistic
+        if best is None or statistic < best[2]:
+            best = index, candidate, statistic
+    return best
 
 
 def _geometry_row(

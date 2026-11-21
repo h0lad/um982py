@@ -33,11 +33,13 @@ equally to live and replayed positions.
 
 ## Understanding the result
 
-Match position, orbit and visibility data by time and satellite. This checks
-consistency with receiver-reported angles, not independent orbit accuracy.
-Supply an ephemeris set appropriate to the observation period; this example
-does not implement navigation-message health/age selection for every
-constellation. No matched satellites returns `insufficient_data` and exit code 1.
+Match position, orbit and visibility data by time and satellite. The example
+chooses the nearest ephemeris reference time per satellite within 30 minutes
+for GLONASS or two hours for the other constellations. It uses a 2° separation
+between lines of sight for the tolerance check so that azimuth near the zenith
+does not dominate the result. Raw azimuth and elevation residuals are still
+reported. Supply healthy ephemerides for the observation week.
+No matched satellites returns `insufficient_data` and exit code 1.
 
 Propagation uses each constellation's ICD constants, the BeiDou GEO rotation
 and the available Galileo F/NAV or I/NAV clock set. Constellation time systems

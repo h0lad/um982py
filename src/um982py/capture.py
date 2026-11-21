@@ -3,6 +3,7 @@
 import math
 import os
 import sys
+from bisect import bisect_left
 from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
 from contextlib import suppress
 from itertools import pairwise
@@ -83,7 +84,17 @@ def select_position(
         raise ValueError("position epoch must be finite")
     if not math.isfinite(tolerance) or tolerance < 0:
         raise ValueError("position tolerance must be finite and non-negative")
-    eligible = []
+    eligible = [
+        (abs(time - epoch), time, record)
+        for time, record in _valid_positions(records)
+        if abs(time - epoch) <= tolerance
+    ]
+    if not eligible:
+        raise ValueError("no valid receiver position within the epoch tolerance")
+    return min(eligible, key=lambda item: (item[0], item[1]))[2]
+
+
+def _valid_positions(records: Iterable[Record]) -> Iterator[tuple[float, Record]]:
     for record in records:
         if record.get("p_sol_status") not in (0, "SOL_COMPUTED"):
             continue
@@ -92,16 +103,29 @@ def select_position(
             time = record_epoch(record)
         except (KeyError, TypeError, ValueError):
             continue
-        age = abs(time - epoch)
-        if (
-            all(math.isfinite(x) for x in xyz)
-            and math.dist(xyz, (0, 0, 0)) > 1e6
-            and age <= tolerance
-        ):
-            eligible.append((age, time, record))
-    if not eligible:
-        raise ValueError("no valid receiver position within the epoch tolerance")
-    return min(eligible, key=lambda item: (item[0], item[1]))[2]
+        if all(math.isfinite(x) for x in xyz) and math.dist(xyz, (0, 0, 0)) > 1e6:
+            yield time, record
+
+
+def select_position_pair(
+    observations: Iterable[Record], positions: Iterable[Record], tolerance: float
+) -> tuple[Record, Record]:
+    """Pair the first eligible observation with its nearest computed position."""
+    if not math.isfinite(tolerance) or tolerance < 0:
+        raise ValueError("position tolerance must be finite and non-negative")
+    by_epoch: dict[float, Record] = {}
+    for epoch, position in _valid_positions(positions):
+        by_epoch.setdefault(epoch, position)
+    epochs = sorted(by_epoch)
+    if epochs:
+        for observation in observations:
+            epoch = record_epoch(observation)
+            index = bisect_left(epochs, epoch)
+            nearby = epochs[max(0, index - 1) : index + 1]
+            nearest = min(nearby, key=lambda value: (abs(value - epoch), value))
+            if abs(nearest - epoch) <= tolerance:
+                return observation, by_epoch[nearest]
+    raise ValueError("no valid receiver position within the epoch tolerance")
 
 
 def latest_epoch(records: Sequence[Record]) -> tuple[Record, ...]:

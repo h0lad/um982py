@@ -16,12 +16,11 @@ from examples._console import (
 )
 from examples._console_capture import capture_records, selected_log
 from examples.azel_crosscheck import (
-    AZIMUTH_TOLERANCE_DEGREES,
-    ELEVATION_TOLERANCE_DEGREES,
+    DIRECTION_TOLERANCE_DEGREES,
     CrossCheckReport,
     cross_check,
 )
-from um982py.capture import decode_records, read_frames, select_position
+from um982py.capture import decode_records, read_frames, select_position_pair
 from um982py.commands import Log
 from um982py.geodesy import receiver_ecef
 from um982py.measurement import gps_epoch
@@ -48,8 +47,8 @@ def build_payload(report: CrossCheckReport) -> dict[str, object]:
     return {
         "status": "compared" if report.compared else "insufficient_data",
         "epoch": report.epoch,
-        "azimuth_tolerance_degrees": AZIMUTH_TOLERANCE_DEGREES,
-        "elevation_tolerance_degrees": ELEVATION_TOLERANCE_DEGREES,
+        "direction_tolerance_degrees": DIRECTION_TOLERANCE_DEGREES,
+        "rms_direction_error_degrees": report.rms_direction_error,
         "rms_azimuth_error_degrees": report.rms_azimuth_error,
         "rms_elevation_error_degrees": report.rms_elevation_error,
         "counts": {
@@ -67,6 +66,7 @@ def build_payload(report: CrossCheckReport) -> dict[str, object]:
                 "prn": difference.prn,
                 "azimuth_error_degrees": difference.azimuth_error,
                 "elevation_error_degrees": difference.elevation_error,
+                "direction_error_degrees": difference.direction_error,
                 "within_tolerance": difference.is_within_tolerance,
             }
             for difference in report.compared
@@ -150,13 +150,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         )
     if not satellite_records:
         parser.error("SATVIS2 records are required")
-    first_satellite = satellite_records[0].message
+    selected, position_record = select_position_pair(
+        satellite_records, position_records, args.position_tolerance
+    )
+    first_satellite = selected.message
     if first_satellite is None:
         parser.error("SATVIS2 frame carries no timestamp")
     absolute_epoch = gps_epoch(first_satellite)
-    position_record = select_position(
-        position_records, absolute_epoch, args.position_tolerance
-    )
     epoch = absolute_epoch % 604800.0
     satellite_records = tuple(
         record

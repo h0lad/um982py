@@ -21,8 +21,12 @@ from examples.wls_position import (
     solve_position,
 )
 from examples.wls_position import measurements as wls_measurements
-from um982py import capture
-from um982py.capture import decode_records, read_frames, record_epoch
+from um982py.capture import (
+    decode_records,
+    read_frames,
+    record_epoch,
+    select_position_pair,
+)
 from um982py.commands import Log
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef
 from um982py.measurement import gps_epoch
@@ -134,7 +138,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         ephemeris_records = decode_records(ephemeris_frames, Log.GPSEPH)
     if not range_records or not position_records:
         parser.error("a RANGE frame and a BESTPOS/BESTXYZ frame are required")
-    range_record = range_records[0]
+    range_record, position = select_position_pair(
+        range_records, position_records, args.position_tolerance
+    )
     if range_record.message is None:
         parser.error("RANGE frame carries no timestamp")
     epoch = gps_epoch(range_record.message) % 604800.0
@@ -147,9 +153,6 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     if not measurements:
         parser.error("no GPS L1 observations have a matching ephemeris")
-    position = capture.select_position(
-        position_records, absolute_epoch, args.position_tolerance
-    )
     truth = receiver_ecef(position)
     solution = solve_position(measurements, (*truth, 0.0))
     latitude, longitude = (

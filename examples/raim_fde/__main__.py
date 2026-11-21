@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import math
 import sys
 from collections.abc import Mapping, Sequence
+from dataclasses import replace
 from pathlib import Path
 
 from examples._console import (
@@ -21,7 +23,12 @@ from examples.wls_position import (
     geodetic_position_error,
 )
 from examples.wls_position import measurements as wls_measurements
-from um982py.capture import decode_records, read_frames, record_epoch, select_position
+from um982py.capture import (
+    decode_records,
+    read_frames,
+    record_epoch,
+    select_position_pair,
+)
 from um982py.commands import Log
 from um982py.experimental.orbit import state_from_record
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef, records_from
@@ -156,6 +163,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="maximum receiver position epoch offset in seconds",
     )
     parser.add_argument(
+        "--range-model-sigma",
+        type=float,
+        default=0.0,
+        help="additional independent pseudorange model uncertainty in metres",
+    )
+    parser.add_argument(
         "--duration", type=float, default=5.0, help="live collection time in seconds"
     )
     parser.add_output_interval(default=1.0, help="output interval in seconds")
@@ -165,6 +178,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="print live capture updates to stderr",
     )
     args = parser.parse_args(argv)
+    if not math.isfinite(args.range_model_sigma) or args.range_model_sigma < 0:
+        parser.error("range model sigma must be finite and nonnegative")
     debug_header(args, "raim_fde")
     if args.replay is None:
         logs: list[Log] = [
@@ -205,7 +220,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
     if not range_records or not position_records:
         parser.error("a RANGE frame and a BESTPOS/BESTXYZ frame are required")
-    range_record = range_records[0]
+    range_record, position = select_position_pair(
+        range_records, position_records, args.position_tolerance
+    )
     if range_record.message is None:
         parser.error("RANGE frame carries no timestamp")
     epoch = gps_epoch(range_record.message) % 604800.0
@@ -215,13 +232,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         absolute_epoch,
         ranges=range_record,
     )
-    position = select_position(
-        position_records, absolute_epoch, args.position_tolerance
-    )
     truth = receiver_ecef(position)
     observations = wls_measurements.gps_l1_measurements(
         range_record, ephemerides, epoch
     )
+    if args.range_model_sigma:
+        observations = tuple(
+            replace(
+                observation,
+                pseudorange_std=math.hypot(
+                    observation.pseudorange_std, args.range_model_sigma
+                ),
+            )
+            for observation in observations
+        )
     result = raim_fde(observations, (*truth, 0.0))
     latitude, longitude = (
         (position.real("lat"), position.real("lon"))
@@ -229,6 +253,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         else geodetic_from_ecef(*truth)[:2]
     )
     payload = _payload(result, truth, latitude, longitude, len(observations))
+    payload["range_model_sigma_m"] = args.range_model_sigma
     error = payload["difference_to_receiver_m"]
     if isinstance(error, dict):
         print(

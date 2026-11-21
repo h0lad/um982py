@@ -149,3 +149,12 @@ def test_azimuth_error_wraps_across_north() -> None:
     assert difference.azimuth_error == pytest.approx(1.0, abs=1e-12)
     assert difference.elevation_error == pytest.approx(0.5, abs=1e-12)
     assert difference.is_within_tolerance
+
+
+def test_zenith_uses_angular_separation_for_the_tolerance() -> None:
+    reported = SatelliteGeometry(SatelliteSystem.GPS, 1, 0.0, 89.5, 0.0)
+    computed = SatelliteGeometry(SatelliteSystem.GPS, 1, 180.0, 89.5, 0.0)
+    difference = AzimuthElevationDifference(SatelliteSystem.GPS, 1, computed, reported)
+    assert difference.azimuth_error == 180.0
+    assert difference.direction_error == pytest.approx(1.0)
+    assert difference.is_within_tolerance

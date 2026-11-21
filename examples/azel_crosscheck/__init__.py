@@ -17,15 +17,13 @@ from um982py.experimental.orbit import (
 from um982py.messages import Record
 from um982py.messages.enums import SatelliteSystem
 
-AZIMUTH_TOLERANCE_DEGREES = 2.0
-ELEVATION_TOLERANCE_DEGREES = 2.0
+DIRECTION_TOLERANCE_DEGREES = 2.0
 ELEVATION_THRESHOLD_DEGREES = 10.0
 GLONASS_EPOCH_MILLISECONDS = 1000.0
 
 __all__ = [
-    "AZIMUTH_TOLERANCE_DEGREES",
+    "DIRECTION_TOLERANCE_DEGREES",
     "ELEVATION_THRESHOLD_DEGREES",
-    "ELEVATION_TOLERANCE_DEGREES",
     "AzimuthElevationDifference",
     "CrossCheckReport",
     "SatelliteGeometry",
@@ -73,12 +71,21 @@ class AzimuthElevationDifference:
         return abs(self.computed.elevation - self.reported.elevation)
 
     @property
-    def is_within_tolerance(self) -> bool:
-        """True when both differences meet the stated tolerances."""
-        return (
-            self.azimuth_error <= AZIMUTH_TOLERANCE_DEGREES
-            and self.elevation_error <= ELEVATION_TOLERANCE_DEGREES
+    def direction_error(self) -> float:
+        """Angular separation in degrees, including at the zenith."""
+        azimuth = math.radians(self.azimuth_error)
+        computed = math.radians(self.computed.elevation)
+        reported = math.radians(self.reported.elevation)
+        half_chord_squared = (
+            math.sin((computed - reported) / 2) ** 2
+            + math.cos(computed) * math.cos(reported) * math.sin(azimuth / 2) ** 2
         )
+        return math.degrees(2 * math.asin(math.sqrt(min(1.0, half_chord_squared))))
+
+    @property
+    def is_within_tolerance(self) -> bool:
+        """True when the two lines of sight agree within the angular tolerance."""
+        return self.direction_error <= DIRECTION_TOLERANCE_DEGREES
 
 
 @dataclass(frozen=True, slots=True)
@@ -101,6 +108,11 @@ class CrossCheckReport:
     def rms_elevation_error(self) -> float:
         """Root-mean-square elevation difference in degrees."""
         return _rms([difference.elevation_error for difference in self.compared])
+
+    @property
+    def rms_direction_error(self) -> float:
+        """Root-mean-square angular separation in degrees."""
+        return _rms([difference.direction_error for difference in self.compared])
 
     def counts_agree(self, system: SatelliteSystem) -> bool:
         """True when every reported satellite of a system has an ephemeris."""
@@ -156,17 +168,25 @@ def visibility_from_ephemerides(
     observer: tuple[float, float, float],
     epoch: float,
 ) -> tuple[SatelliteGeometry, ...]:
-    """Compute the geometry of every satellite that has an ephemeris record."""
+    """Compute each satellite's geometry using the nearest bounded ephemeris."""
+    nearest: dict[tuple[SatelliteSystem, int], tuple[float, Record]] = {}
+    for system, records in records_by_system.items():
+        max_age = 1800 if system is SatelliteSystem.GLONASS else 7200
+        for record in records:
+            key = system, prn_of(record, system)
+            age = abs(time_of_flight(record, system, epoch))
+            current = nearest.get(key)
+            if age <= max_age and (current is None or age < current[0]):
+                nearest[key] = age, record
     return tuple(
         SatelliteGeometry(
             system=system,
-            prn=prn_of(record, system),
+            prn=prn,
             azimuth=azimuth,
             elevation=elevation,
             range=slant_range,
         )
-        for system in sorted(records_by_system)
-        for record in records_by_system[system]
+        for (system, prn), (_, record) in sorted(nearest.items())
         for azimuth, elevation, slant_range in (
             azimuth_elevation(satellite_state(record, system, epoch), observer),
         )

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from um982py.capture import load_records, select_position
+from um982py.capture import load_records, select_position, select_position_pair
 from um982py.commands import Log
 from um982py.messages import AsciiMessage, OemAsciiHeader, Record
 
@@ -52,6 +52,17 @@ def test_invalid_and_untimestamped_positions_do_not_mask_valid_fix() -> None:
     assert (
         select_position([invalid, untimed, at_centre, valid], 2441 * 604800 + 100, 1)
         is valid
+    )
+
+
+def test_pairing_skips_unmatched_startup_epoch() -> None:
+    unmatched = position(2441, 100.0)
+    observation = position(2441, 102.0)
+    before = position(2441, 101.5)
+    after = position(2441, 102.5)
+    assert select_position_pair([unmatched, observation], [after, before], 0.5) == (
+        observation,
+        before,
     )
 
 

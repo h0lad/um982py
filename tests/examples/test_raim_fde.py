@@ -54,3 +54,35 @@ def test_undetectable_satellite_fault_invalidates_protection_levels() -> None:
     result = raim_fde(observations, (x, 0, 0, 0), max_exclusions=0)
     assert not result.integrity_passed
     assert math.isinf(result.hpl) and math.isinf(result.vpl)
+
+
+def test_leave_one_out_excludes_high_leverage_fault() -> None:
+    x, distance = 6378137.0, 20200000.0
+    sky = [
+        (0.0, 0.30),
+        (0.7, 0.25),
+        (1.6, 0.50),
+        (2.3, 0.36),
+        (3.3, 0.25),
+        (4.0, 0.55),
+        (5.4, 0.32),
+        (0.3, 0.98),
+    ]
+    measurements = [
+        RangeMeasurement(
+            SatelliteSystem.GPS,
+            prn,
+            x + distance * up,
+            distance * math.sqrt(1 - up**2) * math.cos(azimuth),
+            distance * math.sqrt(1 - up**2) * math.sin(azimuth),
+            distance + (100 if prn == 8 else 0),
+            1,
+        )
+        for prn, (azimuth, up) in enumerate(sky, 1)
+    ]
+    result = raim_fde(measurements, (x, 0, 0, 0), max_exclusions=1)
+    assert result.alarm and result.integrity_passed
+    assert result.excluded == ((SatelliteSystem.GPS, 8),)
+    assert (result.solution.x, result.solution.y, result.solution.z) == pytest.approx(
+        (x, 0, 0), abs=1e-6
+    )
