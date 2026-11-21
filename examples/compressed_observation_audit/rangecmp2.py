@@ -6,11 +6,15 @@ from math import isfinite
 
 from um982py.capture import gps_signals
 from um982py.experimental import CompressedRange2
+from um982py.experimental.range_compressed2 import (
+    GPS_L1_CODE_STEP_M as _STEP_M,
+)
+from um982py.experimental.range_compressed2 import (
+    GPS_L1_CODE_WINDOW_M as _WINDOW_M,
+)
 from um982py.geodesy import SPEED_OF_LIGHT
 from um982py.messages import Record
 
-_WINDOW_M = 128
-_STEP_M = 1 / 128
 _L1_TO_L2_FREQUENCY_RATIO = 154 / 120
 _L2_WAVELENGTH_M = SPEED_OF_LIGHT / 1227.60e6
 
@@ -38,7 +42,12 @@ def compare_gps_l1(reference: Record, compressed: CompressedRange2) -> list[Comp
     rows = []
     for satellite in compressed.satellites:
         pseudorange = by_prn.get(satellite.prn)
-        if satellite.system != 0 or pseudorange is None or not isfinite(pseudorange):
+        if (
+            satellite.system != 0
+            or pseudorange is None
+            or not isfinite(pseudorange)
+            or pseudorange <= 0
+        ):
             continue
         signals = {signal.signal_type: signal for signal in satellite.signals}
         l1 = signals.get(1)
@@ -46,7 +55,9 @@ def compare_gps_l1(reference: Record, compressed: CompressedRange2) -> list[Comp
             continue
         encoded_code = satellite.range_base_m + l1.pseudorange_offset_m
         error = encoded_code - pseudorange
-        wraps = round(error / _WINDOW_M)
+        resolved = satellite.resolve_gps_l1_code(
+            reference_m=pseudorange, max_reference_error_m=0.0
+        )
         l2 = signals.get(4)
         anchored_error = None
         phase_error = None
@@ -68,7 +79,9 @@ def compare_gps_l1(reference: Record, compressed: CompressedRange2) -> list[Comp
             Comparison(
                 satellite.prn,
                 error,
-                wraps if abs(error - wraps * _WINDOW_M) <= _STEP_M else None,
+                round((encoded_code - resolved) / _WINDOW_M)
+                if resolved is not None
+                else None,
                 l1.phase_at_ceiling,
                 anchored_error,
                 phase_error,
@@ -118,6 +131,7 @@ def report_gps_l1(
             ),
             "l2_anchor_candidates": len(anchored),
             "l2_anchor_agrees": sum(error <= _STEP_M for error in anchored),
+            "l2_anchor_wrong_fold": sum(error >= _WINDOW_M / 2 for error in anchored),
             "worst_l2_anchor_error_m": max(anchored, default=None),
             "l2_phase_comparisons": len(phase_errors),
             "worst_l2_phase_distance_error_m": max(phase_errors, default=None),

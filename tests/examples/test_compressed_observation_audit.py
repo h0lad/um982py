@@ -10,7 +10,10 @@ from examples.compressed_observation_audit import (
     agree_epoch,
     summarise_epochs,
 )
-from examples.compressed_observation_audit.rangecmp2 import compare_gps_l1
+from examples.compressed_observation_audit.rangecmp2 import (
+    compare_gps_l1,
+    report_gps_l1,
+)
 
 from test_protocol import binary
 from um982py.experimental import (
@@ -248,6 +251,29 @@ def test_second_generation_wrap_and_locked_phase_anchor() -> None:
     assert result.l1_phase_at_ceiling
     assert result.l2_anchored_error_m == 0
     assert result.l2_phase_distance_error_m == pytest.approx(0, abs=1e-8)
+    assert (
+        gps.resolve_gps_l1_code(reference_m=code - 20, max_reference_error_m=30) == code
+    )
+    assert (
+        gps.resolve_gps_l1_code(reference_m=code - 64, max_reference_error_m=64) is None
+    )
+    assert (
+        gps.resolve_gps_l1_code(reference_m=code - 20, max_reference_error_m=10) is None
+    )
+
+    shifted = replace(
+        row,
+        entries=tuple(
+            (k, code + 128 if k == "pseudorange" else v) for k, v in row.entries
+        ),
+    )
+    shifted_reference = Record("RANGE", (("observations", (shifted, l2_row)),))
+    report = report_gps_l1([(0.0, shifted_reference, compressed, 0)])
+    assert report["summary"]["l2_anchor_wrong_fold"] == 1
+    assert (
+        gps.resolve_gps_l1_code(reference_m=code + 128, max_reference_error_m=0)
+        == code + 128
+    )
 
     unlocked = replace(gps, signals=(l1, Compressed2Signal(l2.word & ~0x20)))
     (result,) = compare_gps_l1(reference, replace(compressed, satellites=(unlocked,)))

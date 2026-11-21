@@ -57,9 +57,12 @@ pseudoranges wrapped. All had the maximum L1 phase offset. The L2 phase
 anchor selected the correct fold to within one encoded step (7.8125 mm)
 in all 45 primary and 30 secondary cases where the phase passed the checks.
 The reconstructed L2 phase distance agreed within 0.63 mm in those cases.
-The fold is an experimental estimate and depends on the L2 phase being
-within 64 m of the true L1 pseudorange. Use the full `RANGE` family for
-absolute observations and when comparing receiver signal configurations.
+The L2 anchor requires the phase distance to lie within 64 m of the true L1
+pseudorange. In the overnight replay it selected the wrong fold in 531 of
+122,485 eligible cases. The audit reports these explicitly in
+`l2_anchor_wrong_fold`. For an absolute GPS L1 C/A pseudorange, use the full
+`RANGE` family or call `resolve_gps_l1_code` on the compressed satellite block
+with an independent, same-epoch range bound that admits a single fold.
 [OEM7 RANGECMP2 wire layout](https://docs.novatel.com/OEM7/Content/Logs/RANGECMP2.htm)
 
 Python callers can inspect the native blocks with
