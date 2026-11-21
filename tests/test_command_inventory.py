@@ -52,10 +52,14 @@ def test_log_has_command_and_decoder(item: dict) -> None:
         assert kind in SCHEMAS.keys() | {"GSV"}
 
 
-def test_rtcm_catalogue_matches_supported_and_private_wire_types() -> None:
+def test_rtcm_catalogue_and_decoder_coverage() -> None:
     expected = set(REFERENCE["rtcm"])
     assert {log.message_id for log in RTCM_LOGS.values()} == expected
-    assert expected == STANDARD_RTCM_TYPES | UNICORE_RTCM_TYPES
+    # RTCM 1032 can be decoded on input. Its receiver logs use suffixed names.
+    assert expected | {1032} == STANDARD_RTCM_TYPES | UNICORE_RTCM_TYPES
+    assert 1032 not in expected
+    assert Log.RTCM1032.wire_name() == "RTCM1032A"
+    assert Log.RTCM1032.wire_name(binary=True) == "RTCM1032B"
     assert STANDARD_RTCM_TYPES.isdisjoint(UNICORE_RTCM_TYPES)
 
 
