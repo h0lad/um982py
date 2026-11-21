@@ -194,6 +194,11 @@ from um982py.experimental.matched_solution import (
     matched_solution_read,
     matched_solution_stop,
 )
+from um982py.experimental.native_nav import (
+    GlonassFdmaString,
+    GpsLnavSubframe,
+    extract_native_nav,
+)
 from um982py.experimental.osnma import (
     DsmHeader,
     DsmKroot,
@@ -332,6 +337,8 @@ __all__ = [
     "DsmKroot",
     "Fec2Recovery",
     "FirmwareSwitch",
+    "GlonassFdmaString",
+    "GpsLnavSubframe",
     "InavCampaign",
     "InavPage",
     "InavPagePart",
@@ -436,6 +443,7 @@ __all__ = [
     "event_config",
     "extract_channel_states",
     "extract_inav_pages",
+    "extract_native_nav",
     "gst_subframe",
     "image_record",
     "inav_crc24",

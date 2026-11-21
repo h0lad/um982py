@@ -7,7 +7,9 @@ carry.
 
 ## Run
 
-Run from the repository root after [installation](../README.md#running-the-examples).
+Run from the repository root. The commands below use `PYTHONPATH=src`
+to import the checkout directly. They require `pyserial`, which is
+included in the [example installation](../README.md#running-the-examples).
 
 `--helper` is the path of the RAM-resident reader image accepted by the
 receiver boot menu. This repository ships one at
@@ -17,14 +19,14 @@ the read and reset requests and the rebuild steps); the option defaults to
 that path, so from the repository root no extra argument is needed:
 
 ```bash
-python -m examples.inav_page_capture --port /dev/ttyUSB0 --baud 921600 \
+PYTHONPATH=src python3 -m examples.inav_page_capture --port /dev/ttyUSB0 --baud 921600 \
     --snapshots 3 --pause 10 --json pages.json
 ```
 
 Pass `--helper` explicitly only when you keep the image somewhere else:
 
 ```bash
-python -m examples.inav_page_capture --port /dev/ttyUSB0 \
+PYTHONPATH=src python3 -m examples.inav_page_capture --port /dev/ttyUSB0 \
     --helper /path/to/reader.bin --snapshots 3 --json pages.json
 ```
 
@@ -67,13 +69,40 @@ The boot-menu snapshots provide raw OSNMA activity counts. The NMA header
 occupies the first odd part of a GST-aligned sub-frame, so the snapshot
 report leaves the legacy JSON `headers` list empty.
 
+## Dump native GPS and GLONASS navigation
+
+Use the same tracking snapshot to include parity-checked native GPS and
+GLONASS bits in the JSON report.
+
+```bash
+PYTHONPATH=src python3 -m examples.inav_page_capture --port /dev/ttyUSB0 --native-nav --json nav.json
+```
+
+A saved tracking window collected from `TRACKING_MEMORY_BASE` can also
+be read offline.
+
+```bash
+PYTHONPATH=src python3 -m examples.inav_page_capture --tracking-ram tracking.bin --json nav.json
+```
+
+`native_nav` contains one result per snapshot. GPS records carry ten
+raw 30-bit LNAV words, the 24 data bits per word, the sub-frame ID and the
+HOW time of the next sub-frame. All ten parity checks must pass.
+GLONASS records carry the complete 85-bit FDMA string and its string
+number. All eight Hamming checks must pass. Both retain the receiver
+channel for provenance. The tracking layout was verified on UM982
+snapshots. Stored records may precede the capture time or appear on
+multiple channels.
+[GPS IS-GPS-200N, §20.3.5](https://www.gps.gov/sites/default/files/2025-07/IS-GPS-200N.pdf)
+· [GLONASS FDMA ICD, §4.7](https://www.unavco.org/help/glossary/docs/ICD_GLONASS_5.1_%282008%29_en.pdf)
+
 ## Replay a continuous Galileo stream
 
 Pass an official-format I/NAV CSV and the corresponding trusted Galileo
 public-key XML. This mode runs offline without opening the serial port.
 
 ```bash
-python -m examples.inav_page_capture --stream-csv capture.csv \
+PYTHONPATH=src python3 -m examples.inav_page_capture --stream-csv capture.csv \
     --public-key trusted-key.xml --json replay.json
 ```
 
@@ -95,7 +124,7 @@ multi-tag authentication thresholds require additional receiver logic.
 ## Replay search and rescue data
 
 ```bash
-python -m examples.inav_page_capture --stream-csv capture.csv --sar-only
+PYTHONPATH=src python3 -m examples.inav_page_capture --stream-csv capture.csv --sar-only
 ```
 
 SAR replay counts CRC-checked fields and reports complete return-link
@@ -124,7 +153,7 @@ SAR field and a decoded start bit, length bit and twenty-bit payload.
 ## Replay Galileo clock and ephemeris data
 
 ```bash
-python -m examples.inav_page_capture --stream-csv capture.csv --ced-only
+PYTHONPATH=src python3 -m examples.inav_page_capture --stream-csv capture.csv --ced-only
 ```
 
 The replay decodes the eight signed RedCED parameters from CRC-checked

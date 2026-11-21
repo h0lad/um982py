@@ -8,10 +8,12 @@ from pathlib import Path
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples.inav_page_capture import campaign_window_audits, render_campaign
 from um982py.experimental import (
+    TRACKING_MEMORY_BASE,
     InavCampaign,
     InavSnapshot,
     capture_inav_campaign,
     capture_inav_pages,
+    extract_native_nav,
     load_public_key,
     read_inav_stream_csv,
     replay_inav_ced,
@@ -27,13 +29,19 @@ DEFAULT_READER = (
 
 def build_parser() -> ExampleParser:
     parser = ExampleParser(
-        prog="python -m examples.inav_page_capture", description=__doc__
+        prog="python3 -m examples.inav_page_capture", description=__doc__
     )
     add_receiver_arguments(parser, antenna=False, replay=False)
-    parser.add_argument(
+    offline = parser.add_mutually_exclusive_group()
+    offline.add_argument(
         "--stream-csv",
         type=Path,
         help="verify a Galileo test-vector format stream without opening the receiver",
+    )
+    offline.add_argument(
+        "--tracking-ram",
+        type=Path,
+        help="extract GPS and GLONASS navigation bits from a saved tracking window",
     )
     replay_mode = parser.add_mutually_exclusive_group()
     replay_mode.add_argument(
@@ -52,6 +60,11 @@ def build_parser() -> ExampleParser:
         "--ced-only",
         action="store_true",
         help="decode RedCED and recover clock and ephemeris using FEC2",
+    )
+    parser.add_argument(
+        "--native-nav",
+        action="store_true",
+        help="include parity-checked GPS and GLONASS bits in live snapshot JSON",
     )
     parser.add_argument(
         "--helper",
@@ -89,10 +102,20 @@ def _report(campaign: InavCampaign) -> dict[str, object]:
     return report
 
 
+def _native_nav(tracking: bytes) -> dict[str, object]:
+    gps, glonass = extract_native_nav({"tracking": (TRACKING_MEMORY_BASE, tracking)})
+    return {
+        "gps_lnav": [subframe.manifest() for subframe in gps],
+        "glonass_fdma": [string.manifest() for string in glonass],
+    }
+
+
 def main() -> int:
     parser = build_parser()
     args = parser.parse_args(sys.argv[1:])
     if args.stream_csv is not None:
+        if args.native_nav:
+            parser.error("--native-nav requires a receiver snapshot or --tracking-ram")
         if not (args.public_key or args.sar_only or args.ced_only):
             parser.error("--stream-csv requires --public-key, --sar-only or --ced-only")
         if args.json is not None and args.json.resolve() in {
@@ -139,6 +162,12 @@ def main() -> int:
         return 0
     if args.public_key or args.sar_only or args.ced_only:
         parser.error("--public-key, --sar-only and --ced-only require --stream-csv")
+    if args.tracking_ram is not None:
+        if args.json is not None and args.json.resolve() == args.tracking_ram.resolve():
+            parser.error("--json must not overwrite the tracking window")
+        report = {"native_nav": [_native_nav(args.tracking_ram.read_bytes())]}
+        write_json(report, args.json)
+        return 0
     helper = Path(args.helper)
     if not helper.exists():
         parser.error(
@@ -161,6 +190,10 @@ def main() -> int:
         )
         campaign = InavCampaign((snapshot,))
         report = _report(campaign)
+    if args.native_nav:
+        report["native_nav"] = [
+            _native_nav(snapshot.regions["tracking"]) for snapshot in campaign.snapshots
+        ]
     text = render_campaign(campaign, audits=campaign_window_audits(campaign))
     print(text, file=sys.stdout if args.json is not None else sys.stderr)
     write_json(report, args.json)
