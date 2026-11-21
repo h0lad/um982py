@@ -118,3 +118,11 @@ def pytest_collection_modifyitems(
     for item in items:
         if "hardware" in item.keywords:
             item.add_marker(skip)
+
+
+# Shared worked-example fixtures of the Galileo OSNMA chain tests.
+from osnma_example import (  # noqa: E402,F401
+    example_header,
+    example_parts,
+    example_words,
+)

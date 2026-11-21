@@ -1,4 +1,4 @@
-"""Capture Galileo E1-B I/NAV pages from a receiver memory snapshot."""
+"""Capture Galileo E1-B I/NAV pages and verify their authentication data."""
 
 from __future__ import annotations
 
@@ -6,7 +6,12 @@ import sys
 from pathlib import Path
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
-from um982py.experimental import InavSnapshot, capture_inav_pages
+from um982py.experimental import (
+    InavCampaign,
+    InavSnapshot,
+    capture_inav_campaign,
+    capture_inav_pages,
+)
 
 
 def build_parser() -> ExampleParser:
@@ -19,15 +24,30 @@ def build_parser() -> ExampleParser:
         required=True,
         help="path of the RAM-resident reader image for the boot menu",
     )
+    parser.add_argument(
+        "--snapshots",
+        type=int,
+        default=1,
+        help="number of boot-menu snapshots; two or more allow word assembly",
+    )
+    parser.add_argument(
+        "--pause",
+        type=float,
+        default=5.0,
+        help="seconds between snapshots so page parts advance",
+    )
     return parser
 
 
-def _report(snapshot: InavSnapshot) -> dict[str, object]:
-    report: dict[str, object] = snapshot.manifest()
+def _report(campaign: InavCampaign) -> dict[str, object]:
+    report: dict[str, object] = campaign.manifest()
     report["interpretation"] = (
-        "Pages are the decoded E1-B page parts stored per signal at the "
-        "capture instant. Odd nominal parts carry the OSNMA field; a "
-        "sub-frame needs fifteen consecutive odd parts of one satellite."
+        "Pages are the decoded E1-B page parts stored per signal at each "
+        "capture instant. Odd nominal parts carry the OSNMA field. Word "
+        "assembly pairs even and odd parts across snapshots; only pairs "
+        "that pass the page checksum are reported as words. A full "
+        "OSNMA sub-frame needs fifteen consecutive odd parts of one "
+        "satellite and a public key from the Galileo key directory."
     )
     return report
 
@@ -38,12 +58,30 @@ def main() -> int:
     helper = Path(args.helper)
     if not helper.exists():
         parser.error(f"helper image not found: {helper}")
-    snapshot = capture_inav_pages(args.port, helper=helper, baud=args.baud)
-    write_json(_report(snapshot), args.json)
-    with_osnma = sum(page.part.osnma is not None for page in snapshot.pages)
+    if args.snapshots > 1:
+        campaign = capture_inav_campaign(
+            args.port,
+            helper=helper,
+            baud=args.baud,
+            snapshots=args.snapshots,
+            pause_seconds=args.pause,
+        )
+        report = _report(campaign)
+    else:
+        snapshot: InavSnapshot = capture_inav_pages(
+            args.port, helper=helper, baud=args.baud
+        )
+        campaign = InavCampaign((snapshot,))
+        report = _report(campaign)
+    write_json(report, args.json)
+    words = campaign.words()
+    with_osnma = sum(
+        page.part.osnma is not None for page in campaign.pages
+    )
     print(
-        f"{len(snapshot.pages)} pages, {with_osnma} with OSNMA data, "
-        f"application_restored={snapshot.application_restored}",
+        f"{len(campaign.pages)} pages, {with_osnma} with OSNMA data, "
+        f"{len(words)} checksum-verified words, "
+        f"application_restored={campaign.application_restored}",
         file=sys.stderr,
     )
     return 0
