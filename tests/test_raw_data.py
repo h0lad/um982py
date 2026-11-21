@@ -204,6 +204,8 @@ def test_internal_debug_log_builders_and_parsers() -> None:
     mpt_line = (
         b"$MPTDEBUG,1;pte,1000,0,2,1;s0;ae689,2441,557824.000,SatCnt:34,22,"
         b"557824.000,rsk0,0;tm1,557824.000,557823.000;3782563.8,899476.3,5039205.4;"
+        b"Ls=1,2;dcSet0,-1.00;Slas:0,0;basCor1,2,3.5,4,5.5,6;basIon1,2,3;"
+        b"asvd,0;ssf:1,0,2,2,3600.00;basIon0,?,0;"
         b"1,444*End\r\n"
     )
     decoder = StreamDecoder(strict=True)
@@ -249,6 +251,18 @@ def test_internal_debug_log_builders_and_parsers() -> None:
     assert mpt.tracked_satellites == 34
     assert mpt.used_satellites == 22
     assert mpt.ecef_m == (3782563.8, 899476.3, 5039205.4)
+    assert mpt.time_pair_s == (557824, 557823)
+    assert {block.tag: block.values for block in mpt.diagnostic_blocks} == {
+        "rsk": (0, 0),
+        "Ls": (1, 2),
+        "dcSet": (0, -1.0),
+        "Slas": (0, 0),
+        "basCor": (1, 2, 3.5, 4, 5.5, 6),
+        "basIon": (1, 2, 3),
+        "asvd": (0,),
+        "ssf": (1, 0, 2, 2, 3600.0),
+    }
+    assert "basIon0,?,0" in mpt.tokens
 
 
 def test_capture_internal_debug_restores_state(

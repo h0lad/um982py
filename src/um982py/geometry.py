@@ -57,7 +57,7 @@ class DilutionOfPrecision:
 
         TDOP and GDOP include the variance of every estimated clock state.
         """
-        rows = design_matrix(satellites)
+        rows: Sequence[Sequence[float]] = design_matrix(satellites)
         if clock_groups is not None:
             if len(clock_groups) != len(rows):
                 raise ValueError("one clock group is required per satellite")

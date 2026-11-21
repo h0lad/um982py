@@ -30,13 +30,30 @@ SENSITIVE = {
     Log.RTKPOS,
 }
 
+AUDIT_LOGS = {
+    Log.ALGRANGE,
+    Log.BASESATS,
+    Log.BBPPSMSG,
+    Log.EVENTALL,
+    Log.EVENTMARK,
+    Log.HWSTATUSD,
+    Log.JAMSTATUSD,
+    Log.PVTSOL,
+    Log.RTCSTATUSD,
+    Log.SATINFO,
+    Log.SATXYZ2,
+    Log.SSR1CLOCK,
+    Log.SSR1ORBIT,
+}
+
 FORMATS = [
     (log, binary)
     for log in Log
     for binary in (False, True)
     if (log.value in EXTENDED_LOGS or log == Log.RTKSTATUS2)
     and (not binary or log.definition.binary_command is not None)
-    and log not in SENSITIVE
+    and log not in SENSITIVE | AUDIT_LOGS
+    and not log.value.startswith("SBAS")
 ]
 
 

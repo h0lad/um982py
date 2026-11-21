@@ -48,6 +48,32 @@ with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
 
 See the [example catalogue](examples/README.md) for setup and more workflows.
 
+## UM982 firmware diagnostics
+
+The UM982 exposes additional logs through the existing `Log` API.
+Examples include hardware and RTC status variants (`HWSTATUSD`, `RTCSTATUSD`),
+PVT (`PVTSOL`), base-station observations (`BASESATS`), and internal correction
+tables (`SSR1ORBIT`, `SSR1CLOCK`). SSR entries retain their native bytes.
+`SBAS1` and `SBAS18` expose masks, and the other SBAS logs retain their raw
+bodies. `parse_mpt_debug()` exposes `time_pair_s` and
+`diagnostic_blocks` alongside the original tokens.
+
+```python
+from um982py import Log, Receiver
+from um982py.experimental import base_mask_report, observation_mask_report
+
+with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
+    hardware = receiver.execute(Log.HWSTATUSD.read(binary=True))
+    base_masks = receiver.collect(base_mask_report())
+    observation_masks = receiver.collect(observation_mask_report())
+```
+
+Log availability depends on firmware, receiver state and incoming data.
+`MASKBASE`, `MASKOBS` and seven SBAS log types were verified live.
+`BASESATS` and SSR subscriptions registered on the receiver. Payload
+validation for those logs requires a source of the corresponding corrections.
+`SATXYZ2A` was verified live. The receiver rejected the `SATXYZ2B` command.
+
 ## Receiver output rates
 
 ```bash

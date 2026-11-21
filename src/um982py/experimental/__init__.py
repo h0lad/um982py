@@ -76,11 +76,14 @@ from um982py.experimental.baseband_solution import (
 )
 from um982py.experimental.configuration import (
     FirmwareSwitch,
+    base_mask_report,
+    observation_mask_report,
     remote_antenna_phase_center_offset,
 )
 from um982py.experimental.debug import (
     DebugOutput,
     InternalDebugLog,
+    MptDebugBlock,
     MptDebugData,
     PosDebugData,
     PppDebugData,
@@ -209,6 +212,7 @@ __all__ = [
     "InternalDebugLog",
     "MatchedSatellite",
     "MatchedSolution",
+    "MptDebugBlock",
     "MptDebugData",
     "PosDebugData",
     "PppDebugData",
@@ -228,6 +232,7 @@ __all__ = [
     "agnss_config",
     "agnss_info",
     "ai_enable",
+    "base_mask_report",
     "baseband_command",
     "baseband_message",
     "bb_command",
@@ -270,6 +275,7 @@ __all__ = [
     "matched_solution_read",
     "matched_solution_stop",
     "mmp_enable",
+    "observation_mask_report",
     "parse_baseband_notice",
     "parse_messages",
     "parse_mpt_debug",

@@ -1,9 +1,68 @@
+import re
 from enum import StrEnum
+from math import isfinite
 from typing import Literal
 
 from um982py.commands.core import Command, number
 from um982py.commands.validation import config, integer, option, switch
-from um982py.messages import CommandResponse
+from um982py.messages import CommandResponse, Message, Record, Sentence
+
+
+def _mask_report(name: Literal["MASKBASE", "MASKOBS"]) -> Command[Record]:
+    def matches(message: Message) -> bool:
+        return (
+            isinstance(message, Sentence)
+            and message.name == "CONFIG"
+            and message.fields[:1] == (name,)
+        )
+
+    def decode(message: Message) -> Record:
+        if not isinstance(message, Sentence) or not matches(message):
+            raise ValueError(f"Expected a {name} report")
+        fields = message.fields[1:]
+        detail = ",".join(fields)
+        if name == "MASKBASE":
+            if detail == "MASKBASE NONE":
+                return Record(name, (("prns", ()), ("fields", fields)), message)
+            if match := re.fullmatch(r"([A-Z]+)MaskPrn:([0-9,]+)", detail):
+                prns = tuple(int(prn) for prn in match[2].strip(",").split(",") if prn)
+                return Record(
+                    name,
+                    (("system", match[1]), ("prns", prns), ("fields", fields)),
+                    message,
+                )
+        elif detail.startswith("MASKOBS "):
+            _, _, reported = detail.partition(" ")
+            threshold, _, signal = reported.strip().partition(" ")
+            try:
+                value = float(threshold)
+            except ValueError:
+                return Record(
+                    name, (("native_label", reported), ("fields", fields)), message
+                )
+            if isfinite(value):
+                return Record(
+                    name,
+                    (
+                        ("native_threshold", value),
+                        ("native_label", signal or None),
+                        ("fields", fields),
+                    ),
+                    message,
+                )
+        return Record(name, (("fields", fields),), message)
+
+    return Command(name, matches, decode)
+
+
+def base_mask_report() -> Command[Record]:
+    """Query firmware BASE PRN masks. Use Receiver.collect for all rows."""
+    return _mask_report("MASKBASE")
+
+
+def observation_mask_report() -> Command[Record]:
+    """Query native observation masks. Use Receiver.collect for all rows."""
+    return _mask_report("MASKOBS")
 
 
 class FirmwareSwitch(StrEnum):

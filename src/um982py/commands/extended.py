@@ -51,8 +51,36 @@ _BINARY_IDS = {
     "ALIGNBSLNXYZ": 1314,
     "ANT1GROUP": 523,
     "ANT2GROUP": 524,
+    "HWSTATUSD": 518,
+    "RTCSTATUSD": 516,
+    "JAMSTATUSD": 517,
+    "PVTSOL": 1023,
+    "SATINFO": 2124,
+    "SATXYZ2": 2114,
+    "ALGRANGE": 1108,
+    "BASESATS": 2113,
+    "SSR1ORBIT": 11278,
+    "SSR1CLOCK": 11279,
+    "EVENTMARK": 309,
+    "EVENTALL": 308,
+    "BBPPSMSG": 12073,
+    "SBAS1": 977,
+    "SBAS2": 982,
+    "SBAS3": 987,
+    "SBAS4": 992,
+    "SBAS5": 994,
+    "SBAS6": 995,
+    "SBAS9": 997,
+    "SBAS17": 980,
+    "SBAS18": 981,
+    "SBAS24": 983,
+    "SBAS25": 984,
+    "SBAS26": 985,
+    "SBAS28": 60032,
+    "SBASALMANAC": 1425,
 }
 
+_SBAS_LOGS = tuple(name for name in _BINARY_IDS if name.startswith("SBAS"))
 _ONCHANGED_ONLY = frozenset(
     {
         "ALIGNDOP",
@@ -62,6 +90,9 @@ _ONCHANGED_ONLY = frozenset(
         "ALIGNBSLNXYZ",
         "MPSRPOS",
         "MPSRPOS2",
+        "EVENTMARK",
+        "EVENTALL",
+        *_SBAS_LOGS,
     }
 )
 EXTENDED_LOGS = MappingProxyType(
@@ -123,6 +154,20 @@ EXTENDED_LOGS = MappingProxyType(
             "ALIGNBSLNXYZ",
             "ANT1GROUP",
             "ANT2GROUP",
+            "HWSTATUSD",
+            "RTCSTATUSD",
+            "JAMSTATUSD",
+            "PVTSOL",
+            "SATINFO",
+            "SATXYZ2",
+            "ALGRANGE",
+            "BASESATS",
+            "SSR1ORBIT",
+            "SSR1CLOCK",
+            "EVENTMARK",
+            "EVENTALL",
+            "BBPPSMSG",
+            *_SBAS_LOGS,
         )
     }
 )

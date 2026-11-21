@@ -184,6 +184,65 @@ LAYOUTS.update(
     }
 )
 LAYOUTS["RANGEH"] = replace(RANGE, name="RANGEH")
+LAYOUTS["ALGRANGE"] = replace(RANGE, name="ALGRANGE")
+LAYOUTS.update(
+    {
+        name: replace(DOCUMENTED[original], name=name, table="extended")
+        for name, original in (
+            ("HWSTATUSD", "HWSTATUS"),
+            ("RTCSTATUSD", "RTCSTATUS"),
+            ("JAMSTATUSD", "JAMSTATUS"),
+            ("PVTSOL", "PVTSLN"),
+            ("SATXYZ2", "SATECEF"),
+            ("EVENTMARK", "EVENTFLAG"),
+            ("EVENTALL", "EVENTSLN"),
+        )
+    }
+)
+LAYOUTS["BASESATS"] = Layout(
+    "BASESATS",
+    "extended",
+    (
+        Field("count", "u", 0, 4),
+        Group(
+            "observations",
+            4,
+            (
+                Field("prn", "u", 0, 2),
+                Field("field_2", "u", 2, 2),
+                Field("field_4", "f", 4, 4),
+                Field("status_word", "x", 8, 4),
+            ),
+            "count",
+            12,
+            limit=240,
+        ),
+    ),
+    None,
+)
+LAYOUTS["SBAS1"] = Layout(
+    "SBAS1",
+    "extended",
+    (
+        Field("source_prn", "u", 0, 4),
+        Field("prn_mask", "b", 4, 27),
+        Field("field_32", "u", 32, 4),
+    ),
+    36,
+)
+LAYOUTS["SBAS18"] = Layout(
+    "SBAS18",
+    "extended",
+    (
+        Field("source_prn", "u", 0, 4),
+        Field("field_4", "u", 4, 4),
+        Field("field_8", "u", 8, 4),
+        Field("field_12", "u", 12, 4),
+        Field("grid_mask", "b", 16, 26),
+        Field("field_44", "u", 44, 4),
+    ),
+    48,
+)
 LAYOUTS["REMOTEANTENNAPCO"] = Layout(
     "REMOTEANTENNAPCO",
     "extended",

@@ -113,7 +113,14 @@ class LogList:
                     not isfinite(interval) or interval <= 0
                 ):
                     raise ValueError("Invalid log interval")
-                entries.append(LogEntry(name, Port(port), interval))
+                # The subscription list spells BASESATSB differently from the command.
+                entries.append(
+                    LogEntry(
+                        "BASESATSB" if name == "BASSATSB" else name,
+                        Port(port),
+                        interval,
+                    )
+                )
             return cls(tuple(entries))
         except (IndexError, ValueError) as error:
             raise ProtocolError("Malformed LOGLIST record") from error

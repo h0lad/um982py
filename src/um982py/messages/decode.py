@@ -193,17 +193,22 @@ def _log_index() -> dict[tuple[str, str | int], tuple["Log", ...]]:
     """
     from um982py.commands import Log
     from um982py.commands.catalog import RTCM_LOGS
+    from um982py.commands.extended import EXTENDED_LOGS
 
     index: dict[tuple[str, str | int], list[Log]] = defaultdict(list)
     for log in Log:
         definition = log.definition
         if (
             log.value not in RTCM_LOGS
+            # SATINFOB uses the same on-wire ID and body as SATSINFOB.
+            and log is not Log.SATINFO
             and definition.binary_command is not None
             and definition.message_id is not None
         ):
             index["binary", definition.message_id].append(log)
         index["ascii", definition.ascii_command].append(log)
+        if log.value in EXTENDED_LOGS and definition.ascii_command != log.value:
+            index["ascii", log.value].append(log)
         for name in {log.value, definition.ascii_command}:
             index["table", name].append(log)
     return {key: tuple(logs) for key, logs in index.items()}

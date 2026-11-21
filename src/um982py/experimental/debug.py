@@ -3,6 +3,7 @@
 import re
 from dataclasses import dataclass
 from enum import StrEnum
+from math import isfinite
 
 from um982py.commands import logging
 from um982py.commands.core import Command, action
@@ -745,6 +746,14 @@ def parse_pos_debug(raw: bytes | str) -> PosDebugData | None:
 
 
 @dataclass(frozen=True, slots=True)
+class MptDebugBlock:
+    """Numeric fields from one named firmware block, in wire order."""
+
+    tag: str
+    values: tuple[int | float, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class MptDebugData:
     """Parsed internal multi-GNSS point-positioning state from MPTDEBUGMSG."""
 
@@ -754,11 +763,43 @@ class MptDebugData:
     used_satellites: int
     ecef_m: tuple[float, float, float] | None
     tokens: tuple[str, ...]
+    time_pair_s: tuple[float, float] | None = None
+    diagnostic_blocks: tuple[MptDebugBlock, ...] = ()
 
 
 _MPT_SAT = re.compile(
     r"^[0-9A-Fa-f]+,(\d+),(-?\d+(?:\.\d+)?),SatCnt:(\d+),(\d+),(-?\d+(?:\.\d+)?),"
 )
+_MPT_BLOCK = re.compile(r"^(rsk|Ls=|dcSet|Slas:|basCor|basIon|asvd,|ssf:)(.*)$")
+_MPT_BLOCK_TYPES = {
+    "rsk": (int, int),
+    "Ls=": (int, int),
+    "dcSet": (int, float),
+    "Slas:": (int, int),
+    "basCor": (int, int, float, int, float, int),
+    "basIon": (int, int, int),
+    "asvd,": (int,),
+    "ssf:": (int, int, int, int, float),
+}
+
+
+def _mpt_block(token: str) -> MptDebugBlock | None:
+    match = _MPT_BLOCK.fullmatch(token)
+    if match is None:
+        return None
+    prefix, body = match.groups()
+    try:
+        values = tuple(
+            convert(value)
+            for convert, value in zip(
+                _MPT_BLOCK_TYPES[prefix], body.split(","), strict=True
+            )
+        )
+    except ValueError:
+        return None
+    if any(isinstance(value, float) and not isfinite(value) for value in values):
+        return None
+    return MptDebugBlock(prefix.rstrip("=:,"), values)
 
 
 def parse_mpt_debug(raw: bytes | str) -> MptDebugData | None:
@@ -775,6 +816,8 @@ def parse_mpt_debug(raw: bytes | str) -> MptDebugData | None:
     used = 0
     found = False
     ecef: tuple[float, float, float] | None = None
+    time_pair: tuple[float, float] | None = None
+    blocks: list[MptDebugBlock] = []
     for index, token in enumerate(tokens):
         sat_match = _MPT_SAT.match(token)
         if sat_match is not None:
@@ -783,6 +826,16 @@ def parse_mpt_debug(raw: bytes | str) -> MptDebugData | None:
             tracked = int(sat_match.group(3))
             used = int(sat_match.group(4))
             found = True
+        block = _mpt_block(token[sat_match.end() :] if sat_match else token)
+        if block is not None:
+            blocks.append(block)
+        if token.startswith("tm1,"):
+            try:
+                first, second = map(float, token[4:].split(","))
+                if isfinite(first) and isfinite(second):
+                    time_pair = (first, second)
+            except ValueError:
+                pass
         if token.startswith("tm1,") and index + 1 < len(tokens):
             coords = tokens[index + 1].split(",")
             if len(coords) == 3:
@@ -799,4 +852,6 @@ def parse_mpt_debug(raw: bytes | str) -> MptDebugData | None:
         used_satellites=used,
         ecef_m=ecef,
         tokens=tokens,
+        time_pair_s=time_pair,
+        diagnostic_blocks=tuple(blocks),
     )
