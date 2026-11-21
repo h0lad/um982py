@@ -179,7 +179,7 @@ def test_cli_exports_multignss_shared_epochs_and_omission_report(
     )
 
 
-def test_cli_marks_inferred_l2c_and_accepts_explicit_component(
+def test_cli_omits_unverified_l2c_and_accepts_explicit_component(
     tmp_path: Path,
 ) -> None:
     replay = tmp_path / "capture.bin"
@@ -197,11 +197,11 @@ def test_cli_marks_inferred_l2c_and_accepts_explicit_component(
         main(["--replay", str(replay), "--output", str(output), "--json", str(report)])
         == 0
     )
-    assert "C2S" in output.read_text()
-    assert "2S inferred; component unverified" in output.read_text()
+    assert "C2S" not in output.read_text()
+    assert "Type-9 L2C omitted" in output.read_text()
     metadata = json.loads(report.read_text())
-    assert metadata["files"][0]["omitted"] == {}
-    assert metadata["provenance"]["type9_l2c_policy"] == "inferred_2S"
+    assert metadata["files"][0]["omitted"] == {"unverified_l2c_component": 1}
+    assert metadata["provenance"]["type9_l2c_policy"] == "omit"
     assert (
         main(
             [
@@ -210,13 +210,13 @@ def test_cli_marks_inferred_l2c_and_accepts_explicit_component(
                 "--output",
                 str(output),
                 "--l2c-code",
-                "omit",
+                "2S",
             ]
         )
         == 0
     )
-    assert "C2S" not in output.read_text()
-    assert "Type-9 L2C omitted" in output.read_text()
+    assert "C2S" in output.read_text()
+    assert "Type-9 L2C attribute supplied by caller: 2S" in output.read_text()
 
 
 def test_cli_rejects_unshared_epochs_without_writing_files(tmp_path: Path) -> None:

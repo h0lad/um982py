@@ -67,11 +67,9 @@ def tracking_signal(
     glonass_channel: int | None = None,
     l2c_code: str | None = None,
 ) -> TrackingSignal | None:
-    """Identify a tracking signal; type-9 L2C defaults to inferred L2C-M.
+    """Identify a tracking signal and its frequency.
 
-    The manufacturer documents L2C but not its component. RTKLIB and SatPulse
-    interpret it as L2C-M. Pass ``l2c_code="omit"`` to leave it unidentified,
-    or an explicit RINEX code to override the inference.
+    Type-9 L2C has an empty RINEX code unless the caller supplies its component.
     """
     if not 0 <= status <= 0xFFFFFFFF:
         raise ValueError("tracking status must be a u32")
@@ -86,7 +84,7 @@ def tracking_signal(
     name, code, mhz = definition
     if system in (0, 5) and signal == 9 and status & _L2C_COMPONENT_BIT:
         name = "L2C (component unspecified)"
-        code = "" if l2c_code == "omit" else l2c_code or "2S"
+        code = "" if l2c_code in (None, "omit") else l2c_code
     if system == 5 and signal == 9 and not status & _L2C_COMPONENT_BIT:
         code = ""
     if system == 6 and signal == 14:

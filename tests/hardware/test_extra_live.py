@@ -160,13 +160,10 @@ def test_live_both_antenna_carriers_and_doctor(
             assert sample.rate_mps == pytest.approx(
                 -row.real("doppler") * 299792458 / frequency
             )
-        exported = export_rinex(capture.records[name])
+        exported = export_rinex(capture.records[name], l2c_code="2S")
         assert "L2S" in exported.text
         assert (
-            export_rinex(capture.records[name], l2c_code="omit").omitted[
-                "unverified_l2c_component"
-            ]
-            > 0
+            export_rinex(capture.records[name]).omitted["unverified_l2c_component"] > 0
         )
         results[name] = {
             "raw_count": record.integer("count"),

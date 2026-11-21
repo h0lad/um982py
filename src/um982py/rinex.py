@@ -267,9 +267,7 @@ def _header_lines(
         lines.append(
             _header(f"Input week scale supplied by caller: {week_scale}", "COMMENT")
         )
-    if l2c_code is None and any("C2S" in codes.get(s, ()) for s in ("G", "J")):
-        lines.append(_header("Type-9 L2C 2S inferred; component unverified", "COMMENT"))
-    elif l2c_code is not None and l2c_code != "omit":
+    if l2c_code not in (None, "omit"):
         lines.append(
             _header(f"Type-9 L2C attribute supplied by caller: {l2c_code}", "COMMENT")
         )
@@ -392,8 +390,8 @@ def export_rinex(
     carrier phase because the stored phase is modulo and its ambiguity has not
     been independently resolved. ``unresolved_compressed_phase`` counts them.
     Records with conflicting receiver/session/antenna source tags are rejected.
-    Type-9 L2C defaults to inferred 2S, not manufacturer-verified. Set
-    ``l2c_code="omit"`` to exclude it, or pass an explicit component code.
+    Export of flagged type-9 L2C requires an explicit component code from the
+    caller. The omission report counts these signals by default.
     ``created_at`` must be timezone-aware; supply it for reproducible headers.
     The default is the current UTC time, not the observation epoch.
     """

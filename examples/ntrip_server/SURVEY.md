@@ -106,9 +106,9 @@ marker. These offsets do not correct the electrical phase centre. Capture uses
 `Log.RANGE` on ANT1, and `um982py.rinex.export_rinex()` writes RINEX 3.05.
 
 Export needs simultaneous code and phase pairs on GPS L1/L2 or Galileo E1/E5a.
-GPS L1/L5 alone does not pass this check. Type-9 L2C defaults to inferred,
-unverified `2S`; use `--l2c-code omit` to exclude it or specify a component
-established for the firmware. The export reports omitted observations.
+GPS L1/L5 alone does not pass this check. The export omits flagged type-9 L2C
+by default and reports the omissions. Use `--l2c-code` to supply a component
+established for the firmware.
 
 Epochs stay in RAM until export. `--record` saves the raw data separately.
 Recording is limited to 48 h, with an interval of at least 15 s. Watch memory

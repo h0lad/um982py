@@ -199,9 +199,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "receiver_configuration": None,
             "receiver_configuration_note": "not read or verified by this export",
             "l2c_code_supplied_by_user": args.l2c_code,
-            "type9_l2c_policy": (
-                "inferred_2S" if args.l2c_code is None else args.l2c_code
-            ),
+            "type9_l2c_policy": args.l2c_code or "omit",
         },
         "files": [
             {
