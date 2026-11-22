@@ -5,6 +5,7 @@ from typing import cast
 
 from um982py.experimental import (
     BeidouLegacySubframe,
+    GalileoFnavPage,
     GlonassFdmaString,
     GpsLnavSubframe,
     InavCampaign,
@@ -121,6 +122,7 @@ def render_native_nav(
     gps: Sequence[GpsLnavSubframe],
     glonass: Sequence[GlonassFdmaString],
     beidou: Sequence[BeidouLegacySubframe] = (),
+    fnav: Sequence[GalileoFnavPage] = (),
 ) -> str:
     """Render the parity-checked native navigation records of one snapshot."""
     lines = [
@@ -154,13 +156,28 @@ def render_native_nav(
         f"BeiDou legacy ({len(beidou)} BCH-checked subframes)",
         "SVID    Ch  Subframe  BDT SOW (s)  30-bit words (hex)",
     ]
-    for frame in beidou:
-        words = " ".join(f"{word:08x}" for word in frame.words)
+    for subframe in beidou:
+        words = " ".join(f"{word:08x}" for word in subframe.words)
         lines.append(
-            f"{frame.receiver_svid:>4}  {frame.channel:>4}  {frame.subframe:>8}"
-            f"  {frame.sow_s:>11}  {words}"
+            f"{subframe.receiver_svid:>4}  {subframe.channel:>4}"
+            f"  {subframe.subframe:>8}  {subframe.sow_s:>11}  {words}"
         )
     if not beidou:
+        lines.append("-")
+
+    lines += [
+        "",
+        f"Galileo E5a F/NAV ({len(fnav)} pages)",
+        "PRN    Ch  Type  IODnav  GST TOW (s)  Information bits (hex)",
+    ]
+    for page in fnav:
+        iod = str(page.iod_nav) if page.iod_nav is not None else "-"
+        tow = str(page.gst_tow_s) if page.gst_tow_s is not None else "-"
+        lines.append(
+            f"{page.prn:>3}  {page.channel:>4}  {page.page_type:>4}"
+            f"  {iod:>6}  {tow:>11}  {page.data.hex()}"
+        )
+    if not fnav:
         lines.append("-")
     return "\n".join(lines)
 

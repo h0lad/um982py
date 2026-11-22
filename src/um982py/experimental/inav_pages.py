@@ -67,7 +67,7 @@ TRACKING_MEMORY_LENGTH = 0xE8000
 GALILEO_SIGNAL = 3
 """Signal-family identifier of Galileo channels in the tracking window."""
 
-GALILEO_SVID_BASE = 0x60
+GALILEO_SVID_BASE = 100
 """Offset of the Galileo PRN within the per-signal identifier byte."""
 
 CHANNEL_RECORD_SIZE = 0x148

@@ -52,7 +52,7 @@ def test_report_lists_pages_and_osnma_counts() -> None:
     assert report["pages"] == 10
     assert report["pages_with_osnma"] == 3
     assert report["odd_pages"] == 6
-    assert sorted(report["prns"]) == [6, 7, 11, 12, 14, 15, 16, 20, 29, 36]
+    assert sorted(report["prns"]) == [2, 3, 7, 8, 10, 11, 12, 16, 25, 32]
     assert report["application_restored"] is True
     assert "OSNMA" in str(report["interpretation"])
 
@@ -94,6 +94,7 @@ def test_live_report_native_navigation(
                 "gps_lnav": [gps.manifest()],
                 "glonass_fdma": [glonass.manifest()],
                 "beidou_legacy": [beidou.manifest()],
+                "galileo_fnav": [],
             }
         ]
 
@@ -101,16 +102,16 @@ def test_live_report_native_navigation(
 def test_report_details_carry_the_decoded_part_fields() -> None:
     report = _report(_snapshot())
     details = {detail["prn"]: detail for detail in report["details"]}
-    assert details[11]["osnma"] == "440b8924a2"
-    assert details[11]["sar"] == "954918"
-    assert details[11]["sar_decoded"] == {
+    assert details[7]["osnma"] == "440b8924a2"
+    assert details[7]["sar"] == "954918"
+    assert details[7]["sar_decoded"] == {
         "start": True,
         "long_rlm": False,
         "data_hex": "55246",
     }
-    assert details[29]["word_type"] == 1
-    assert details[11]["even"] is False
-    assert details[29]["even"] is True
+    assert details[25]["word_type"] == 1
+    assert details[7]["even"] is False
+    assert details[25]["even"] is True
 
 
 def test_extracted_snapshot_matches_direct_extraction() -> None:
@@ -128,8 +129,8 @@ def _campaign() -> InavCampaign:
 
 def test_render_page_row_shows_part_word_and_osnma() -> None:
     pages = {page.prn: page for page in _campaign().pages}
-    row = render_page(pages[11])
-    assert " 11  " in row
+    row = render_page(pages[7])
+    assert "  7  " in row
     assert "odd/nom" in row
     assert "96c71102e24928a55246905500c0ebed" in row
     assert "440b8924a2" in row
@@ -139,8 +140,8 @@ def test_render_page_row_shows_part_word_and_osnma() -> None:
 
 def test_render_page_row_marks_alert_and_invalid() -> None:
     pages = {page.prn: page for page in _campaign().pages}
-    assert "odd/alert" in render_page(pages[36])
-    assert "  no " in render_page(pages[15])
+    assert "odd/alert" in render_page(pages[32])
+    assert "  no " in render_page(pages[11])
 
 
 def test_render_campaign_renders_all_sections() -> None:
@@ -148,7 +149,7 @@ def test_render_campaign_renders_all_sections() -> None:
     assert "Galileo I/NAV page capture" in text
     assert "Snapshots:             1" in text
     assert "Pages:                 10 (10 unique)" in text
-    assert "6, 7, 11, 12, 14, 15, 16, 20, 29, 36" in text
+    assert "2, 3, 7, 8, 10, 11, 12, 16, 25, 32" in text
     assert "Application restored:  yes" in text
     assert "Captured page parts" in text
     assert "PRN    Ch  Part        Word  Valid" in text
@@ -160,21 +161,21 @@ def test_render_campaign_renders_all_sections() -> None:
 
 def test_snapshot_activity_reports_presence_without_header_status() -> None:
     text = render_campaign(_campaign())
-    assert " 11 " in text
+    assert "  7 " in text
     assert "test/0/end_of_chain" not in text
     assert "Observed" in text
     assert "yes" in text
     activity = _report(_campaign())["osnma_activity"]
     assert isinstance(activity, dict)
-    assert activity["prns"][11]["observed_osnma"] is True
-    assert activity["prns"][11]["headers"] == []
+    assert activity["prns"][7]["observed_osnma"] is True
+    assert activity["prns"][7]["headers"] == []
 
 
 def test_campaign_report_lists_raw_sar_fields() -> None:
     fields = _report(_campaign())["sar_fields"]
     assert isinstance(fields, list)
     assert len(fields) == 3
-    assert next(field for field in fields if field["prn"] == 11)["sar"] == "954918"
+    assert next(field for field in fields if field["prn"] == 7)["sar"] == "954918"
 
 
 def test_campaign_report_keeps_raw_parts_and_audits_per_snapshot() -> None:

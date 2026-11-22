@@ -69,11 +69,10 @@ The boot-menu snapshots provide raw OSNMA activity counts. The NMA header
 occupies the first odd part of a GST-aligned sub-frame, so the snapshot
 report leaves the legacy JSON `headers` list empty.
 
-## Dump native GPS, GLONASS and BeiDou navigation
+## Dump native GPS, GLONASS, BeiDou, and Galileo E5a navigation
 
-Live snapshots include checked GPS, GLONASS and BeiDou bits in the
-terminal tables and JSON by default. Pass `--no-native-nav` for a
-Galileo-only report.
+Live snapshots include GPS, GLONASS, BeiDou and Galileo E5a navigation
+in JSON by default. Pass `--no-native-nav` for an I/NAV-only report.
 
 ```bash
 PYTHONPATH=src python3 -m examples.inav_page_capture --port /dev/ttyUSB0 --json nav.json
@@ -99,6 +98,15 @@ multiple channels.
 [GPS IS-GPS-200N, §20.3.5](https://www.gps.gov/sites/default/files/2025-07/IS-GPS-200N.pdf)
 · [GLONASS FDMA ICD, §4.7](https://www.unavco.org/help/glossary/docs/ICD_GLONASS_5.1_%282008%29_en.pdf)
 · [BeiDou B1I ICD, §§5.1.3 and 5.2](https://www.unavco.org/help/glossary/docs/ICD_BeiDou_1.0_%282012%29_en.pdf)
+
+`native_nav[].galileo_fnav` contains the 214 F/NAV information bits copied
+by the E5a receiver after its CRC check. The stored payload omits the CRC.
+For page type 1 the report also exposes the satellite clock coefficients,
+E1/E5a group delay, SISA index, E5a health and data validity. Page types 1
+through 4 provide the issue of data and decoded time fields where present.
+The tracking receiver maps raw Galileo identifiers to PRNs by subtracting
+100. Replaying an older I/NAV snapshot can therefore change its PRN labels.
+[Galileo OS SIS ICD, Tables 30–36 and 69–72](https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_OS_SIS_ICD_v2.2.pdf)
 
 For Doppler, C/N₀, and other per-channel DSP measurements, use the separate
 [DSP tracking snapshot](../dsp_tracking/README.md).

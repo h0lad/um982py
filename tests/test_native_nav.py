@@ -4,7 +4,11 @@ from struct import pack_into
 
 import pytest
 
-from um982py.experimental import extract_beidou_nav, extract_native_nav
+from um982py.experimental import (
+    extract_beidou_nav,
+    extract_galileo_fnav,
+    extract_native_nav,
+)
 
 TRACKING_BASE = 0x318000
 STATE_BASE = 0x320000
@@ -62,6 +66,47 @@ def test_rejects_corrupted_words_and_strings() -> None:
     assert extract_native_nav(_regions(corrupt=True)) == ((), ())
 
 
+def test_extracts_galileo_fnav_clock_from_receiver_page() -> None:
+    record = bytearray(0x148)
+    record[:2] = bytes((0x13, 130))
+    pack_into("<I", record, 4, 232)
+    pack_into("<I", record, 0x134, STATE_BASE)
+    state = bytearray(0xAC)
+    pack_into("<2I", state, 0, 0x70001309, 587110)
+    # Seven little-endian words from the saved PRN 30 page.
+    pack_into(
+        "<7I",
+        state,
+        0x90,
+        0x05E16262,
+        0xAFC843DF,
+        0xFFF51F01,
+        0xACD07B0F,
+        0xF8C1FE0B,
+        0x1B1EAB8A,
+        0xAAAAA800,
+    )
+    regions = {
+        "record": (TRACKING_BASE, bytes(record)),
+        "state": (STATE_BASE, bytes(state)),
+    }
+    (page,) = extract_galileo_fnav(regions)
+    assert (page.prn, page.channel, page.page_type, page.iod_nav) == (30, 232, 1, 88)
+    assert (page.gst_week, page.gst_tow_s) == (1421, 587100)
+    assert page.clock is not None
+    assert page.clock.toc_s == 586200
+    assert page.clock.af0_s == -29221121 * 2**-34
+    assert page.clock.bgd_e1_e5a_s == -4 * 2**-32
+    assert page.clock.sisa_index == 107
+    assert page.manifest()["data"] == (
+        "05e16262afc843dffff51f01acd07b0ff8c1fe0b1b1eab8aaaaaa8"
+    )
+
+    pack_into("<I", state, 0, 0x70000309)
+    regions["state"] = (STATE_BASE, bytes(state))
+    assert extract_galileo_fnav(regions) == ()
+
+
 @pytest.mark.parametrize("corrupt", [False, True])
 def test_extract_beidou_subframe_from_unaligned_hardware_buffer(corrupt: bool) -> None:
     record = bytearray(0x148)
@@ -72,16 +117,21 @@ def test_extract_beidou_subframe_from_unaligned_hardware_buffer(corrupt: bool) -
     state[0x50:0x7C] = BEIDOU_BUFFER
     if corrupt:
         state[0x54] ^= 1
-    result = extract_beidou_nav({
-        "record": (TRACKING_BASE, bytes(record)),
-        "state": (STATE_BASE, bytes(state)),
-    })
+    result = extract_beidou_nav(
+        {
+            "record": (TRACKING_BASE, bytes(record)),
+            "state": (STATE_BASE, bytes(state)),
+        }
+    )
     if corrupt:
         assert result == ()
     else:
         (frame,) = result
         assert (frame.receiver_svid, frame.channel, frame.subframe, frame.sow_s) == (
-            201, 64, 3, 587082,
+            201,
+            64,
+            3,
+            587082,
         )
         raw = "".join(f"{word:030b}" for word in frame.words)
         assert f"{int(raw, 2):075x}" == (

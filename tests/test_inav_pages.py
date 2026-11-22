@@ -15,9 +15,9 @@ TRACKING_BASE = 0x3C2C00
 PAGE_STATE_BASE = 0x3E5B00
 
 PAGES = {
-    11: "96c71102e24928a55246905500c0ebed",
-    12: "a0c71102f1c9bb36d68906270000516f",
-    29: "01dd1102c909766e94c0f1ac00c06e3a",
+    7: "96c71102e24928a55246905500c0ebed",
+    8: "a0c71102f1c9bb36d68906270000516f",
+    25: "01dd1102c909766e94c0f1ac00c06e3a",
 }
 
 
@@ -33,11 +33,11 @@ def _regions() -> dict[str, tuple[int, bytes]]:
 def test_extracts_the_tracked_galileo_pages() -> None:
     pages = extract_inav_pages(_regions())
     prns = sorted({page.prn for page in pages})
-    assert prns == [6, 7, 11, 12, 14, 15, 16, 20, 29, 36]
+    assert prns == [2, 3, 7, 8, 10, 11, 12, 16, 25, 32]
     by_prn = {page.prn: page for page in pages}
-    assert by_prn[11].page.hex() == PAGES[11]
-    assert by_prn[12].page.hex() == PAGES[12]
-    assert by_prn[29].page.hex() == PAGES[29]
+    assert by_prn[7].page.hex() == PAGES[7]
+    assert by_prn[8].page.hex() == PAGES[8]
+    assert by_prn[25].page.hex() == PAGES[25]
 
 
 def test_extracted_pages_share_one_time_counter() -> None:
@@ -47,7 +47,7 @@ def test_extracted_pages_share_one_time_counter() -> None:
 
 
 def test_odd_nominal_part_carries_the_osnma_field() -> None:
-    part = decode_inav_page_part(bytes.fromhex(PAGES[11]))
+    part = decode_inav_page_part(bytes.fromhex(PAGES[7]))
     assert not part.even
     assert part.page_type == 0
     assert part.osnma is not None
@@ -59,7 +59,7 @@ def test_odd_nominal_part_carries_the_osnma_field() -> None:
 
 
 def test_even_nominal_part_opens_a_navigation_word() -> None:
-    part = decode_inav_page_part(bytes.fromhex(PAGES[29]))
+    part = decode_inav_page_part(bytes.fromhex(PAGES[25]))
     assert part.even
     assert part.page_type == 0
     assert part.word_type == 1
@@ -69,8 +69,8 @@ def test_even_nominal_part_opens_a_navigation_word() -> None:
 def test_extracted_pages_decode_consistently() -> None:
     pages = extract_inav_pages(_regions())
     parts = {page.prn: page.part for page in pages}
-    assert parts[11].osnma is not None
-    assert parts[29].word_type == 1
+    assert parts[7].osnma is not None
+    assert parts[25].word_type == 1
 
 
 def test_nma_header_portion_decodes_test_values() -> None:
@@ -82,7 +82,7 @@ def test_nma_header_portion_decodes_test_values() -> None:
 
 
 def test_assemble_osnma_subframe_recombines_portions() -> None:
-    part = decode_inav_page_part(bytes.fromhex(PAGES[11]))
+    part = decode_inav_page_part(bytes.fromhex(PAGES[7]))
     assert part.osnma is not None
     subframe = assemble_osnma_subframe(part.osnma * 15)
     assert len(subframe.hkroot) == 15

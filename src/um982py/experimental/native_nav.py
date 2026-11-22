@@ -1,20 +1,26 @@
 """Parity-checked navigation from UM982 tracking snapshots."""
 
 from collections.abc import Iterator, Mapping
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from itertools import pairwise
 from struct import Struct
 
+from um982py.experimental.inav_coding import pack_bits
 from um982py.experimental.inav_pages import (
     CHANNEL_RECORD_SIZE,
     CHANNEL_STATE_POINTER_OFFSET,
+    GALILEO_SVID_BASE,
+    PAGE_VALID_FLAG,
 )
 
 __all__ = [
     "BeidouLegacySubframe",
+    "GalileoFnavClock",
+    "GalileoFnavPage",
     "GlonassFdmaString",
     "GpsLnavSubframe",
     "extract_beidou_nav",
+    "extract_galileo_fnav",
     "extract_native_nav",
 ]
 
@@ -26,10 +32,17 @@ _GLONASS_STRING_OFFSETS = range(0x28, 0xA0, 12)
 _GLONASS_STRING_MASK = (1 << 85) - 1
 _BEIDOU_STATE_WORDS = Struct("<107I")
 _BEIDOU_PREAMBLE = "11100010010"
+_GALILEO_FNAV = 0x13
+_FNAV_WORDS = Struct("<7I")
+_FNAV_PAGE_OFFSET = 0x90
 _NATIVE_LAYOUTS = {
     0: (range(1, 33), _GPS_BLOCK_OFFSET + _GPS_WORDS.size),
     0x22: (range(161, 224), _BEIDOU_STATE_WORDS.size),
     0x34: (range(65, 89), _GLONASS_STRING_OFFSETS[-1] + 12),
+    _GALILEO_FNAV: (
+        range(GALILEO_SVID_BASE + 1, GALILEO_SVID_BASE + 37),
+        _FNAV_PAGE_OFFSET + _FNAV_WORDS.size,
+    ),
 }
 
 # IS-GPS-200 Table 20-XIV, applied to the 24 data bits after inversion.
@@ -166,7 +179,10 @@ def _glonass_strings(
 
 
 def _channel_states(
-    regions: Mapping[str, tuple[int, bytes]], families: tuple[int, ...]
+    regions: Mapping[str, tuple[int, bytes]],
+    families: tuple[int, ...],
+    *,
+    channel_limit: int = 256,
 ) -> Iterator[tuple[int, int, int, memoryview]]:
     windows = [(base, memoryview(data)) for base, data in regions.values()]
     for _, memory in windows:
@@ -179,7 +195,7 @@ def _channel_states(
                 continue
             channel = _U32.unpack_from(memory, offset + 4)[0]
             pointer = _U32.unpack_from(memory, offset + CHANNEL_STATE_POINTER_OFFSET)[0]
-            if channel >= 256 or pointer % 4:
+            if channel >= channel_limit or pointer % 4:
                 continue
             for base, data in windows:
                 start = pointer - base
@@ -293,3 +309,106 @@ def extract_beidou_nav(
             )
             seen.add(frame)
     return tuple(found)
+
+
+@dataclass(frozen=True, slots=True)
+class GalileoFnavClock:
+    """Clock and quality fields of a Galileo E5a F/NAV type 1 page."""
+
+    toc_s: int
+    af0_s: float
+    af1_s_s: float
+    af2_s_s2: float
+    bgd_e1_e5a_s: float
+    sisa_index: int
+    e5a_health: int
+    e5a_data_validity: int
+
+
+@dataclass(frozen=True, slots=True)
+class GalileoFnavPage:
+    """The 214 information bits that the receiver retains after its CRC check."""
+
+    prn: int
+    channel: int
+    page_type: int
+    receiver_time_counter: int
+    iod_nav: int | None
+    gst_week: int | None
+    gst_tow_s: int | None
+    clock: GalileoFnavClock | None
+    data: bytes
+    """The information bits in MSB-first order with two zero padding bits."""
+
+    def manifest(self) -> dict[str, object]:
+        """Return the information bits as hex alongside the decoded fields."""
+        result = asdict(self)
+        result["data"] = self.data.hex()
+        return result
+
+
+def _fnav_field(bits: str, start: int, width: int, *, signed: bool = False) -> int:
+    value = int(bits[start : start + width], 2)
+    if signed and value >> (width - 1):
+        value -= 1 << width
+    return value
+
+
+def extract_galileo_fnav(
+    regions: Mapping[str, tuple[int, bytes]],
+) -> tuple[GalileoFnavPage, ...]:
+    """Read Galileo E5a F/NAV from the build 25164 tracking state.
+
+    The firmware CRC-checks the received page and saves its information bits
+    at state offset 0x90, setting flag 0x1000. The stored data omits the CRC.
+    """
+    pages = []
+    for _, channel, svid, state in _channel_states(
+        regions, (_GALILEO_FNAV,), channel_limit=1100
+    ):
+        if channel == 0 or not _U32.unpack_from(state)[0] & PAGE_VALID_FLAG:
+            continue
+        words = _FNAV_WORDS.unpack_from(state, _FNAV_PAGE_OFFSET)
+        bits = "".join(f"{word:032b}" for word in words)[:214]
+        kind = _fnav_field(bits, 0, 6)
+        if kind not in (1, 2, 3, 4, 5, 6, 63):
+            continue
+        prn = svid - GALILEO_SVID_BASE
+        if kind == 1 and _fnav_field(bits, 6, 6) != prn:
+            continue
+
+        week_start = {1: 155, 2: 182, 3: 174}.get(kind)
+        tow_start = {1: 167, 2: 194, 3: 186, 4: 189}.get(kind)
+        tow = _fnav_field(bits, tow_start, 20) if tow_start is not None else None
+        if tow is not None and tow >= 604800:
+            continue
+        clock = None
+        if kind == 1:
+            clock = GalileoFnavClock(
+                toc_s=60 * _fnav_field(bits, 22, 14),
+                af0_s=_fnav_field(bits, 36, 31, signed=True) * 2**-34,
+                af1_s_s=_fnav_field(bits, 67, 21, signed=True) * 2**-46,
+                af2_s_s2=_fnav_field(bits, 88, 6, signed=True) * 2**-59,
+                bgd_e1_e5a_s=_fnav_field(bits, 143, 10, signed=True) * 2**-32,
+                sisa_index=_fnav_field(bits, 94, 8),
+                e5a_health=_fnav_field(bits, 153, 2),
+                e5a_data_validity=_fnav_field(bits, 187, 1),
+            )
+        pages.append(
+            GalileoFnavPage(
+                prn=prn,
+                channel=channel,
+                page_type=kind,
+                receiver_time_counter=_U32.unpack_from(state, 4)[0],
+                iod_nav=_fnav_field(bits, 12 if kind == 1 else 6, 10)
+                if kind <= 4
+                else None,
+                gst_week=_fnav_field(bits, week_start, 12)
+                if week_start is not None
+                else None,
+                gst_tow_s=tow,
+                clock=clock,
+                data=pack_bits(bits),
+            )
+        )
+    return tuple(pages)
