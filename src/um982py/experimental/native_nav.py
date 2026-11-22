@@ -17,10 +17,12 @@ __all__ = [
     "BeidouLegacySubframe",
     "GalileoFnavClock",
     "GalileoFnavPage",
+    "GalileoHasPage",
     "GlonassFdmaString",
     "GpsLnavSubframe",
     "extract_beidou_nav",
     "extract_galileo_fnav",
+    "extract_galileo_has",
     "extract_native_nav",
 ]
 
@@ -33,16 +35,21 @@ _GLONASS_STRING_MASK = (1 << 85) - 1
 _BEIDOU_STATE_WORDS = Struct("<107I")
 _BEIDOU_PREAMBLE = "11100010010"
 _GALILEO_FNAV = 0x13
+_GALILEO_E6B = 0x43
 _FNAV_WORDS = Struct("<7I")
-_FNAV_PAGE_OFFSET = 0x90
+_GALILEO_PAGE_OFFSET = 0x90
+_HAS_WORDS = Struct("<14I")
+_HAS_DUMMY_HEADER = 0xAF3BC3
+_GALILEO_SVIDS = range(GALILEO_SVID_BASE + 1, GALILEO_SVID_BASE + 37)
 _NATIVE_LAYOUTS = {
     0: (range(1, 33), _GPS_BLOCK_OFFSET + _GPS_WORDS.size),
     0x22: (range(161, 224), _BEIDOU_STATE_WORDS.size),
     0x34: (range(65, 89), _GLONASS_STRING_OFFSETS[-1] + 12),
     _GALILEO_FNAV: (
-        range(GALILEO_SVID_BASE + 1, GALILEO_SVID_BASE + 37),
-        _FNAV_PAGE_OFFSET + _FNAV_WORDS.size,
+        _GALILEO_SVIDS,
+        _GALILEO_PAGE_OFFSET + _FNAV_WORDS.size,
     ),
+    _GALILEO_E6B: (_GALILEO_SVIDS, _GALILEO_PAGE_OFFSET + _HAS_WORDS.size),
 }
 
 # IS-GPS-200 Table 20-XIV, applied to the 24 data bits after inversion.
@@ -368,7 +375,7 @@ def extract_galileo_fnav(
     ):
         if channel == 0 or not _U32.unpack_from(state)[0] & PAGE_VALID_FLAG:
             continue
-        words = _FNAV_WORDS.unpack_from(state, _FNAV_PAGE_OFFSET)
+        words = _FNAV_WORDS.unpack_from(state, _GALILEO_PAGE_OFFSET)
         bits = "".join(f"{word:032b}" for word in words)[:214]
         kind = _fnav_field(bits, 0, 6)
         if kind not in (1, 2, 3, 4, 5, 6, 63):
@@ -409,6 +416,89 @@ def extract_galileo_fnav(
                 gst_tow_s=tow,
                 clock=clock,
                 data=pack_bits(bits),
+            )
+        )
+    return tuple(pages)
+
+
+@dataclass(frozen=True, slots=True)
+class GalileoHasPage:
+    """The 448-bit E6-B HAS page retained after the receiver's C/NAV CRC check."""
+
+    prn: int
+    channel: int
+    receiver_time_counter: int
+    data: bytes
+    """Three header bytes followed by 53 Reed-Solomon encoded octets."""
+
+    @property
+    def dummy(self) -> bool:
+        return int.from_bytes(self.data[:3], "big") == _HAS_DUMMY_HEADER
+
+    @property
+    def status(self) -> int | None:
+        """Raw HAS Status (HASS) for a non-dummy page."""
+        return None if self.dummy else self.data[0] >> 6
+
+    @property
+    def message_type(self) -> int | None:
+        return None if self.dummy else (self.data[0] >> 2) & 3
+
+    @property
+    def message_id(self) -> int | None:
+        return None if self.dummy else (self.data[0] & 3) * 8 + (self.data[1] >> 5)
+
+    @property
+    def message_size(self) -> int | None:
+        return None if self.dummy else (self.data[1] & 31) + 1
+
+    @property
+    def page_id(self) -> int | None:
+        return None if self.dummy else self.data[2]
+
+    @property
+    def encoded_page(self) -> bytes:
+        """The 53 encoded octets in transmission order."""
+        return self.data[3:]
+
+    def manifest(self) -> dict[str, object]:
+        """Serialise the raw page and fields used to collect a message."""
+        return {
+            "prn": self.prn,
+            "channel": self.channel,
+            "receiver_time_counter": self.receiver_time_counter,
+            "dummy": self.dummy,
+            "status": self.status,
+            "message_type": self.message_type,
+            "message_id": self.message_id,
+            "message_size": self.message_size,
+            "page_id": self.page_id,
+            "data": self.data.hex(),
+        }
+
+
+def extract_galileo_has(
+    regions: Mapping[str, tuple[int, bytes]],
+) -> tuple[GalileoHasPage, ...]:
+    """Read the retained E6-B HAS pages, including dummy pages.
+
+    Firmware validates the C/NAV checksum and stores the 448-bit HAS
+    page that follows the fourteen reserved bits of each C/NAV page.
+    The buffer omits the checksum, so replay relies on the valid flag.
+    """
+    pages = []
+    for _, channel, svid, state in _channel_states(
+        regions, (_GALILEO_E6B,), channel_limit=1100
+    ):
+        if channel == 0 or not _U32.unpack_from(state)[0] & PAGE_VALID_FLAG:
+            continue
+        words = _HAS_WORDS.unpack_from(state, _GALILEO_PAGE_OFFSET)
+        data = b"".join(word.to_bytes(4, "big") for word in words)
+        if not any(data):
+            continue
+        pages.append(
+            GalileoHasPage(
+                svid - GALILEO_SVID_BASE, channel, _U32.unpack_from(state, 4)[0], data
             )
         )
     return tuple(pages)

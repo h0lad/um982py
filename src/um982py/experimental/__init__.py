@@ -214,10 +214,12 @@ from um982py.experimental.native_nav import (
     BeidouLegacySubframe,
     GalileoFnavClock,
     GalileoFnavPage,
+    GalileoHasPage,
     GlonassFdmaString,
     GpsLnavSubframe,
     extract_beidou_nav,
     extract_galileo_fnav,
+    extract_galileo_has,
     extract_native_nav,
 )
 from um982py.experimental.osnma import (
@@ -370,6 +372,7 @@ __all__ = [
     "FirmwareSwitch",
     "GalileoFnavClock",
     "GalileoFnavPage",
+    "GalileoHasPage",
     "GlonassFdmaString",
     "GpsLnavSubframe",
     "InavCampaign",
@@ -479,6 +482,7 @@ __all__ = [
     "extract_dsp_receiver_diagnostics",
     "extract_dsp_tracking",
     "extract_galileo_fnav",
+    "extract_galileo_has",
     "extract_inav_pages",
     "extract_native_nav",
     "gst_subframe",

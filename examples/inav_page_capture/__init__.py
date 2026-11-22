@@ -6,6 +6,7 @@ from typing import cast
 from um982py.experimental import (
     BeidouLegacySubframe,
     GalileoFnavPage,
+    GalileoHasPage,
     GlonassFdmaString,
     GpsLnavSubframe,
     InavCampaign,
@@ -123,6 +124,7 @@ def render_native_nav(
     glonass: Sequence[GlonassFdmaString],
     beidou: Sequence[BeidouLegacySubframe] = (),
     fnav: Sequence[GalileoFnavPage] = (),
+    has: Sequence[GalileoHasPage] = (),
 ) -> str:
     """Render the parity-checked native navigation records of one snapshot."""
     lines = [
@@ -178,6 +180,27 @@ def render_native_nav(
             f"  {iod:>6}  {tow:>11}  {page.data.hex()}"
         )
     if not fnav:
+        lines.append("-")
+
+    lines += [
+        "",
+        f"Galileo E6-B HAS ({len(has)} pages)",
+        "PRN    Ch  Counter  Status    MT  MID  PID  Message size",
+    ]
+    for has_page in has:
+        prefix = (
+            f"{has_page.prn:>3}  {has_page.channel:>4}"
+            f"  {has_page.receiver_time_counter:>7}"
+        )
+        if has_page.dummy:
+            lines.append(f"{prefix}  dummy")
+        else:
+            lines.append(
+                f"{prefix}  {has_page.status!s:>6}  {has_page.message_type!s:>4}"
+                f"  {has_page.message_id!s:>3}  {has_page.page_id!s:>3}"
+                f"  {has_page.message_size!s:>12}"
+            )
+    if not has:
         lines.append("-")
     return "\n".join(lines)
 

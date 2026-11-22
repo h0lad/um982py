@@ -5,8 +5,10 @@ from struct import pack_into
 import pytest
 
 from um982py.experimental import (
+    GalileoHasPage,
     extract_beidou_nav,
     extract_galileo_fnav,
+    extract_galileo_has,
     extract_native_nav,
 )
 
@@ -105,6 +107,65 @@ def test_extracts_galileo_fnav_clock_from_receiver_page() -> None:
     pack_into("<I", state, 0, 0x70000309)
     regions["state"] = (STATE_BASE, bytes(state))
     assert extract_galileo_fnav(regions) == ()
+
+
+def test_extracts_galileo_has_page_and_distinguishes_dummy() -> None:
+    record = bytearray(0x148)
+    record[:2] = bytes((0x43, 108))
+    pack_into("<I", record, 4, 548)
+    pack_into("<I", record, 0x134, STATE_BASE)
+    state = bytearray(0xC8)
+    pack_into("<2I", state, 0, 0x70001009, 577052)
+    page_data = bytes.fromhex(
+        "47aa31ecdc5157aeb6347cf5cd095568a9c3321c6ebbda77f9cd9e186ed935"
+        "ac8b7d10f525695bfcb697c482f76cda71b1bf5c9610f92d64"
+    )
+    state[0x90:] = b"".join(
+        page_data[i : i + 4][::-1] for i in range(0, len(page_data), 4)
+    )
+    regions = {
+        "record": (TRACKING_BASE, bytes(record)),
+        "state": (STATE_BASE, bytes(state)),
+    }
+    (page,) = extract_galileo_has(regions)
+    assert (page.prn, page.channel, page.receiver_time_counter) == (8, 548, 577052)
+    assert (page.status, page.message_type, page.message_id) == (1, 1, 29)
+    assert (page.message_size, page.page_id) == (11, 49)
+    assert not page.dummy
+    assert len(page.encoded_page) == 53
+    assert page.manifest()["data"] == page_data.hex()
+
+    state[0x91:0x94] = b"\xc3\x3b\xaf"
+    regions["state"] = (STATE_BASE, bytes(state))
+    (page,) = extract_galileo_has(regions)
+    assert page.dummy
+    assert page.message_id is None
+    assert page.page_id is None
+
+    pack_into("<I", state, 0, 0x70000009)
+    regions["state"] = (STATE_BASE, bytes(state))
+    assert extract_galileo_has(regions) == ()
+
+
+def test_has_page_header_matches_the_icd_sample() -> None:
+    page = GalileoHasPage(
+        0,
+        0,
+        0,
+        bytes.fromhex(
+            "05ee37847bc749eb7d7174244788fb4546918c00272aebc15492cc6eb55a5880"
+            "e261bae3171a23dd0be562fc8d6fd88e6229c29e7d8c99df"
+        ),
+    )
+    assert (page.status, page.message_type, page.message_id) == (0, 1, 15)
+    assert (page.message_size, page.page_id) == (15, 55)
+    assert not page.dummy
+    assert list(page.encoded_page) == [
+        132, 123, 199, 73, 235, 125, 113, 116, 36, 71, 136, 251, 69, 70,
+        145, 140, 0, 39, 42, 235, 193, 84, 146, 204, 110, 181, 90, 88, 128,
+        226, 97, 186, 227, 23, 26, 35, 221, 11, 229, 98, 252, 141, 111, 216,
+        142, 98, 41, 194, 158, 125, 140, 153, 223,
+    ]
 
 
 @pytest.mark.parametrize("corrupt", [False, True])

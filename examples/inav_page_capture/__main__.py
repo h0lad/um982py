@@ -20,6 +20,7 @@ from um982py.experimental import (
     TRACKING_MEMORY_BASE,
     BeidouLegacySubframe,
     GalileoFnavPage,
+    GalileoHasPage,
     GlonassFdmaString,
     GpsLnavSubframe,
     InavCampaign,
@@ -29,6 +30,7 @@ from um982py.experimental import (
     capture_inav_pages,
     extract_beidou_nav,
     extract_galileo_fnav,
+    extract_galileo_has,
     extract_native_nav,
     load_public_key,
     read_inav_stream_csv,
@@ -80,7 +82,7 @@ def build_parser() -> ExampleParser:
     parser.add_argument(
         "--native-nav",
         action=BooleanOptionalAction,
-        help="show native GPS, GLONASS, BeiDou and Galileo F/NAV (default: on)",
+        help="show native GPS, GLONASS, BeiDou, F/NAV and HAS (default: on)",
     )
     parser.add_argument(
         "--summary",
@@ -142,12 +144,14 @@ def _native_nav_manifest(
     glonass: Sequence[GlonassFdmaString],
     beidou: Sequence[BeidouLegacySubframe],
     galileo_fnav: Sequence[GalileoFnavPage],
+    galileo_has: Sequence[GalileoHasPage],
 ) -> dict[str, object]:
     return {
         "gps_lnav": [subframe.manifest() for subframe in gps],
         "glonass_fdma": [string.manifest() for string in glonass],
         "beidou_legacy": [subframe.manifest() for subframe in beidou],
         "galileo_fnav": [page.manifest() for page in galileo_fnav],
+        "galileo_has": [page.manifest() for page in galileo_has],
     }
 
 
@@ -166,25 +170,29 @@ def _write_snapshot_report(
     table = [] if summary else [
         render_campaign(campaign, audits=[audit for group in audits for audit in group])
     ]
-    gps_count = glonass_count = beidou_count = fnav_count = 0
+    gps_count = glonass_count = beidou_count = fnav_count = has_count = 0
     if native_nav:
         native = [
-            (*extract_native_nav(snapshot.memory_windows),
-             extract_beidou_nav(snapshot.memory_windows),
-             extract_galileo_fnav(snapshot.memory_windows))
+            (
+                *extract_native_nav(snapshot.memory_windows),
+                extract_beidou_nav(snapshot.memory_windows),
+                extract_galileo_fnav(snapshot.memory_windows),
+                extract_galileo_has(snapshot.memory_windows),
+            )
             for snapshot in campaign.snapshots
         ]
-        report["native_nav"] = [
-            _native_nav_manifest(*records) for records in native
-        ]
-        for index, (gps, glonass, beidou, fnav) in enumerate(native, start=1):
+        report["native_nav"] = [_native_nav_manifest(*records) for records in native]
+        for index, (gps, glonass, beidou, fnav, has) in enumerate(native, start=1):
             gps_count += len(gps)
             glonass_count += len(glonass)
             beidou_count += len(beidou)
             fnav_count += len(fnav)
+            has_count += len(has)
             if not summary:
                 heading = f"Snapshot {index}\n" if len(native) > 1 else ""
-                table.append(heading + render_native_nav(gps, glonass, beidou, fnav))
+                table.append(
+                    heading + render_native_nav(gps, glonass, beidou, fnav, has)
+                )
     if table:
         print("\n\n".join(table), file=sys.stdout if destination else sys.stderr)
     write_json(report, destination)
@@ -197,7 +205,8 @@ def _write_snapshot_report(
     if native_nav:
         totals += (
             f", {gps_count} GPS subframes, {glonass_count} GLONASS strings, "
-            f"{beidou_count} BeiDou subframes, {fnav_count} Galileo F/NAV pages"
+            f"{beidou_count} BeiDou subframes, {fnav_count} Galileo F/NAV pages, "
+            f"{has_count} Galileo HAS pages"
         )
     if campaign.application_restored is not None:
         totals += f", application_restored={campaign.application_restored}"

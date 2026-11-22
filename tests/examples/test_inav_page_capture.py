@@ -95,6 +95,7 @@ def test_live_report_native_navigation(
                 "glonass_fdma": [glonass.manifest()],
                 "beidou_legacy": [beidou.manifest()],
                 "galileo_fnav": [],
+                "galileo_has": [],
             }
         ]
 
