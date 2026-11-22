@@ -1,6 +1,6 @@
-"""Parity-checked GPS and GLONASS navigation from UM982 tracking snapshots."""
+"""Parity-checked navigation from UM982 tracking snapshots."""
 
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from itertools import pairwise
 from struct import Struct
@@ -10,14 +10,27 @@ from um982py.experimental.inav_pages import (
     CHANNEL_STATE_POINTER_OFFSET,
 )
 
-__all__ = ["GlonassFdmaString", "GpsLnavSubframe", "extract_native_nav"]
+__all__ = [
+    "BeidouLegacySubframe",
+    "GlonassFdmaString",
+    "GpsLnavSubframe",
+    "extract_beidou_nav",
+    "extract_native_nav",
+]
 
 _U32 = Struct("<I")
 _GPS_WORDS = Struct("<10I")
 _GPS_BLOCK_OFFSET = 0xF4
-_GPS_WORD_MASK = (1 << 30) - 1
+_NAV_WORD_MASK = (1 << 30) - 1
 _GLONASS_STRING_OFFSETS = range(0x28, 0xA0, 12)
 _GLONASS_STRING_MASK = (1 << 85) - 1
+_BEIDOU_STATE_WORDS = Struct("<107I")
+_BEIDOU_PREAMBLE = "11100010010"
+_NATIVE_LAYOUTS = {
+    0: (range(1, 33), _GPS_BLOCK_OFFSET + _GPS_WORDS.size),
+    0x22: (range(161, 224), _BEIDOU_STATE_WORDS.size),
+    0x34: (range(65, 89), _GLONASS_STRING_OFFSETS[-1] + 12),
+}
 
 # IS-GPS-200 Table 20-XIV, applied to the 24 data bits after inversion.
 _GPS_PARITY_MASKS = (
@@ -73,7 +86,7 @@ class GpsLnavSubframe:
 
 def _gps_subframe(state: memoryview, channel: int, prn: int) -> GpsLnavSubframe | None:
     words = tuple(
-        word & _GPS_WORD_MASK
+        word & _NAV_WORD_MASK
         for word in reversed(_GPS_WORDS.unpack_from(state, _GPS_BLOCK_OFFSET))
     )
     for previous in range(4):
@@ -152,6 +165,29 @@ def _glonass_strings(
     return found
 
 
+def _channel_states(
+    regions: Mapping[str, tuple[int, bytes]], families: tuple[int, ...]
+) -> Iterator[tuple[int, int, int, memoryview]]:
+    windows = [(base, memoryview(data)) for base, data in regions.values()]
+    for _, memory in windows:
+        for offset in range(0, len(memory) - CHANNEL_RECORD_SIZE + 1, 4):
+            family, svid = memory[offset], memory[offset + 1]
+            if family not in families:
+                continue
+            ids, size = _NATIVE_LAYOUTS[family]
+            if svid not in ids:
+                continue
+            channel = _U32.unpack_from(memory, offset + 4)[0]
+            pointer = _U32.unpack_from(memory, offset + CHANNEL_STATE_POINTER_OFFSET)[0]
+            if channel >= 256 or pointer % 4:
+                continue
+            for base, data in windows:
+                start = pointer - base
+                if 0 <= start <= len(data) - size:
+                    yield family, channel, svid, data[start : start + size]
+                    break
+
+
 def extract_native_nav(
     regions: Mapping[str, tuple[int, bytes]],
 ) -> tuple[tuple[GpsLnavSubframe, ...], tuple[GlonassFdmaString, ...]]:
@@ -161,31 +197,99 @@ def extract_native_nav(
     can be stale or duplicated across antenna channels. The output keeps
     native channel IDs and does not combine snapshots into a time series.
     """
-    windows = [(base, memoryview(data)) for base, data in regions.values()]
     gps = []
     glonass = []
-    for _, memory in windows:
-        for offset in range(0, len(memory) - CHANNEL_RECORD_SIZE + 1, 4):
-            family, svid = memory[offset], memory[offset + 1]
-            if family == 0 and 1 <= svid <= 32:
-                size = _GPS_BLOCK_OFFSET + _GPS_WORDS.size
-            elif family == 0x34 and 65 <= svid <= 88:
-                size = _GLONASS_STRING_OFFSETS[-1] + 12
-            else:
-                continue
-            channel = _U32.unpack_from(memory, offset + 4)[0]
-            pointer = _U32.unpack_from(memory, offset + CHANNEL_STATE_POINTER_OFFSET)[0]
-            if channel >= 256 or pointer % 4:
-                continue
-            for base, data in windows:
-                start = pointer - base
-                if not 0 <= start <= len(data) - size:
-                    continue
-                state = data[start : start + size]
-                if family == 0:
-                    if (subframe := _gps_subframe(state, channel, svid)) is not None:
-                        gps.append(subframe)
-                else:
-                    glonass.extend(_glonass_strings(state, channel, svid))
-                break
+    for family, channel, svid, state in _channel_states(regions, (0, 0x34)):
+        if family == 0:
+            if (subframe := _gps_subframe(state, channel, svid)) is not None:
+                gps.append(subframe)
+        else:
+            glonass.extend(_glonass_strings(state, channel, svid))
     return tuple(gps), tuple(glonass)
+
+
+@dataclass(frozen=True, slots=True)
+class BeidouLegacySubframe:
+    """A stored 300-bit legacy BeiDou subframe with all BCH blocks checked."""
+
+    receiver_svid: int
+    channel: int
+    subframe: int
+    sow_s: int
+    words: tuple[int, ...]
+    """Ten 30-bit words in transmission order, including parity."""
+
+    data_words: tuple[int, ...]
+    """The 26 bits of word 1 and 22 bits per subsequent word."""
+
+    def manifest(self) -> dict[str, object]:
+        """Return the raw and deinterleaved data words as hex."""
+        return {
+            "receiver_svid": self.receiver_svid,
+            "channel": self.channel,
+            "subframe": self.subframe,
+            "sow_s": self.sow_s,
+            "words": [f"{word:08x}" for word in self.words],
+            "data_words": [
+                f"{word:07x}" if index == 0 else f"{word:06x}"
+                for index, word in enumerate(self.data_words)
+            ],
+        }
+
+
+def _beidou_bch_ok(block: str) -> bool:
+    remainder = int(block, 2)
+    for bit in range(14, 3, -1):
+        if remainder & (1 << bit):
+            remainder ^= 0x13 << (bit - 4)
+    return remainder == 0
+
+
+def _beidou_data(bits: str) -> tuple[int, ...] | None:
+    # The first 15 bits of word 1 are outside its BCH block.
+    if not _beidou_bch_ok(bits[15:30]):
+        return None
+    data = [int(bits[:26], 2)]
+    for start in range(30, 300, 30):
+        word = bits[start : start + 30]
+        left, right = word[::2], word[1::2]
+        if not (_beidou_bch_ok(left) and _beidou_bch_ok(right)):
+            return None
+        data.append(int(left[:11] + right[:11], 2))
+    return tuple(data)
+
+
+def extract_beidou_nav(
+    regions: Mapping[str, tuple[int, bytes]],
+) -> tuple[BeidouLegacySubframe, ...]:
+    """Extract complete legacy BeiDou subframes from the native tracking buffer.
+
+    The buffer holds newest words first, packed in 30-bit units. A
+    subframe can begin within a unit. The preamble, header and all 19
+    BCH blocks are checked before returning the bits.
+    """
+    found = []
+    for _, channel, svid, state in _channel_states(regions, (0x22,)):
+        bits = "".join(
+            f"{word & _NAV_WORD_MASK:030b}"
+            for word in reversed(_BEIDOU_STATE_WORDS.unpack(state))
+        )
+        index = bits.find(_BEIDOU_PREAMBLE)
+        seen = set()
+        while 0 <= index <= len(bits) - 300:
+            frame = bits[index : index + 300]
+            index = bits.find(_BEIDOU_PREAMBLE, index + 1)
+            if frame in seen or (decoded := _beidou_data(frame)) is None:
+                continue
+            subframe = (decoded[0] >> 8) & 7
+            sow = ((decoded[0] & 0xFF) << 12) | (decoded[1] >> 10)
+            if not 1 <= subframe <= 5 or sow >= 604800 or sow % 3:
+                continue
+            words = tuple(
+                int(frame[start : start + 30], 2) for start in range(0, 300, 30)
+            )
+            found.append(
+                BeidouLegacySubframe(svid, channel, subframe, sow, words, decoded)
+            )
+            seen.add(frame)
+    return tuple(found)

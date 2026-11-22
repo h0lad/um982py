@@ -4,6 +4,7 @@ from collections.abc import Sequence
 from typing import cast
 
 from um982py.experimental import (
+    BeidouLegacySubframe,
     GlonassFdmaString,
     GpsLnavSubframe,
     InavCampaign,
@@ -117,7 +118,9 @@ def campaign_window_audits(
 
 
 def render_native_nav(
-    gps: Sequence[GpsLnavSubframe], glonass: Sequence[GlonassFdmaString]
+    gps: Sequence[GpsLnavSubframe],
+    glonass: Sequence[GlonassFdmaString],
+    beidou: Sequence[BeidouLegacySubframe] = (),
 ) -> str:
     """Render the parity-checked native navigation records of one snapshot."""
     lines = [
@@ -144,6 +147,20 @@ def render_native_nav(
         for record in glonass
     )
     if not glonass:
+        lines.append("-")
+
+    lines += [
+        "",
+        f"BeiDou legacy ({len(beidou)} BCH-checked subframes)",
+        "SVID    Ch  Subframe  BDT SOW (s)  30-bit words (hex)",
+    ]
+    for frame in beidou:
+        words = " ".join(f"{word:08x}" for word in frame.words)
+        lines.append(
+            f"{frame.receiver_svid:>4}  {frame.channel:>4}  {frame.subframe:>8}"
+            f"  {frame.sow_s:>11}  {words}"
+        )
+    if not beidou:
         lines.append("-")
     return "\n".join(lines)
 

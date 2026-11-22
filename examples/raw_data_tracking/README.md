@@ -2,6 +2,10 @@
 
 Parse raw baseband containers, inner messages and notices.
 
+This example uses the running receiver application's log interface.
+For per-channel Doppler and diagnostics from DSP RAM in the boot menu, use
+the [DSP tracking snapshot](../dsp_tracking/README.md).
+
 ## Run
 
 Run from the repository root after [installation](../README.md#running-the-examples).

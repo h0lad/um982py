@@ -69,11 +69,11 @@ The boot-menu snapshots provide raw OSNMA activity counts. The NMA header
 occupies the first odd part of a GST-aligned sub-frame, so the snapshot
 report leaves the legacy JSON `headers` list empty.
 
-## Dump native GPS and GLONASS navigation
+## Dump native GPS, GLONASS and BeiDou navigation
 
-Live snapshots include parity-checked GPS and GLONASS bits in the terminal
-tables and JSON by default. Pass `--no-native-nav` for a Galileo-only
-report.
+Live snapshots include checked GPS, GLONASS and BeiDou bits in the
+terminal tables and JSON by default. Pass `--no-native-nav` for a
+Galileo-only report.
 
 ```bash
 PYTHONPATH=src python3 -m examples.inav_page_capture --port /dev/ttyUSB0 --json nav.json
@@ -90,12 +90,18 @@ PYTHONPATH=src python3 -m examples.inav_page_capture --tracking-ram tracking.bin
 raw 30-bit LNAV words, the 24 data bits per word, the sub-frame ID and the
 HOW time of the next sub-frame. All ten parity checks must pass.
 GLONASS records carry the complete 85-bit FDMA string and its string
-number. All eight Hamming checks must pass. Both retain the receiver
-channel for provenance. The tracking layout was verified on UM982
+number. All eight Hamming checks must pass. BeiDou records carry the
+ten raw 30-bit legacy words, the deinterleaved data words, the sub-frame
+ID and BeiDou seconds of week. All 19 BCH blocks must pass. Each record
+retains the receiver channel for provenance. The tracking layout was verified on UM982
 snapshots. Stored records may precede the capture time or appear on
 multiple channels.
 [GPS IS-GPS-200N, §20.3.5](https://www.gps.gov/sites/default/files/2025-07/IS-GPS-200N.pdf)
 · [GLONASS FDMA ICD, §4.7](https://www.unavco.org/help/glossary/docs/ICD_GLONASS_5.1_%282008%29_en.pdf)
+· [BeiDou B1I ICD, §§5.1.3 and 5.2](https://www.unavco.org/help/glossary/docs/ICD_BeiDou_1.0_%282012%29_en.pdf)
+
+For Doppler, C/N₀, and other per-channel DSP measurements, use the separate
+[DSP tracking snapshot](../dsp_tracking/README.md).
 
 ## Record an experiment for offline analysis
 
@@ -121,7 +127,7 @@ PYTHONPATH=src python3 -m examples.inav_page_capture \
     --tracking-ram run/ram/tracking-0001.bin --summary --json run/replay.json
 ```
 
-Replay reconstructs the Galileo, GPS and GLONASS report without a serial
+Replay reconstructs the Galileo, GPS, GLONASS and BeiDou report without a serial
 connection. Host UTC bounds cover the capture operation. Broadcast
 message times and the receiver's tracking counters are separate fields.
 Each live snapshot restarts the receiver. Measurements that require

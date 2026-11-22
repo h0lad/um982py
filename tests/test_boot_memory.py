@@ -1,5 +1,6 @@
 import binascii
 import struct
+from pathlib import Path
 
 import pytest
 
@@ -61,6 +62,7 @@ class _FakePort:
     def __init__(self, responses: list[bytes]) -> None:
         self.responses = list(responses)
         self.pending = bytearray()
+        self.writes: list[bytes] = []
 
     def read(self, size: int) -> bytes:
         while not self.pending and self.responses:
@@ -70,6 +72,7 @@ class _FakePort:
         return data
 
     def write(self, data: bytes) -> int:
+        self.writes.append(data)
         return len(data)
 
     def close(self) -> None:
@@ -82,6 +85,34 @@ def _reader_with(responses: list[bytes]) -> BootMemoryReader:
     reader._port = None
     reader.application_restored = None
     return reader
+
+
+def test_connect_at_existing_boot_menu(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    helper = tmp_path / "reader.bin"
+    helper.write_bytes(b"test")
+    port = _FakePort(
+        [
+            b"",
+            b"boot>",
+            b"## Ready for binary (xmodem)\r\nC",
+            b"\x06",
+            b"\x06UM982RAM1\r\n",
+            b"$GNGGA",
+            b"#VERSION;UM982,",
+        ]
+    )
+    monkeypatch.setattr("serial.Serial", lambda *_args, **_kwargs: port)
+    with BootMemoryReader.connect(
+        "serial", helper=helper, boot_menu_only=True
+    ) as reader:
+        assert port.writes[0] == b"3\r"
+        assert len(port.writes) == 3
+        assert port.writes[-1] == b"\x04"
+    assert port.writes[3:] == [b"Q", b"\r\nVERSION\r\n"]
+    assert reader.application_restored is True
 
 
 def _read_response(address: int, payload: bytes, *, echo: bool = True) -> bytes:

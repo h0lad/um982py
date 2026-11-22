@@ -1,4 +1,4 @@
-"""Capture Galileo, GPS and GLONASS navigation or replay Galileo streams."""
+"""Capture Galileo, GPS, GLONASS and BeiDou navigation or replay Galileo streams."""
 
 from __future__ import annotations
 
@@ -18,6 +18,7 @@ from examples.inav_page_capture import (
 )
 from um982py.experimental import (
     TRACKING_MEMORY_BASE,
+    BeidouLegacySubframe,
     GlonassFdmaString,
     GpsLnavSubframe,
     InavCampaign,
@@ -25,6 +26,7 @@ from um982py.experimental import (
     PageWindowAudit,
     capture_inav_campaign,
     capture_inav_pages,
+    extract_beidou_nav,
     extract_native_nav,
     load_public_key,
     read_inav_stream_csv,
@@ -53,7 +55,7 @@ def build_parser() -> ExampleParser:
     offline.add_argument(
         "--tracking-ram",
         type=Path,
-        help="extract GPS and GLONASS navigation bits from a saved tracking window",
+        help="extract navigation bits from a saved tracking window",
     )
     replay_mode = parser.add_mutually_exclusive_group()
     replay_mode.add_argument(
@@ -76,7 +78,7 @@ def build_parser() -> ExampleParser:
     parser.add_argument(
         "--native-nav",
         action=BooleanOptionalAction,
-        help="show parity-checked GPS and GLONASS bits in snapshots (default: on)",
+        help="show checked GPS, GLONASS and BeiDou bits in snapshots (default: on)",
     )
     parser.add_argument(
         "--summary",
@@ -134,11 +136,14 @@ def _report(
 
 
 def _native_nav_manifest(
-    gps: Sequence[GpsLnavSubframe], glonass: Sequence[GlonassFdmaString]
+    gps: Sequence[GpsLnavSubframe],
+    glonass: Sequence[GlonassFdmaString],
+    beidou: Sequence[BeidouLegacySubframe],
 ) -> dict[str, object]:
     return {
         "gps_lnav": [subframe.manifest() for subframe in gps],
         "glonass_fdma": [string.manifest() for string in glonass],
+        "beidou_legacy": [subframe.manifest() for subframe in beidou],
     }
 
 
@@ -157,21 +162,23 @@ def _write_snapshot_report(
     table = [] if summary else [
         render_campaign(campaign, audits=[audit for group in audits for audit in group])
     ]
-    gps_count = glonass_count = 0
+    gps_count = glonass_count = beidou_count = 0
     if native_nav:
         native = [
-            extract_native_nav(snapshot.memory_windows)
+            (*extract_native_nav(snapshot.memory_windows),
+             extract_beidou_nav(snapshot.memory_windows))
             for snapshot in campaign.snapshots
         ]
         report["native_nav"] = [
-            _native_nav_manifest(gps, glonass) for gps, glonass in native
+            _native_nav_manifest(*records) for records in native
         ]
-        for index, (gps, glonass) in enumerate(native, start=1):
+        for index, (gps, glonass, beidou) in enumerate(native, start=1):
             gps_count += len(gps)
             glonass_count += len(glonass)
+            beidou_count += len(beidou)
             if not summary:
                 heading = f"Snapshot {index}\n" if len(native) > 1 else ""
-                table.append(heading + render_native_nav(gps, glonass))
+                table.append(heading + render_native_nav(gps, glonass, beidou))
     if table:
         print("\n\n".join(table), file=sys.stdout if destination else sys.stderr)
     write_json(report, destination)
@@ -182,7 +189,10 @@ def _write_snapshot_report(
         f"{len(words)} CRC-checked words"
     )
     if native_nav:
-        totals += f", {gps_count} GPS subframes, {glonass_count} GLONASS strings"
+        totals += (
+            f", {gps_count} GPS subframes, {glonass_count} GLONASS strings, "
+            f"{beidou_count} BeiDou subframes"
+        )
     if campaign.application_restored is not None:
         totals += f", application_restored={campaign.application_restored}"
     print(totals, file=sys.stdout if summary and destination else sys.stderr)

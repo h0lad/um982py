@@ -42,7 +42,7 @@ WORKFLOW_EXAMPLES = frozenset(
         "postprocessed_rtk",
     }
 )
-NO_ANTENNA_EXAMPLES = frozenset({"inav_page_capture"})
+NO_ANTENNA_EXAMPLES = frozenset({"dsp_tracking", "inav_page_capture"})
 SHARED_TESTS = {
     **dict.fromkeys(CSV_EXPERIMENTS, "test_scientific_cli.py"),
     **dict.fromkeys(WORKFLOW_EXAMPLES, "examples/test_workflow_examples.py"),
@@ -216,7 +216,7 @@ def test_example_readme_links_resolve(name: str) -> None:
 def test_example_readme_documents_a_source(name: str) -> None:
     text = (EXAMPLES / name / "README.md").read_text()
     assert "```bash" in text
-    assert "python -m examples." in text
+    assert re.search(r"\bpython3? -m examples\.", text)
     assert any(
         marker in text for marker in ("(" + "19", "(20", "Reference", "et al", "Manual")
     ) or re.search(r"\[[^\]]+\]\(https?://[^)]+\)", text), (

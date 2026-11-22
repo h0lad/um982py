@@ -153,20 +153,27 @@ class BootMemoryReader:
         baud: int = 921600,
         *,
         helper: Path,
+        boot_menu_only: bool = False,
     ) -> Self:
         """Open ``port``, enter the boot menu and upload ``helper``.
 
+        With ``boot_menu_only``, wait for an existing boot prompt without
+        sending application commands to enter the menu.
         The returned reader holds the serial port and must be closed with
         :meth:`close` to reset the receiver back into the application.
         """
+        payload = helper.read_bytes()
         handle = serial.Serial(port, baud, timeout=0.01, write_timeout=2)
         reader = cls.__new__(cls)
         reader._port = handle
         reader._wire = _Wire(handle)
         reader.application_restored = None
         try:
-            reader._enter_boot_menu(baud)
-            reader._upload(helper.read_bytes())
+            if boot_menu_only:
+                reader._receive_boot_prompt(2 * MENU_IDLE_TIMEOUT)
+            else:
+                reader._enter_boot_menu(baud)
+            reader._upload(payload)
         except BootMenuError:
             handle.close()
             raise

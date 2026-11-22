@@ -55,6 +55,7 @@ STAGE_ACCESS: dict[BasebandStage, tuple[str, ...]] = {
     ),
     BasebandStage.TRACKING: (
         "Tracking-loop diagnostics",
+        "read_dsp_tracking (build 25164 per-channel boot-memory snapshot)",
         "PTOBSINFO (inner message 24, 18 diagnostic slots)",
         "RAWBBPKG containers (when emitted)",
     ),

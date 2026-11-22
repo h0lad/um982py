@@ -16,6 +16,7 @@ from examples.inav_page_capture import (
 from examples.inav_page_capture.__main__ import _report
 
 from um982py.experimental import (
+    BeidouLegacySubframe,
     GlonassFdmaString,
     GpsLnavSubframe,
     InavCampaign,
@@ -72,6 +73,8 @@ def test_live_report_native_navigation(
     gps = GpsLnavSubframe(26, 1, 3, 577038, (0x22C18D0D,), (0x8B0634,))
     glonass = GlonassFdmaString(65, 34, 11, 0x0B7EDAA35FFFFDD9EFD682)
     monkeypatch.setattr(cli, "extract_native_nav", lambda regions: ((gps,), (glonass,)))
+    beidou = BeidouLegacySubframe(201, 64, 3, 587082, (0x389038FE,), (0x39038F,))
+    monkeypatch.setattr(cli, "extract_beidou_nav", lambda regions: (beidou,))
 
     assert cli.main() == 0
     output = capsys.readouterr().out
@@ -80,12 +83,18 @@ def test_live_report_native_navigation(
         assert "native_nav" not in report
         assert "GPS LNAV" not in output
         assert "GLONASS FDMA" not in output
+        assert "BeiDou legacy" not in output
     else:
         assert "GPS LNAV (1 parity-checked subframes)" in output
         assert "GLONASS FDMA (1 Hamming-checked strings)" in output
+        assert "BeiDou legacy (1 BCH-checked subframes)" in output
         assert "22c18d0d" in output and "0b7edaa35ffffdd9efd682" in output
         assert report["native_nav"] == [
-            {"gps_lnav": [gps.manifest()], "glonass_fdma": [glonass.manifest()]}
+            {
+                "gps_lnav": [gps.manifest()],
+                "glonass_fdma": [glonass.manifest()],
+                "beidou_legacy": [beidou.manifest()],
+            }
         ]
 
 

@@ -116,6 +116,22 @@ from um982py.experimental.debug import (
     parse_ppp_debug,
     ppp_debug_satellite,
 )
+from um982py.experimental.dsp_receiver import (
+    DSP_RECEIVER_MEMORY_WINDOWS,
+    DspGpsEpoch,
+    DspGpsIonosphere,
+    DspReceiverDiagnostics,
+    DspSensorAdc,
+    extract_dsp_receiver_diagnostics,
+)
+from um982py.experimental.dsp_tracking import (
+    DSP_TRACKING_MEMORY_WINDOWS,
+    DspDopplerCalibration,
+    DspTrackingChannel,
+    DspTrackingObservation,
+    extract_dsp_tracking,
+    read_dsp_tracking,
+)
 from um982py.experimental.ecdsa_p256 import (
     InvalidSignature,
     decompress_public_key,
@@ -195,8 +211,10 @@ from um982py.experimental.matched_solution import (
     matched_solution_stop,
 )
 from um982py.experimental.native_nav import (
+    BeidouLegacySubframe,
     GlonassFdmaString,
     GpsLnavSubframe,
+    extract_beidou_nav,
     extract_native_nav,
 )
 from um982py.experimental.osnma import (
@@ -297,6 +315,8 @@ __all__ = [
     "CHANNEL_STATE_WINDOW_LENGTH",
     "CHANNEL_STATE_WINDOW_OFFSET",
     "CORRECTION_AUDIT_LOGS",
+    "DSP_RECEIVER_MEMORY_WINDOWS",
+    "DSP_TRACKING_MEMORY_WINDOWS",
     "FIRST_MESSAGE_OFFSET",
     "HEADER_SIZE",
     "INAV_SYNC_PATTERN",
@@ -324,6 +344,7 @@ __all__ = [
     "BasebandSolution",
     "BasebandStage",
     "BasebandStream",
+    "BeidouLegacySubframe",
     "BootMemoryReader",
     "ChannelState",
     "Compressed2Satellite",
@@ -335,6 +356,13 @@ __all__ = [
     "DebugOutput",
     "DsmHeader",
     "DsmKroot",
+    "DspDopplerCalibration",
+    "DspGpsEpoch",
+    "DspGpsIonosphere",
+    "DspReceiverDiagnostics",
+    "DspSensorAdc",
+    "DspTrackingChannel",
+    "DspTrackingObservation",
     "Fec2Recovery",
     "FirmwareSwitch",
     "GlonassFdmaString",
@@ -441,7 +469,10 @@ __all__ = [
     "enter_debug_mode",
     "enter_debug_mode_at",
     "event_config",
+    "extract_beidou_nav",
     "extract_channel_states",
+    "extract_dsp_receiver_diagnostics",
+    "extract_dsp_tracking",
     "extract_inav_pages",
     "extract_native_nav",
     "gst_subframe",
@@ -485,6 +516,7 @@ __all__ = [
     "rangecmp_output",
     "rangecmp_read",
     "rangecmp_stop",
+    "read_dsp_tracking",
     "read_inav_stream_csv",
     "rec_info_enable",
     "recover_fec2_ced",
