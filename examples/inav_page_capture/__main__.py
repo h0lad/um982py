@@ -14,6 +14,7 @@ from pathlib import Path
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples.inav_page_capture import (
     render_campaign,
+    render_has_messages,
     render_native_nav,
 )
 from um982py.experimental import (
@@ -28,6 +29,7 @@ from um982py.experimental import (
     PageWindowAudit,
     capture_inav_campaign,
     capture_inav_pages,
+    collect_has_page_sets,
     extract_beidou_nav,
     extract_galileo_fnav,
     extract_galileo_has,
@@ -193,6 +195,23 @@ def _write_snapshot_report(
                 table.append(
                     heading + render_native_nav(gps, glonass, beidou, fnav, has)
                 )
+        has_identities = collect_has_page_sets(
+            [page for *_, has in native for page in has]
+        )
+        recovered = [(page_set, page_set.decode()) for page_set in has_identities]
+        report["galileo_has_messages"] = [
+            {
+                "message_type": page_set.message_type,
+                "message_id": page_set.message_id,
+                "message_size": page_set.message_size,
+                "pages": sorted(page_set.pages),
+                "prns": page_set.prns,
+                "message": None if message is None else message.manifest(),
+            }
+            for page_set, message in recovered
+        ]
+        if not summary:
+            table.append(render_has_messages(recovered))
     if table:
         print("\n\n".join(table), file=sys.stdout if destination else sys.stderr)
     write_json(report, destination)
@@ -206,7 +225,8 @@ def _write_snapshot_report(
         totals += (
             f", {gps_count} GPS subframes, {glonass_count} GLONASS strings, "
             f"{beidou_count} BeiDou subframes, {fnav_count} Galileo F/NAV pages, "
-            f"{has_count} Galileo HAS pages"
+            f"{has_count} Galileo HAS pages, "
+            f"{len(recovered)} Galileo HAS identities"
         )
     if campaign.application_restored is not None:
         totals += f", application_restored={campaign.application_restored}"

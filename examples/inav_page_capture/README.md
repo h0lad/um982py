@@ -117,6 +117,19 @@ The receiver discards the C/NAV CRC after validation. The counter is local
 to the receiver and should not be used as a Galileo time-of-week stamp.
 [Galileo HAS SIS ICD, §§2–3 and 6](https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_HAS_SIS_ICD_v1.0.pdf)
 
+`galileo_has_messages` groups the collected pages by message identity and
+recovers the message once any `k` distinct pages are gathered: the
+Reed-Solomon erasure decode of ICD section 6.4 reassembles the 53-octet
+message pages, strips the alternating padding and, for MT1, parses the
+header, the satellite, signal and cell masks and the orbit, code-bias and
+phase-bias blocks of ICD section 5. Clock-subset messages stop before
+that block and say so. Leftover pages verify the recovered codeword, so
+pages from different broadcast instances are labelled `mixed instances`
+rather than silently combined. Snapshots restart the receiver, so pages
+sampled minutes apart may belong to different instances of one identity;
+the consistency flag tells them apart.
+[Galileo HAS SIS ICD, §5, §6.4 and Annex C](https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_HAS_SIS_ICD_v1.0.pdf)
+
 For Doppler, C/N₀, and other per-channel DSP measurements, use the separate
 [DSP tracking snapshot](../dsp_tracking/README.md).
 

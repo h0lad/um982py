@@ -9,6 +9,8 @@ from um982py.experimental import (
     GalileoHasPage,
     GlonassFdmaString,
     GpsLnavSubframe,
+    HasMessage,
+    HasPageSet,
     InavCampaign,
     InavPage,
     InavWord,
@@ -201,6 +203,52 @@ def render_native_nav(
                 f"  {has_page.message_size!s:>12}"
             )
     if not has:
+        lines.append("-")
+    return "\n".join(lines)
+
+
+def render_has_messages(
+    entries: Sequence[tuple[HasPageSet, HasMessage | None]],
+) -> str:
+    """Render the E6-B HAS message identities collected by a campaign."""
+    lines = [
+        f"Galileo E6-B HAS messages ({len(entries)} identities)",
+        "MT  MID  Size  Pages  PRNs      Recovery",
+    ]
+    for page_set, message in entries:
+        prns = ",".join(str(prn) for prn in sorted(set(page_set.prns.values())))
+        prefix = (
+            f"{page_set.message_type:>2}  {page_set.message_id:>3}"
+            f"  {page_set.message_size:>4}  {len(page_set.pages):>5}"
+            f"  {prns:>8}"
+        )
+        if message is None:
+            lines.append(f"{prefix}  needs {page_set.message_size} pages")
+            continue
+        state = "consistent" if message.consistent else "mixed instances"
+        if message.mt1 is not None and message.mt1.complete:
+            mt1 = message.mt1
+            mask_systems = mt1.mask.systems if mt1.mask is not None else ()
+            systems = ", ".join(
+                f"{'GPS' if system.gnss_id == 0 else 'GAL'}"
+                f" {len(system.satellites)}"
+                for system in mask_systems
+            )
+            systems = systems or "no mask"
+            lines.append(
+                f"{prefix}  {state}, decoded: TOH {mt1.header.toh_s} s"
+                f" ({systems})"
+                f", {len(mt1.orbits or ())} orbit corrections"
+                f", {len(mt1.code_biases or ())} code biases"
+                f", {len(mt1.phase_biases or ())} phase biases"
+            )
+        elif message.mt1 is not None:
+            lines.append(
+                f"{prefix}  {state}, partial: {message.mt1.unsupported}"
+            )
+        else:
+            lines.append(f"{prefix}  {state}, type {message.message_type}")
+    if not entries:
         lines.append("-")
     return "\n".join(lines)
 
