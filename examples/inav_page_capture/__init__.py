@@ -8,7 +8,9 @@ from um982py.experimental import (
     GalileoFnavPage,
     GalileoHasPage,
     GlonassFdmaString,
+    GpsLnavEphemeris,
     GpsLnavSubframe,
+    GpsRingSubframe,
     HasMessage,
     HasPageSet,
     InavCampaign,
@@ -203,6 +205,38 @@ def render_native_nav(
                 f"  {has_page.message_size!s:>12}"
             )
     if not has:
+        lines.append("-")
+    return "\n".join(lines)
+
+
+def render_gps_ring(
+    subframes: Sequence[GpsRingSubframe],
+    ephemerides: Sequence[GpsLnavEphemeris],
+) -> str:
+    """Render chain-validated L1 C/A subframes from the word rings."""
+    lines = [
+        f"GPS LNAV ring ({len(subframes)} chain-validated subframes)",
+        "PRN    Ch  SF  Next TOW (s)  Words (hex)",
+    ]
+    for frame in subframes:
+        words = " ".join(f"{word:06x}" for word in frame.words)
+        lines.append(
+            f"{frame.prn:>3}  {frame.channel:>4}  SF{frame.subframe}"
+            f"  {frame.next_tow_s:>11}  {words}"
+        )
+    if not subframes:
+        lines.append("-")
+    lines += [
+        "",
+        f"GPS ephemerides ({len(ephemerides)} assembled)",
+        "PRN  IODC  IODE  Week  Health  t_oe (s)  sqrt(A) (m)",
+    ]
+    for eph in ephemerides:
+        lines.append(
+            f"{eph.prn:>3}  {eph.iodc:>4}  {eph.iode:>4}  {eph.week:>4}"
+            f"  {eph.health:>6}  {eph.toe_s:>8}  {eph.sqrt_a_m:>10.1f}"
+        )
+    if not ephemerides:
         lines.append("-")
     return "\n".join(lines)
 

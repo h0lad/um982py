@@ -14,6 +14,7 @@ from pathlib import Path
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples.inav_page_capture import (
     render_campaign,
+    render_gps_ring,
     render_has_messages,
     render_native_nav,
 )
@@ -27,12 +28,14 @@ from um982py.experimental import (
     InavCampaign,
     InavSnapshot,
     PageWindowAudit,
+    assemble_gps_ephemeris,
     capture_inav_campaign,
     capture_inav_pages,
     collect_has_page_sets,
     extract_beidou_nav,
     extract_galileo_fnav,
     extract_galileo_has,
+    extract_gps_ring_subframes,
     extract_native_nav,
     load_public_key,
     read_inav_stream_csv,
@@ -212,6 +215,33 @@ def _write_snapshot_report(
         ]
         if not summary:
             table.append(render_has_messages(recovered))
+        ring = [
+            extract_gps_ring_subframes(snapshot.memory_windows)
+            for snapshot in campaign.snapshots
+        ]
+        report["gps_ring"] = [
+            {
+                "subframes": [frame.manifest() for frame in frames],
+                "ephemerides": [
+                    ephemeris.manifest()
+                    for prn in sorted({frame.prn for frame in frames})
+                    if (
+                        ephemeris := assemble_gps_ephemeris(frames, prn)
+                    )
+                    is not None
+                ],
+            }
+            for frames in ring
+        ]
+        if not summary:
+            for index, frames in enumerate(ring, start=1):
+                heading = f"Snapshot {index}\n" if len(ring) > 1 else ""
+                ephemerides = [
+                    ephemeris
+                    for prn in sorted({frame.prn for frame in frames})
+                    if (ephemeris := assemble_gps_ephemeris(frames, prn)) is not None
+                ]
+                table.append(heading + render_gps_ring(frames, ephemerides))
     if table:
         print("\n\n".join(table), file=sys.stdout if destination else sys.stderr)
     write_json(report, destination)
