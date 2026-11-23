@@ -48,56 +48,6 @@ with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
 
 See the [example catalogue](examples/README.md) for setup and more workflows.
 
-## UM982 firmware diagnostics
-
-The UM982 exposes additional logs through the existing `Log` API.
-Examples include hardware and RTC status variants (`HWSTATUSD`, `RTCSTATUSD`),
-PVT (`PVTSOL`), base-station observations (`BASESATS`), physical reference
-station coordinates (`RTCM1032`), and internal correction tables
-(`SSR1ORBIT`, `SSR1CLOCK`). SSR entries expose native coefficients and retain
-their binary bytes. See the [mixed correction replay](examples/rtk_quality/README.md#inspect-a-mixed-correction-transcript)
-for RTCM input and receiver-side diagnostics.
-`SBAS1` and `SBAS18` expose masks, and the other SBAS logs retain their raw
-bodies. `parse_mpt_debug()` exposes `time_pair_s` and
-`diagnostic_blocks` alongside the original tokens. It also exposes the
-positioning context's `ionosphere_snapshots`, `ionosphere_status`,
-`correction_status` in `sav1`, `sav2` order, and `group_rows`. Pair each
-snapshot with the corresponding public log epoch before comparing coefficients
-with `snapshot.matches_public_log(record)`.
-
-`scan_notices()` decodes `ClockAdjust Tag` and the four `$PPSDebug` forms
-from a supplied trace. It preserves the native timing values and field order.
-
-`capture_inav_pages()` reads the tracking window through the boot-menu
-helper protocol and returns the decoded Galileo E1-B I/NAV page part stored
-per signal, including the odd-part OSNMA protocol data. The session is
-read-only and ends with a reset back into the application. Both capture
-functions take the reader image path explicitly, and a ready-to-use image
-ships at `tools/boot-reader/reader.bin` with its NDS32 assembly source
-`tools/boot-reader/um982_ram_reader.S` alongside. The source header
-documents the upload protocol, the read and reset requests and the
-rebuild steps for the 380-byte image.
-
-Use `um982py.binex.BinexEphemerisType` to subscribe to broadcast ephemerides
-by constellation, alongside `binex_output()` for observations. `write_binex()`
-exports both record families in capture order.
-
-```python
-from um982py import Log, Receiver
-from um982py.experimental import base_mask_report, observation_mask_report
-
-with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
-    hardware = receiver.execute(Log.HWSTATUSD.read(binary=True))
-    base_masks = receiver.collect(base_mask_report())
-    observation_masks = receiver.collect(observation_mask_report())
-```
-
-Log availability depends on firmware, receiver state and incoming data.
-`MASKBASE`, `MASKOBS` and seven SBAS log types were verified live.
-`BASESATS` and SSR subscriptions registered on the receiver. Payload
-validation for those logs requires a source of the corresponding corrections.
-`SATXYZ2A` was verified live. The receiver rejected the `SATXYZ2B` command.
-
 ## Receiver output rates
 
 ```bash
