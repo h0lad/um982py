@@ -146,7 +146,7 @@ def test_boot_capture_and_replay(
     assert "OBS ch=1" in console
     assert "clock_correction_s=10.0" in console
     assert "EPH n=1" in console and "iodc=187" in console
-    assert "WORK n=1" in console and "reference_time_sod_s=900" in console
+    assert "GLOPROP n=1" in console and "reference_time_sod_s=900" in console
     report = json.loads(output.read_text())
     assert report["application_restored"] is True
     assert report["satellite_positions"] == [
@@ -198,7 +198,7 @@ def test_boot_capture_and_replay(
     assert state["gps_ionosphere"]["flags"] == [1, 18]
     assert state["cached_notices"] == [{"name": "ANT_STATUS", "text": notice.decode()}]
     assert report["broadcast_ephemerides"][0]["iodc"] == 187
-    assert report["glonass_work"][0]["reference_time_sod_s"] == 900
+    assert report["glonass_propagation"][0]["reference_time_sod_s"] == 900
 
     (snapshot / "rf_calibration.bin").unlink()
     (snapshot / "channels.bin").write_bytes(windows[0x42BCB4][: 157 * 4])
@@ -214,7 +214,7 @@ def test_boot_capture_and_replay(
     assert len(replay["channels"]) == 1
     assert replay["receiver_state"] == state
     assert replay["broadcast_ephemerides"] == report["broadcast_ephemerides"]
-    assert replay["glonass_work"] == report["glonass_work"]
+    assert replay["glonass_propagation"] == report["glonass_propagation"]
     assert replay["satellite_positions"] == report["satellite_positions"]
     observation = replay["channels"][0]["observation"]
     assert observation["carrier_phase_cycles"] is None

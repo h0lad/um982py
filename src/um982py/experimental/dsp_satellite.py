@@ -99,7 +99,7 @@ class DspSatellitePosition:
 
     @property
     def diagnostic_status_bit(self) -> bool:
-        """Bit controlling the diagnostic return status in the baseband code."""
+        """Diagnostic status bit retained in the state flags."""
         return bool(self.state_flags & 0x10)
 
 

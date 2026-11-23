@@ -31,7 +31,7 @@ read protocol. Application commands such as `RANGE`, `PTOBSINFO`, and
 `RAWBBPKG` need the running receiver application. The helper resets the
 receiver after the snapshot, and the example reports whether the
 application responds again. The snapshot causes a break in live logging.
-Use [raw baseband tracking](../raw_data_tracking/README.md) for application logs.
+Use [raw DSP tracking](../raw_data_tracking/README.md) for application logs.
 
 ## Replay
 
@@ -142,8 +142,8 @@ between the secondary time and the `t_oe` in the receiver's broadcast-ephemeris
 RAM table, checked for all 92 GPS, Galileo and BeiDou states in one capture.
 GLONASS records carry sky angles but no range triplet or age; their FDMA
 channel is decoded from the high byte of the state flags and matched `GLOEPH`
-`freqo` for every logged slot. Named flag properties expose the RE-confirmed
-validity, broadcast-path, ionosphere-path and diagnostic-status bits. Negative
+`freqo` for every logged slot. Named flag properties expose the validity,
+broadcast-path, ionosphere-path and diagnostic-status bits. Negative
 elevations are retained: the DSP tracks satellites below the receiver horizon.
 
 ## Broadcast ephemerides
@@ -154,7 +154,6 @@ RAM. `read_dsp_ephemeris_windows` reads four additional tables and
 Galileo Kepler elements with both F/NAV and I/NAV clocks, and GLONASS PZ-90
 state vectors. GPS and BeiDou entries also expose the native week and issue
 numbers, and each Kepler entry converts its native week to GPS week. The
-layouts come from the baseband routines that propagate those records; the
 GLONASS reference time is GLOT seconds of day.
 
 A live check against `GPSEPH`, `GALEPH`, `BDSEPH` and `GLOEPH` found field-for-field
@@ -163,9 +162,8 @@ issue was still the one retained in RAM. The two remaining GPS log entries had
 already been refreshed when RAM was read. GPS IODC, BeiDou AODE fields, native
 weeks and the derived GPS weeks also matched. Galileo group delays, both clock
 sets and IODNAV matched exactly. GLONASS FT and flag nibbles also matched.
-`extract_dsp_glonass_work` decodes the baseband propagation work records, whose
-reference times are the GLONASS ephemeris issue times converted to GLOT seconds
-of day.
+`extract_dsp_glonass_propagation` decodes the GLONASS propagated states, whose
+reference times are the ephemeris issue times converted to GLOT seconds of day.
 
 Observation records also expose the output-side clock correction at tracker
 offset `0x90` when the optional `clock_reference` window is supplied. Against

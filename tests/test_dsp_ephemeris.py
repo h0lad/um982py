@@ -7,7 +7,7 @@ from um982py.experimental import (
     DspGalileoEphemeris,
     DspGlonassEphemeris,
     extract_dsp_ephemerides,
-    extract_dsp_glonass_work,
+    extract_dsp_glonass_propagation,
 )
 
 
@@ -137,7 +137,7 @@ def test_glonass_state_vector() -> None:
     assert entry.flags == 9
 
 
-def test_glonass_work_record() -> None:
+def test_glonass_propagation_record() -> None:
     data = bytearray(0x40)
     pack_into("<I", data, 0, 900)
     for offset, value in zip(
@@ -147,7 +147,7 @@ def test_glonass_work_record() -> None:
     ):
         pack_into("<d", data, offset, value)
 
-    (record,) = extract_dsp_glonass_work({"glonass_work": bytes(data)})
+    (record,) = extract_dsp_glonass_propagation({"glonass_propagation": bytes(data)})
     assert record.index == 0
     assert record.reference_time_sod_s == 900
     assert record.propagation_time_sod_s == 825.0

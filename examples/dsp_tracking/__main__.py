@@ -17,13 +17,13 @@ from um982py.experimental import (
     BootMemoryReader,
     DspGalileoEphemeris,
     DspGlonassEphemeris,
-    DspGlonassWorkRecord,
+    DspGlonassPropagationRecord,
     DspKeplerEphemeris,
     DspReceiverDiagnostics,
     DspSatellitePosition,
     DspTrackingChannel,
     extract_dsp_ephemerides,
-    extract_dsp_glonass_work,
+    extract_dsp_glonass_propagation,
     extract_dsp_receiver_diagnostics,
     extract_dsp_satellite_positions,
     extract_dsp_tracking,
@@ -258,8 +258,10 @@ def _print_ephemerides(
         print(f"  {_compact(data)}")
 
 
-def _print_glonass_work(records: Sequence[DspGlonassWorkRecord]) -> None:
-    print(f"WORK n={len(records)}")
+def _print_glonass_propagation(
+    records: Sequence[DspGlonassPropagationRecord],
+) -> None:
+    print(f"GLOPROP n={len(records)}")
     for record in records:
         print(f"  {_compact(asdict(record))}")
 
@@ -368,7 +370,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     satellite_positions = extract_dsp_satellite_positions(satellite_state_data)
     ephemeris_regions = {name: data for name, (_, data) in regions.items()}
     ephemerides = extract_dsp_ephemerides(ephemeris_regions)
-    glonass_work = extract_dsp_glonass_work(ephemeris_regions)
+    glonass_propagation = extract_dsp_glonass_propagation(ephemeris_regions)
     print(f"DSP n={len(channels)} sats={len(satellite_positions)}")
     _print_receiver_state(dsp, restored)
     _print_channels(channels)
@@ -378,7 +380,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     _print_channel_details(channels)
     _print_receiver_details(dsp)
     _print_ephemerides(ephemerides)
-    _print_glonass_work(glonass_work)
+    _print_glonass_propagation(glonass_propagation)
 
     if args.json is not None:
         report = {
@@ -391,7 +393,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 asdict(position) for position in satellite_positions
             ]
         report["broadcast_ephemerides"] = [asdict(entry) for entry in ephemerides]
-        report["glonass_work"] = [asdict(entry) for entry in glonass_work]
+        report["glonass_propagation"] = [asdict(entry) for entry in glonass_propagation]
         write_json(report, args.json)
     if restored is False:
         return 2

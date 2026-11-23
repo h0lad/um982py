@@ -203,14 +203,14 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`rinex_navigation`](rinex_navigation/README.md): Exports GPS, Galileo, BeiDou and GLONASS ephemerides as RINEX navigation data. Preserve broadcast time systems, issue and health fields; verify downstream engine support.
 - [`telemetry_bridge`](telemetry_bridge/README.md): Streams decoded frames as newline-delimited JSON. Valid framing and provenance are the result; exporting unrelated frames is legitimate even without a navigation solution.
 
-### Receiver and baseband diagnostics
+### Receiver and DSP diagnostics
 
 - [`baseband_conformance`](baseband_conformance/README.md): Sends baseband commands and records ACKs, rejects and state changes. Attribute actual baseband notices; missing families are incomplete, and disruptive probes are explicit.
 - [`baseband_epoch_audit`](baseband_epoch_audit/README.md): Audits diagnostic counters and PTOBSINFO tracking slots. Native tags have no assumed counter frequency, wrap modulus or guaranteed GPST relationship.
 - [`baseband_notice_console`](baseband_notice_console/README.md): Reports baseband state transitions from diagnostic notices. Silence does not establish state; notice-gate cleanup is not readback of its unknown original state.
-- [`dsp_tracking`](dsp_tracking/README.md): Reads per-channel Doppler, C/N₀, and diagnostic words from DSP RAM through the boot menu. Supports offline replay of the RAM windows.
+- [`dsp_tracking`](dsp_tracking/README.md): Reads tracking, receiver, satellite-state, ephemeris and propagation data from DSP RAM through the boot menu. Prints dense engineering tables and supports offline replay of the RAM windows.
 - [`inav_page_capture`](inav_page_capture/README.md): Captures the decoded Galileo E1-B I/NAV pages stored per signal, including odd-part OSNMA data. One snapshot returns one page per signal; sub-frame assembly needs repeated captures.
-- [`raw_data_tracking`](raw_data_tracking/README.md): Parses raw baseband containers, inner messages and notices. Retain epoch, signal, validity and lock identity; raw observations alone do not solve position.
+- [`raw_data_tracking`](raw_data_tracking/README.md): Parses raw DSP tracking containers, inner messages and notices. Retain epoch, signal, validity and lock identity; raw observations alone do not solve position.
 - [`tracking_field_lab`](tracking_field_lab/README.md): Correlates unknown tracking fields with your own labels. Independent event labels and continuous capture; receiver indicators alone cannot create ground-truth labels.
 
 ### Controlled scientific experiments

@@ -65,7 +65,7 @@ class DspGpsIonosphere:
 
 @dataclass(frozen=True, slots=True)
 class DspSensorAdc:
-    """Raw sensor ADC record as emitted by the baseband diagnostic."""
+    """Raw sensor ADC record from the DSP diagnostic stream."""
 
     channel: int
     value_1: int

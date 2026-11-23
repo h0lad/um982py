@@ -14,15 +14,15 @@ if TYPE_CHECKING:
 
 __all__ = [
     "DSP_EPHEMERIS_MEMORY_WINDOWS",
-    "DSP_GLONASS_WORK_WINDOW",
+    "DSP_GLONASS_PROPAGATION_WINDOW",
     "DspGalileoEphemeris",
     "DspGlonassEphemeris",
-    "DspGlonassWorkRecord",
+    "DspGlonassPropagationRecord",
     "DspKeplerEphemeris",
     "extract_dsp_ephemerides",
-    "extract_dsp_glonass_work",
+    "extract_dsp_glonass_propagation",
     "read_dsp_ephemeris_windows",
-    "read_dsp_glonass_work_windows",
+    "read_dsp_glonass_propagation_windows",
 ]
 
 _KEPLER_TABLES = (
@@ -31,27 +31,27 @@ _KEPLER_TABLES = (
 )
 _GALILEO_TABLE = ("galileo_ephemeris", 0x13D13418, 36, 0xF0)
 _GLONASS_TABLE = ("glonass_ephemeris", 0x13D61B18, 32, 0x78)
-DSP_GLONASS_WORK_WINDOW = ("glonass_work", 0x13D02600, 24 * 0x40)
+DSP_GLONASS_PROPAGATION_WINDOW = ("glonass_propagation", 0x13D02600, 24 * 0x40)
 
 DSP_EPHEMERIS_MEMORY_WINDOWS = (
     ("gps_ephemeris", 0x13D729E8, 42 * 0xC0),
     ("galileo_ephemeris", 0x13D13418, 36 * 0xF0),
     ("beidou_ephemeris", 0x13D50510, 63 * 0xC0),
     ("glonass_ephemeris", 0x13D61B18, 32 * 0x78),
-    DSP_GLONASS_WORK_WINDOW,
+    DSP_GLONASS_PROPAGATION_WINDOW,
 )
 """Memory windows holding the receiver's broadcast ephemeris copies."""
 
 
 @dataclass(frozen=True, slots=True)
-class DspGlonassWorkRecord:
-    """A GLONASS propagation work record written by the baseband receiver."""
+class DspGlonassPropagationRecord:
+    """A GLONASS propagated state retained in DSP RAM."""
 
     index: int
     reference_time_sod_s: int
     """Ephemeris reference time in GLOT seconds of day."""
     propagation_time_sod_s: float
-    """Time to which this work record was propagated."""
+    """Time to which the state was propagated."""
     position_ecef_m: tuple[float, float, float]
     velocity_ecef_mps: tuple[float, float, float]
 
@@ -353,22 +353,23 @@ def read_dsp_ephemeris_windows(reader: BootMemoryReader) -> dict[str, bytes]:
     }
 
 
-def read_dsp_glonass_work_windows(reader: BootMemoryReader) -> dict[str, bytes]:
-    """Read the GLONASS propagation work records."""
-    name, address, length = DSP_GLONASS_WORK_WINDOW
+def read_dsp_glonass_propagation_windows(
+    reader: BootMemoryReader,
+) -> dict[str, bytes]:
+    """Read the GLONASS propagation state window."""
+    name, address, length = DSP_GLONASS_PROPAGATION_WINDOW
     return {name: reader.read_range(address, length)}
 
 
-def extract_dsp_glonass_work(
+def extract_dsp_glonass_propagation(
     regions: Mapping[str, bytes],
-) -> tuple[DspGlonassWorkRecord, ...]:
-    """Decode GLONASS propagation work records from captured DSP RAM.
+) -> tuple[DspGlonassPropagationRecord, ...]:
+    """Decode GLONASS propagated states from captured DSP RAM.
 
-    The reference time matches the GLONASS ephemeris issue time converted to
-    GLOT seconds of day. The position and velocity fields are the work values
-    written by the baseband propagation helpers.
+    The reference time is the GLONASS ephemeris issue time converted to GLOT
+    seconds of day.
     """
-    raw = regions.get(DSP_GLONASS_WORK_WINDOW[0])
+    raw = regions.get(DSP_GLONASS_PROPAGATION_WINDOW[0])
     if raw is None or len(raw) == 0 or len(raw) % 0x40:
         return ()
     result = []
@@ -380,7 +381,7 @@ def extract_dsp_glonass_work(
             continue
         propagation_time, x, y, z, vx, vy, vz = values
         result.append(
-            DspGlonassWorkRecord(
+            DspGlonassPropagationRecord(
                 index=index,
                 reference_time_sod_s=reference,
                 propagation_time_sod_s=propagation_time,

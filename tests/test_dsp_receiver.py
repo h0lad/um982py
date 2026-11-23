@@ -1,4 +1,4 @@
-"""Check typed parsing of baseband diagnostic notices."""
+"""Check typed parsing of DSP diagnostic notices."""
 
 from um982py.experimental import extract_dsp_receiver_diagnostics
 
