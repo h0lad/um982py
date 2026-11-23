@@ -112,14 +112,16 @@ Other state values remain undecoded. Captures are not atomic, and state tags
 can predate the snapshot time. These are geometry states, not broadcast
 ephemeris parameters.
 
-A consistency check matched 17 GPS states to same-issue `GPSEPH` records and
-propagated them independently at each state time. ECEF velocity differences
-had a 0.048 m/s median and a 0.102 m/s maximum. Position residuals reached
-0.33 km. A same-header `SATECEF` comparison differed by 2.71–3.46 km for six
-matched GPS satellites. The coordinate epoch or transformation is unresolved,
-so these positions are not verified as same-epoch `SATECEF` values. This check
-used broadcast ephemerides, not an external precise-orbit product, and covered
-GPS only.
+Live states from all four constellations were checked against same-issue
+broadcast ephemerides propagated to each record's own state time. Position
+residuals were at most 0.4 km and ECEF velocity differences at most 0.14 m/s.
+Some residuals are near zero and others cluster around 0.3 km, following the
+ephemeris issue time; this is broadcast-orbit accuracy, not an external
+precise-orbit product. `SATECEF` is not a same-epoch reference: its positions
+were 3.0–3.5 km from the same broadcast ephemerides at the `SATECEF` header
+time, and its 10-second offset from the DSP state time adds about 30 km of
+satellite motion. Older archives with shorter GPS or GLONASS windows replay
+as record-aligned prefixes; only the captured entries are decoded.
 
 ## References
 

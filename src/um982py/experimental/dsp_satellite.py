@@ -32,10 +32,10 @@ _TIME_SCALES = {
 }
 
 _SATELLITE_TABLES = (
-    ("gps_state", 0x13D70528, 32, "GPS", 1, 1),
+    ("gps_state", 0x13D70528, 42, "GPS", 1, 1),
     ("galileo_state", 0x13D44840, 36, "GALILEO", 101, 1),
     ("beidou_state", 0x13D4CDF0, 63, "BEIDOU", 161, 1),
-    ("glonass_state", 0x13D5FD18, 24, "GLONASS", 65, 65),
+    ("glonass_state", 0x13D5FD18, 32, "GLONASS", 65, 65),
 )
 
 DSP_SATELLITE_STATE_FILES = tuple(name for name, *_ in _SATELLITE_TABLES)
@@ -85,7 +85,8 @@ def extract_dsp_satellite_positions(
     Returned positions and velocities use metres and metres per second. Time
     tags retain each constellation's native scale. Records without a valid
     state flag or finite position are omitted. Captured state may be older than
-    the receiver-wide GPS time.
+    the receiver-wide GPS time. A window may be a shorter record-aligned prefix
+    of a firmware table, as saved by older snapshots.
     """
     positions = []
     for (
@@ -100,12 +101,12 @@ def extract_dsp_satellite_positions(
         if raw is None:
             continue
         expected_size = _RECORD_SIZE * count
-        if len(raw) != expected_size:
+        if not 0 < len(raw) <= expected_size or len(raw) % _RECORD_SIZE:
             raise ValueError(
-                f"{name} contains {len(raw)} bytes, expected {expected_size}"
+                f"{name} contains {len(raw)} bytes, expected up to {expected_size}"
             )
         table = memoryview(raw)
-        for index in range(count):
+        for index in range(len(raw) // _RECORD_SIZE):
             offset = index * _RECORD_SIZE
             position = unpack_from("<3d", table, offset)
             velocity_values = unpack_from("<3d", table, offset + _VECTOR_SIZE)

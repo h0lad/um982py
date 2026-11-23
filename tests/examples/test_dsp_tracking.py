@@ -25,10 +25,10 @@ def test_boot_capture_and_replay(
         for _, base, length in DSP_TRACKING_MEMORY_WINDOWS + DSP_RECEIVER_MEMORY_WINDOWS
     }
     satellite_lengths = {
-        "gps_state": 32 * 0x78,
+        "gps_state": 42 * 0x78,
         "galileo_state": 36 * 0x78,
         "beidou_state": 63 * 0x78,
-        "glonass_state": 24 * 0x78,
+        "glonass_state": 32 * 0x78,
     }
     satellite_state = {
         name: bytearray(satellite_lengths[name]) for name in DSP_SATELLITE_STATE_FILES

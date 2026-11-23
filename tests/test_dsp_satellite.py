@@ -10,10 +10,10 @@ from um982py.experimental import (
 
 def test_extract_satellite_positions_from_each_constellation_table() -> None:
     lengths = {
-        "gps_state": 32 * 0x78,
+        "gps_state": 42 * 0x78,
         "galileo_state": 36 * 0x78,
         "beidou_state": 63 * 0x78,
-        "glonass_state": 24 * 0x78,
+        "glonass_state": 32 * 0x78,
     }
     regions = {name: bytearray(lengths[name]) for name in DSP_SATELLITE_STATE_FILES}
     expected = (
@@ -91,6 +91,29 @@ def test_extract_satellite_positions_from_each_constellation_table() -> None:
     assert by_id[("BEIDOU", 63)].time_scale == "BDT"
     assert by_id[("GLONASS", 65)].time_scale == "GLOT"
     assert by_id[("GPS", 1)].radius_m > 25_000_000.0
+
+
+def test_tail_records_and_short_table_prefixes() -> None:
+    lengths = {
+        "gps_state": 42 * 0x78,
+        "glonass_state": 32 * 0x78,
+    }
+    regions = {name: bytearray(length) for name, length in lengths.items()}
+    for name, index in (("gps_state", 41), ("glonass_state", 31)):
+        offset = index * 0x78
+        pack_into(
+            "<3d", regions[name], offset, 15_000_000.0, 20_000_000.0, 10_000_000.0
+        )
+        pack_into("<2I", regions[name], offset + 0x68, 100_000_000, 100_000_000)
+        pack_into("<I", regions[name], offset + 0x74, 0x3F)
+
+    positions = extract_dsp_satellite_positions(regions)
+    assert {
+        (position.constellation, position.satellite_id) for position in positions
+    } == {("GPS", 42), ("GLONASS", 96)}
+
+    shorter = {name: bytes(data[: 24 * 0x78]) for name, data in regions.items()}
+    assert extract_dsp_satellite_positions(shorter) == ()
 
 
 def test_missing_satellite_state_windows_return_no_positions() -> None:
