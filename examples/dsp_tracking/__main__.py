@@ -9,13 +9,21 @@ from pathlib import Path
 
 from examples._console import ExampleParser, run, validate_file_paths, write_json
 from um982py.experimental import (
+    DSP_EPHEMERIS_MEMORY_WINDOWS,
     DSP_RECEIVER_MEMORY_WINDOWS,
     DSP_SATELLITE_STATE_FILES,
+    DSP_TRACKING_CLOCK_REFERENCE_WINDOW,
     DSP_TRACKING_MEMORY_WINDOWS,
     BootMemoryReader,
+    DspGalileoEphemeris,
+    DspGlonassEphemeris,
+    DspGlonassWorkRecord,
+    DspKeplerEphemeris,
     DspReceiverDiagnostics,
     DspSatellitePosition,
     DspTrackingChannel,
+    extract_dsp_ephemerides,
+    extract_dsp_glonass_work,
     extract_dsp_receiver_diagnostics,
     extract_dsp_satellite_positions,
     extract_dsp_tracking,
@@ -172,6 +180,90 @@ def _print_satellites(satellites: Sequence[DspSatellitePosition]) -> None:
         )
 
 
+def _compact(data: dict[str, object]) -> str:
+    return " ".join(f"{key}={_value(value)}" for key, value in data.items())
+
+
+def _print_channel_details(channels: Sequence[DspTrackingChannel]) -> None:
+    print(f"CHX n={len(channels)}")
+    for entry in channels:
+        calibration = entry.calibration
+        cal = (
+            f"{calibration.reference_word}/{calibration.hz_per_count:.9g}/"
+            f"{calibration.effective_sample_clock_hz:.9g}"
+            if calibration is not None
+            else "-"
+        )
+        diagnostics = ",".join(f"{word:08x}" for word in entry.diagnostic_words)
+        detail = {
+            "ch": entry.channel,
+            "fam": f"0x{entry.signal_family:02x}",
+            "svid": entry.svid,
+            "trk": entry.tracking_svid,
+            "state": entry.state,
+            "status": f"0x{entry.tracking_status:08x}",
+            "lock": entry.lock_count,
+            "addr": f"0x{entry.address:06x}",
+            "freq": f"{entry.frequency_hz:.3f}",
+            "wl": f"{entry.wavelength_m:.9f}",
+            "dop": _value(entry.doppler_hz, "+.2f"),
+            "norm": _value(entry.normalized_accumulator, ".3f"),
+            "cal": cal,
+            "diag": diagnostics,
+            "raw": entry.raw.hex(),
+        }
+        print(f"  {_compact(detail)}")
+        observation = entry.observation
+        if observation is None:
+            continue
+        obs = asdict(observation)
+        obs.pop("address", None)
+        obs["addr"] = f"0x{observation.address:06x}"
+        obs["phase_offset_cycles"] = observation.phase_offset_cycles
+        print(f"  OBS ch={entry.channel} {_compact(obs)}")
+
+
+def _print_receiver_details(dsp: DspReceiverDiagnostics) -> None:
+    ionosphere = dsp.gps_ionosphere
+    alpha = ionosphere.alpha if ionosphere else ()
+    beta = ionosphere.beta if ionosphere else ()
+    flags = ionosphere.flags if ionosphere else ()
+    print(
+        f"RXD iono_a={alpha} iono_b={beta} iono_flags={flags} "
+        f"notices={len(dsp.cached_notices)} navpos={len(dsp.nav_positions)} "
+        f"navvel={len(dsp.nav_velocities)}"
+    )
+    for position in dsp.nav_positions:
+        print(f"  NAVP {_compact(asdict(position))}")
+    for velocity in dsp.nav_velocities:
+        print(f"  NAVV {_compact(asdict(velocity))}")
+    for base, notice in dsp.cached_notices:
+        text = notice.raw.decode("latin1").rstrip("\r\n")
+        print(f"  NOTE base=0x{base:06x} name={notice.name} text={text!r}")
+
+
+def _print_ephemerides(
+    ephemerides: Sequence[
+        DspKeplerEphemeris | DspGalileoEphemeris | DspGlonassEphemeris
+    ],
+) -> None:
+    print(f"EPH n={len(ephemerides)}")
+    for entry in ephemerides:
+        data = asdict(entry)
+        if isinstance(entry, DspKeplerEphemeris):
+            data["gps_week"] = entry.gps_week
+            data["iode"] = entry.iode
+        elif isinstance(entry, DspGalileoEphemeris):
+            data["gps_week"] = entry.gps_week
+        print(f"  {_compact(data)}")
+
+
+def _print_glonass_work(records: Sequence[DspGlonassWorkRecord]) -> None:
+    print(f"WORK n={len(records)}")
+    for record in records:
+        print(f"  {_compact(asdict(record))}")
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Capture or replay a per-channel UM982 tracking snapshot."""
     parser = ExampleParser(prog="python3 -m examples.dsp_tracking", description=__doc__)
@@ -210,7 +302,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.save_ram is not None and args.save_ram.exists():
         parser.error("--save-ram requires a new directory")
     directory = args.replay if args.replay is not None else args.save_ram
-    windows: tuple[tuple[str, int, int], ...] = DSP_TRACKING_MEMORY_WINDOWS
+    windows: tuple[tuple[str, int, int], ...] = (
+        *DSP_TRACKING_MEMORY_WINDOWS,
+        DSP_TRACKING_CLOCK_REFERENCE_WINDOW,
+        *DSP_EPHEMERIS_MEMORY_WINDOWS,
+    )
     if args.replay is not None or args.receiver_state:
         windows += DSP_RECEIVER_MEMORY_WINDOWS
     if args.satellite_states and not any(name == "gps_time" for name, _, _ in windows):
@@ -270,11 +366,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     channels = extract_dsp_tracking(regions)
     dsp = extract_dsp_receiver_diagnostics(regions)
     satellite_positions = extract_dsp_satellite_positions(satellite_state_data)
+    ephemeris_regions = {name: data for name, (_, data) in regions.items()}
+    ephemerides = extract_dsp_ephemerides(ephemeris_regions)
+    glonass_work = extract_dsp_glonass_work(ephemeris_regions)
     print(f"DSP n={len(channels)} sats={len(satellite_positions)}")
     _print_receiver_state(dsp, restored)
     _print_channels(channels)
     if satellite_state_data:
         _print_satellites(satellite_positions)
+    print("DETAIL")
+    _print_channel_details(channels)
+    _print_receiver_details(dsp)
+    _print_ephemerides(ephemerides)
+    _print_glonass_work(glonass_work)
 
     if args.json is not None:
         report = {
@@ -286,6 +390,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             report["satellite_positions"] = [
                 asdict(position) for position in satellite_positions
             ]
+        report["broadcast_ephemerides"] = [asdict(entry) for entry in ephemerides]
+        report["glonass_work"] = [asdict(entry) for entry in glonass_work]
         write_json(report, args.json)
     if restored is False:
         return 2

@@ -4,9 +4,10 @@ Read per-channel DSP tracking data from UM982 receivers.
 The console uses a dense engineering view: one receiver summary line, aligned
 channel rows and aligned satellite-state rows. It shows Doppler, C/N₀, the raw
 carrier tuning word, and the last stored pseudorange with its GPS time of
-week. JSON includes RF calibration,
-lock and status fields, six diagnostic words, the normalized accumulator,
-and the raw record bytes.
+week. A second `DETAIL` block prints the remaining channel, observation,
+receiver, ephemeris and GLONASS work fields in compact `key=value` rows. JSON
+includes RF calibration, lock and status fields, six diagnostic words, the
+normalized accumulator, and the raw record bytes.
 
 ## Capture
 

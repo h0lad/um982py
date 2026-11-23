@@ -9,8 +9,10 @@ import pytest
 from examples.dsp_tracking import __main__ as cli
 
 from um982py.experimental import (
+    DSP_EPHEMERIS_MEMORY_WINDOWS,
     DSP_RECEIVER_MEMORY_WINDOWS,
     DSP_SATELLITE_STATE_FILES,
+    DSP_TRACKING_CLOCK_REFERENCE_WINDOW,
     DSP_TRACKING_MEMORY_WINDOWS,
 )
 
@@ -22,7 +24,12 @@ def test_boot_capture_and_replay(
 ) -> None:
     windows = {
         base: bytearray(length)
-        for _, base, length in DSP_TRACKING_MEMORY_WINDOWS + DSP_RECEIVER_MEMORY_WINDOWS
+        for _, base, length in (
+            *DSP_TRACKING_MEMORY_WINDOWS,
+            *DSP_RECEIVER_MEMORY_WINDOWS,
+            DSP_TRACKING_CLOCK_REFERENCE_WINDOW,
+            *DSP_EPHEMERIS_MEMORY_WINDOWS,
+        )
     }
     satellite_lengths = {
         "gps_state": 42 * 0x78,
@@ -43,6 +50,7 @@ def test_boot_capture_and_replay(
     pack_into("<I2xH", tracking_window, 0x84, 1, 0x11)
     pack_into("<2d", tracking_window, 0x90, 25_488_463.1169, 133_942_786.7349)
     pack_into("<d", tracking_window, 0x108, 587_111.925)
+    pack_into("<f", tracking_window, 0x110, 12.5)
     pack_into("<f", tracking_window, 0xA0, 24.5)
     pack_into("<2f", tracking_window, 0xB0, 0.25, 0.015625)
     pack_into("<d", tracking_window, 0xC8, 133_942_787.0)
@@ -77,6 +85,17 @@ def test_boot_capture_and_replay(
     pack_into("<8f2B", windows[0x13D704C4], 0, *range(1, 9), 18, 1)
     notice = b"$AntStatus:1,1\r\n"
     windows[0x402C00][: len(notice)] = notice
+    pack_into("<d", windows[0x13D442E0], 8, 2.5)
+    gps_eph = windows[0x13D729E8]
+    pack_into("<H", gps_eph, 2, 2446)
+    pack_into("<I", gps_eph, 8, 158400)
+    pack_into("<d", gps_eph, 0x10, 5153.0)
+    pack_into("<H", gps_eph, 0xB8, 187)
+    work = windows[0x13D02600]
+    pack_into("<I", work, 0, 900)
+    pack_into("<d", work, 8, 825.0)
+    pack_into("<3d", work, 0x10, 20_000_000.0, 10_000_000.0, 10_000_000.0)
+    pack_into("<3d", work, 0x28, 1.0, 2.0, 3.0)
 
     reader = MagicMock()
     reader.__enter__.return_value = reader
@@ -123,6 +142,11 @@ def test_boot_capture_and_replay(
     assert "restored=yes" in console
     assert "587111.925" in console and "GST" in console
     assert "SAT n=1" in console
+    assert "DETAIL" in console and "CHX n=2" in console
+    assert "OBS ch=1" in console
+    assert "clock_correction_s=10.0" in console
+    assert "EPH n=1" in console and "iodc=187" in console
+    assert "WORK n=1" in console and "reference_time_sod_s=900" in console
     report = json.loads(output.read_text())
     assert report["application_restored"] is True
     assert report["satellite_positions"] == [
@@ -173,6 +197,8 @@ def test_boot_capture_and_replay(
     assert state["gps_ionosphere"]["beta"] == [5.0, 6.0, 7.0, 8.0]
     assert state["gps_ionosphere"]["flags"] == [1, 18]
     assert state["cached_notices"] == [{"name": "ANT_STATUS", "text": notice.decode()}]
+    assert report["broadcast_ephemerides"][0]["iodc"] == 187
+    assert report["glonass_work"][0]["reference_time_sod_s"] == 900
 
     (snapshot / "rf_calibration.bin").unlink()
     (snapshot / "channels.bin").write_bytes(windows[0x42BCB4][: 157 * 4])
@@ -187,6 +213,8 @@ def test_boot_capture_and_replay(
     assert replay["channels"][0]["carrier_word"] == 1200
     assert len(replay["channels"]) == 1
     assert replay["receiver_state"] == state
+    assert replay["broadcast_ephemerides"] == report["broadcast_ephemerides"]
+    assert replay["glonass_work"] == report["glonass_work"]
     assert replay["satellite_positions"] == report["satellite_positions"]
     observation = replay["channels"][0]["observation"]
     assert observation["carrier_phase_cycles"] is None
