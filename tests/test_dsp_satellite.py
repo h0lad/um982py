@@ -107,7 +107,7 @@ def test_hidden_range_and_sky_fields() -> None:
 
     glonass = regions["glonass_state"]
     pack_into("<3d", glonass, 0, 10_000_000.0, 20_000_000.0, 12_000_000.0)
-    pack_into("<I", glonass, 0x74, 0x1F)
+    pack_into("<I", glonass, 0x74, 0x441F)
 
     positions = extract_dsp_satellite_positions(regions)
     gps_state, glonass_state = positions
@@ -123,6 +123,7 @@ def test_hidden_range_and_sky_fields() -> None:
     assert glonass_state.elevation_rad == 0.0
     assert glonass_state.azimuth_rad == 0.0
     assert glonass_state.broadcast_ephemeris_age_s is None
+    assert glonass_state.glonass_frequency_channel == 3
 
 
 def test_tail_records_and_short_table_prefixes() -> None:

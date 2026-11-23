@@ -139,6 +139,7 @@ def test_boot_capture_and_replay(
             "azimuth_rad": 1.5,
             "broadcast_ephemeris_age_s": 4321,
             "state_flags": 63,
+            "glonass_frequency_channel": None,
             "state_time_ms": 587112000,
             "secondary_time_ms": 587111000,
             "time_scale": "GPST",

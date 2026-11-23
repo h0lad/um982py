@@ -67,6 +67,8 @@ class DspSatellitePosition:
     """Whole seconds between the secondary time and the broadcast ``t_oe``."""
     state_flags: int
     """Uninterpreted state flags."""
+    glonass_frequency_channel: int | None
+    """GLONASS FDMA channel decoded from the high byte of the state flags."""
     state_time_ms: int | None
     """State-update time in the constellation's native millisecond scale."""
     secondary_time_ms: int | None
@@ -171,6 +173,11 @@ def extract_dsp_satellite_positions(
                         ephemeris_age if constellation != "GLONASS" else None
                     ),
                     state_flags=state_flags,
+                    glonass_frequency_channel=(
+                        ((state_flags >> 8) & 0xFF) - 0x41
+                        if constellation == "GLONASS" and state_flags & 0xFF00
+                        else None
+                    ),
                     state_time_ms=state_time_ms if valid_state_time else None,
                     secondary_time_ms=(
                         secondary_time_ms if valid_secondary_time else None

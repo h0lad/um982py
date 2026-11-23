@@ -134,7 +134,9 @@ the range disagreement from up to 17 km to below 600 m; the broadcast check
 above tightens that to tens of metres. The age field equals the whole seconds
 between the secondary time and the `t_oe` in the receiver's broadcast-ephemeris
 RAM table, checked for all 92 GPS, Galileo and BeiDou states in one capture.
-GLONASS records carry sky angles but no range triplet or age. Negative
+GLONASS records carry sky angles but no range triplet or age; their FDMA
+channel is decoded from the high byte of the state flags and matched `GLOEPH`
+`freqo` for every logged slot. Negative
 elevations are retained: the DSP tracks satellites below the receiver horizon.
 
 ## Broadcast ephemerides
