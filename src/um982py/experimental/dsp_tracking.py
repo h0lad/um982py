@@ -1,4 +1,4 @@
-"""Per-channel DSP tracking RAM for UM982 firmware R4.10Build25164."""
+"""Per-channel DSP tracking RAM for UM982 receivers."""
 
 from __future__ import annotations
 
@@ -24,9 +24,6 @@ __all__ = [
     "read_dsp_tracking",
 ]
 
-# Build 25164: the tracking window's first pointer group holds the
-# measurement records, and each tracker record repeats its channel number
-# so a decoded row can be cross-checked against its table position.
 _CHANNELS_PER_POSITION = 157
 _FREQUENCY_POSITIONS = 7
 _CHANNEL_COUNT = _CHANNELS_PER_POSITION * _FREQUENCY_POSITIONS
@@ -34,7 +31,6 @@ _CHANNEL_TABLE = 0x42BCB4
 _MEASUREMENT_TABLE = 0x331DF8
 _MEASUREMENT_TABLE_STRIDE = 0x1C
 _MEASUREMENT_SIZE = 0x7E
-# The carrier tuning-word conversion selects this table per RF index.
 _RF_TABLE = 0x402520
 _RF_STRIDE = 0x50
 _RF_COUNT = 22
@@ -81,7 +77,7 @@ DSP_TRACKING_MEMORY_WINDOWS = (
     ("channels", _CHANNEL_TABLE, 4 * _CHANNEL_COUNT),
     ("rf_calibration", _RF_TABLE, _RF_STRIDE * _RF_COUNT),
 )
-"""Names, base addresses and lengths for the build 25164 RAM windows."""
+"""Memory windows available for DSP tracking capture."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,7 +104,7 @@ class DspTrackingObservation:
     carrier_phase_cycles: float | None
     """Carrier phase in the DSP's sign convention, gated by its tracking flag."""
     phase_reference_cycles: float | None
-    """The carrier-phase reference stored separately by the firmware."""
+    """The carrier-phase reference stored separately by the DSP."""
     epoch_counter: int | None
     """Internal observation sequence counter within the receiver session."""
     gps_tow_ms: int | None
@@ -200,7 +196,7 @@ class DspTrackingChannel:
 
     @property
     def diagnostic_words(self) -> tuple[int, ...]:
-        """Six raw words in the order printed by the full `$PT` format."""
+        """Six diagnostic words retained in the measurement record."""
         return tuple(
             unpack_from("<I", self.raw, offset)[0]
             for offset in (0x2C, 0x34, 0x38, 0x20, 0x24, 0x28)
@@ -208,7 +204,7 @@ class DspTrackingChannel:
 
     @property
     def normalized_accumulator(self) -> float | None:
-        """Firmware normalization of the fixed-point accumulator, in DSP units."""
+        """Normalization of the fixed-point accumulator, in DSP units."""
         if self.lock_count == 0:
             return None
         # The normalization combines a whole-word count with a 32-bit
@@ -229,10 +225,7 @@ def _decode_calibration(data: memoryview | None) -> DspDopplerCalibration | None
 def _decode_observation(
     address: int, record: memoryview, signal_family: int
 ) -> DspTrackingObservation:
-    # The stored phase reference at +0x48 is the pseudorange divided by
-    # the wavelength, and the carrier phase at +0x18 shares its sign
-    # convention. The native time at +0x88 was cross-checked against GPS
-    # TOW for all four system scales in two live build-25164 captures.
+    # The stored phase reference and carrier phase share a sign convention.
     flags = int(unpack_from("<H", record, 0x0A)[0])
     pseudorange, phase = unpack_from("<2d", record, 0x10)
     doppler = unpack_from("<f", record, 0x20)[0]
@@ -271,7 +264,7 @@ def _decode_observation(
 def extract_dsp_tracking(
     regions: Mapping[str, tuple[int, bytes]],
 ) -> tuple[DspTrackingChannel, ...]:
-    """Read active channels using the build 25164 channel and measurement tables.
+    """Read active channels using the channel and measurement tables.
 
     Supply RAM windows with their base addresses from one capture. Channel
     measurements

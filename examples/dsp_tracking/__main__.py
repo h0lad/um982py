@@ -9,12 +9,15 @@ from pathlib import Path
 from examples._console import ExampleParser, run, validate_file_paths, write_json
 from um982py.experimental import (
     DSP_RECEIVER_MEMORY_WINDOWS,
+    DSP_SATELLITE_STATE_FILES,
     DSP_TRACKING_MEMORY_WINDOWS,
     BootMemoryReader,
     DspReceiverDiagnostics,
     DspTrackingChannel,
     extract_dsp_receiver_diagnostics,
+    extract_dsp_satellite_positions,
     extract_dsp_tracking,
+    read_dsp_satellite_state_windows,
 )
 
 DEFAULT_READER = (
@@ -24,8 +27,10 @@ DEFAULT_READER = (
 
 def _channel_report(channel: DspTrackingChannel) -> dict[str, object]:
     report = asdict(channel)
+    report.pop("address", None)
     observation = channel.observation
     if observation is not None:
+        report["observation"].pop("address", None)
         report["observation"]["phase_offset_cycles"] = observation.phase_offset_cycles
     report["raw"] = channel.raw.hex()
     report["constellation"] = channel.constellation
@@ -43,17 +48,16 @@ def _receiver_report(dsp: DspReceiverDiagnostics) -> dict[str, object]:
     report = asdict(dsp)
     report["cached_notices"] = [
         {
-            "buffer_address": base,
             "name": notice.name,
             "text": notice.raw.decode("latin1"),
         }
-        for base, notice in dsp.cached_notices
+        for _, notice in dsp.cached_notices
     ]
     return report
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    """Capture or replay one UM982 build 25164 tracking snapshot."""
+    """Capture or replay a per-channel UM982 tracking snapshot."""
     parser = ExampleParser(prog="python3 -m examples.dsp_tracking", description=__doc__)
     source = parser.add_mutually_exclusive_group()
     source.add_argument("--port", help="serial device (default: /dev/ttyUSB0)")
@@ -69,14 +73,23 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--receiver-state", action="store_true", help="read additional DSP diagnostics"
     )
+    parser.add_argument(
+        "--satellite-states",
+        action="store_true",
+        help="read per-constellation satellite ECEF state tables",
+    )
     parser.add_argument("--json", type=Path, help="write the decoded records as JSON")
     args = parser.parse_args(argv)
 
     if args.replay is not None and (
-        args.boot_menu or args.save_ram is not None or args.receiver_state
+        args.boot_menu
+        or args.save_ram is not None
+        or args.receiver_state
+        or args.satellite_states
     ):
         parser.error(
-            "--boot-menu, --save-ram and --receiver-state require live capture"
+            "--boot-menu, --save-ram, --receiver-state and --satellite-states "
+            "require live capture"
         )
     if args.save_ram is not None and args.save_ram.exists():
         parser.error("--save-ram requires a new directory")
@@ -84,25 +97,31 @@ def main(argv: Sequence[str] | None = None) -> int:
     windows: tuple[tuple[str, int, int], ...] = DSP_TRACKING_MEMORY_WINDOWS
     if args.replay is not None or args.receiver_state:
         windows += DSP_RECEIVER_MEMORY_WINDOWS
-    if directory is not None:
-        validate_file_paths(
-            {
-                "json": args.json,
-                "ram_windows": tuple(
-                    directory / f"{name}.bin" for name, _, _ in windows
-                ),
-            }
+    if args.satellite_states and not any(name == "gps_time" for name, _, _ in windows):
+        windows += tuple(
+            item for item in DSP_RECEIVER_MEMORY_WINDOWS if item[0] == "gps_time"
         )
+    if directory is not None:
+        ram_files = tuple(directory / f"{name}.bin" for name, _, _ in windows)
+        if args.satellite_states:
+            ram_files += tuple(
+                directory / f"{name}.bin" for name in DSP_SATELLITE_STATE_FILES
+            )
+        validate_file_paths({"json": args.json, "ram_windows": ram_files})
 
     restored = None
     regions = {}
+    satellite_state_data = {}
     if args.replay is not None:
+        for name in DSP_SATELLITE_STATE_FILES:
+            path = args.replay / f"{name}.bin"
+            if path.exists():
+                satellite_state_data[name] = path.read_bytes()
         for name, base, length in windows:
             path = args.replay / f"{name}.bin"
             if name not in ("tracking", "channels") and not path.exists():
                 continue
             data = path.read_bytes()
-            # Old archives hold only the first 157 channel pointers.
             short_channel_table = (
                 name == "channels" and 0 < len(data) < length and len(data) % 4 == 0
             )
@@ -122,15 +141,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                 name: (base, reader.read_range(base, length))
                 for name, base, length in windows
             }
+            if args.satellite_states:
+                satellite_state_data = read_dsp_satellite_state_windows(reader)
         restored = reader.application_restored
         if args.save_ram is not None:
             args.save_ram.mkdir(parents=True)
             for name, (_, data) in regions.items():
                 (args.save_ram / f"{name}.bin").write_bytes(data)
+            for name, data in satellite_state_data.items():
+                (args.save_ram / f"{name}.bin").write_bytes(data)
 
     channels = extract_dsp_tracking(regions)
     dsp = extract_dsp_receiver_diagnostics(regions)
-    print(f"DSP tracking snapshot (build 25164), {len(channels)} channels")
+    satellite_positions = extract_dsp_satellite_positions(satellite_state_data)
+    print(f"DSP tracking snapshot, {len(channels)} channels")
     if channels:
         print(
             "  Ch  Signal       Sat  RF  C/N0 dB-Hz   Doppler Hz  Carrier word"
@@ -169,17 +193,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(f"DSP GPS week {dsp.gps_epoch.week}, TOW {dsp.gps_epoch.tow_ms} ms")
     if dsp.rf_agc_codes is not None:
         print("RF AGC codes " + ", ".join(map(str, dsp.rf_agc_codes)))
+    if satellite_state_data:
+        print(f"Satellite state records {len(satellite_positions)}")
 
     if args.json is not None:
-        write_json(
-            {
-                "firmware_layout": "R4.10Build25164",
-                "application_restored": restored,
-                "channels": [_channel_report(entry) for entry in channels],
-                "receiver_state": _receiver_report(dsp),
-            },
-            args.json,
-        )
+        report = {
+            "application_restored": restored,
+            "channels": [_channel_report(entry) for entry in channels],
+            "receiver_state": _receiver_report(dsp),
+        }
+        if satellite_state_data:
+            report["satellite_positions"] = [
+                asdict(position) for position in satellite_positions
+            ]
+        write_json(report, args.json)
     if restored is False:
         return 2
     return 0 if channels else 1

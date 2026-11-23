@@ -10,6 +10,7 @@ from examples.dsp_tracking import __main__ as cli
 
 from um982py.experimental import (
     DSP_RECEIVER_MEMORY_WINDOWS,
+    DSP_SATELLITE_STATE_FILES,
     DSP_TRACKING_MEMORY_WINDOWS,
 )
 
@@ -22,6 +23,15 @@ def test_boot_capture_and_replay(
     windows = {
         base: bytearray(length)
         for _, base, length in DSP_TRACKING_MEMORY_WINDOWS + DSP_RECEIVER_MEMORY_WINDOWS
+    }
+    satellite_lengths = {
+        "gps_state": 32 * 0x78,
+        "galileo_state": 36 * 0x78,
+        "beidou_state": 63 * 0x78,
+        "glonass_state": 24 * 0x78,
+    }
+    satellite_state = {
+        name: bytearray(satellite_lengths[name]) for name in DSP_SATELLITE_STATE_FILES
     }
     tracking_window = windows[0x318000]
     pack_into("<I", tracking_window, 0x331DF8 - 0x318000, 0x318000)
@@ -52,6 +62,12 @@ def test_boot_capture_and_replay(
         "<8B", tracking_window, 0x32CD7C - 0x318000, 62, 72, 74, 77, 74, 41, 57, 68
     )
     pack_into("<I2i", windows[0x13D42388], 0, 3, 49427, 44595)
+    pack_into(
+        "<3d", satellite_state["gps_state"], 0, 15_000_000, 20_000_000, 10_000_000
+    )
+    pack_into("<3d", satellite_state["gps_state"], 0x18, 500, -2000, 3000)
+    pack_into("<2I", satellite_state["gps_state"], 0x68, 587_112_000, 587_111_000)
+    pack_into("<I", satellite_state["gps_state"], 0x74, 0x3F)
     pack_into("<I12xI", windows[0x13D443B0], 0, 576824000, 2445)
     pack_into("<8f2B", windows[0x13D704C4], 0, *range(1, 9), 18, 1)
     notice = b"$AntStatus:1,1\r\n"
@@ -66,6 +82,11 @@ def test_boot_capture_and_replay(
         return bytes(windows[address])
 
     reader.read_range.side_effect = read_range
+    monkeypatch.setattr(
+        cli,
+        "read_dsp_satellite_state_windows",
+        lambda _: {name: bytes(data) for name, data in satellite_state.items()},
+    )
     connect = MagicMock(return_value=reader)
     monkeypatch.setattr(cli.BootMemoryReader, "connect", connect)
     snapshot = tmp_path / "snapshot"
@@ -77,6 +98,7 @@ def test_boot_capture_and_replay(
                 "serial",
                 "--boot-menu",
                 "--receiver-state",
+                "--satellite-states",
                 "--save-ram",
                 str(snapshot),
                 "--json",
@@ -95,8 +117,24 @@ def test_boot_capture_and_replay(
     console = capsys.readouterr().out
     assert "Application restored yes" in console
     assert "587111.925" in console and "GST" in console
+    assert "Satellite state records 1" in console
     report = json.loads(output.read_text())
     assert report["application_restored"] is True
+    assert report["satellite_positions"] == [
+        {
+            "constellation": "GPS",
+            "satellite_id": 1,
+            "receiver_id": 1,
+            "position_ecef_m": [15_000_000.0, 20_000_000.0, 10_000_000.0],
+            "velocity_ecef_mps": [500.0, -2000.0, 3000.0],
+            "state_flags": 63,
+            "state_time_ms": 587112000,
+            "secondary_time_ms": 587111000,
+            "time_scale": "GPST",
+        }
+    ]
+    assert "address" not in report["channels"][0]
+    assert "address" not in report["channels"][0]["observation"]
     assert report["channels"][0]["doppler_hz"] == 25.0
     assert report["channels"][0]["cn0_dbhz"] == 39.0
     observation = report["channels"][0]["observation"]
@@ -122,9 +160,7 @@ def test_boot_capture_and_replay(
     assert state["sensor_adc"] == {"channel": 3, "value_1": 49427, "value_2": 44595}
     assert state["gps_ionosphere"]["beta"] == [5.0, 6.0, 7.0, 8.0]
     assert state["gps_ionosphere"]["flags"] == [1, 18]
-    assert state["cached_notices"] == [
-        {"buffer_address": 0x402C00, "name": "ANT_STATUS", "text": notice.decode()}
-    ]
+    assert state["cached_notices"] == [{"name": "ANT_STATUS", "text": notice.decode()}]
 
     (snapshot / "rf_calibration.bin").unlink()
     (snapshot / "channels.bin").write_bytes(windows[0x42BCB4][: 157 * 4])
@@ -139,6 +175,7 @@ def test_boot_capture_and_replay(
     assert replay["channels"][0]["carrier_word"] == 1200
     assert len(replay["channels"]) == 1
     assert replay["receiver_state"] == state
+    assert replay["satellite_positions"] == report["satellite_positions"]
     observation = replay["channels"][0]["observation"]
     assert observation["carrier_phase_cycles"] is None
     assert observation["phase_offset_cycles"] is None

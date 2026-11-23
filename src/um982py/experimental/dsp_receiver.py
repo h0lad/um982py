@@ -1,4 +1,4 @@
-"""Receiver-wide diagnostics retained in UM982 build 25164 DSP RAM."""
+"""Receiver-wide diagnostics retained in UM982 DSP RAM."""
 
 from __future__ import annotations
 
@@ -23,13 +23,10 @@ __all__ = [
     "extract_dsp_receiver_diagnostics",
 ]
 
-# The RF register cache sits in the tracking window at 0x214C04.
 _RF_AGC = 0x32CD7C
-# Base addresses of the SensorADC and GPSIONTOAP diagnostic values.
 _SENSOR_ADC = 0x13D42388
 _GPS_TIME = 0x13D443B0
 _GPS_IONOSPHERE = 0x13D704C4
-# The firmware alternates between two pairs of diagnostic buffers.
 _NOTICE_WINDOWS = (
     ("notice_402c00", 0x402C00, 0x2000),
     ("notice_404c00", 0x404C00, 0x2000),
@@ -43,8 +40,7 @@ DSP_RECEIVER_MEMORY_WINDOWS = (
     ("gps_ionosphere", _GPS_IONOSPHERE, 36),
     *_NOTICE_WINDOWS,
 )
-"""Additional windows for receiver-wide data. The tracking window holds
-RF AGC."""
+"""Optional receiver-wide state read by the diagnostics example."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,7 +86,7 @@ class DspReceiverDiagnostics:
 def extract_dsp_receiver_diagnostics(
     regions: Mapping[str, tuple[int, bytes]],
 ) -> DspReceiverDiagnostics:
-    """Recover build 25164 receiver-wide diagnostics from captured RAM windows.
+    """Recover receiver-wide diagnostics from captured RAM windows.
 
     Every input window is optional. Cached notices may predate the captured
     state and the physical order of buffers does not imply chronological order.

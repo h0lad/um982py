@@ -124,6 +124,12 @@ from um982py.experimental.dsp_receiver import (
     DspSensorAdc,
     extract_dsp_receiver_diagnostics,
 )
+from um982py.experimental.dsp_satellite import (
+    DSP_SATELLITE_STATE_FILES,
+    DspSatellitePosition,
+    extract_dsp_satellite_positions,
+    read_dsp_satellite_state_windows,
+)
 from um982py.experimental.dsp_tracking import (
     DSP_TRACKING_MEMORY_WINDOWS,
     DspDopplerCalibration,
@@ -353,6 +359,7 @@ __all__ = [
     "CHANNEL_STATE_WINDOW_OFFSET",
     "CORRECTION_AUDIT_LOGS",
     "DSP_RECEIVER_MEMORY_WINDOWS",
+    "DSP_SATELLITE_STATE_FILES",
     "DSP_TRACKING_MEMORY_WINDOWS",
     "FIRST_MESSAGE_OFFSET",
     "GALILEO_SIGNALS",
@@ -406,6 +413,7 @@ __all__ = [
     "DspGpsEpoch",
     "DspGpsIonosphere",
     "DspReceiverDiagnostics",
+    "DspSatellitePosition",
     "DspSensorAdc",
     "DspTrackingChannel",
     "DspTrackingObservation",
@@ -537,6 +545,7 @@ __all__ = [
     "extract_beidou_nav",
     "extract_channel_states",
     "extract_dsp_receiver_diagnostics",
+    "extract_dsp_satellite_positions",
     "extract_dsp_tracking",
     "extract_galileo_fnav",
     "extract_galileo_has",
@@ -585,6 +594,7 @@ __all__ = [
     "rangecmp_output",
     "rangecmp_read",
     "rangecmp_stop",
+    "read_dsp_satellite_state_windows",
     "read_dsp_tracking",
     "read_inav_stream_csv",
     "rec_info_enable",
