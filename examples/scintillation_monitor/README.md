@@ -30,7 +30,7 @@ duration limit, whichever comes first. Collect enough epochs to fill the window.
 
 The receiver filters C/N₀. The calculation does not remove trends or correct
 for thermal noise. The `s4` field is `sqrt(<I^2> - <I>^2)/<I>` of linear
-C/N₀-derived intensity over the window; it is a proxy, not a calibrated S4
+C/N₀-derived intensity over the window and is a proxy, not a calibrated S4
 index. `roti_proxy` is the standard deviation of successive S4 increments per
 second: it is **not** the rate-of-TEC index (ROTI).
 

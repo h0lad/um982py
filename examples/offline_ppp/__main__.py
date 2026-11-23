@@ -278,7 +278,9 @@ def _record_segments_locked(args: argparse.Namespace) -> int:
         else None
     )
     if completed and expected_identity is None:
-        raise ValueError("completed session has no receiver identity; inspect the data")
+        raise ValueError(
+            "completed session has no receiver identity, so inspect the data"
+        )
 
     def event(data: dict[str, object]) -> None:
         with journal.open("a", encoding="utf-8") as stream:
@@ -313,7 +315,7 @@ def _record_segments_locked(args: argparse.Namespace) -> int:
             expected_identity = identity
         elif identity != expected_identity:
             raise ValueError(
-                "receiver identity or configuration changed; inspect the session"
+                "receiver identity or configuration changed, so inspect the session"
             )
         number = 1
         while (directory / f"segment-{number:06d}").exists():
@@ -393,7 +395,7 @@ def completed_segments(directory: Path) -> list[CompletedSegment]:
         for line in stream:
             if not line.endswith("\n"):
                 raise ValueError(
-                    "incomplete journal entry; preserve and inspect session"
+                    "incomplete journal entry, so preserve and inspect the session"
                 )
             item = json.loads(line)
             if item.get("status") != "complete":
@@ -469,14 +471,14 @@ def verify_antenna(observation: Path, antex: Path) -> str:
     name = antenna_type(observation)
     if not name:
         raise ValueError(
-            "RINEX antenna type is missing; supply it in recording metadata"
+            "RINEX antenna type is missing, so supply it in recording metadata"
         )
     offset = None
     with observation.open(encoding="ascii") as stream:
         for line in stream:
             label = line[60:].strip()
             if label == "COMMENT" and "Antenna delta unknown" in line[:60]:
-                raise ValueError("antenna offset is unknown; supply measured H/E/N")
+                raise ValueError("antenna offset is unknown, so supply measured H/E/N")
             if label == "ANTENNA: DELTA H/E/N":
                 offset = [float(line[i : i + 14]) for i in (0, 14, 28)]
             if label == "END OF HEADER":
@@ -570,7 +572,7 @@ def main() -> int:
     record.add_argument(
         "--l2c-code",
         choices=("2S", "2L", "2X", "omit"),
-        help="type-9 L2C component (default: inferred 2S; omit excludes it)",
+        help="type-9 L2C component (default: inferred 2S, omit to exclude it)",
     )
     download = sub.add_parser(
         "download", help="download CODE orbit, clock, bias and navigation products"

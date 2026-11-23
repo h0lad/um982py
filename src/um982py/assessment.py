@@ -71,8 +71,9 @@ def assess_position(
 
     Position objects supply their precision and correction age automatically.
     An explicit epoch age must use a compatible scale. Alternatively pass a
-    verified current GPS epoch; age is computed only for documented fine
-    receiver time. Standard deviations are estimates, not accuracy bounds.
+    verified current GPS epoch, in which case age is computed only for
+    documented fine receiver time. Standard deviations are estimates, not
+    accuracy bounds.
     """
     reasons: list[str] = []
     if now_gps_seconds is not None and (

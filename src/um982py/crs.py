@@ -73,7 +73,7 @@ def transform_coordinate(
     )
     if not group.best_available or not group.transformers:
         raise ValueError(
-            "best coordinate transformation is unavailable; check required grids"
+            "best coordinate transformation is unavailable, so check required grids"
         )
     transformer = group.transformers[0]
     if coordinate_epoch is None:

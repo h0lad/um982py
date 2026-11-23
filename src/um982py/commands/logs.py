@@ -296,13 +296,14 @@ class Log(StrEnum):
     ) -> Command[CommandResponse]:
         """Build a periodic or ONCHANGED output command for this log.
 
-        ``rate_hz`` uses documented N4 rates. Actual support depends on the
-        receiver, firmware, signal group and log. ``interval`` is in seconds.
-        FREQJAMSTATUS, HWSTATUS, JAMSTATUS, PPSSTATUS and RTCSTATUS are
-        limited to 1 Hz.
-        ``table=True`` selects unchecksummed L-band table output and cannot be
-        combined with ``binary=True``.
-        EVENTFLAG also supports ``Trigger.ONCE``; enable GGA output alongside it.
+            ``rate_hz`` uses documented N4 rates. Actual support depends on the
+            receiver, firmware, signal group and log. ``interval`` is in seconds.
+            FREQJAMSTATUS, HWSTATUS, JAMSTATUS, PPSSTATUS and RTCSTATUS are
+            limited to 1 Hz.
+            ``table=True`` selects unchecksummed L-band table output and cannot be
+            combined with ``binary=True``.
+            EVENTFLAG also supports ``Trigger.ONCE``, with GGA output enabled
+        alongside it.
         """
         if isinstance(interval, Trigger):
             if rate_hz is not None:

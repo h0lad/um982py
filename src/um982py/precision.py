@@ -56,7 +56,7 @@ class PositionPrecision:
     """Estimated one-sigma deviations in local east, north and up metres.
 
     Unknown values remain None. An ellipse is reported only when the receiver
-    supplied it; no correlation or confidence level is inferred. UTC is time
+    supplied it, and no correlation or confidence level is inferred. UTC is time
     of day without a date. These are receiver estimates, not accuracy bounds.
     """
 

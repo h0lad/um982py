@@ -8,7 +8,6 @@ from um982py.messages.frames import CommandResponse
 
 
 def rover_default() -> Command[CommandResponse]:
-    """Select rover mode with the receiver's product-specific default profile."""
     return action("MODE ROVER")
 
 
@@ -66,9 +65,7 @@ def base(station_id: int | None = None) -> Command[CommandResponse]:
 def base_survey(
     seconds: float = 60, *, distance: float | None = None, station_id: int | None = None
 ) -> Command[CommandResponse]:
-    """Start a receiver survey in base mode.
-
-    The receiver saves the optimized position to flash when ``distance`` is
+    """The receiver saves the optimized position to flash when ``distance`` is
     configured and may reuse it after a restart if it remains within that
     distance in metres. A zero distance selects the newly optimized position.
     """
@@ -81,9 +78,7 @@ def base_survey(
 def base_ecef(
     x: float, y: float, z: float, *, station_id: int | None = None
 ) -> Command[CommandResponse]:
-    """Set a base in ECEF metres using the documented coordinate ranges.
-
-    Use ``base_position`` with geodetic coordinates if an ECEF axis is within
+    """Use ``base_position`` with geodetic coordinates if an ECEF axis is within
     the receiver's latitude, longitude or height range.
     """
     coordinates = tuple(
@@ -92,7 +87,7 @@ def base_ecef(
     wire_x, wire_y, wire_z = (float(value) for value in coordinates)
     if abs(wire_x) <= 90 or abs(wire_y) <= 180 or abs(wire_z) <= 30000:
         raise ValueError(
-            "ECEF axes must satisfy |x| > 90, |y| > 180 and |z| > 30000; "
+            "ECEF axes must satisfy |x| > 90, |y| > 180 and |z| > 30000, so "
             "use base_position with geodetic coordinates"
         )
     return action(" ".join((base(station_id).text, *coordinates)))

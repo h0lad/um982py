@@ -12,11 +12,11 @@ to import the checkout directly. They require `pyserial`, which is
 included in the [example installation](../README.md#running-the-examples).
 
 `--helper` is the path of the RAM-resident reader image accepted by the
-receiver boot menu. This repository ships one at
-`tools/boot-reader/reader.bin` (380 bytes; its NDS32 assembly source
-`um982_ram_reader.S` sits next to it and documents the upload protocol,
-the read and reset requests and the rebuild steps); the option defaults to
-that path, so from the repository root no extra argument is needed:
+receiver boot menu. This repository ships one at `tools/boot-reader/reader.bin`
+(380 bytes) with its NDS32 assembly source `um982_ram_reader.S` next to it,
+whose header documents the upload protocol, the read and reset requests and
+the rebuild steps. The option defaults to that path, so from the repository
+root no extra argument is needed:
 
 ```bash
 PYTHONPATH=src python3 -m examples.inav_page_capture --port /dev/ttyUSB0 --baud 921600 \
@@ -36,7 +36,7 @@ Close other serial clients first.
 
 Each snapshot enters the boot menu, reads the per-signal tracking window
 and resets the receiver back into the application. No flash write or erase
-is performed; the application answers again after every closing reset and
+is performed, the application answers again after every closing reset, and
 the report records those answers.
 
 With `--snapshots 1` the report lists one page part per tracked Galileo
@@ -126,7 +126,7 @@ phase-bias blocks of ICD section 5. Clock-subset messages stop before
 that block and say so. Leftover pages verify the recovered codeword, so
 pages from different broadcast instances are labelled `mixed instances`
 rather than silently combined. Snapshots restart the receiver, so pages
-sampled minutes apart may belong to different instances of one identity;
+sampled minutes apart may belong to different instances of one identity, and
 the consistency flag tells them apart.
 [Galileo HAS SIS ICD, §5, §6.4 and Annex C](https://www.gsc-europa.eu/sites/default/files/sites/all/files/Galileo_HAS_SIS_ICD_v1.0.pdf)
 

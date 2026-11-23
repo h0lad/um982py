@@ -81,7 +81,8 @@ class LogEntry:
         return 1 / self.interval
 
     def command(self) -> Command[CommandResponse]:
-        """Build a request; ONCE starts a new one-shot rather than restoring it."""
+        """Build a request, where ONCE starts a new one-shot rather than
+        restoring it."""
         return output(self.name, self.interval, port=self.port)
 
 

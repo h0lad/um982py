@@ -137,7 +137,7 @@ def _parser() -> ExampleParser:
         "--interval",
         type=float,
         default=1.0,
-        help="capture interval in seconds; logs output remains ONCHANGED",
+        help="capture interval in seconds, and logs output remains ONCHANGED",
     )
     return parser
 

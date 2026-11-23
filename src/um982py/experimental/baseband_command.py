@@ -198,7 +198,6 @@ def baseband_command(
 
 
 def timing_mode(value: int) -> Command[CommandResponse]:
-    """Select timing mode 0 or 1."""
     return baseband_command(BasebandCommand.TIMINGMODE, integer(value, 0, 1))
 
 
@@ -412,7 +411,6 @@ def dangerous_force_error_trap(value: int) -> Command[CommandResponse]:
 def dangerous_single_satellite_tracking(
     *, enabled: bool = True
 ) -> Command[CommandResponse]:
-    """Enable or clear single-satellite tracking."""
     if type(enabled) is not bool:
         raise ValueError("enabled must be a boolean")
     return baseband_command(BasebandCommand.ONESATTRK, "1" if enabled else "0")

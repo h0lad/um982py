@@ -4,13 +4,14 @@ Run these examples to read receiver data and analyze GNSS measurements.
 
 The [API guide](../README.md#find-the-right-api) lists supported imports and
 explains which streaming or reconnecting session to use. Specialist helpers
-are imported from their modules; the package root exposes the main workflows.
+are imported from their modules, and the package root exposes the main
+workflows.
 
-Workflow examples demonstrate library integration; scientific
+Workflow examples demonstrate library integration, while scientific
 models and field experiments require the stated data and independent reference
 measurements before their results support an accuracy or physical claim. Short
-fixtures exercise decoding and integration; an occupation, continuous carrier arc
-or controlled campaign requires its own field data.
+fixtures exercise decoding and integration, but an occupation, continuous
+carrier arc or controlled campaign requires its own field data.
 
 Run live examples through a local serial device or a transparent UART gateway
 specified as `--port tcp://host:port`. Configure the gateway's UART baud
@@ -57,8 +58,8 @@ as needed. The repository includes the files under `tests/fixtures/`.
 
 The shared parser rejects report paths that alias an input or another report,
 including symlinks and hardlinks. Use distinct destinations for JSON, CSV and
-other products. A successful command means its documented operation completed;
-inspect the report's status, convergence and alarms. In particular, zero detected
+other products. A successful command means its documented operation completed,
+so inspect the report's status, convergence and alarms. In particular, zero detected
 events in an incomplete capture is not a clean bill of health.
 
 For periodic receiver logs, `--interval` sets the requested interval in seconds.

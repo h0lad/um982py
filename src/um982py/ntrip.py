@@ -46,7 +46,6 @@ class ReconnectPolicy:
             raise ValueError("reconnect delays must be finite, positive and ordered")
 
     def next_delay(self, current: float) -> float:
-        """Return the next delay, capped at the configured maximum."""
         if not 0 < current < float("inf"):
             raise ValueError("current delay must be finite and positive")
         return min(current * 2, self.maximum_seconds)

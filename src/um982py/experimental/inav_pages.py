@@ -232,7 +232,7 @@ class InavPage:
     """Receiver channel number of the tracking record."""
 
     time_counter: int
-    """Per-signal time counter; one value is shared by all signals of a
+    """Per-signal time counter. One value is shared by all signals of a
     snapshot taken while the receiver demodulates a common instant."""
 
     page_valid: bool
@@ -336,9 +336,7 @@ def _slice(data: bytes, start: int, length: int) -> bytes:
 
 
 def decode_inav_page_part(page: bytes) -> InavPagePart:
-    """Decode one E1-B page part from raw page content.
-
-    Nominal pages follow the E1-B layout of the Galileo Open Service SIS
+    """Nominal pages follow the E1-B layout of the Galileo Open Service SIS
     ICD: the even part carries the first half of a navigation word, the odd
     part completes the word and carries the OSNMA protocol data, the search
     and rescue data and the page checksum. Alert pages carry reserved data
@@ -395,9 +393,7 @@ def decode_inav_page_part(page: bytes) -> InavPagePart:
 
 
 def parse_nma_header(hkroot_portion: bytes) -> NmaHeader:
-    """Parse the authentication header that opens the HKROOT message.
-
-    ``hkroot_portion`` is the eight-bit HKROOT section of the OSNMA field of
+    """``hkroot_portion`` is the eight-bit HKROOT section of the OSNMA field of
     the first odd page of a sub-frame, as defined by the Galileo OSNMA SIS
     ICD.
     """
@@ -454,8 +450,8 @@ def extract_inav_pages(
 
     Each entry of ``regions`` maps a name to the base address and content of
     one memory window. Tracking records of Galileo signals are located by
-    their signal-family byte and their page-state pointer; the page content
-    is read from the state record of every checksum-verified page.
+    their signal-family byte and their page-state pointer, and the page
+    content is read from the state record of every checksum-verified page.
     """
     windows = tuple((base, content) for _, (base, content) in regions.items())
 
@@ -516,7 +512,8 @@ def capture_inav_pages(
 
     The capture reads the tracking window through the boot-menu helper
     protocol. Entering the boot menu pauses the application and the
-    demodulator; the returned pages are the parts decoded at that instant.
+    demodulator, so the returned pages are the parts decoded at that
+    instant.
     No flash write or erase is performed, and the closing reset restarts
     the application from flash.
     """
@@ -827,8 +824,8 @@ def assemble_inav_word(even: bytes, odd: bytes) -> InavWord | None:
     """Assemble one nominal page from its two parts and verify the checksum.
 
     The vertical checksum of the Galileo Open Service SIS ICD covers the
-    protected fields of both parts; ``None`` is returned when it does not
-    match, which also rejects mismatched part pairs.
+    protected fields of both parts, and ``None`` is returned when it does
+    not match, which also rejects mismatched part pairs.
     """
     if len(even) < 15 or len(odd) < 15:
         return None
@@ -866,8 +863,8 @@ def pair_inav_words(
 ) -> tuple[InavWord, ...]:
     """Assemble all checksum-verified words from candidate part pairs.
 
-    Every even part is combined with every odd part; the page checksum
-    accepts exactly the matching pair of one page.
+    Every even part is combined with every odd part, and the page
+    checksum accepts exactly the matching pair of one page.
     """
     words = []
     for even in even_parts:
@@ -1063,8 +1060,8 @@ def extract_channel_states(
 ) -> tuple[ChannelState, ...]:
     """Collect the per-signal tracking records of a memory snapshot.
 
-    The records are retained unchanged; their measurement fields have no
-    verified physical meaning. All records of one snapshot share one
+    The records are retained unchanged, and their measurement fields
+    have no verified physical meaning. All records of one snapshot share one
     demodulation instant.
     """
     windows = tuple((base, content) for _, (base, content) in regions.items())
@@ -1258,8 +1255,9 @@ def capture_inav_campaign(
 
     Each snapshot enters the boot menu, reads the tracking window and
     resets the application back into navigation. ``pause_seconds`` waits
-    between snapshots so the demodulator advances to new page parts; the
-    stored part of a channel changes with every completed page. Repeated
+    between snapshots so the demodulator advances to new page parts,
+    because the stored part of a channel changes with every completed
+    page. Repeated
     snapshots therefore accumulate the even and odd parts needed for
     checksum-verified word assembly. If given, ``on_snapshot`` runs after
     each completed capture and before the next pause.

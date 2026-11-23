@@ -159,7 +159,6 @@ class RawBasebandPacket:
 
     @property
     def frequency_code(self) -> int:
-        """Return the frequency code reported by the receiver."""
         return self.header.frequency_code
 
     @property
@@ -373,7 +372,6 @@ class BasebandStream:
         return None
 
     def _keep_possible_partial_header(self) -> None:
-        """Keep the trailing bytes that could contain a partial header."""
         keep = min(len(self._buffer), HEADER_SIZE - 1)
         self._discard_prefix(len(self._buffer) - keep)
 

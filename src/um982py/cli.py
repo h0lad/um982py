@@ -150,13 +150,13 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--augment",
         action="store_true",
-        help="enable augmentation; signal group changes are saved by the receiver",
+        help="enable augmentation, with signal group changes saved by the receiver",
     )
     parser.add_argument(
         "--sbas-service",
         type=str.upper,
         metavar="SERVICE",
-        help="select the SBAS service with --augment; use QZSS for SLAS",
+        help="select the SBAS service with --augment, and use QZSS for SLAS",
     )
     parser.add_argument(
         "--antenna",
@@ -171,7 +171,7 @@ def _parser() -> argparse.ArgumentParser:
         "--log",
         type=Log,
         action="append",
-        help="log to configure; repeat for multiple logs",
+        help="log to configure, repeatable for multiple logs",
     )
     parser.add_argument("--rate-hz", type=float, help="periodic log output rate in Hz")
     parser.add_argument(
@@ -183,7 +183,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--l2c-code",
         choices=("2S", "2L", "2X", "omit"),
-        help="type-9 L2C component (default: inferred 2S; omit excludes it)",
+        help="type-9 L2C component (default: inferred 2S, omit to exclude it)",
     )
     parser.add_argument(
         "--record", type=Path, help="save live received bytes (new file)"
@@ -192,7 +192,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "action",
         metavar="ACTION",
-        help="receiver action; see common actions below",
+        help="receiver action, see the common actions below",
         choices=(
             "version",
             "config",

@@ -24,7 +24,7 @@ from um982py.protocol import StreamDecoder
 FIXTURES = Path(__file__).resolve().parents[2] / "tests" / "fixtures"
 
 PDOP_TOLERANCE = 1e-9
-"""Exact rational inputs; 1e-9 covers only floating-point accumulation."""
+"""Exact rational inputs, and 1e-9 covers only floating-point accumulation."""
 
 IDENTITY_TOLERANCE = 1e-10
 

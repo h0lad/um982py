@@ -192,6 +192,12 @@ class SlasTracker:
         self._source_prn: int | None = None
         self._mask_iodp: int | None = None
 
+    def _reset_mapping(self) -> None:
+        self._candidates = ()
+        self._iodi = self._iodp = None
+        self._selection = ()
+        self._mask_iodp = None
+
     def process(
         self,
         record: Record,
@@ -211,13 +217,9 @@ class SlasTracker:
             if source_prn is None:
                 raise ValueError("source PRN required")
             if self._source_prn is not None and source_prn != self._source_prn:
-                raise ValueError("source PRN mismatch; use a tracker per satellite")
+                raise ValueError("source PRN mismatch, so use a tracker per satellite")
             if name == "L1SMT48":
-                # Invalidate old state even when the new mask is malformed.
-                self._candidates = ()
-                self._iodi = self._iodp = None
-                self._selection = ()
-                self._mask_iodp = None
+                self._reset_mapping()
                 if mask_iodp is None:
                     raise ValueError("MT48 IODP required")
                 self._candidates = slas_candidates(record, msb=self.mask_msb)
@@ -258,7 +260,7 @@ class SlasTracker:
                     or int(_number(record["iodp"])) != self._iodp
                 ):
                     raise ValueError(
-                        "MT50 IODI/IODP mismatch; correction must not be applied"
+                        "MT50 IODI/IODP mismatch, so the correction must not be applied"
                     )
                 corrections = slas_corrections(
                     self._candidates, self._selection, record, msb=self.sv_msb

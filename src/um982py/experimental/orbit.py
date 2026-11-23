@@ -27,8 +27,8 @@ J2 = 1.0826257e-3
 WEEK_SECONDS = 604_800.0
 
 # BeiDou GEO ephemerides are fitted in a frame rotated 5 degrees about the
-# X axis; the user algorithm must undo that rotation (BDS-SIS-ICD-2.0, and
-# RTKLIB eph2pos). GEO satellites are C01-C05 and C59-C63.
+# X axis, which the user algorithm must undo (BDS-SIS-ICD-2.0 and RTKLIB
+# eph2pos). GEO satellites are C01-C05 and C59-C63.
 GEO_ROTATION_SIN = math.sin(math.radians(-5.0))
 GEO_ROTATION_COS = math.cos(math.radians(-5.0))
 BEIDOU_GEO_PRNS = frozenset((*range(1, 6), *range(59, 64)))
@@ -93,9 +93,7 @@ class KeplerElements:
 
     @classmethod
     def from_record(cls, record: Record) -> KeplerElements:
-        """Build elements from a GPS, BDS or Galileo ephemeris record.
-
-        Galileo F/NAV (E1/E5a) and I/NAV (E1/E5b) broadcast distinct clock
+        """Galileo F/NAV (E1/E5a) and I/NAV (E1/E5b) broadcast distinct clock
         polynomials and broadcast group delays. When F/NAV was not received,
         its fields are unset (zero) and the I/NAV values must be used
         (Galileo OS SIS ICD, sections 5.1.3-5.1.4).
@@ -363,7 +361,6 @@ class GlonassElements:
 
     @classmethod
     def from_record(cls, record: Record) -> GlonassElements:
-        """Build a PZ-90 state from a decoded GLOEPH record."""
         return cls(
             x=record.real("pos_x"),
             y=record.real("pos_y"),
@@ -408,8 +405,8 @@ def _acceleration(state: Sequence[float]) -> tuple[float, float, float]:
     if radius <= 0:
         raise ValueError("GLONASS state has zero radius")
     factor = 1.5 * J2 * MU_GLONASS * 6378136.0**2 / radius**5
-    common = 5 * z * z / radius**2
-    gravity = -MU_GLONASS / radius**3 - factor * (1 - common)
+    oblateness_term = 5 * z * z / radius**2
+    gravity = -MU_GLONASS / radius**3 - factor * (1 - oblateness_term)
     omega = 7.292115e-5
     return (
         (gravity + omega**2) * x + 2 * omega * state[4],
@@ -436,8 +433,8 @@ def _rk4(state: Sequence[float], step: float, external: Sequence[float]) -> list
     k3 = _rate([v + step / 2 * k for v, k in zip(state, k2, strict=True)], external)
     k4 = _rate([v + step * k for v, k in zip(state, k3, strict=True)], external)
     return [
-        v + step / 6 * (a + 2 * b + 2 * c + d)
-        for v, a, b, c, d in zip(state, k1, k2, k3, k4, strict=True)
+        v + step / 6 * (k1 + 2 * k2 + 2 * k3 + k4)
+        for v, k1, k2, k3, k4 in zip(state, k1, k2, k3, k4, strict=True)
     ]
 
 

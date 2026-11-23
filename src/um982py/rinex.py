@@ -392,7 +392,7 @@ def export_rinex(
     Records with conflicting receiver/session/antenna source tags are rejected.
     Export of flagged type-9 L2C requires an explicit component code from the
     caller. The omission report counts these signals by default.
-    ``created_at`` must be timezone-aware; supply it for reproducible headers.
+    ``created_at`` must be timezone-aware for reproducible headers.
     The default is the current UTC time, not the observation epoch.
     """
     if created_at is None:

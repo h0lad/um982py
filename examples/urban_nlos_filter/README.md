@@ -47,8 +47,8 @@ The JSON report contains per-epoch classifications and aggregate counts:
 
 ## Independent evaluation
 
-Supply `--labels-csv labels.csv` with columns `elevation_deg,cn0_db_hz,truth`;
-truth is `LOS` or `NLOS`. The report tabulates all three predicted classes,
+Supply `--labels-csv labels.csv` with columns `elevation_deg,cn0_db_hz,truth`,
+where `truth` is `LOS` or `NLOS`. The report tabulates all three predicted classes,
 including unsure, against the supplied labels. Use independently labelled,
 held-out data, not the same data used to choose thresholds. This does not
 calibrate probabilities or account for correlated samples.

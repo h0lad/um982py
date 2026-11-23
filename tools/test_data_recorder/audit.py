@@ -26,7 +26,7 @@ def audit(directory: Path) -> dict:
     """Check segment hashes and count decoded frames without retaining them."""
     journal = (directory / "segments.jsonl").read_text(encoding="utf-8")
     if any("gap" in json.loads(line) for line in journal.splitlines()):
-        raise ValueError("session contains a gap; inspect its journal before replay")
+        raise ValueError("session contains a gap, so inspect its journal before replay")
     decoder = StreamDecoder()
     counts = dict.fromkeys((log.value for log in LOGS), 0)
     other = received = errors = 0

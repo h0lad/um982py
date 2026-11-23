@@ -3,8 +3,8 @@
 Satellites in an urban canyon are often received via reflections or diffraction.
 A simple receiver-only classifier uses elevation angle and carrier-to-noise
 density: low-elevation and low-C/N0 signals are more likely to be non-line-of-sight.
-The score is intentionally conservative; it flags candidates rather than proving
-NLOS reception.
+The score is intentionally conservative and flags candidates rather than
+proving NLOS reception.
 
 Reference
 ---------

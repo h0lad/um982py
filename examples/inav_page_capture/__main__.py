@@ -104,14 +104,14 @@ def build_parser() -> ExampleParser:
         "--helper",
         type=Path,
         default=DEFAULT_READER,
-        help="path of the RAM-resident reader image for the boot menu; "
-        "defaults to tools/boot-reader/reader.bin of this repository",
+        help="path of the RAM-resident reader image for the boot menu, "
+        "defaulting to tools/boot-reader/reader.bin of this repository",
     )
     parser.add_argument(
         "--snapshots",
         type=int,
         default=1,
-        help="number of boot-menu snapshots; two or more allow word assembly",
+        help="number of boot-menu snapshots, where two or more allow word assembly",
     )
     parser.add_argument(
         "--pause",

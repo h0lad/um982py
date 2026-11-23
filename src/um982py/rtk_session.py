@@ -119,7 +119,6 @@ class RtkSession:
         """
         if not 0 < gga_timeout < float("inf"):
             raise ValueError("GGA timeout must be finite and positive")
-        # Validate connection settings before starting any receiver operations.
         NtripClient(url, username=username, password=password, version=version)
 
         def gga() -> bytes | None:
@@ -239,15 +238,15 @@ class RtkSession:
                 if stop.is_set():
                     return
             try:
-                data = client.read()
+                correction_bytes = client.read()
             except TimeoutError:
-                data = None
-            if data == b"":
+                correction_bytes = None
+            if correction_bytes == b"":
                 raise ConnectionError("caster closed the correction stream")
-            if data:
+            if correction_bytes:
                 with self._lock:
                     self._last_byte = monotonic()
-                for message in decoder.feed(data):
+                for message in decoder.feed(correction_bytes):
                     if isinstance(message, RtcmMessage):
                         try:
                             self.stream.send_correction(message).result()

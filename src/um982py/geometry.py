@@ -146,7 +146,6 @@ def design_matrix(
 
 
 def normal_matrix(rows: Sequence[Sequence[float]]) -> tuple[tuple[float, ...], ...]:
-    """Calculate the normal matrix ``G^T G`` from the rows of a design matrix."""
     if not rows:
         raise ValueError("design matrix needs at least one row")
     columns = len(rows[0])

@@ -15,7 +15,6 @@ if TYPE_CHECKING:
 
 
 def ascii_fields(message: Message) -> tuple[str, ...]:
-    """Return the fields of an ASCII response, rejecting any other frame type."""
     if isinstance(message, (AsciiMessage, Sentence)):
         return message.fields
     raise ProtocolError(f"Expected an ASCII response, got {type(message).__name__}")

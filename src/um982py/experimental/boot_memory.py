@@ -63,9 +63,7 @@ def sync_packet(baud: int) -> bytes:
 
 
 def image_record(payload: bytes, load_address: int = HELPER_LOAD_ADDRESS) -> bytes:
-    """Frame ``payload`` as a downloadable image record.
-
-    The 32-byte little-endian header carries the record magic, the load
+    """The 32-byte little-endian header carries the record magic, the load
     address, the payload length and a word sum. Its CRC-16/XMODEM protects the
     first 28 header bytes. The payload is padded to a word boundary.
     """
@@ -78,7 +76,6 @@ def image_record(payload: bytes, load_address: int = HELPER_LOAD_ADDRESS) -> byt
 
 
 def xmodem_packet(number: int, block: bytes) -> bytes:
-    """Return the XMODEM-CRC packet for ``block`` with sequence ``number``."""
     if len(block) != XMODEM_BLOCK:
         raise ValueError(f"XMODEM block must contain {XMODEM_BLOCK} bytes")
     return (
@@ -136,8 +133,8 @@ class BootMemoryReader:
     reset restarts the application from flash.
 
     Use :meth:`connect` as a context manager. Entering the boot menu pauses
-    the running application; leave the context promptly so the receiver
-    returns to navigation.
+    the running application, so leave the context promptly to let the
+    receiver return to navigation.
     """
 
     def __init__(self, wire: _Wire, port: serial.SerialBase) -> None:
@@ -271,7 +268,6 @@ class BootMemoryReader:
         return data
 
     def read_range(self, address: int, length: int) -> bytes:
-        """Read an arbitrary length range in helper-sized chunks."""
         result = bytearray()
         for offset in range(0, length, MAX_READ_LENGTH):
             chunk = min(MAX_READ_LENGTH, length - offset)

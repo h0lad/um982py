@@ -72,7 +72,7 @@ from a supplied trace. It preserves the native timing values and field order.
 helper protocol and returns the decoded Galileo E1-B I/NAV page part stored
 per signal, including the odd-part OSNMA protocol data. The session is
 read-only and ends with a reset back into the application. Both capture
-functions take the reader image path explicitly; a ready-to-use image
+functions take the reader image path explicitly, and a ready-to-use image
 ships at `tools/boot-reader/reader.bin` with its NDS32 assembly source
 `tools/boot-reader/um982_ram_reader.S` alongside. The source header
 documents the upload protocol, the read and reset requests and the

@@ -3,7 +3,7 @@
 The receiver reports an unconstrained baseline in BSLNENUHD.  When the physical
 distance between the two antennas is known, the estimated baseline vector can
 be projected onto that length with equal component weights. This projection
-preserves direction and cannot improve heading or pitch; it is not an
+preserves direction and cannot improve heading or pitch, and it is not an
 observation-level constrained estimator.
 
 Reference

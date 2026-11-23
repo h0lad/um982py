@@ -2,7 +2,8 @@
 
 The master (ANT1) and slave (ANT2) position outputs can form a second
 baseline estimate for comparison with UNIHEADING. These receiver solutions
-may share measurements and errors; the comparison is not independent validation.
+may share measurements and errors, so the comparison is not independent
+validation.
 
 Reference
 ---------

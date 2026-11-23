@@ -18,11 +18,11 @@ if TYPE_CHECKING:
 
 @runtime_checkable
 class Position(Protocol):
-    """Common position information; unavailable values are None.
+    """Common position information with None for unavailable values.
 
-    GPS epochs are interpreted GPS seconds; check ``receiver_time`` for the
-    receiver's quality and time-reference information. GGA reports UTC time of
-    day without a date, so its GPS epoch is unavailable.
+    GPS epochs are interpreted GPS seconds, so check ``receiver_time`` for
+    the receiver's quality and time-reference information. GGA reports UTC
+    time of day without a date, so its GPS epoch is unavailable.
     """
 
     @property
@@ -206,7 +206,8 @@ class Fix:
         """Attach GST statistics for the same UTC time and antenna.
 
         GGA and GST have no date. The caller must ensure both are from the same
-        receiver session; equal time-of-day alone cannot distinguish days.
+        receiver session, because equal time-of-day alone cannot distinguish
+        days.
         """
         if not self.valid:
             raise ValueError("GST precision requires a valid fix")

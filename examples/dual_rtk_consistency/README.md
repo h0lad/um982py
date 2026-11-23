@@ -52,7 +52,7 @@ RTK fix states across the matched epochs.
 - The position-derived baseline is noisier than a carrier-phase baseline and
   depends on both antennas being RTK fixed.
 - Antenna-specific multipath and antenna offsets are not modelled.
-- The outputs may share measurements, corrections and receiver processing;
+- The outputs may share measurements, corrections and receiver processing, so
   agreement with `UNIHEADING` is not independent validation.
 - Fixed status requires both a computed solution and a documented fixed type,
   for either ASCII or binary logs.

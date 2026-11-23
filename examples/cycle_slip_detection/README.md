@@ -26,7 +26,7 @@ python -m examples.cycle_slip_detection \
 control the sampled RANGE epochs.
 
 `--max-gap` (default two seconds) bounds the interval over which endpoint
-Doppler is integrated. Gaps and receiver lock-time resets start a new arc;
+Doppler is integrated. Gaps and receiver lock-time resets start a new arc, and
 duplicate or reversed epochs are rejected. `tested_increments` and
 `unobserved_increments` distinguish the usable evidence from gaps. A single
 epoch, including the supplied `RANGEB.bin` fixture, returns
@@ -35,7 +35,8 @@ epoch, including the supplied `RANGEB.bin` fixture, returns
 A flag is a candidate discontinuity, not confirmation of an integer slip.
 Dynamics, Doppler integration error and receiver clock events can also cause
 flags. Zero flags says nothing about unobserved intervals. The CLI tests GPS
-L1 C/A; the Python geometry-free helper also splits gaps and frequency changes.
+L1 C/A, while the Python geometry-free helper also splits gaps and frequency
+changes.
 
 ## References
 

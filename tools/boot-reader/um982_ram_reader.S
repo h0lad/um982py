@@ -1,13 +1,13 @@
 /*
- * NDS32 RAM reader for the receiver boot menu; load address 0x200000.
+ * NDS32 RAM reader for the receiver boot menu at load address 0x200000.
  * After upload it prints the banner "UM982RAM1\r\n" and answers
  * requests built from little-endian u32 words:
- *   'M' + address + length -> read receiver memory, 1..4096 bytes;
+ *   'M' + address + length -> read receiver memory, 1..4096 bytes,
  *                             replies "URD1", the echoed address and
  *                             length, the bytes and their word sum.
  *   'F' + routine + offset + length -> read SPI flash through the
  *                             resident read routine, 32 bytes per call.
- *   'Q' -> reset; the receiver restarts the application from flash.
+ *   'Q' -> reset. The receiver restarts the application from flash.
  * Rebuild with an NDS32 binutils (as/ld/objcopy) using -Ttext=0x200000
  * and compare the result against the shipped reader.bin before use.
  */

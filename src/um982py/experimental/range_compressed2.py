@@ -76,7 +76,11 @@ class Compressed2Satellite:
             )
         if self.system != 0:
             return None
-        l1 = [s for s in self.signals if s.signal_type == 1 and s.code_locked]
+        l1 = [
+            signal
+            for signal in self.signals
+            if signal.signal_type == 1 and signal.code_locked
+        ]
         if len(l1) != 1:
             return None
         code = self.range_base_m + l1[0].pseudorange_offset_m

@@ -168,7 +168,9 @@ def allan_deviation(
         differences = [averaged[i + 1] - averaged[i] for i in range(len(averaged) - 1)]
         if not differences:
             break
-        variance = sum(d**2 for d in differences) / (2 * len(differences))
+        variance = sum(difference**2 for difference in differences) / (
+            2 * len(differences)
+        )
         results.append((factor * tau0, math.sqrt(variance)))
         factor *= 2
     return results
@@ -277,7 +279,8 @@ def least_squares(
 
     Reject columns whose independent component is at most 1e-10 of their
     original weighted norm. This is a relative rank check, not a condition
-    number estimate; use an SVD-based scientific solver for demanding systems.
+    number estimate, so use an SVD-based scientific solver for demanding
+    systems.
     Residuals are returned in the original observation units. When requested,
     standard deviations use the supplied independent measurement sigmas.
     """

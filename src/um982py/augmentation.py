@@ -32,7 +32,8 @@ __all__ = [
 ]
 
 HIGH_ACCURACY_SIGNAL_GROUP = SignalGroup(3, 6)
-"""Master group 3 tracks E6-HAS and B2b-PPP; rates depend on firmware and log."""
+"""Master group 3 tracks E6-HAS and B2b-PPP, and rates depend on firmware and
+log."""
 
 
 class CommandExecutor(Protocol):
@@ -51,7 +52,8 @@ class AugmentationStep:
 
 @dataclass(frozen=True, slots=True)
 class AugmentationState:
-    """Applied and refused settings; ``saved`` records an explicit save command.
+    """Holds applied and refused settings, with ``saved`` recording an
+    explicit save command.
 
     The receiver saves a changed signal group even when ``saved`` is false.
     """
@@ -118,7 +120,7 @@ def enable_augmentation(
     regardless of ``persist``. The reset can discard other unsaved settings.
     ``persist=True`` explicitly saves the other settings after every command
     succeeds and signal-group readback matches. Command rejections appear in the
-    report; a transport or response failure stops execution. Prediction may
+    report, while a transport or response failure stops execution. Prediction may
     remain active if disabling it is rejected.
     """
     sbas(enabled=True, service=sbas_service)

@@ -37,7 +37,8 @@ class Repeatability:
 
 # A GPS satellite's sky track repeats after about one sidereal day: 86,164 s
 # nominal, with measured satellite-specific lags around 86,155 s (236-245 s
-# shorter than a solar day); Axelrad et al. (2005), Larson et al. (2007).
+# shorter than a solar day). See Axelrad et al. (2005) and Larson et al.
+# (2007).
 # The conservative 23 h lower bound rejects same-day captures without
 # imposing a fixed sidereal lag on the data.
 MINIMUM_REPEAT_SEPARATION_SECONDS = 82_800.0

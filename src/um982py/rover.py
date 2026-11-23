@@ -409,7 +409,6 @@ class Rover:
         heading_tolerance: float = 0.5,
         stop: Event | None = None,
     ) -> Iterator[RoverPosition]:
-        """Poll positions until the caller stops iteration or signals ``stop``."""
         if isinstance(interval, bool) or not isfinite(interval) or interval <= 0:
             raise ValueError("interval must be finite and positive")
         while stop is None or not stop.is_set():

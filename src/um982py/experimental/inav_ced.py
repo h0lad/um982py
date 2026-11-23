@@ -150,9 +150,7 @@ class Fec2Recovery:
 
 
 def recover_fec2_ced(words: Mapping[int, InavWord]) -> Fec2Recovery | None:
-    """Recover missing CED words from CRC-checked words of one satellite and issue.
-
-    Supply any coherent combination of types 1-4 and 17-20. Parity provides
+    """Supply any coherent combination of types 1-4 and 17-20. Parity provides
     only two bits of IODnav, so callers must associate words by transmission
     context. Recovery needs enough parity octets to solve the missing octets.
     Extra parity equations and the available issue bits are checked before

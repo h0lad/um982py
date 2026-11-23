@@ -24,8 +24,9 @@ class ObservationSource:
     """Identity declared by the acquisition application, not decoded from wire data.
 
     ``receiver_id`` is a known serial number or application label, or None when
-    unknown. ``session_id`` identifies one continuous acquisition; use a new ID
-    after reconnects, reboots or antenna changes. IDs do not prove phase continuity.
+    unknown. ``session_id`` identifies one continuous acquisition, so use a
+    new ID after reconnects, reboots or antenna changes. IDs do not prove
+    phase continuity.
     """
 
     receiver_id: str | None

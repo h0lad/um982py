@@ -39,7 +39,7 @@ with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
 ```
 
 This survey rejects repeated GGA epochs and requires two distinct fixes with
-height. Scatter describes repeatability; it does not account for base-position
+height. Scatter describes repeatability and does not account for base-position
 or other systematic errors. CSV export requires a new file.
 
 ## Inputs and results

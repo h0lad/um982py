@@ -114,10 +114,7 @@ def ionosphere_model(
 
 
 def rtcm_clock_drift(*, enabled: bool = True) -> Command[CommandResponse]:
-    """Configure RTCM clock drift compensation.
-
-    Applicable products: UM982, UM981, UMD981, UM981S, UMD981S.
-    """
+    """Applicable products: UM982, UM981, UMD981, UM981S, UMD981S."""
     return switch("RTCMCLOCKDRIFT", enabled)
 
 
@@ -155,7 +152,7 @@ def l_band(
     Actions are exclusive: DISABLE, ENABLE AUTO, ENABLE BEAMID <ID 1..7>,
     RELIABILITY <1..3>, DATUM, or TIMEOUT (0 disables, 90..600 s).
     For L-band PPP-AR, reliability 1 favors faster convergence with lower
-    accuracy; 2 is the default; 3 favors accuracy with slower convergence.
+    accuracy, 2 is the default and 3 favors accuracy with slower convergence.
     """
     if type(enabled) is not bool:
         raise ValueError("enabled must be a boolean")
@@ -191,7 +188,6 @@ def tp_ion_use(*, enabled: bool = True) -> Command[CommandResponse]:
 def ionosphere_level(
     value: float | None = None, *, enabled: bool = True
 ) -> Command[CommandResponse]:
-    """Set the ionosphere activity level, select AUTO, or disable it."""
     if not enabled:
         if value is not None:
             raise ValueError("disabled ionosphere level cannot specify a value")

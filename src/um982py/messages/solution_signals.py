@@ -68,7 +68,6 @@ class SolutionSignals:
 
     @classmethod
     def from_record(cls, record: Record) -> "SolutionSignals":
-        """Read the named masks from a decoded navigation solution record."""
         galileo = record.integer("galileo_bds3_sig_mask")
         other = record.integer("gps_glonass_and_bds2_sig_mask")
         if not 0 <= galileo <= 255 or not 0 <= other <= 255:

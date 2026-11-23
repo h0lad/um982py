@@ -51,7 +51,8 @@ type DataLog = Log | AntennaLog
 
 
 class InterruptedCapture(KeyboardInterrupt):
-    """A cancelled capture; ``records`` maps log names to collected records."""
+    """A cancelled capture whose ``records`` map log names to collected
+    records."""
 
     def __init__(self, records: dict[str, tuple[Record, ...]]) -> None:
         super().__init__()
@@ -64,7 +65,6 @@ def epoch_seconds(message: Message) -> float:
 
 
 def record_epoch(record: Record) -> float:
-    """Return the receiver epoch from a decoded record's timestamp."""
     if record.message is None:
         raise ValueError(f"{record.name} record carries no receiver timestamp")
     return epoch_seconds(record.message)
@@ -73,9 +73,7 @@ def record_epoch(record: Record) -> float:
 def select_position(
     records: Iterable[Record], epoch: float, tolerance: float
 ) -> Record:
-    """Select the closest computed receiver position within a GPST time window.
-
-    ``epoch`` is absolute GPS seconds, and ``tolerance`` is seconds. Invalid,
+    """``epoch`` is absolute GPS seconds, and ``tolerance`` is seconds. Invalid,
     untimestamped and near-geocentre positions are ignored. Equal-distance
     matches prefer the earlier epoch, independently of capture arrival order.
     Coordinates describe a terrestrial GNSS receiver, not a satellite orbit.
@@ -110,7 +108,6 @@ def _valid_positions(records: Iterable[Record]) -> Iterator[tuple[float, Record]
 def select_position_pair(
     observations: Iterable[Record], positions: Iterable[Record], tolerance: float
 ) -> tuple[Record, Record]:
-    """Pair the first eligible observation with its nearest computed position."""
     if not math.isfinite(tolerance) or tolerance < 0:
         raise ValueError("position tolerance must be finite and non-negative")
     by_epoch: dict[float, Record] = {}
@@ -265,8 +262,8 @@ def capture_live(
     cannot use ``rate_hz``. ``intervals`` overrides the default period in seconds
     for selected periodic logs. Actual rates depend on receiver, log, group and
     firmware.
-    Capture preserves received epochs, including repeats and gaps; it does not
-    resample. Subscription restoration can fail after a disconnect. For longer
+    Capture preserves received epochs, including repeats and gaps, and does
+    not resample. Subscription restoration can fail after a disconnect. For longer
     recordings use ``SessionRecorder`` or stream with ``iter_live_records``.
     """
     interval = logging.output_interval(interval, rate_hz)

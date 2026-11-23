@@ -40,7 +40,6 @@ class VelocityData:
 
     @property
     def epoch_gps_seconds(self) -> float:
-        """Return GPS seconds from the velocity epoch in the payload."""
         return self.gps_week * 604800 + self.milliseconds_of_week / 1000
 
 

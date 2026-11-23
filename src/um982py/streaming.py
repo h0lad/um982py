@@ -36,8 +36,9 @@ __all__ = ["ReceiverStream", "StreamEvent", "StreamHealth", "Subscription"]
 class StreamEvent:
     """A frame's host completion and dispatch times, and stream session.
 
-    Completion is when the entire frame was decoded after a transport read; it
-    is not the receiver measurement time or the first byte's arrival time.
+    Completion is when the entire frame was decoded after a transport read,
+    and is neither the receiver measurement time nor the first byte's
+    arrival time.
     """
 
     message: Message
@@ -129,12 +130,12 @@ class ReceiverStream:
     This is the advanced worker for mixed message subscriptions and concurrent
     command callers on one connection. It neither configures periodic output
     automatically nor reconnects. For ordinary GGA use
-    ``Receiver.stream_positions()``; for a corrected rover use ``Rover``.
+    ``Receiver.stream_positions()`` and for a corrected rover use ``Rover``.
 
     Add subscriptions before calling ``start()``. The worker owns the receiver
     while it is running. Commands delay delivery until they finish. Closing
     waits for the current operation and can also close the receiver. A matching
-    command response goes to its future; other frames are delivered to
+    command response goes to its future, and other frames are delivered to
     subscribers after the operation completes. Do not use independently held
     references to the transport or decoder while the stream owns the receiver.
     """

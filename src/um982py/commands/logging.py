@@ -15,9 +15,7 @@ from um982py.messages.frames import (
 
 
 def interval_from_rate(rate_hz: float) -> float:
-    """Convert a documented N4 output rate to the receiver's interval in seconds.
-
-    The receiver, its firmware, signal group and log determine which rates are
+    """The receiver, its firmware, signal group and log determine which rates are
     actually available. In particular, 50 Hz applies only to certain N4 models.
     """
     intervals: dict[float, float] = {
@@ -34,8 +32,8 @@ def interval_from_rate(rate_hz: float) -> float:
         return intervals[rate_hz]
     except KeyError:
         raise ValueError(
-            "rate_hz must be one of 1, 2, 5, 10, 20 or 50 Hz; "
-            "100 Hz is not documented for N4 output"
+            "rate_hz must be one of 1, 2, 5, 10, 20 or 50 Hz, and 100 Hz is not "
+            "documented for N4 output"
         ) from None
 
 

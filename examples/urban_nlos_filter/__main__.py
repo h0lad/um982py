@@ -1,7 +1,7 @@
 # Flag likely NLOS satellites in an urban-canyon capture.
 #
 # Reads SATSINFO epochs and applies a receiver-only heuristic based on elevation
-# and C/N0.  Low scores mark satellites that are probably line-of-sight; high
+# and C/N0. Low scores mark satellites that are probably line-of-sight, and high
 # scores flag candidates for exclusion or down-weighting.
 
 from __future__ import annotations

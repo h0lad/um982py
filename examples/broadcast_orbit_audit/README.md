@@ -48,7 +48,7 @@ The same coefficients appear in the receiver's binary `GPSEPHB.bin` capture.
 These captures are not independent measurements, and the cause remains unknown.
 
 The optional SISRE score uses the GPS global-average weights
-`SISRE = sqrt((0.98 R - c dT)^2 + (A^2 + C^2)/49)`; other constellations have
+`SISRE = sqrt((0.98 R - c dT)^2 + (A^2 + C^2)/49)`. Other constellations have
 their own weight factors, so do not reuse this score for BeiDou or Galileo
 products without changing them.
 

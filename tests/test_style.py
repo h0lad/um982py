@@ -1,13 +1,87 @@
 import ast
+import re
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "um982py"
 MODULES = sorted(SRC.rglob("*.py"))
 LEGACY_TYPING = {"Dict", "List", "Optional", "Set", "Tuple", "Union"}
+BANNED_PHRASES = (
+    "it's important to note",
+    "this ensures that",
+    "in order to",
+    "leverage",
+    "seamless",
+    "delve into",
+    "game-changer",
+    "robust solution",
+    "comprehensive guide",
+)
+ATTRIBUTION_MARKERS = (
+    "co-authored-by",
+    "generated with",
+    "ai-generated",
+    "claude",
+    "chatgpt",
+    "copilot",
+)
 
 
 def _tree(path: Path) -> ast.Module:
     return ast.parse(path.read_text())
+
+
+def _prose_sources(path: Path) -> list[tuple[int, str]]:
+    return [
+        (number, line)
+        for number, line in enumerate(path.read_text().splitlines(), start=1)
+        if line.strip().startswith("#")
+    ]
+
+
+def _docstring_sources(path: Path) -> list[tuple[int, str]]:
+    tree = _tree(path)
+    sources = []
+    for node in ast.walk(tree):
+        if isinstance(
+            node, (ast.Module, ast.ClassDef, ast.FunctionDef, ast.AsyncFunctionDef)
+        ):
+            docstring = ast.get_docstring(node)
+            if docstring:
+                start = getattr(node, "lineno", 1)
+                sources.extend(
+                    (start + number, line)
+                    for number, line in enumerate(docstring.splitlines())
+                )
+    return sources
+
+
+def _field_docstring_sources(path: Path) -> list[tuple[int, str]]:
+    tree = _tree(path)
+    return [
+        (node.lineno, node.value.value)
+        for node in ast.walk(tree)
+        if (
+            isinstance(node, ast.Expr)
+            and isinstance(node.value, ast.Constant)
+            and isinstance(node.value.value, str)
+            and "\n" in node.value.value
+        )
+    ]
+
+
+def _readme_prose() -> list[tuple[int, str]]:
+    path = Path(__file__).resolve().parents[1] / "README.md"
+    if not path.exists():
+        return []
+    sources = []
+    inside_code_block = False
+    for number, line in enumerate(path.read_text().splitlines(), start=1):
+        if line.strip().startswith("```"):
+            inside_code_block = not inside_code_block
+            continue
+        if not inside_code_block:
+            sources.append((number, line))
+    return sources
 
 
 def _all_names(tree: ast.Module) -> tuple[str, ...] | None:
@@ -158,5 +232,67 @@ def test_library_uses_path_helpers_instead_of_builtin_open() -> None:
                 and ast.unparse(node).startswith("os.path")
             )
         )
+    ]
+    assert not offenders, offenders
+
+
+def test_prose_avoids_filler_phrases() -> None:
+    offenders = [
+        f"{path}:{number}: {line.strip()[:60]}"
+        for path in MODULES
+        for number, line in [
+            *_prose_sources(path),
+            *_docstring_sources(path),
+            *_field_docstring_sources(path),
+        ]
+        for phrase in BANNED_PHRASES
+        if phrase in line.lower()
+    ]
+    offenders.extend(
+        f"README.md:{number}: {line.strip()[:60]}"
+        for number, line in _readme_prose()
+        for phrase in BANNED_PHRASES
+        if phrase in line.lower()
+    )
+    assert not offenders, offenders
+
+
+def test_prose_connects_clauses_without_staccato_semicolons() -> None:
+    offenders = [
+        f"{path}:{number}: {line.strip()[:60]}"
+        for path in MODULES
+        for number, line in [
+            *_prose_sources(path),
+            *_docstring_sources(path),
+            *_field_docstring_sources(path),
+        ]
+        if ";" in line
+    ]
+    offenders.extend(
+        f"README.md:{number}: {line.strip()[:60]}"
+        for number, line in _readme_prose()
+        if ";" in line
+    )
+    assert not offenders, offenders
+
+
+def test_comments_are_not_separator_banners() -> None:
+    offenders = [
+        f"{path}:{number}"
+        for path in MODULES
+        for number, line in _prose_sources(path)
+        if re.fullmatch(r"#\s*[\s\-=*/~_+'\"|,:.]*\s*", line) and line.strip("# \t")
+    ]
+    assert not offenders, offenders
+
+
+def test_sources_carry_no_ai_attribution() -> None:
+    paths = [*MODULES, Path(__file__).resolve().parents[1] / "README.md"]
+    offenders = [
+        f"{path}:{number}: {line.strip()[:60]}"
+        for path in paths
+        for number, line in enumerate(path.read_text().splitlines(), start=1)
+        for marker in ATTRIBUTION_MARKERS
+        if marker in line.lower()
     ]
     assert not offenders, offenders

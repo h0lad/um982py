@@ -26,7 +26,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="append",
         required=True,
         metavar=("STATION", "JSON"),
-        help="polar_ionosphere report; repeat for stations or days",
+        help="polar_ionosphere report, repeatable for stations or days",
     )
     parser.add_argument(
         "--events",

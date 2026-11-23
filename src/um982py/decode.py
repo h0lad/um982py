@@ -47,9 +47,7 @@ def _frame(raw: bytes) -> Message:
 
 
 def decode_message(raw: bytes, *, log: "Log | None" = None) -> Record:
-    """Decode one receiver message, optionally selecting its log type.
-
-    The decoder validates checksums when present. Give ``log`` when several
+    """The decoder validates checksums when present. Give ``log`` when several
     binary logs share a message ID. Unsupported messages and ambiguous binary
     IDs raise ``ProtocolError``.
     """

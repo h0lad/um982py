@@ -100,7 +100,7 @@ class DebugOutput(StrEnum):
         self, interval: float | Trigger = 1, *, port: Port | None = None
     ) -> Command[CommandResponse]:
         if self == self.BASEBAND_NOTICE and interval != Trigger.ON_CHANGED:
-            raise ValueError("BBNOTICE requires ONCHANGED; use on_changed()")
+            raise ValueError("BBNOTICE requires ONCHANGED, so use on_changed()")
         return logging.output(self.value, interval, port=port)
 
     def on_changed(self, *, port: Port | None = None) -> Command[CommandResponse]:
@@ -131,7 +131,6 @@ class InternalDebugLog(StrEnum):
 
     @property
     def onchanged_only(self) -> bool:
-        """Return true when the stream only accepts ONCHANGED subscriptions."""
         return self not in (self.FAST_DEBUG, self.DEBUG_INFO)
 
     def output(

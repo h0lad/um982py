@@ -62,7 +62,6 @@ class Version:
 
     @classmethod
     def from_record(cls, record: Record) -> Self:
-        """Build version information from a decoded VERSION record."""
         if record.name != "VERSION":
             raise ProtocolError("Not a VERSION record")
         try:

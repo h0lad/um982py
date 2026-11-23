@@ -64,8 +64,8 @@ class SpoofInfo:
 
     Satellite numbers are the one-based positions in each constellation's
     mask, as stated in the receiver manual. They are not automatically
-    converted to NMEA IDs. ``indicator`` retains unknown values; ``is_suspect``
-    treats all nonzero values conservatively.
+    converted to NMEA IDs. ``indicator`` retains unknown values, while
+    ``is_suspect`` treats all nonzero values conservatively.
     """
 
     position_type: int | str
@@ -133,7 +133,7 @@ class SpoofInfo:
 
 @dataclass(frozen=True, slots=True)
 class PpsConfigInfo:
-    """PPS configuration word; unknown configuration values remain numeric."""
+    """Unknown configuration values remain numeric."""
 
     raw: int
 

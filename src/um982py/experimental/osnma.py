@@ -241,12 +241,10 @@ class DsmKroot:
 
     @property
     def key_bits(self) -> int:
-        """Key length in bits."""
         return KEY_SIZES[self.key_size]
 
     @property
     def tag_bits(self) -> int:
-        """Tag length in bits."""
         return TAG_SIZES[self.tag_size]
 
     @property
@@ -301,7 +299,8 @@ def collect_dsm(
 
     ``subframes`` holds the 15-byte HKROOT message of consecutive
     sub-frames and ``nma_headers`` their authentication headers. The first
-    byte of each HKROOT message is the header portion; the remaining bytes
+    byte of each HKROOT message is the header portion, and the remaining
+    bytes
     are DSM blocks addressed by their header. Pass one transmission of
     each DSM identifier. The second element of each returned key is zero
     for compatibility.
@@ -321,12 +320,10 @@ def collect_dsm(
 
 
 def parse_dsm_kroot(message: bytes, nma_header: NmaHeader) -> DsmKroot:
-    """Parse one DSM-KROOT message.
-
-    ``message`` is the assembled DSM field of the required blocks, starting
+    """``message`` is the assembled DSM field of the required blocks, starting
     with the fixed field block. The public key identifier selects the key
-    that signs the message; the root key time is given as week number and
-    hours of week.
+    that signs the message, and the root key time is given as week number
+    and hours of week.
     """
     bits = bits_of(message)
     fields = bits[:DSM_KROOT_FIXED_BITS]
@@ -368,9 +365,7 @@ def parse_dsm_kroot(message: bytes, nma_header: NmaHeader) -> DsmKroot:
 
 
 def dsm_kroot_signed_message(dsm: DsmKroot) -> bytes:
-    """Return the signed message of a DSM-KROOT.
-
-    The message concatenates the authentication header, the chain
+    """The message concatenates the authentication header, the chain
     parameters and the root key, right-padded to whole bytes.
     """
     bits = bits_of(_nma_header_bytes(dsm.nma_header))
@@ -411,7 +406,6 @@ def _nma_header_bytes(header: NmaHeader) -> bytes:
 
 
 def verify_dsm_kroot_padding(dsm: DsmKroot) -> bool:
-    """Verify the padding field of a DSM-KROOT message."""
     if not dsm.padding:
         return True
     digest = hashlib.sha256(dsm_kroot_signed_message(dsm) + dsm.signature).digest()
@@ -419,7 +413,6 @@ def verify_dsm_kroot_padding(dsm: DsmKroot) -> bool:
 
 
 def verify_dsm_kroot_signature(dsm: DsmKroot, public_key: bytes) -> bool:
-    """Verify the signature of a DSM-KROOT message with a public key."""
     return verify_ecdsa_p256(dsm_kroot_signed_message(dsm), dsm.signature, public_key)
 
 
@@ -460,10 +453,8 @@ def verify_chain_key(
 
 
 def tag_key_offset(adkd: int) -> int:
-    """Return the key offset in sub-frames of an authenticated data type.
-
-    Tags are verified with the key disclosed one MACK message later; the
-    slow authentication type adds ten further sub-frames of delay.
+    """Tags are verified with the key disclosed one MACK message later, and
+    the slow authentication type adds ten further sub-frames of delay.
     """
     if adkd == 12:
         return 11
@@ -543,9 +534,7 @@ def _mack_tag_count(key_bits: int, tag_bits: int) -> int:
 
 
 def parse_mack_message(mack: bytes, key_bits: int, tag_bits: int) -> MackMessage:
-    """Parse one 60-byte MACK message.
-
-    ``key_bits`` and ``tag_bits`` are the chain parameters announced by the
+    """``key_bits`` and ``tag_bits`` are the chain parameters announced by the
     DSM-KROOT in force. The message opens with the first tag, the sequence
     field and the cut-off point, continues with the remaining tags and
     their information fields and closes with the disclosed chain key.
@@ -593,12 +582,10 @@ def _mac(key: bytes, message: bytes, function: int) -> bytes:
 
 
 def word_authenticated_data(words: Mapping[int, InavWord], adkd: int) -> str | None:
-    """Return the concatenated authenticated data bits of one data type.
-
-    For the ephemeris, clock and status type the words one to five of one
-    sub-frame contribute their authenticated ranges; the timing type uses
-    words six and ten. The returned MSB-first bit string is exact; it is
-    not padded to whole bytes. ``None`` is returned when a required word
+    """For the ephemeris, clock and status type the words one to five of one
+    sub-frame contribute their authenticated ranges, while the timing type
+    uses words six and ten. The returned MSB-first bit string is exact and
+    is not padded to whole bytes. ``None`` is returned when a required word
     is missing.
     """
     required: tuple[int, ...]
@@ -631,14 +618,12 @@ def verify_tag(
     prn_data: int | None = None,
     tag_bits: int | None = None,
 ) -> bool:
-    """Verify one tag against locally regenerated navigation data.
-
-    ``subframe`` is the packed time of the sub-frame carrying the tag,
+    """``subframe`` is the packed time of the sub-frame carrying the tag,
     ``nma_status`` the two-bit status of its authentication header and
     ``navdata`` the exact authenticated data bits of the previous
     sub-frame, as returned by :func:`word_authenticated_data`. The
     optional ``prn_data`` identifies the satellite that transmitted the
-    authenticated data; it is omitted for the first tag, which
+    authenticated data and is omitted for the first tag, which
     authenticates the transmitting satellite itself. Pass ``tag_bits``
     for a non-byte-aligned tag, encoded with zero padding on the right.
     """
@@ -683,9 +668,7 @@ def verify_macseq(
 
 
 def load_public_key(path: Path) -> tuple[int, str, bytes]:
-    """Load a public key record of the public key directory.
-
-    Returns the key identifier, the stated algorithm and the compressed
+    """Returns the key identifier, the stated algorithm and the compressed
     point. Certificate chain verification is out of scope of this loader.
     """
     root = xml.etree.ElementTree.parse(path).getroot()  # noqa: S314

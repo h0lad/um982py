@@ -94,7 +94,6 @@ class Satellite:
 
 
 def satellites_from_record(record: Record) -> tuple[Satellite, ...]:
-    """Convert a decoded SATSINFO record into satellites and named signals."""
     if record.name != "SATSINFO":
         raise ValueError("expected a SATSINFO record")
     return tuple(

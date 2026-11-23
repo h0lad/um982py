@@ -284,7 +284,6 @@ class Receiver:
         return parse_configuration(self.collect(queries.configuration()))
 
     def signal_group(self) -> SignalGroup:
-        """Query the active master and slave signal group."""
         return self.execute(current_signal_group())
 
     def log_list(self) -> LogList:
@@ -311,8 +310,8 @@ class Receiver:
         active, and a timed-out command may have applied. An exception note lists
         completed commands.
 
-        Documented N4 rates are 1, 2, 5, 10, 20 and 50 Hz; 50 Hz requires
-        specific hardware and firmware. UM982 RTK and heading are specified at
+        Documented N4 rates are 1, 2, 5, 10, 20 and 50 Hz, where 50 Hz
+        requires specific hardware and firmware. UM982 RTK and heading are specified at
         up to 20 Hz. Actual rates depend on the log, group, firmware and port
         bandwidth. Measure delivered epochs rather than assuming the requested
         rate. Use ``antenna_log(log, 2)`` for secondary antenna logs.
@@ -398,7 +397,6 @@ class Receiver:
         return self.execute(receiver_system_status())
 
     def pps_status(self) -> PpsStatus:
-        """Read the receiver's reported PPS timing status."""
         return PpsStatus.from_record(self.read_log(Log.PPSSTATUS))
 
     def spoof_info(self) -> SpoofInfo:
@@ -417,9 +415,7 @@ class Receiver:
         stop: Event | None = None,
         on_message: Callable[[Message], None] | None = None,
     ) -> Iterator[Fix]:
-        """Poll GGA positions until the caller stops iterating.
-
-        Each query uses the receiver timeout. ``interval`` sets the pause
+        """Each query uses the receiver timeout. ``interval`` sets the pause
         between queries, not the receiver output rate. Repeated queries can
         return the same epoch. The receiver stays open when iteration stops.
 
@@ -451,7 +447,8 @@ class Receiver:
 
         The receiver controls the actual output rate. Repeated or missing
         epochs are preserved. Closing the context restores subscriptions even
-        when iteration stops early; restoration can fail on disconnection.
+        when iteration stops early, although restoration can fail on
+        disconnection.
 
         This consumes the existing connection in the calling thread and leaves
         it open. It does not reconnect. Use ``live.PositionSession`` for a
@@ -502,7 +499,7 @@ class Receiver:
         binary: bool | None = None,
         antenna: int = 1,
     ) -> Record:
-        """Read one log, preferring binary when its format is supported.
+        """Read one log, preferring binary when the log supports it.
 
         Pass ``binary=True`` or ``False`` to require a particular wire format.
         """
@@ -538,12 +535,13 @@ class Receiver:
     ) -> AugmentationState:
         """Enable high-accuracy signal group, SBAS, PPP and MMP.
 
-        Select ``sbas_service="QZSS"`` for SLAS; ``AUTO`` excludes it. The plan
-        disables Doppler position prediction. Check ``rejected`` for commands
-        that failed: previous settings can remain active. A changed signal group
-        is saved automatically and resets the receiver, even with
-        ``persist=False``. ``persist=True`` explicitly saves other settings only
-        after all commands succeed and the signal group is verified.
+            Select ``sbas_service="QZSS"`` for SLAS, because ``AUTO`` excludes it.
+        The plan
+            disables Doppler position prediction. Check ``rejected`` for commands
+            that failed: previous settings can remain active. A changed signal group
+            is saved automatically and resets the receiver, even with
+            ``persist=False``. ``persist=True`` explicitly saves other settings only
+            after all commands succeed and the signal group is verified.
         """
         return enable_augmentation(self, persist=persist, sbas_service=sbas_service)
 

@@ -34,7 +34,8 @@ the receiver fix as its reference.
 
 The solver uses one independent GPS L1 measurement per satellite and one
 receiver clock state. Its Python API rejects duplicate satellites and mixed
-constellations; a multi-constellation solver needs inter-system bias states.
+constellations, and a multi-constellation solver needs inter-system bias
+states.
 
 The legacy `protection_levels.hpl` and `vpl` fields contain the maximum
 single-fault position-error slopes multiplied by the square root of the

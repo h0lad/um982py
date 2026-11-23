@@ -159,7 +159,6 @@ def antenna_index(antenna: int | str) -> int:
 
 
 def other_antenna(antenna: int | str) -> str:
-    """Return the other antenna input."""
     return "secondary" if antenna_index(antenna) == 1 else "primary"
 
 

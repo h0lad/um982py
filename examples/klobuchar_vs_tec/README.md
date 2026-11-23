@@ -43,8 +43,8 @@ The code-derived delay retains uncalibrated receiver and satellite biases.
 The report omits relative differences when that delay is at or below 0.01 m.
 The signed and absolute differences remain available in metres.
 
-The broadcast model returns a slant L1 delay at the ionospheric pierce point;
-this example divides it by the Klobuchar obliquity factor `F = 1 + 16(0.53 -
+The broadcast model returns a slant L1 delay at the ionospheric pierce point,
+and this example divides it by the Klobuchar obliquity factor `F = 1 + 16(0.53 -
 E/180)^3` to compare a vertical delay with the dual-frequency measurement
 mapped by the same factor. The amplitude/period polynomials refer to the pierce
 point, not the observer's zenith, so the comparison remains approximate.

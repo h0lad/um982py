@@ -25,7 +25,7 @@ with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
                 track.write(fix)
 ```
 
-GPX uses mean-sea-level height; GeoJSON uses ellipsoidal height. GGA has no
+GPX uses mean-sea-level height, and GeoJSON uses ellipsoidal height. GGA has no
 date, so pass a verified timezone-aware `timestamp` to `write()` when needed.
 The writer requires a new file. Start a new track after a data gap.
 
@@ -61,7 +61,7 @@ returns an epoch-matched baseline heading when available. Call
 `position.motion(heading_offset_deg=...)` for ground speed, course, vertical
 speed and mounting-adjusted heading, or `motion.waypoint(latitude, longitude)`
 for approximate bearing and closing speed. Velocity can have a different epoch
-from the position; `motion.velocity_epoch_gps_seconds` incorporates the
+from the position, and `motion.velocity_epoch_gps_seconds` incorporates the
 receiver-reported latency when both it and the GPS epoch are available.
 
 ## References

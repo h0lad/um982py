@@ -47,7 +47,7 @@ def process_observations(
         np = importlib.import_module("numpy")
     except ModuleNotFoundError as error:
         raise ValueError(
-            "Python PPP dependencies are missing; install "
+            "Python PPP dependencies are missing, so install "
             "examples/offline_ppp/requirements.txt"
         ) from error
     if solver.__file__ is None:

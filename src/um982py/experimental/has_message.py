@@ -395,8 +395,8 @@ def _residues(count: int) -> tuple[tuple[int, ...], ...]:
     """Generator-matrix columns as residues of x to the 254 - column.
 
     The systematic matrix keeps the information octets in its first 32
-    rows; each parity row reads one coefficient of every column
-    residue, at the index given by the page identifier.
+    rows, and each parity row reads one coefficient of every column
+    residue at the index given by the page identifier.
     """
     columns: list[list[int]] = [list(_GENERATOR_POLYNOMIAL)]
     for _ in range(HAS_INFORMATION_PAGES - 1):
@@ -482,14 +482,14 @@ class Mt1SystemMask:
 
     gnss_id: int
     satellite_mask: int
-    """Forty bits; satellite index 0 is the most significant bit."""
+    """Forty bits with satellite index 0 as the most significant bit."""
 
     signal_mask: int
-    """Sixteen bits; signal index 0 is the most significant bit."""
+    """Sixteen bits with signal index 0 as the most significant bit."""
 
     cell_mask_available: bool
     cell_mask: int
-    """Cell mask bits, satellite-major; zero when not available."""
+    """Cell mask bits in satellite-major order, zero when not available."""
 
     navigation_message_index: int
 
@@ -721,7 +721,7 @@ class HasPageSet:
     def decode(self) -> HasMessage | None:
         """Recover the message from the collected pages.
 
-        Any ``k`` distinct pages solve the codeword; leftover pages
+        Any ``k`` distinct pages solve the codeword, and leftover pages
         verify the result and flag mixtures of message instances.
         Returns None while fewer than ``k`` pages are collected.
         """
@@ -800,9 +800,7 @@ def collect_has_page_sets(
 
 
 def parse_mt1_message(bits: str) -> Mt1Message:
-    """Parse the header and content blocks of an MT1 message.
-
-    The blocks follow the flag order: mask, orbit corrections, clock
+    """The blocks follow the flag order: mask, orbit corrections, clock
     full-set corrections, clock subset corrections, code biases and
     phase biases. Parsing stops before unsupported layouts and reports
     the reason, so partially parsed messages never raise.

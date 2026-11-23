@@ -99,14 +99,14 @@ def pair_base_rover_observations(
         used.add(index)
         rover_epoch, rover_row = rover_rows[index]
         left, right = _observations(row), _observations(rover_row)
-        common = left.keys() & right.keys()
+        shared_signal_keys = left.keys() & right.keys()
         result.append(
             ObservationEpochPair(
                 epoch,
                 rover_epoch,
                 tuple(
                     ObservationPair(key, left[key], right[key])
-                    for key in sorted(common)
+                    for key in sorted(shared_signal_keys)
                 ),
                 len(left.keys() - right.keys()),
                 len(right.keys() - left.keys()),

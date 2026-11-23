@@ -80,9 +80,7 @@ class TrackingSlot:
 
 
 def decode_tracking_message(message: BasebandMessage) -> Record:
-    """Read the PTOBSINFO body from an inner tracking message.
-
-    The native message metadata stays on the original frame. The decoded
+    """The native message metadata stays on the original frame. The decoded
     record carries no serial log timestamp.
     """
     if message.message_id != TRACKING_MESSAGE_ID:

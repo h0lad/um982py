@@ -632,39 +632,53 @@ def _find_earliest_notice(line: bytes) -> BasebandNotice | None:
     return None if best is None else best[1]
 
 
+def _decoded_entries(
+    notice: BasebandNotice, field_specs: tuple[tuple[str, FieldKind], ...]
+) -> list[tuple[str, Value]]:
+    return [
+        (field_name, kind.convert(notice.fields[index]))
+        for index, (field_name, kind) in enumerate(field_specs)
+    ]
+
+
+def _append_word_values(entries: list[tuple[str, Value]], tail: str) -> None:
+    words = tail.rstrip(",").split(",")
+    if all(re.fullmatch(r"(?:0[xX])?[0-9A-Fa-f]{1,8}", word) for word in words):
+        entries.append(("word_values", tuple(int(word, 16) for word in words)))
+
+
+def _append_detail_values(entries: list[tuple[str, Value]], tail: str) -> None:
+    if re.fullmatch(
+        r"[0-9A-Fa-f]+,\d+,\d+(?:,-?\d+){4}(?:,[0-9A-Fa-f]+,-?\d+,-?\d+)?", tail
+    ):
+        values = tuple(
+            int(value, 16 if index in (0, 7) else 10)
+            for index, value in enumerate(tail.split(","))
+        )
+        entries.append(("detail_values", values))
+
+
+def _append_derived_entries(
+    name: str, entries: list[tuple[str, Value]], fields: tuple[str, ...]
+) -> None:
+    if name == "GPS_WEEK_ROLL":
+        entries.append(("flags", entries[0][1]))
+    elif name == "SIMUTC":
+        entries.extend(
+            (key, entries[index][1])
+            for index, key in enumerate(("flag", "wnlsf", "dn", "tls", "tlsf"))
+        )
+    elif name in {"POINT_DATA", "POINT_DATA_L6"}:
+        _append_word_values(entries, fields[-1])
+    elif name in {"POINT_TRACKING", "POINT_TRACKING_COMPACT"}:
+        _append_detail_values(entries, fields[-1])
+
+
 def decode_baseband_notice(notice: BasebandNotice) -> Record:
-    """Decode a notice into a ``Record``."""
     for name, _, field_specs in _PATTERNS:
         if name == notice.name:
-            entries: list[tuple[str, Value]] = []
-            for field_name, kind in field_specs:
-                entries.append((field_name, kind.convert(notice.fields[len(entries)])))
-            if name == "GPS_WEEK_ROLL":
-                entries.append(("flags", entries[0][1]))
-            elif name == "SIMUTC":
-                entries.extend(
-                    (key, entries[index][1])
-                    for index, key in enumerate(("flag", "wnlsf", "dn", "tls", "tlsf"))
-                )
-            elif name in {"POINT_DATA", "POINT_DATA_L6"}:
-                words = notice.fields[-1].rstrip(",").split(",")
-                if all(
-                    re.fullmatch(r"(?:0[xX])?[0-9A-Fa-f]{1,8}", word) for word in words
-                ):
-                    entries.append(
-                        ("word_values", tuple(int(word, 16) for word in words))
-                    )
-            elif name in {"POINT_TRACKING", "POINT_TRACKING_COMPACT"}:
-                tail = notice.fields[-1]
-                if re.fullmatch(
-                    r"[0-9A-Fa-f]+,\d+,\d+(?:,-?\d+){4}(?:,[0-9A-Fa-f]+,-?\d+,-?\d+)?",
-                    tail,
-                ):
-                    values = tuple(
-                        int(value, 16 if index in (0, 7) else 10)
-                        for index, value in enumerate(tail.split(","))
-                    )
-                    entries.append(("detail_values", values))
+            entries = _decoded_entries(notice, field_specs)
+            _append_derived_entries(name, entries, notice.fields)
             return Record(notice.name, tuple(entries))
     raise ProtocolError(f"Unknown baseband notice: {notice.name}")
 

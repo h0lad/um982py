@@ -24,8 +24,8 @@ class Observations:
     Preserve the original wire capture separately for reproducibility. Quality
     checks use receiver-reported flags and do not establish measurement accuracy.
     Source tags survive slicing and concatenation of ``records``. For replay,
-    supply ``source`` from acquisition metadata; untagged wire bytes cannot
-    identify a physical receiver or session.
+    supply ``source`` from acquisition metadata, because untagged wire bytes
+    cannot identify a physical receiver or session.
     """
 
     records: tuple[Record, ...]
@@ -78,7 +78,8 @@ class Observations:
         metadata: RinexMetadata | None = None,
         created_at: datetime | None = None,
     ) -> RinexExport:
-        """Export observations; fix aware ``created_at`` for reproducible text."""
+        """Export observations with a fix-aware ``created_at`` for
+        reproducible text."""
         return export_rinex(
             self.records,
             marker_name=marker_name,
@@ -102,14 +103,15 @@ def record_observations(
 ) -> Observations:
     """Capture a single observation log and restore previous subscriptions.
 
-    Select RANGE, OBSVM or OBSVMCMP; antenna 2 selects the matching secondary
-    log. Records are held in memory. InterruptedCapture retains partial records
-    under the selected logical log name. For long captures use SessionRecorder.
+    Select RANGE, OBSVM or OBSVMCMP, where antenna 2 selects the matching
+    secondary log. Records are held in memory. InterruptedCapture retains
+    partial records under the selected logical log name. For long captures
+    use SessionRecorder.
     Actual cadence is receiver-dependent and must be checked in the records.
 
     Each capture gets a new source session ID, including interrupted captures.
-    ``receiver_id`` is an optional known serial number or application label;
-    no identity query is issued. Separate captures are separate carrier arcs.
+    ``receiver_id`` is an optional known serial number or application label,
+    and no identity query is issued. Separate captures are separate carrier arcs.
     """
     if not isinstance(log, Log) or log not in (Log.RANGE, Log.OBSVM, Log.OBSVMCMP):
         raise ValueError("log must be RANGE, OBSVM or OBSVMCMP")

@@ -158,14 +158,15 @@ def decode_rtcm(data: bytes | RtcmMessage) -> Record:
     ``cells`` records. MSM satellite and signal IDs are one-based mask indices.
 
     Observation epochs and MSM ranges remain milliseconds. Orbital angles use
-    semicircles; angular harmonic corrections use radians. GLONASS vectors
+    semicircles and angular harmonic corrections use radians. GLONASS vectors
     remain kilometres, and BDS group delays remain nanoseconds.
     Week numbers, channel codes and lock indicators retain their encoded
-    values. Invalid measurement sentinels remain numeric; decoding alone does
-    not establish observation validity or resolve time rollovers.
+    values. Invalid measurement sentinels remain numeric, and decoding alone
+    does not establish observation validity or resolve time rollovers.
 
     Unknown types return ``unsupported`` with empty fields. Unicore private
-    types return ``unicore_private``; 1104/1105 are not interpreted as SBAS MSM.
+    types return ``unicore_private``, and 1104/1105 are not interpreted as
+    SBAS MSM.
     Malformed supported bodies raise ProtocolError instead of falling back.
     """
     frame = parse_rtcm(data.raw if isinstance(data, RtcmMessage) else data)

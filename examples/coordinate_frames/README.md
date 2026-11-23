@@ -29,8 +29,8 @@ valid measurement pair.
 
 The reported residual is an ENU → ECEF → ENU round trip using the same input
 baseline. It checks the coordinate conversion, not measured baseline accuracy.
-The baseline always runs from physical ANT1 to ANT2 in the ANT1 local frame;
-when ANT2 is selected (including `--swap-antennas`), a matching primary
+The baseline always runs from physical ANT1 to ANT2 in the ANT1 local frame,
+and when ANT2 is selected (including `--swap-antennas`) a matching primary
 BESTNAVXYZ origin is required. The report identifies both this direction and
 the position epoch offset.
 

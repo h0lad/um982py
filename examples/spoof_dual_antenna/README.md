@@ -32,7 +32,7 @@ ANT1 when baseline roles are swapped. Sky comparison needs two snapshots.
 The individual BSLNENUHD fixture exercises baseline decoding only. Missing
 heading, sky comparison or SPOOFINFO evidence produces `incomplete_checks` and exit code 1,
 while retaining any available alarms. Exit code 0 means the required checks
-were available; inspect `alarms` separately. These consistency checks cannot
+were available, so inspect `alarms` separately. These consistency checks cannot
 establish that the received signals are authentic.
 
 ## References

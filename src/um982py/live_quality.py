@@ -71,8 +71,8 @@ class PositionMonitor:
         """Assess freshness without waiting for another update.
 
         Times use the host monotonic clock. A correction age is advanced by
-        the elapsed time since frame completion; receiver and transport latency
-        are not included. Check connection health separately.
+        the elapsed time since frame completion and does not include
+        receiver or transport latency. Check connection health separately.
         """
         latest = self._latest
         if latest is None:

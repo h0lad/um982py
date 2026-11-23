@@ -19,8 +19,8 @@ class Motion:
     """Receiver ground motion and optional mounting-corrected true heading.
 
     Ground speed is not airspeed or speed through water. Heading is the antenna
-    baseline direction adjusted by the caller's mounting offset; it is not the
-    course over ground. Missing or invalid measurements are None.
+    baseline direction adjusted by the caller's mounting offset and is not
+    the course over ground. Missing or invalid measurements are None.
     """
 
     position: BestNavigation

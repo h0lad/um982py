@@ -33,7 +33,7 @@ solution or estimate orbit uncertainty. Use `broadcast_orbit_audit` to compare
 broadcast and precise products at matched epochs.
 
 Each constellation uses its own ICD constants: `mu = 3.986005e14` for GPS and
-`mu = 3.986004418e14` for Galileo/BeiDou; the Earth rotation rate is
+`mu = 3.986004418e14` for Galileo/BeiDou, and the Earth rotation rate is
 `7.2921151467e-5` rad/s for GPS/Galileo and `7.292115e-5` rad/s for BeiDou.
 BeiDou GEO satellites (C01-C05, C59-C63) need the additional 5-degree
 GK-to-BDCS frame rotation from the BeiDou ICD. GLONASS states are integrated

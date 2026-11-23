@@ -43,10 +43,8 @@ def matched_position_read(*, port: Port | None = None) -> Command[Record]:
 
 
 def matched_position_output(*, port: Port | None = None) -> Command[CommandResponse]:
-    """Subscribe to changes in the binary matched position."""
     return logging.output("MATCHEDPOSB", Trigger.ON_CHANGED, port=port)
 
 
 def matched_position_stop(*, port: Port | None = None) -> Command[CommandResponse]:
-    """Stop a previously started matched position subscription."""
     return logging.stop("MATCHEDPOSB", port=port)

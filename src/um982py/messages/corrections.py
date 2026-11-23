@@ -130,7 +130,6 @@ def mask_indices(mask: bytes) -> tuple[int, ...]:
 
 
 def has_signal_indices(signal_mask: int) -> tuple[int, ...]:
-    """Return the set signal indices of a 16-bit Galileo HAS signal mask."""
     if type(signal_mask) is not int or not 0 <= signal_mask <= 0xFFFF:
         raise ValueError("HAS signal mask must be a 16-bit unsigned integer")
     return mask_indices(signal_mask.to_bytes(2, "big"))

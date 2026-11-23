@@ -41,7 +41,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--join-tolerance",
         type=float,
         default=0.0,
-        help="epoch mismatch in seconds; only 0 is supported for noise estimation",
+        help="epoch mismatch in seconds, where only 0 is supported for noise "
+        "estimation",
     )
     add_debug_argument(parser)
     args = parser.parse_args(argv)

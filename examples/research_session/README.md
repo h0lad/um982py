@@ -59,7 +59,7 @@ code, carrier phase or a known frequency.
 
 Each `record_observations()` call assigns a unique capture session ID and antenna
 to `observations.source` and every top-level record. `receiver_id` is your known
-serial number or application label; it remains `None` if omitted. No receiver
+serial number or application label and remains `None` if omitted. No receiver
 identity query is issued. Source tags survive slicing, including partial records
 from `InterruptedCapture`. Observation analysis and RINEX export reject mixed
 receiver/session/antenna tags and mixtures of tagged and untagged records.
@@ -79,8 +79,8 @@ print(subset.source)
 ```
 
 Save `dataclasses.asdict(observations.source)` with the original recording and
-station metadata. Raw wire bytes and RINEX files do not preserve these tags;
-untagged replay cannot identify a receiver or session automatically. A tag is
+station metadata. Raw wire bytes and RINEX files do not preserve these tags,
+so untagged replay cannot identify a receiver or session automatically. A tag is
 a declaration, not proof of carrier-phase continuity. Treat separate captures,
 reconnects, reboots and antenna changes as separate acquisition sessions.
 

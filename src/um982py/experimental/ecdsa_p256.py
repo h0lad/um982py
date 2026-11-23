@@ -55,9 +55,7 @@ def _point_multiply(scalar: int, point: tuple[int, int]) -> tuple[int, int] | No
 
 
 def decompress_public_key(compressed: bytes) -> tuple[int, int]:
-    """Return the P-256 point of a compressed public key.
-
-    ``compressed`` is the 33-byte SEC1 form with the leading sign byte.
+    """``compressed`` is the 33-byte SEC1 form with the leading sign byte.
     Raises :class:`InvalidSignature` for values not on the curve.
     """
     if len(compressed) != 33 or compressed[0] not in (2, 3):
@@ -73,9 +71,7 @@ def decompress_public_key(compressed: bytes) -> tuple[int, int]:
 
 
 def verify_ecdsa_p256(message: bytes, signature: bytes, public_key: bytes) -> bool:
-    """Verify an ECDSA P-256/SHA-256 ``signature`` over ``message``.
-
-    ``public_key`` is the 65-byte uncompressed SEC1 form or the 33-byte
+    """``public_key`` is the 65-byte uncompressed SEC1 form or the 33-byte
     compressed form. The signature is the raw ``r || s`` pair with
     fixed-width coordinates, as used by the Galileo authentication
     messages.

@@ -25,8 +25,8 @@ __all__ = ["LiveHealth", "PositionSession", "PositionSubscription", "PositionUpd
 class PositionUpdate:
     """A GGA fix and its host frame-completion time.
 
-    The full frame has been decoded at this time; it can have spent time in
-    receiver or operating-system buffers before it was read.
+    The full frame has been decoded at this time, although it can have
+    spent time in receiver or operating-system buffers before it was read.
     """
 
     fix: Fix
@@ -144,6 +144,61 @@ class PositionSession:
         self._malformed = 0
         self._last_fix: float | None = None
         self._error: str | None = None
+        self._reconnect_delay = self.reconnect.initial_seconds
+
+    def _require_idle(self) -> None:
+        with self._lock:
+            if self._state != "idle":
+                raise RuntimeError("session can only be run once")
+            self._state = "connecting"
+
+    def _begin_connection_attempt(self) -> None:
+        with self._lock:
+            self._state = "connecting"
+            self._attempts += 1
+
+    def _next_position_update(
+        self, receiver: Receiver, connection: int, previous: int | None
+    ) -> PositionUpdate | None:
+        try:
+            frame = receiver._receive_timed(timeout=self.poll_seconds)
+        except ResponseTimeout:
+            return None
+        message = frame.message
+        if not isinstance(message, Sentence) or message.kind != "GGA":
+            return None
+        try:
+            fix = Fix.from_message(message)
+        except ProtocolError:
+            with self._lock:
+                self._malformed += 1
+            return None
+        now = frame.received_monotonic
+        with self._lock:
+            self._fixes += 1
+            self._last_fix = now
+        return PositionUpdate(fix, frame.received_at, now, previous, connection)
+
+    def _wait_reconnect_backoff(self, stop: Event, error: Exception) -> bool:
+        if self.on_disconnect is not None:
+            self.on_disconnect(error)
+        with self._lock:
+            self._error = str(error)
+            self._state = "backoff"
+        if stop.wait(self._reconnect_delay):
+            return True
+        self._reconnect_delay = self.reconnect.next_delay(self._reconnect_delay)
+        return False
+
+    def _mark_failed(self, error: Exception) -> None:
+        with self._lock:
+            self._error = str(error)
+            self._state = "failed"
+
+    def _mark_stopped(self) -> None:
+        with self._lock:
+            if self._state != "failed":
+                self._state = "stopped"
 
     def health(self) -> LiveHealth:
         with self._lock:
@@ -159,17 +214,11 @@ class PositionSession:
 
     def positions(self, stop: Event) -> Generator[PositionUpdate, None, None]:
         """Yield fixes until stopped, and close the iterator if you stop early."""
-        with self._lock:
-            if self._state != "idle":
-                raise RuntimeError("session can only be run once")
-            self._state = "connecting"
-        delay = self.reconnect.initial_seconds
+        self._require_idle()
         previous: int | None = None
         try:
             while not stop.is_set():
-                with self._lock:
-                    self._state = "connecting"
-                    self._attempts += 1
+                self._begin_connection_attempt()
                 try:
                     with self.receiver_factory() as receiver:
                         if self.configure is not None:
@@ -179,52 +228,19 @@ class PositionSession:
                             connection = self._connections
                             self._state = "connected"
                         while not stop.is_set():
-                            try:
-                                frame = receiver._receive_timed(
-                                    timeout=self.poll_seconds
-                                )
-                            except ResponseTimeout:
-                                continue
-                            message = frame.message
-                            if (
-                                not isinstance(message, Sentence)
-                                or message.kind != "GGA"
-                            ):
-                                continue
-                            try:
-                                fix = Fix.from_message(message)
-                            except ProtocolError:
-                                with self._lock:
-                                    self._malformed += 1
-                                continue
-                            now = frame.received_monotonic
-                            with self._lock:
-                                self._fixes += 1
-                                self._last_fix = now
-                            update = PositionUpdate(
-                                fix, frame.received_at, now, previous, connection
+                            update = self._next_position_update(
+                                receiver, connection, previous
                             )
-                            previous = fix.quality
-                            delay = self.reconnect.initial_seconds
+                            if update is None:
+                                continue
+                            previous = update.fix.quality
+                            self._reconnect_delay = self.reconnect.initial_seconds
                             yield update
                 except (TransportError, OSError) as error:
-                    if self.on_disconnect is not None:
-                        self.on_disconnect(error)
-                    with self._lock:
-                        self._error = str(error)
-                        self._state = "backoff"
-                    if stop.wait(delay):
+                    if self._wait_reconnect_backoff(stop, error):
                         break
-                    delay = self.reconnect.next_delay(delay)
         except Exception as error:
-            with self._lock:
-                self._error = str(error)
-                self._state = "failed"
+            self._mark_failed(error)
             raise
-        else:
-            with self._lock:
-                self._state = "stopped"
         finally:
-            with self._lock:
-                if self._state != "failed":
-                    self._state = "stopped"
+            self._mark_stopped()

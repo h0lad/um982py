@@ -1,6 +1,7 @@
 """Reconnect a rover receiver while maintaining correction and stream status."""
 
 from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from math import isfinite
 from threading import Event, Lock
@@ -44,12 +45,13 @@ class RoverSession:
 
     Use ``Rover`` for one receiver connection. This class owns a fresh receiver
     and rover worker per connection, exposing both connection and correction
-    health. It polls positions; it is not a passive GGA subscription.
+    health. It polls positions rather than acting as a passive GGA
+    subscription.
 
     The factory opens a new receiver each time. The optional configuration
     callback runs before the stream and NTRIP relay start on each connection.
-    Transport errors retry with backoff; protocol, configuration and fatal
-    correction errors propagate. Caster reconnection is handled by the relay.
+    Transport errors retry with backoff, while protocol, configuration and
+    fatal correction errors propagate. Caster reconnection is handled by the relay.
     Close the iterator when stopping early. A stop can wait for in-flight I/O.
     """
 
@@ -89,6 +91,86 @@ class RoverSession:
         self._last_position: float | None = None
         self._error: str | None = None
         self._rover: Rover | None = None
+        self._reconnect_delay = self.reconnect.initial_seconds
+
+    def _require_idle(self) -> None:
+        with self._lock:
+            if self._state != "idle":
+                raise RuntimeError("session can only be run once")
+            self._state = "connecting"
+
+    def _begin_connection_attempt(self) -> None:
+        with self._lock:
+            self._state = "connecting"
+            self._attempts += 1
+
+    @contextmanager
+    def _connect(self) -> Iterator[tuple[Rover, int]]:
+        with self.receiver_factory() as receiver:
+            if self.configure is not None:
+                self.configure(receiver)
+            with Rover(
+                receiver,
+                ntrip_url=self.ntrip_url,
+                username=self.username,
+                password=self.password,
+                ntrip_version=self.ntrip_version,
+            ) as rover:
+                with self._lock:
+                    self._connections += 1
+                    connection = self._connections
+                    self._state = "connected"
+                    self._rover = rover
+                try:
+                    yield rover, connection
+                finally:
+                    with self._lock:
+                        self._rover = None
+
+    def _wait_reconnect_backoff(self, stop: Event, error: Exception) -> bool:
+        if self.on_disconnect is not None:
+            self.on_disconnect(error)
+        with self._lock:
+            self._error = str(error)
+            self._state = "backoff"
+        if stop.wait(self._reconnect_delay):
+            return True
+        self._reconnect_delay = self.reconnect.next_delay(self._reconnect_delay)
+        return False
+
+    def _yield_connected_positions(
+        self,
+        rover: Rover,
+        connection: int,
+        stop: Event,
+        *,
+        interval: float,
+        heading: bool,
+        heading_tolerance: float,
+    ) -> Iterator[RoverUpdate]:
+        while not stop.is_set():
+            position = rover.position(
+                heading=heading,
+                heading_tolerance=heading_tolerance,
+            )
+            now = monotonic()
+            with self._lock:
+                self._positions += 1
+                self._last_position = now
+            self._reconnect_delay = self.reconnect.initial_seconds
+            yield RoverUpdate(position, connection, rover.stream.session_id, now)
+            if stop.wait(interval):
+                return
+
+    def _fail(self, error: Exception) -> None:
+        with self._lock:
+            self._error = str(error)
+            self._state = "failed"
+
+    def _mark_stopped(self) -> None:
+        with self._lock:
+            if self._state != "failed":
+                self._state = "stopped"
 
     def health(self) -> RoverSessionHealth:
         """Return receiver and correction state for the current connection."""
@@ -122,71 +204,27 @@ class RoverSession:
             or heading_tolerance < 0
         ):
             raise ValueError("heading_tolerance must be finite and non-negative")
-        with self._lock:
-            if self._state != "idle":
-                raise RuntimeError("session can only be run once")
-            self._state = "connecting"
-        delay = self.reconnect.initial_seconds
+        self._require_idle()
         try:
             while not stop.is_set():
-                with self._lock:
-                    self._state = "connecting"
-                    self._attempts += 1
+                self._begin_connection_attempt()
                 try:
-                    with self.receiver_factory() as receiver:
-                        if self.configure is not None:
-                            self.configure(receiver)
-                        with Rover(
-                            receiver,
-                            ntrip_url=self.ntrip_url,
-                            username=self.username,
-                            password=self.password,
-                            ntrip_version=self.ntrip_version,
-                        ) as rover:
-                            with self._lock:
-                                self._connections += 1
-                                connection = self._connections
-                                self._state = "connected"
-                                self._rover = rover
-                            try:
-                                while not stop.is_set():
-                                    position = rover.position(
-                                        heading=heading,
-                                        heading_tolerance=heading_tolerance,
-                                    )
-                                    now = monotonic()
-                                    with self._lock:
-                                        self._positions += 1
-                                        self._last_position = now
-                                    delay = self.reconnect.initial_seconds
-                                    yield RoverUpdate(
-                                        position,
-                                        connection,
-                                        rover.stream.session_id,
-                                        now,
-                                    )
-                                    if stop.wait(interval):
-                                        break
-                            finally:
-                                with self._lock:
-                                    self._rover = None
+                    with self._connect() as (rover, connection):
+                        yield from self._yield_connected_positions(
+                            rover,
+                            connection,
+                            stop,
+                            interval=interval,
+                            heading=heading,
+                            heading_tolerance=heading_tolerance,
+                        )
                 except ResponseTimeout:
                     raise
                 except (TransportError, OSError) as error:
-                    if self.on_disconnect is not None:
-                        self.on_disconnect(error)
-                    with self._lock:
-                        self._error = str(error)
-                        self._state = "backoff"
-                    if stop.wait(delay):
+                    if self._wait_reconnect_backoff(stop, error):
                         break
-                    delay = self.reconnect.next_delay(delay)
         except Exception as error:
-            with self._lock:
-                self._error = str(error)
-                self._state = "failed"
+            self._fail(error)
             raise
         finally:
-            with self._lock:
-                if self._state != "failed":
-                    self._state = "stopped"
+            self._mark_stopped()

@@ -21,7 +21,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         action="append",
         required=True,
         metavar=("NAME", "QUALITY_JSON"),
-        help="named report from examples.rtk_quality; repeat for more sessions",
+        help="named report from examples.rtk_quality, repeatable for more sessions",
     )
     parser.add_argument(
         "--labels",

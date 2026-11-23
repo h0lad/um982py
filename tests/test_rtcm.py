@@ -138,7 +138,8 @@ def test_glonass_sign_magnitude_negative_zero() -> None:
 
 def test_msm_empty_masks_and_cell_count_limit() -> None:
     def header(satellites: int, signals: int, cells: int) -> bytes:
-        # 73 header bits precede the satellite mask; no observation columns.
+        # 73 header bits precede the satellite mask. There are no observation
+        # columns.
         pairs = satellites.bit_count() * signals.bit_count()
         bits = 169 + pairs
         value = (1074 << (bits - 12)) | (satellites << (32 + pairs))

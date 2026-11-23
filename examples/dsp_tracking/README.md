@@ -53,7 +53,7 @@ Use the time tags to check epoch alignment when comparing two channels.
 
 Records include the constellation, band, carrier frequency and wavelength.
 The additional positions recover GPS L2/L5, Galileo E5a/E5b/E6, BeiDou
-B2a/B3 and GLONASS G2 from the observed dumps. For GLONASS, the RF channel
+B2a/B3 and GLONASS G2 from captured snapshots. For GLONASS, the RF channel
 and the satellite identity are separate. A missing satellite identity
 means the firmware has not assigned a receiver PRN to that channel.
 
@@ -71,7 +71,7 @@ PYTHONPATH=src python3 -m examples.dsp_tracking --port /dev/ttyUSB0 \
     --receiver-state --save-ram dsp-full --json dsp-full.json
 ```
 
-The tracking heap can supply eight RF AGC codes in DSP order. These are
+The tracking window can supply eight RF AGC codes in DSP order. These are
 gain register codes. The optional windows also provide the following data
 in JSON under `receiver_state`.
 

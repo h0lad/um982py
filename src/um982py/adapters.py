@@ -97,8 +97,8 @@ def navsatfix(
     """Build a ROS 2 NavSatFix using an application-supplied ROS timestamp.
 
     Supply the frame, augmentation status and service mask. By default, only
-    unaugmented GGA quality 1 or BESTNAV SINGLE is reported as a valid fix;
-    other solution types require an explicit status. Position standard deviations
+    unaugmented GGA quality 1 or BESTNAV SINGLE is reported as a valid fix,
+    and other solution types require an explicit status. Position standard deviations
     produce an ENU diagonal covariance when all three are available. The
     receiver reports estimates, not an independently verified error bound.
     """

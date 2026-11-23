@@ -250,8 +250,8 @@ def rtk_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
 def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
     """Report correction delivery alongside PPP solutions.
 
-    The B2b signal-group flag does not verify operating mode; group 7/0 is
-    documented for base-station mode only.
+    The B2b signal-group flag does not verify operating mode, and group 7/0
+    is documented for base-station mode only.
     """
     records = capture.arrival_order or tuple(
         sorted(

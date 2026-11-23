@@ -4,7 +4,8 @@ from typing import Protocol
 
 
 class Transport(Protocol):
-    """A byte transport; a zero timeout reads only immediately available bytes."""
+    """A byte transport where a zero timeout reads only immediately
+    available bytes."""
 
     def read(self, size: int, timeout: float) -> bytes: ...
 

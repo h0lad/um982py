@@ -35,7 +35,7 @@ phase in metres and `k` is capped at the window length.
 It resets when a cycle slip or gap breaks an arc. A single-frequency Hatch
 filter is not divergence-free: the ionosphere delays code and advances carrier
 phase, so a changing TEC biases the smoothed code over a long arc. The result
-also retains the code and phase biases; it is not an independent accuracy
+also retains the code and phase biases and is not an independent accuracy
 measurement.
 
 ## References

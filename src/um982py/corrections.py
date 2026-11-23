@@ -71,6 +71,87 @@ class CorrectionCheck:
     flags: tuple[str, ...]
 
 
+def _audit_mask_event(
+    event: CorrectionEvent,
+    previous: CorrectionEvent | None,
+    flags: list[str],
+) -> bool:
+    if event.mask is None or len(event.mask) != 32 or event.iodp is None:
+        raise ValueError("mask blocks need 32 mask bytes and IODP")
+    if previous is None:
+        return True
+    if event.epoch < previous.epoch:
+        flags.append("out_of_order_mask")
+        return False
+    if (event.iodssr, event.iodp) == (previous.iodssr, previous.iodp) and (
+        event.mask != previous.mask
+    ):
+        flags.append("mask_changed_without_issue")
+        return False
+    return True
+
+
+def _audit_against_mask(
+    event: CorrectionEvent,
+    previous: CorrectionEvent | None,
+    flags: list[str],
+    *,
+    mask_max_age: float,
+) -> None:
+    if previous is None:
+        flags.append("missing_mask")
+        return
+    if event.received - previous.epoch > mask_max_age:
+        flags.append("stale_mask")
+    if event.iodssr != previous.iodssr:
+        flags.append("iodssr_mismatch")
+    if event.iodp is not None and event.iodp != previous.iodp:
+        flags.append("iodp_mismatch")
+
+
+def _audit_orbit_event(
+    event: CorrectionEvent,
+    orbits: dict[tuple[int, int], tuple[int, int, float]],
+    flags: list[str],
+    *,
+    usable: bool,
+    navigation_issues: Mapping[int, int] | None,
+) -> None:
+    for slot, iodn in event.navigation:
+        if (
+            navigation_issues is not None
+            and slot in navigation_issues
+            and navigation_issues[slot] != iodn
+        ):
+            flags.append(f"navigation_issue_mismatch:{slot}")
+    for slot, issue in event.issues:
+        key = event.transmitter, slot
+        old = orbits.get(key)
+        if old is not None and event.epoch < old[2]:
+            flags.append(f"out_of_order_orbit:{slot}")
+        elif usable and not flags:
+            orbits[key] = event.iodssr, issue, event.epoch
+
+
+def _audit_clock_event(
+    event: CorrectionEvent,
+    orbits: dict[tuple[int, int], tuple[int, int, float]],
+    flags: list[str],
+    *,
+    max_age: float,
+) -> None:
+    if not event.issues:
+        flags.append("satellite_mapping_unverified")
+    for slot, issue in event.issues:
+        orbit = orbits.get((event.transmitter, slot))
+        if orbit is None:
+            flags.append(f"missing_orbit:{slot}")
+        elif (event.iodssr, issue) != orbit[:2]:
+            flags.append(f"iodcorr_mismatch:{slot}")
+        elif event.received - orbit[2] > max_age:
+            flags.append(f"stale_orbit:{slot}")
+
+
 def audit_corrections(
     events: Sequence[CorrectionEvent],
     *,
@@ -86,7 +167,7 @@ def audit_corrections(
         raise ValueError("correction events must be in reception order")
     masks: dict[int, CorrectionEvent] = {}
     orbits: dict[tuple[int, int], tuple[int, int, float]] = {}
-    output = []
+    checks = []
     for event in events:
         finite(event.received, event.epoch)
         if event.kind not in ("mask", "orbit", "clock", "bias", "ura"):
@@ -100,57 +181,21 @@ def audit_corrections(
         usable = -1 <= age <= max_age
         previous = masks.get(event.transmitter)
         if event.kind == "mask":
-            if event.mask is None or len(event.mask) != 32 or event.iodp is None:
-                raise ValueError("mask blocks need 32 mask bytes and IODP")
-            if previous is not None:
-                if event.epoch < previous.epoch:
-                    flags.append("out_of_order_mask")
-                    usable = False
-                elif (event.iodssr, event.iodp) == (
-                    previous.iodssr,
-                    previous.iodp,
-                ) and event.mask != previous.mask:
-                    flags.append("mask_changed_without_issue")
-                    usable = False
-            if usable:
+            if _audit_mask_event(event, previous, flags) and usable:
                 masks[event.transmitter] = event
         else:
-            if previous is None:
-                flags.append("missing_mask")
-            else:
-                if event.received - previous.epoch > mask_max_age:
-                    flags.append("stale_mask")
-                if event.iodssr != previous.iodssr:
-                    flags.append("iodssr_mismatch")
-                if event.iodp is not None and event.iodp != previous.iodp:
-                    flags.append("iodp_mismatch")
+            _audit_against_mask(event, previous, flags, mask_max_age=mask_max_age)
             if event.kind == "orbit":
-                for slot, iodn in event.navigation:
-                    if (
-                        navigation_issues is not None
-                        and slot in navigation_issues
-                        and navigation_issues[slot] != iodn
-                    ):
-                        flags.append(f"navigation_issue_mismatch:{slot}")
-                for slot, issue in event.issues:
-                    key = event.transmitter, slot
-                    old = orbits.get(key)
-                    if old is not None and event.epoch < old[2]:
-                        flags.append(f"out_of_order_orbit:{slot}")
-                    elif usable and not flags:
-                        orbits[key] = event.iodssr, issue, event.epoch
-            if event.kind == "clock":
-                if not event.issues:
-                    flags.append("satellite_mapping_unverified")
-                for slot, issue in event.issues:
-                    orbit = orbits.get((event.transmitter, slot))
-                    if orbit is None:
-                        flags.append(f"missing_orbit:{slot}")
-                    elif (event.iodssr, issue) != orbit[:2]:
-                        flags.append(f"iodcorr_mismatch:{slot}")
-                    elif event.received - orbit[2] > max_age:
-                        flags.append(f"stale_orbit:{slot}")
-        output.append(
+                _audit_orbit_event(
+                    event,
+                    orbits,
+                    flags,
+                    usable=usable,
+                    navigation_issues=navigation_issues,
+                )
+            elif event.kind == "clock":
+                _audit_clock_event(event, orbits, flags, max_age=max_age)
+        checks.append(
             CorrectionCheck(
                 event.received,
                 event.transmitter,
@@ -159,7 +204,7 @@ def audit_corrections(
                 tuple(dict.fromkeys(flags)),
             )
         )
-    return tuple(output)
+    return tuple(checks)
 
 
 def correction_events(record: Record) -> tuple[CorrectionEvent, ...]:

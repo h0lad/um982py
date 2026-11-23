@@ -303,7 +303,7 @@ def _parser() -> ExampleParser:
     parser.add_argument(
         "--service",
         choices=("E6-HAS", "B2B-PPP", "AUTO"),
-        help="PPP service to enable; omit to use the current receiver solution",
+        help="PPP service to enable, or omit to use the current receiver solution",
     )
     return parser
 

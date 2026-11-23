@@ -76,9 +76,10 @@ with Receiver.serial("/dev/ttyUSB0", 921600) as receiver:
 
 Use `service="B2B-PPP"` for BeiDou PPP-B2b or `service="L6MDCPPP"` for QZSS
 MADOCA PPP. `start_ppp()` changes the signal group and PPP service if needed.
-The receiver saves a changed signal group and reboots; PPP service changes are
+The receiver saves a changed signal group and reboots, while PPP service
+changes are
 not explicitly saved. The session reports which settings changed. Group 7/0
-supports B2b in base mode; `start_ppp()` checks the mode before using it.
+supports B2b in base mode, and `start_ppp()` checks the mode before using it.
 
 For QZSS MADOCA correction telemetry, run:
 
@@ -171,7 +172,8 @@ except KeyboardInterrupt:
 
 The command-line convergence summary checks the last epoch against its targets.
 For sustained application acceptance, use `ConvergenceMonitor` from
-`um982py.convergence`. Choose limits for your application; these values are examples:
+`um982py.convergence`. Choose limits for your application. These values are
+examples:
 
 ```python
 from um982py import Position
@@ -200,8 +202,9 @@ def check_position(position: Position, current_gps_seconds: float) -> Convergenc
 
 Create the monitor after receiver configuration. Feed it positions about once
 per second, with independently verified current GPST seconds. Use
-`ppp.position(binary=False)` for the documented N4 ASCII `FINE` time status;
-unverified binary time codes and date-less GGA cannot establish freshness.
+`ppp.position(binary=False)` for the documented N4 ASCII `FINE` time status,
+because unverified binary time codes and date-less GGA cannot establish
+freshness.
 Do not use the position's own epoch as the current time: that hides buffering.
 
 `status.converged` requires the limits to hold over distinct epochs for at least
@@ -209,7 +212,7 @@ the requested receiver-time and host-time span. Duplicate epochs do not advance
 the window. Bad quality, backwards epochs and gaps restart it. Inspect
 `status.reasons` for the unmet checks. Call `monitor.status()` from a timer to
 detect silence or ageing corrections even without new positions.
-Stop when accepted or when `status.timed_out` is true; the monitor expires at
+Stop when accepted or when `status.timed_out` is true. The monitor expires at
 its deadline. Use a new monitor after a receiver/session/antenna change.
 These checks assess reported quality, not independently verified accuracy.
 

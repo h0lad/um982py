@@ -33,13 +33,14 @@ TEC. Signal or lock changes, gaps and failed Doppler-phase closure split the
 carrier arcs.
 
 ROTI needs a complete five-minute arc with regular samples. The reported index
-is the sample standard deviation (`n-1` denominator) of ROT in TECU/min; other
+is the sample standard deviation (`n-1` denominator) of ROT in TECU/min. Other
 processing chains use the population form, so do not compare thresholds across
 implementations without checking this. When replaying data, set `--interval` to
 the recorded cadence.
 
 The slant TEC proxy is `(P_low - P_high) f_low^2 f_high^2 / (40.3 (f_high^2 -
-f_low^2))` in electrons/m², divided by 10^16 for TECU; one TECU corresponds to
+f_low^2))` in electrons/m², divided by 10^16 for TECU, and one TECU
+corresponds to
 about 0.105 m of GPS L1/L2 differential code delay. Carrier phases use the
 native RANGE sign convention (phase decreases as range increases), so levelling
 the phase-derived TEC to the code TEC keeps the same sign. RANGE phase and

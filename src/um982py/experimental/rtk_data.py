@@ -118,7 +118,6 @@ class RtkDataSatellite:
 
     @property
     def ambiguity_fixed(self) -> bool | None:
-        """Indicate whether a classified heading ambiguity is integer-fixed."""
         if self.status_label is None or self.status in (0, 70):
             return None
         return 32 <= self.status <= 63

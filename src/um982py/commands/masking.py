@@ -83,8 +83,8 @@ def azimuth(
 ) -> Command[CommandResponse]:
     """Mask a sky sector using ordered elevation and azimuth bounds.
 
-    Angles are degrees. Bounds must be ordered; sectors crossing north are
-    not supported by this builder. Uses the ``MASK AZIMUTH 1`` command form.
+    Angles are degrees. Bounds must be ordered, and sectors crossing north
+    are not supported by this builder. Uses the ``MASK AZIMUTH 1`` command form.
     Receiver firmware determines availability of this mode.
     """
     elevations = [number(value, -90, 90) for value in (elevation_min, elevation_max)]

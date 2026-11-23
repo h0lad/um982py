@@ -40,7 +40,7 @@ class ExampleParser(argparse.ArgumentParser):
         options.add_argument(
             "--rate-hz",
             type=float,
-            help="requested periodic log output in Hz (1, 2, 5, 10, 20 or 50; "
+            help="requested periodic log output in Hz (1, 2, 5, 10, 20 or 50, "
             "device dependent)",
         )
 
@@ -256,7 +256,7 @@ def add_receiver_arguments(
     parser.add_argument(
         "--augment",
         action="store_true",
-        help="enable augmentation; signal group changes are saved by the receiver",
+        help="enable augmentation, with signal group changes saved by the receiver",
     )
     parser.add_argument(
         "--json", type=Path, default=None, help="write the result as JSON here"

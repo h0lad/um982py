@@ -23,9 +23,9 @@ __all__ = [
     "extract_dsp_receiver_diagnostics",
 ]
 
-# 0x214C04 caches the eight RF register values in the tracking heap.
+# The RF register cache sits in the tracking window at 0x214C04.
 _RF_AGC = 0x32CD7C
-# Sources of the SensorADC and GPSIONTOAP formatters.
+# Base addresses of the SensorADC and GPSIONTOAP diagnostic values.
 _SENSOR_ADC = 0x13D42388
 _GPS_TIME = 0x13D443B0
 _GPS_IONOSPHERE = 0x13D704C4
@@ -43,7 +43,8 @@ DSP_RECEIVER_MEMORY_WINDOWS = (
     ("gps_ionosphere", _GPS_IONOSPHERE, 36),
     *_NOTICE_WINDOWS,
 )
-"""Additional windows for receiver-wide data. The tracking heap holds RF AGC."""
+"""Additional windows for receiver-wide data. The tracking window holds
+RF AGC."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -89,7 +90,7 @@ class DspReceiverDiagnostics:
 def extract_dsp_receiver_diagnostics(
     regions: Mapping[str, tuple[int, bytes]],
 ) -> DspReceiverDiagnostics:
-    """Recover build 25164 receiver-wide diagnostics from address-tagged RAM.
+    """Recover build 25164 receiver-wide diagnostics from captured RAM windows.
 
     Every input window is optional. Cached notices may predate the captured
     state and the physical order of buffers does not imply chronological order.

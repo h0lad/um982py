@@ -3,7 +3,7 @@
 Estimate dual-antenna heading and pitch while forcing the baseline vector to
 the measured physical antenna separation.  The receiver's `BSLNENUHD` log
 reports an unconstrained ENU baseline. This example projects it onto the sphere
-of the supplied length using equal component weights; it does not improve the
+of the supplied length using equal component weights and does not improve the
 measured direction or implement a constrained GNSS estimator.
 
 ## Background
@@ -15,8 +15,8 @@ For a full observation-level baseline-length-constrained estimator, see
 > constraint. *Measurement*, 228, 115492.
 > doi:10.1016/j.measurement.2024.115492
 
-The complete direction of the reported baseline is preserved; only its length
-is rescaled.  The result is compared with the receiver's own `UNIHEADING`
+The complete direction of the reported baseline is preserved, and only its
+length is rescaled.  The result is compared with the receiver's own `UNIHEADING`
 output for the same epochs.
 
 ## Run
@@ -53,4 +53,4 @@ A statistics block reports RMS and standard deviation of the residuals.
 - Residuals are computed against the receiver's own heading solution, not an
   independent truth such as a calibrated total station or IMU.
 - One mismatched epoch can leave a `UNIHEADING` report without a matching
-  `BSLNENUHD` epoch; these are omitted from residual statistics.
+  `BSLNENUHD` epoch, and those are omitted from residual statistics.

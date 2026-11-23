@@ -215,7 +215,8 @@ def snr_periodogram(
     finite(wavelength_m)
     if wavelength_m <= 0 or order < 0 or oversample < 1:
         raise ValueError(
-            "wavelength and oversampling must be positive; order must be nonnegative"
+            "wavelength and oversampling must be positive, and order must be "
+            "nonnegative"
         )
     selected = _selected(samples, min_elevation, max_elevation)
     if len(selected) < max(3, order + 2):
@@ -228,7 +229,7 @@ def snr_periodogram(
     lowest, highest = 2 * min_height / wavelength_m, 2 * max_height / wavelength_m
     intervals = max(1, math.ceil((highest - lowest) * oversample * span))
     if intervals > 20_000:
-        raise ValueError("height search exceeds 20000 bins; narrow the bounds")
+        raise ValueError("height search exceeds 20000 bins, so narrow the bounds")
     frequencies = tuple(
         lowest + (highest - lowest) * index / intervals
         for index in range(intervals + 1)

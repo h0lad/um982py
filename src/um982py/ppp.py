@@ -183,11 +183,11 @@ class PppSession:
     """Active PPP configuration and a receiver used for polling solutions.
 
     The caller owns the receiver. Configuration remains active when iteration
-    ends. A changed signal group is saved automatically by the receiver; the
-    PPP service is not explicitly saved.
+    ends. A changed signal group is saved automatically by the receiver, while
+    the PPP service is not explicitly saved.
     If the requested service is already active, an existing ``ONLY`` setting
     remains in effect. Selecting a service does not establish which corrections
-    the receiver used; check its output for that evidence.
+    the receiver used, so check its output for that evidence.
     """
 
     receiver: Receiver
@@ -218,7 +218,7 @@ class PppSession:
         stop: Event | None = None,
         on_message: Callable[[Message], None] | None = None,
     ) -> Iterator[PppSolution]:
-        """Poll PPP positions until stopped, interrupted, or the iterator is closed.
+        """Poll PPP positions.
 
         Other messages received during a query go to ``on_message`` or are
         discarded. Previously queued messages remain available to ``receive``.

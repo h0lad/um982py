@@ -32,8 +32,8 @@ two hours of transmission. The output compares against the receiver position,
 not surveyed truth. Formal covariance excludes unmodelled errors.
 
 The solver accepts one constellation and one independent code observation per
-satellite. Duplicate satellites and mixed constellations are rejected; adding
-another constellation requires estimating its inter-system clock bias. A
+satellite. Duplicate satellites and mixed constellations are rejected, and
+adding another constellation requires estimating its inter-system clock bias. A
 nonconverged solve returns exit code 1 and leaves `converged: false` in the report.
 
 ## References

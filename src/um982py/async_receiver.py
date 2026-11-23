@@ -133,7 +133,6 @@ class AsyncReceiver:
         return await self._run(self.receiver.configuration)
 
     async def signal_group(self) -> SignalGroup:
-        """Query the active master and slave signal group."""
         return await self._run(self.receiver.signal_group)
 
     async def log_list(self) -> LogList:
@@ -173,7 +172,6 @@ class AsyncReceiver:
         return await self._run(self.receiver.system_status)
 
     async def pps_status(self) -> PpsStatus:
-        """Read the receiver's reported PPS timing status."""
         return await self._run(self.receiver.pps_status)
 
     async def spoof_info(self) -> SpoofInfo:
@@ -192,7 +190,7 @@ class AsyncReceiver:
         stop: asyncio.Event | None = None,
         on_message: Callable[[Message], None] | None = None,
     ) -> AsyncIterator[Fix]:
-        """Poll GGA positions until the caller stops iterating.
+        """Poll GGA positions.
 
         Other messages received during a query go to ``on_message`` or are
         discarded. Previously queued messages remain available to ``receive``.
@@ -217,7 +215,6 @@ class AsyncReceiver:
     async def stream_positions(
         self, *, duration: float, rate_hz: float = 1, antenna: int = 1
     ) -> AsyncIterator[AsyncIterator[Fix]]:
-        """Temporarily stream GGA positions, restoring subscriptions on exit."""
         stream = self.receiver.stream_positions(
             duration=duration, rate_hz=rate_hz, antenna=antenna
         )
@@ -248,7 +245,6 @@ class AsyncReceiver:
     async def enable_augmentation(
         self, *, persist: bool = False, sbas_service: str = "AUTO"
     ) -> AugmentationState:
-        """Enable the receiver's augmentation plan and report each result."""
         return await self._run(
             lambda: self.receiver.enable_augmentation(
                 persist=persist, sbas_service=sbas_service
@@ -289,7 +285,6 @@ class AsyncReceiver:
         binary: bool | None = None,
         antenna: int = 1,
     ) -> Record:
-        """Read and decode a single log from the selected antenna."""
         return await self._run(
             lambda: self.receiver.read_log(log, binary=binary, antenna=antenna)
         )

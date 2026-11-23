@@ -185,7 +185,6 @@ def binex_output(
 
 
 def binex_stop(*, port: Port | None = None) -> Command[CommandResponse]:
-    """Stop a BINEX7F05 subscription."""
     return logging.stop("BINEX7F05", port=port)
 
 

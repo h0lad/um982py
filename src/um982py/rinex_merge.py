@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
+from typing import TextIO
 
 _IDENTITY = (
     "MARKER NAME",
@@ -117,6 +118,9 @@ def _read_header(path: Path) -> _Header:
     )
 
 
+type _Moment = tuple[int, int, int, int, int, Decimal]
+
+
 def _epoch(line: str) -> tuple[int, int, int, int, int, Decimal]:
     parts = line[1:].split()
     if len(parts) < 8 or parts[6] != "0":
@@ -136,6 +140,173 @@ def _header_line(content: str, label: str) -> str:
     return f"{content:<60}{label}\n"
 
 
+@dataclass(frozen=True, slots=True)
+class _MergeCounts:
+    epochs: int
+    gps_records: int
+    other_records: int
+    phase_resets: int
+    first_moment: _Moment | None
+
+
+def _require_matching_station_metadata(headers: Sequence[_Header]) -> None:
+    reference = headers[0]
+    if any(
+        header.identity != reference.identity
+        or header.l2c_declaration != reference.l2c_declaration
+        or header.placeholders != reference.placeholders
+        for header in headers[1:]
+    ):
+        raise ValueError(
+            "station metadata or signal declarations differ between segments"
+        )
+
+
+def _skip_to_epoch_records(stream: TextIO) -> None:
+    for line in stream:
+        if line[60:].strip() == "END OF HEADER":
+            return
+
+
+def _checked_epoch_moment(epoch_line: str, previous: _Moment | None) -> _Moment:
+    if not epoch_line.startswith(">"):
+        raise ValueError("expected RINEX epoch record")
+    moment = _epoch(epoch_line)
+    if previous is not None and moment <= previous:
+        raise ValueError("segment epochs overlap or are out of order")
+    return moment
+
+
+def _epoch_satellite_count(epoch_line: str) -> int:
+    count = int(epoch_line[32:35])
+    if count < 0:
+        raise ValueError("invalid RINEX satellite count")
+    return count
+
+
+def _read_satellite_record(stream: TextIO) -> str:
+    raw = stream.readline()
+    if not raw:
+        raise ValueError("truncated RINEX satellite records")
+    record = raw.rstrip("\r\n")
+    if len(record) < 3 or record[0] not in "GRSECJI" or not record[1:3].isdigit():
+        raise ValueError("invalid RINEX satellite record")
+    return record
+
+
+def _flag_carrier_arc_reset(
+    record: str,
+    header: _Header,
+    codes: tuple[str, ...],
+    seen_phase: set[tuple[str, str]],
+    *,
+    first_segment: bool,
+) -> tuple[str, int]:
+    fields = {
+        code: record[3 + 16 * i : 3 + 16 * (i + 1)].ljust(16)
+        for i, code in enumerate(header.gps_codes)
+    }
+    values = []
+    resets = 0
+    for code in codes:
+        field = fields.get(code, " " * 16)
+        key = (record[:3], code)
+        if code.startswith("L") and field[:14].strip() and key not in seen_phase:
+            seen_phase.add(key)
+            if not first_segment:
+                flag = field[14]
+                if flag not in " 01234567":
+                    raise ValueError("invalid RINEX loss-of-lock flag")
+                value = int(flag) if flag.strip() else 0
+                field = field[:14] + str(value | 1) + field[15:]
+                resets += 1
+        values.append(field)
+    return record[:3] + "".join(values) + "\n", resets
+
+
+def _write_merged_epochs(
+    body: TextIO,
+    paths: Sequence[Path],
+    headers: Sequence[_Header],
+    codes: tuple[str, ...],
+) -> _MergeCounts:
+    epochs = gps_records = other_records = phase_resets = 0
+    previous: _Moment | None = None
+    first_moment: _Moment | None = None
+    for segment_index, (path, header) in enumerate(zip(paths, headers, strict=True)):
+        seen_phase: set[tuple[str, str]] = set()
+        with path.open(encoding="ascii") as stream:
+            _skip_to_epoch_records(stream)
+            for epoch_line in stream:
+                moment = _checked_epoch_moment(epoch_line, previous)
+                previous = moment
+                satellites: list[str] = []
+                for _ in range(_epoch_satellite_count(epoch_line)):
+                    record = _read_satellite_record(stream)
+                    if record[0] != "G":
+                        other_records += 1
+                        continue
+                    record, resets = _flag_carrier_arc_reset(
+                        record,
+                        header,
+                        codes,
+                        seen_phase,
+                        first_segment=segment_index == 0,
+                    )
+                    phase_resets += resets
+                    satellites.append(record)
+                if not satellites:
+                    continue
+                if first_moment is None:
+                    first_moment = moment
+                body.write(epoch_line[:32] + f"{len(satellites):3d}" + epoch_line[35:])
+                body.writelines(satellites)
+                epochs += 1
+                gps_records += len(satellites)
+    return _MergeCounts(epochs, gps_records, other_records, phase_resets, first_moment)
+
+
+def _first_observation_line(moment: _Moment) -> str:
+    year, month, day, hour, minute, seconds = moment
+    return f"{year:6d}{month:6d}{day:6d}{hour:6d}{minute:6d}{seconds:13.7f}     GPS"
+
+
+def _write_observation_type_lines(destination: TextIO, codes: tuple[str, ...]) -> None:
+    for start in range(0, len(codes), 13):
+        prefix = f"G  {len(codes):3d}" if start == 0 else "      "
+        row = "".join(f" {code}" for code in codes[start : start + 13])
+        destination.write(_header_line(prefix + row, "SYS / # / OBS TYPES"))
+    destination.write(_header_line("G", "SYS / PHASE SHIFT"))
+
+
+def _write_merged_header(
+    destination: TextIO, header: _Header, codes: tuple[str, ...], first: _Moment
+) -> None:
+    for line in header.lines:
+        label = line[60:].strip()
+        if label == "PGM / RUN BY / DATE":
+            created = datetime.now(UTC).strftime("%Y%m%d %H%M%S UTC")
+            destination.write(
+                _header_line(f"{'um982py-merge':<20}{'':20}{created:<20}", label)
+            )
+            destination.write(
+                _header_line("GPS segments merged with carrier arc resets", "COMMENT")
+            )
+        elif label in {
+            "SYS / # / OBS TYPES",
+            "SYS / PHASE SHIFT",
+            "GLONASS SLOT / FRQ #",
+            "GLONASS COD/PHS/BIS",
+            "TIME OF LAST OBS",
+        }:
+            continue
+        elif label == "TIME OF FIRST OBS":
+            _write_observation_type_lines(destination, codes)
+            destination.write(_header_line(_first_observation_line(first), label))
+        else:
+            destination.write(line + "\n")
+
+
 def merge_gps_observations(
     inputs: Sequence[str | os.PathLike[str]], output: str | os.PathLike[str]
 ) -> MergeResult:
@@ -152,132 +323,16 @@ def merge_gps_observations(
     if output.exists():
         raise FileExistsError(f"output already exists: {output}")
     headers = [_read_header(path) for path in paths]
-    if any(
-        header.identity != headers[0].identity
-        or header.l2c_declaration != headers[0].l2c_declaration
-        or header.placeholders != headers[0].placeholders
-        for header in headers[1:]
-    ):
-        raise ValueError(
-            "station metadata or signal declarations differ between segments"
-        )
+    _require_matching_station_metadata(headers)
     codes = tuple(sorted({code for header in headers for code in header.gps_codes}))
-    previous: tuple[int, int, int, int, int, Decimal] | None = None
-    first: tuple[int, int, int, int, int, Decimal] | None = None
-    epochs = gps_count = other_count = resets = 0
     with tempfile.TemporaryFile(mode="w+t", encoding="ascii", newline="") as body:
-        for segment_index, (path, header) in enumerate(
-            zip(paths, headers, strict=True)
-        ):
-            seen_phase: set[tuple[str, str]] = set()
-            with path.open(encoding="ascii") as stream:
-                for line in stream:
-                    if line[60:].strip() == "END OF HEADER":
-                        break
-                for line in stream:
-                    if not line.startswith(">"):
-                        raise ValueError("expected RINEX epoch record")
-                    moment = _epoch(line)
-                    if previous is not None and moment <= previous:
-                        raise ValueError("segment epochs overlap or are out of order")
-                    previous = moment
-                    count = int(line[32:35])
-                    if count < 0:
-                        raise ValueError("invalid RINEX satellite count")
-                    satellites: list[str] = []
-                    for _ in range(count):
-                        raw = stream.readline()
-                        if not raw:
-                            raise ValueError("truncated RINEX satellite records")
-                        record = raw.rstrip("\r\n")
-                        if (
-                            len(record) < 3
-                            or record[0] not in "GRSECJI"
-                            or not record[1:3].isdigit()
-                        ):
-                            raise ValueError("invalid RINEX satellite record")
-                        if record[0] != "G":
-                            other_count += 1
-                            continue
-                        fields = {
-                            code: record[3 + 16 * i : 3 + 16 * (i + 1)].ljust(16)
-                            for i, code in enumerate(header.gps_codes)
-                        }
-                        values = []
-                        for code in codes:
-                            field = fields.get(code, " " * 16)
-                            key = (record[:3], code)
-                            if (
-                                code.startswith("L")
-                                and field[:14].strip()
-                                and key not in seen_phase
-                            ):
-                                seen_phase.add(key)
-                                if segment_index:
-                                    flag = field[14]
-                                    if flag not in " 01234567":
-                                        raise ValueError(
-                                            "invalid RINEX loss-of-lock flag"
-                                        )
-                                    value = int(flag) if flag.strip() else 0
-                                    field = field[:14] + str(value | 1) + field[15:]
-                                    resets += 1
-                            values.append(field)
-                        satellites.append(record[:3] + "".join(values) + "\n")
-                    if not satellites:
-                        continue
-                    if first is None:
-                        first = moment
-                    body.write(line[:32] + f"{len(satellites):3d}" + line[35:])
-                    body.writelines(satellites)
-                    epochs += 1
-                    gps_count += len(satellites)
-        if first is None:
+        counts = _write_merged_epochs(body, paths, headers, codes)
+        if counts.first_moment is None:
             raise ValueError("segments contain no GPS observations")
-        year, month, day, hour, minute, seconds = first
-        first_obs = (
-            f"{year:6d}{month:6d}{day:6d}{hour:6d}{minute:6d}{seconds:13.7f}     GPS"
-        )
         body.seek(0)
         with output.open("x", encoding="ascii", newline="") as destination:
-            for line in headers[0].lines:
-                label = line[60:].strip()
-                if label == "PGM / RUN BY / DATE":
-                    created = datetime.now(UTC).strftime("%Y%m%d %H%M%S UTC")
-                    destination.write(
-                        _header_line(
-                            f"{'um982py-merge':<20}{'':20}{created:<20}", label
-                        )
-                    )
-                    destination.write(
-                        _header_line(
-                            "GPS segments merged with carrier arc resets", "COMMENT"
-                        )
-                    )
-                    continue
-                if label in {
-                    "SYS / # / OBS TYPES",
-                    "SYS / PHASE SHIFT",
-                    "GLONASS SLOT / FRQ #",
-                    "GLONASS COD/PHS/BIS",
-                    "TIME OF LAST OBS",
-                }:
-                    continue
-                if label == "TIME OF FIRST OBS":
-                    for start in range(0, len(codes), 13):
-                        prefix = f"G  {len(codes):3d}" if start == 0 else "      "
-                        destination.write(
-                            _header_line(
-                                prefix
-                                + "".join(
-                                    f" {code}" for code in codes[start : start + 13]
-                                ),
-                                "SYS / # / OBS TYPES",
-                            )
-                        )
-                    destination.write(_header_line("G", "SYS / PHASE SHIFT"))
-                    destination.write(_header_line(first_obs, label))
-                    continue
-                destination.write(line + "\n")
+            _write_merged_header(destination, headers[0], codes, counts.first_moment)
             shutil.copyfileobj(body, destination)
-    return MergeResult(epochs, gps_count, other_count, resets)
+    return MergeResult(
+        counts.epochs, counts.gps_records, counts.other_records, counts.phase_resets
+    )

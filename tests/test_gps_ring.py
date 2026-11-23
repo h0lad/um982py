@@ -170,7 +170,7 @@ def test_chain_resolves_the_inverted_telemetry_word() -> None:
     subframes = extract_gps_ring_subframes(fixture_regions())
     by_type = {s.subframe: s for s in subframes}
     assert by_type[2].words == SF2_WORDS
-    # The telemetry word arrived inverted; the resolved form is the standard
+    # The telemetry word arrived inverted. The resolved form is the standard
     # preamble, proving the D30 rule resolution on live data.
     stored = (RING_SLOTS[29] & 0xFFFFFFF) >> 2 & 0xFFFFFF
     assert stored != 0x8B0638

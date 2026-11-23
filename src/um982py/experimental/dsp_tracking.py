@@ -24,8 +24,9 @@ __all__ = [
     "read_dsp_tracking",
 ]
 
-# Build 25164: the caller at 0x21479E reads the first group of measurement
-# pointers. The formatter at 0x2304DC also resolves the channel at 0x240840.
+# Build 25164: the tracking window's first pointer group holds the
+# measurement records, and each tracker record repeats its channel number
+# so a decoded row can be cross-checked against its table position.
 _CHANNELS_PER_POSITION = 157
 _FREQUENCY_POSITIONS = 7
 _CHANNEL_COUNT = _CHANNELS_PER_POSITION * _FREQUENCY_POSITIONS
@@ -33,7 +34,7 @@ _CHANNEL_TABLE = 0x42BCB4
 _MEASUREMENT_TABLE = 0x331DF8
 _MEASUREMENT_TABLE_STRIDE = 0x1C
 _MEASUREMENT_SIZE = 0x7E
-# The tuning-word conversion at 0x2BF864 selects this table per RF index.
+# The carrier tuning-word conversion selects this table per RF index.
 _RF_TABLE = 0x402520
 _RF_STRIDE = 0x50
 _RF_COUNT = 22
@@ -55,7 +56,7 @@ _SIGNAL_LAYOUTS = {
     0x3C: ("GLONASS", "G2", 1246e6, 64),
 }
 _GLONASS_SPACING_HZ = {0x34: 562500, 0x3C: 437500}
-_ALIGNED_HEAP_ADDRESSES = range(
+_ALIGNED_WINDOW_ADDRESSES = range(
     TRACKING_MEMORY_BASE, TRACKING_MEMORY_BASE + TRACKING_MEMORY_LENGTH, 4
 )
 
@@ -82,7 +83,7 @@ class DspDopplerCalibration:
 
 @dataclass(frozen=True, slots=True)
 class DspTrackingObservation:
-    """Values retained by the DSP's per-channel observation assembler."""
+    """Values retained in the DSP's per-channel observation record."""
 
     address: int
     tracker_flags: int
@@ -101,7 +102,7 @@ class DspTrackingObservation:
     carrier_phase_std_cycles: float | None = None
     """Receiver's phase uncertainty model before application formatting."""
     doppler_hz: float | None = None
-    """Doppler retained by the observation assembler at its measurement epoch."""
+    """Doppler stored with the observation at its measurement epoch."""
     phase_lock_ms: int | None = None
     """Internal phase lock counter before output-side adjustments."""
 
@@ -133,7 +134,7 @@ class DspTrackingChannel:
     calibration: DspDopplerCalibration | None
     address: int
     raw: bytes
-    """Raw bytes of the record accessed by the formatter."""
+    """Raw bytes of the receiver's measurement record."""
     observation: DspTrackingObservation | None = None
     """Observation state, if its full record is present in the RAM windows."""
     satellite_id: int | None = None
@@ -151,7 +152,6 @@ class DspTrackingChannel:
 
     @property
     def glonass_frequency_channel(self) -> int | None:
-        """FDMA frequency channel, if applicable."""
         return self.svid - 8 if self.signal_family in _GLONASS_SPACING_HZ else None
 
     @property
@@ -172,7 +172,7 @@ class DspTrackingChannel:
         if self.calibration is None:
             return None
         reference = self.calibration.reference_word
-        # NDS32 subtraction wraps before conversion to double.
+        # The carrier difference is a signed 32-bit value that wraps around.
         delta = (self.carrier_word - reference + 2**31) % 2**32 - 2**31
         correction = (8 - self.svid) * _GLONASS_SPACING_HZ.get(self.signal_family, 0)
         doppler = delta * self.calibration.hz_per_count + correction
@@ -191,7 +191,8 @@ class DspTrackingChannel:
         """Firmware normalization of the fixed-point accumulator, in DSP units."""
         if self.lock_count == 0:
             return None
-        # The DSP path at 0x216154 combines the integer and fractional words.
+        # The normalization combines a whole-word count with a 32-bit
+        # fractional word.
         high, _, low = unpack_from("<3I", self.raw, 0x20)
         return 81840 * (int(high) + int(low) / 2**32) / self.lock_count
 
@@ -206,8 +207,9 @@ def _decode_calibration(data: memoryview | None) -> DspDopplerCalibration | None
 
 
 def _decode_observation(address: int, record: memoryview) -> DspTrackingObservation:
-    # At 0x26D360 the assembler seeds +0x48 from pseudorange / wavelength.
-    # At 0x26D394 it stores the carrier phase at +0x18.
+    # The stored phase reference at +0x48 is the pseudorange divided by
+    # the wavelength, and the carrier phase at +0x18 shares its sign
+    # convention.
     flags = int(unpack_from("<H", record, 0x0A)[0])
     pseudorange, phase = unpack_from("<2d", record, 0x10)
     doppler = unpack_from("<f", record, 0x20)[0]
@@ -241,7 +243,8 @@ def extract_dsp_tracking(
 ) -> tuple[DspTrackingChannel, ...]:
     """Read active channels using the build 25164 channel and measurement tables.
 
-    Supply address-tagged RAM windows from one capture. Channel measurements
+    Supply RAM windows with their base addresses from one capture. Channel
+    measurements
     require both pointer tables and the referenced records. The RF calibration
     window is optional. This follows the frequency positions in measurement bank zero.
     """
@@ -267,8 +270,8 @@ def extract_dsp_tracking(
         address = unpack_from("<I", measurement_entry)[0]
         tracker_address = unpack_from("<I", channel_entry)[0]
         if (
-            address not in _ALIGNED_HEAP_ADDRESSES
-            or tracker_address not in _ALIGNED_HEAP_ADDRESSES
+            address not in _ALIGNED_WINDOW_ADDRESSES
+            or tracker_address not in _ALIGNED_WINDOW_ADDRESSES
         ):
             continue
         row = read(address, _MEASUREMENT_SIZE)

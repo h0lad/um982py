@@ -21,7 +21,8 @@ def heading_mode(mode: HeadingMode) -> Command[CommandResponse]:
 def heading_length(
     length_cm: float | None = None, tolerance_cm: float | None = None
 ) -> Command[CommandResponse]:
-    """Set baseline length and optional tolerance in centimetres; zero resets it."""
+    """Set baseline length and optional tolerance in centimetres, where zero
+    resets the tolerance."""
     if length_cm is None:
         if tolerance_cm is not None:
             raise ValueError("Baseline tolerance requires a length")

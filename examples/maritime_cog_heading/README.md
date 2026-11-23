@@ -6,7 +6,7 @@ successions with the true heading reported by a dual-antenna UM982 baseline.
 ## Background
 
 Vessel navigation often needs both heading and COG.  Heading shows where the
-vessel points; COG shows where it actually moves.  The difference is caused by
+vessel points, and COG shows where it actually moves.  The difference is caused by
 current, leeway and timing latency.  This example matches the marine validation
 approach in
 
@@ -19,10 +19,11 @@ approach in
 
 `BESTNAV` positions are sampled at the requested interval.  COG is computed from
 each pair of consecutive positions using the great-circle bearing.  For the
-end epoch `UNIHEADING` provides the dual-antenna true heading; COG represents
+end epoch `UNIHEADING` provides the dual-antenna true heading, while COG
+represents
 the preceding interval and is not instantaneous.  The report
 calculates `heading - COG`, which is only meaningful when the vessel is moving
-fast enough; epochs below `--min-speed` are kept but report `cog_deg = null`.
+fast enough. Epochs below `--min-speed` are kept but report `cog_deg = null`.
 
 ## Run
 
@@ -50,7 +51,7 @@ A statistics block reports mean, RMS, min and max of the signed differences.
 
 - COG from position differences is noisy at low speed and during turns.
 - Duplicate or reversed epochs, invalid fixes, intervals over `--max-gap` and
-  zero displacement have no COG; the reason is retained per row.
-- The endpoint heading and interval COG differ in time; turns and receiver
+  zero displacement have no COG, and the reason is retained per row.
+- The endpoint heading and interval COG differ in time, and turns and receiver
   latency can dominate their difference.
 - Current, leeway and vessel yaw rate are confounded with GNSS heading error.

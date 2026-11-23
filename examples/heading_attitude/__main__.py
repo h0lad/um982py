@@ -83,7 +83,7 @@ def _parser() -> ExampleParser:
         "--interval",
         type=float,
         default=1.0,
-        help="capture interval in seconds; BSLNENUHD output remains ONCHANGED",
+        help="capture interval in seconds, and BSLNENUHD output remains ONCHANGED",
     )
     parser.add_argument(
         "--debug",

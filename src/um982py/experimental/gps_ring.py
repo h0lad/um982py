@@ -1,4 +1,4 @@
-"""GPS LNAV subframe history from the receiver's per-channel word ring.
+"""GPS LNAV subframe history recovered from receiver tracking states.
 
 Tracking states keep the last fifty received L1 C/A navigation words per
 channel: one 32-bit slot per 30-bit word, written downward and wrapping.
@@ -22,21 +22,19 @@ from a lower slot. Ephemeris assembly additionally requires the issue of
 data clock of subframe 1 to agree with the issue of data of subframes 2
 and 3, which rejects the formatted records.
 
-Field layouts follow IS-GPS-200. The receiver-verified parts are the
-ring slot layout, the parity chain with the D30 resolution, the
-subframe 2 and 3 field slices and the subframe 1 identity word, all
-confirmed bit-exact against the receiver's own console ephemeris decode
-from captures taken around the same epochs. Angles are reported in
-radians, the convention of the receiver's console ephemeris messages.
+Field layouts follow IS-GPS-200. The ring slot layout, the parity chain
+with the D30 resolution, the subframe 2 and 3 field slices and the
+subframe 1 identity word were checked against the receiver's console
+ephemeris output for matching epochs. Angles are reported in radians,
+the receiver's console ephemeris convention.
 
 The subframe 1 clock block is not decoded here: the receiver stores
-those words in its formatted navigation record in a firmware-specific
+those words in its formatted navigation record with a non-standard
 packing (the group delay word, for instance, lands in a different byte
-than the IS-GPS-200 position), and the console ephemeris formatter
-that decodes it sits in the application image outside this module's
-scope. Ephemeris assembly therefore carries the identity and the
+than the IS-GPS-200 position), so the standard field positions cannot
+be applied. Ephemeris assembly therefore carries the identity and the
 subframe 2 and 3 fields, and reports the issue of data agreement that
-rejects the receiver's formatted record copies on live data.
+rejects the formatted record copies on live data.
 """
 
 from collections.abc import Mapping, Sequence
@@ -100,7 +98,6 @@ class GpsRingSlot:
 
 
 def decode_gps_ring_slot(slot: int) -> GpsRingSlot:
-    """Decode one 32-bit ring slot into its word and chain fields."""
     return GpsRingSlot(
         data=((slot & 0xFFFFFFF) >> 2) & _WORD_DATA_MASK,
         d25_d26=slot & 3,
@@ -185,9 +182,7 @@ def _plausible_subframe(subframe: int, words: tuple[int, ...]) -> bool:
 
 
 def _chain_words(slots: list[int], anchor: int) -> tuple[int, ...] | None:
-    """Resolve ten ring slots into words, or None when the chain breaks.
-
-    Slot ``anchor`` holds the first word; the ring writes downward, so
+    """Slot ``anchor`` holds the first word. The ring writes downward, so
     later words sit at lower, wrapping slot positions.
     """
     words = []
@@ -211,9 +206,7 @@ def _chain_words(slots: list[int], anchor: int) -> tuple[int, ...] | None:
 def extract_gps_ring_subframes(
     regions: Mapping[str, tuple[int, bytes]],
 ) -> tuple[GpsRingSubframe, ...]:
-    """Read chain-validated L1 C/A subframes from every GPS channel ring.
-
-    Yields the last five subframes per tracked satellite when the ring
+    """Yields the last five subframes per tracked satellite when the ring
     still holds them, marked clean when no word is covered by the
     receiver's formatted record region.
     """
@@ -312,14 +305,12 @@ class GpsLnavEphemeris:
 def assemble_gps_ephemeris(
     subframes: Sequence[GpsRingSubframe], prn: int | None = None
 ) -> GpsLnavEphemeris | None:
-    """Assemble subframes 1, 2 and 3 of one satellite into an ephemeris.
-
-    Requires matching issues of data: the subframe 1 issue of data clock
+    """Requires matching issues of data: the subframe 1 issue of data clock
     reduced to eight bits must equal the subframe 2 and 3 issues of
     data, which the receiver's formatted records fail. Only clean
     subframes qualify. Returns None while any part is missing.
     """
-    picked = [s for s in subframes if prn is None or s.prn == prn]
+    picked = [subframe for subframe in subframes if prn is None or subframe.prn == prn]
     parts: dict[int, GpsRingSubframe] = {}
     for candidate in picked:
         if not candidate.clean:

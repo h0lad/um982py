@@ -285,9 +285,7 @@ def _beidou_data(bits: str) -> tuple[int, ...] | None:
 def extract_beidou_nav(
     regions: Mapping[str, tuple[int, bytes]],
 ) -> tuple[BeidouLegacySubframe, ...]:
-    """Extract complete legacy BeiDou subframes from the native tracking buffer.
-
-    The buffer holds newest words first, packed in 30-bit units. A
+    """The buffer holds newest words first, packed in 30-bit units. A
     subframe can begin within a unit. The preamble, header and all 19
     BCH blocks are checked before returning the bits.
     """

@@ -18,7 +18,8 @@ from um982py.messages import (
 from um982py.protocol.binary import parse_rtcm
 
 JSON_TOLERANCE = 1e-12
-"""A JSON round trip of a float is exact; 1e-12 only guards repr formatting."""
+"""A JSON round trip of a float is exact, and 1e-12 only guards repr
+formatting."""
 
 
 def assert_record_matches(record: Record, encoded: object) -> None:

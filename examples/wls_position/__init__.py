@@ -84,8 +84,9 @@ def solve_position(
 ) -> PositionSolution:
     """Solve one constellation, one independent code range per satellite.
 
-    Mixed constellations need inter-system clock states; repeated satellites
-    cannot be counted as independent geometry or RAIM redundancy here.
+    Mixed constellations need inter-system clock states, and repeated
+    satellites cannot be counted as independent geometry or RAIM redundancy
+    here.
     """
     if len(measurements) < MINIMUM_SATELLITES:
         raise ValueError("at least four measurements are required")

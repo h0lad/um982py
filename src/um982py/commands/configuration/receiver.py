@@ -92,7 +92,7 @@ def signal_group(
     *,
     product: Literal["UM982", "UM982C", "UM980", "UM980C", "UM981C", "UB9A0"] = "UM982",
 ) -> Command[CommandResponse]:
-    """Set signal groups; the receiver saves a change and resets automatically.
+    """Set signal groups. The receiver saves a change and resets automatically.
 
     UM982 group 7/0 is documented for base-station mode only. Group 10 on
     UM980 requires Build 17548 or later, and on UB9A0 Build 18455 or later.
@@ -134,7 +134,6 @@ def receiver_input_type(
 
 
 def one_satellite_tracking(*, enabled: bool = True) -> Command[CommandResponse]:
-    """Configure the receiver-level one-satellite tracking mode."""
     return action(f"CONFIG ONESATTRK {'ENABLE' if enabled else 'DISABLE'}")
 
 

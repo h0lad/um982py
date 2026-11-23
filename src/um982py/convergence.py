@@ -41,8 +41,9 @@ class ConvergenceMonitor:
     Set ``max_correction_age_s`` for corrected solutions and
     ``allowed_fix_classes`` when a particular solution class is required.
     Each observation needs an independently verified current GPS time. Receiver
-    timestamps must report fine time and a known GPS scale; unverified binary
-    time codes and date-less GGA cannot establish freshness.
+    timestamps must report fine time and a known GPS scale, because
+    unverified binary time codes and date-less GGA cannot establish
+    freshness.
 
     Both receiver time and host-monotonic time must span ``hold_seconds``.
     Duplicate epochs never advance the window or refresh its gap timer.
@@ -79,7 +80,7 @@ class ConvergenceMonitor:
             _finite(value, name)
         if hold_seconds < 0 or max_gap_seconds <= 0 or timeout <= 0:
             raise ValueError(
-                "hold_seconds must be nonnegative; gap and timeout positive"
+                "hold_seconds must be nonnegative, and gap and timeout positive"
             )
         if hold_seconds >= timeout:
             raise ValueError("hold_seconds must be less than timeout")

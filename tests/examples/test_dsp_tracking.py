@@ -23,31 +23,33 @@ def test_boot_capture_and_replay(
         base: bytearray(length)
         for _, base, length in DSP_TRACKING_MEMORY_WINDOWS + DSP_RECEIVER_MEMORY_WINDOWS
     }
-    heap = windows[0x318000]
-    pack_into("<I", heap, 0x331DF8 - 0x318000, 0x318000)
-    heap[:3] = bytes([3, 12, 5])
-    pack_into("<h", heap, 0x0E, 3900)
-    pack_into("<I", heap, 0x1C, 0x466123)
-    pack_into("<i", heap, 0x30, 1200)
-    heap[0x80:0x82] = bytes([3, 112])
-    pack_into("<I2xH", heap, 0x84, 1, 0x11)
-    pack_into("<2d", heap, 0x90, 25_488_463.1169, 133_942_786.7349)
-    pack_into("<f", heap, 0xA0, 24.5)
-    pack_into("<2f", heap, 0xB0, 0.25, 0.015625)
-    pack_into("<d", heap, 0xC8, 133_942_787.0)
-    pack_into("<I", heap, 0x144, 34010)
-    pack_into("<2I", heap, 0x154, 75, 587_112_000)
+    tracking_window = windows[0x318000]
+    pack_into("<I", tracking_window, 0x331DF8 - 0x318000, 0x318000)
+    tracking_window[:3] = bytes([3, 12, 5])
+    pack_into("<h", tracking_window, 0x0E, 3900)
+    pack_into("<I", tracking_window, 0x1C, 0x466123)
+    pack_into("<i", tracking_window, 0x30, 1200)
+    tracking_window[0x80:0x82] = bytes([3, 112])
+    pack_into("<I2xH", tracking_window, 0x84, 1, 0x11)
+    pack_into("<2d", tracking_window, 0x90, 25_488_463.1169, 133_942_786.7349)
+    pack_into("<f", tracking_window, 0xA0, 24.5)
+    pack_into("<2f", tracking_window, 0xB0, 0.25, 0.015625)
+    pack_into("<d", tracking_window, 0xC8, 133_942_787.0)
+    pack_into("<I", tracking_window, 0x144, 34010)
+    pack_into("<2I", tracking_window, 0x154, 75, 587_112_000)
     pack_into("<I", windows[0x42BCB4], 0, 0x318080)
-    pack_into("<I", heap, 0x331DF8 - 0x318000 + 4, 0x318180)
-    heap[0x180:0x1FE] = heap[:0x7E]
-    heap[0x180] = 0x13
-    heap[0x200:0x2DC] = heap[0x80:0x15C]
-    heap[0x200] = 0x13
-    pack_into("<I", heap, 0x204, 158)
+    pack_into("<I", tracking_window, 0x331DF8 - 0x318000 + 4, 0x318180)
+    tracking_window[0x180:0x1FE] = tracking_window[:0x7E]
+    tracking_window[0x180] = 0x13
+    tracking_window[0x200:0x2DC] = tracking_window[0x80:0x15C]
+    tracking_window[0x200] = 0x13
+    pack_into("<I", tracking_window, 0x204, 158)
     pack_into("<I", windows[0x42BCB4], 157 * 4, 0x318200)
     pack_into("<d", windows[0x402520], 8, 0.125)
     pack_into("<i", windows[0x402520], 0x18, 1000)
-    pack_into("<8B", heap, 0x32CD7C - 0x318000, 62, 72, 74, 77, 74, 41, 57, 68)
+    pack_into(
+        "<8B", tracking_window, 0x32CD7C - 0x318000, 62, 72, 74, 77, 74, 41, 57, 68
+    )
     pack_into("<I2i", windows[0x13D42388], 0, 3, 49427, 44595)
     pack_into("<I12xI", windows[0x13D443B0], 0, 576824000, 2445)
     pack_into("<8f2B", windows[0x13D704C4], 0, *range(1, 9), 18, 1)
@@ -121,8 +123,8 @@ def test_boot_capture_and_replay(
 
     (snapshot / "rf_calibration.bin").unlink()
     (snapshot / "channels.bin").write_bytes(windows[0x42BCB4][: 157 * 4])
-    pack_into("<H", heap, 0x8A, 1)
-    (snapshot / "tracking.bin").write_bytes(heap)
+    pack_into("<H", tracking_window, 0x8A, 1)
+    (snapshot / "tracking.bin").write_bytes(tracking_window)
     connect.reset_mock()
     assert cli.main(["--replay", str(snapshot), "--json", str(output)]) == 0
     connect.assert_not_called()

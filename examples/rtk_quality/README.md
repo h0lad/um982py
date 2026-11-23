@@ -100,7 +100,7 @@ whether the satellite state is integer or float. References, undefined states
 and unknown codes yield `null`. The `ambiguities` summary gives the integer
 and float counts and the reference satellite IDs per heading epoch. Across 12
 matched UM982 epochs, the ASCII and binary logs agreed on all 185 satellite
-states. We observed 149 float states and 36 reference entries across the epochs.
+states. The 12 epochs contained 149 float states and 36 reference entries.
 
 The covariance coordinate frame and satellite value units remain unverified.
 Live collection without `--heading` requests

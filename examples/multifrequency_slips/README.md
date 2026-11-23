@@ -48,5 +48,5 @@ closure detection and either.
 
 - The detector assumes three simultaneous frequencies on the same satellite.
 - Geometry-free jumps can also be caused by rapid ionospheric changes.
-- This is a candidate flag; independent verification is needed before
+- This is a candidate flag, and independent verification is needed before
   editing observations.
