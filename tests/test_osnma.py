@@ -46,9 +46,7 @@ from um982py.experimental.osnma import (
 
 @pytest.fixture(scope="module")
 def dsm(example_header: object) -> DsmKroot:
-    return parse_dsm_kroot(
-        bytes.fromhex(DSM_KROOT_HEX), example_header
-    )
+    return parse_dsm_kroot(bytes.fromhex(DSM_KROOT_HEX), example_header)
 
 
 def test_dsm_header_splits_identifier_and_block() -> None:
@@ -90,9 +88,7 @@ def test_signature_verifies_with_the_official_key(dsm: DsmKroot) -> None:
 
 def test_public_key_decompression() -> None:
     key = bytes.fromhex(PUBLIC_KEY_HEX)
-    x, y = decompress_public_key(
-        bytes([2 + (key[-1] & 1)]) + key[1:33]
-    )
+    x, y = decompress_public_key(bytes([2 + (key[-1] & 1)]) + key[1:33])
     assert (x, y) == (int.from_bytes(key[1:33], "big"), int.from_bytes(key[33:], "big"))
 
 
@@ -171,7 +167,9 @@ def test_mack_second_message_carries_the_next_key() -> None:
     ("tag_hex", "tag_bits"), [("E37BC4F858", None), ("E37BC0", 20), ("E37BC4F0", 28)]
 )
 def test_tag0_verification_of_the_official_example(
-    example_words: dict[int, object], tag_hex: str, tag_bits: int | None,
+    example_words: dict[int, object],
+    tag_hex: str,
+    tag_bits: int | None,
 ) -> None:
     navdata = word_authenticated_data(example_words, 0)
     assert navdata is not None

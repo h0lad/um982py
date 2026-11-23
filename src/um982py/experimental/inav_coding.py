@@ -160,9 +160,8 @@ def convolutional_decode(coded: str) -> tuple[str, int]:
             for bit in (0, 1):
                 register = (state << 1 | bit) & 0x7F
                 expected_second = _branch(register, CONVOLUTIONAL_G2) ^ 1
-                distance = (
-                    (first != bool(_branch(register, CONVOLUTIONAL_G1)))
-                    + (second != bool(expected_second))
+                distance = (first != bool(_branch(register, CONVOLUTIONAL_G1))) + (
+                    second != bool(expected_second)
                 )
                 candidate = cost + distance
                 target = register & 0x3F

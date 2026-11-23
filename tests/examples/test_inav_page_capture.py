@@ -213,9 +213,18 @@ def test_archived_tracking_replays_raw_pages_and_utc_bounds(
     )
     monkeypatch.setattr(cli, "capture_inav_pages", lambda *args, **kwargs: snapshot)
     archive, result = tmp_path / "ram", tmp_path / "nav.json"
-    monkeypatch.setattr(sys, "argv", [
-        "capture", "--save-tracking", str(archive), "--summary", "--json", str(result)
-    ])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "capture",
+            "--save-tracking",
+            str(archive),
+            "--summary",
+            "--json",
+            str(result),
+        ],
+    )
 
     assert cli.main() == 0
     assert "Captured page parts" not in capsys.readouterr().out
@@ -224,9 +233,18 @@ def test_archived_tracking_replays_raw_pages_and_utc_bounds(
     original = json.loads(result.read_text())
     assert original["tracking_archive"][0]["capture_started_utc"] == started.isoformat()
 
-    monkeypatch.setattr(sys, "argv", [
-        "capture", "--tracking-ram", str(bin_path), "--summary", "--json", str(result)
-    ])
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "capture",
+            "--tracking-ram",
+            str(bin_path),
+            "--summary",
+            "--json",
+            str(result),
+        ],
+    )
     assert cli.main() == 0
     replayed = json.loads(result.read_text())
     assert replayed["snapshot_details"] == original["snapshot_details"]
@@ -267,9 +285,7 @@ def test_render_audit_row_and_empty_section() -> None:
         decoded=bytes.fromhex("130225b0d8d602c7b602e443db9340"),
     )
     row = render_audit(audit)
-    assert row == (
-        " 12    49      33  no        -  130225b0d8d602c7b602e443db9340"
-    )
+    assert row == (" 12    49      33  no        -  130225b0d8d602c7b602e443db9340")
     text = render_campaign(_campaign(), audits=[audit])
     assert "Window decode audits" in text
     assert row in text

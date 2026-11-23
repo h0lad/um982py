@@ -72,9 +72,7 @@ def decompress_public_key(compressed: bytes) -> tuple[int, int]:
     return x, y
 
 
-def verify_ecdsa_p256(
-    message: bytes, signature: bytes, public_key: bytes
-) -> bool:
+def verify_ecdsa_p256(message: bytes, signature: bytes, public_key: bytes) -> bool:
     """Verify an ECDSA P-256/SHA-256 ``signature`` over ``message``.
 
     ``public_key`` is the 65-byte uncompressed SEC1 form or the 33-byte

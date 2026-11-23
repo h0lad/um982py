@@ -90,9 +90,7 @@ def _chain(streams: dict[int, tuple[bytes, ...]]) -> object:
             headers.append(parse_nma_header(hkroot[:1]))
     messages = collect_dsm(subframes, headers)
     kroot = next(
-        message
-        for (dsm_id, _owner), message in messages.items()
-        if dsm_id <= 11
+        message for (dsm_id, _owner), message in messages.items() if dsm_id <= 11
     )
     return parse_dsm_kroot(kroot, headers[0])
 
@@ -154,9 +152,7 @@ def test_dsm_kroot_assembles_and_its_signature_verifies(
     assert verify_dsm_kroot_signature(dsm, _public_key(dsm))
 
 
-PUBLIC_KEY_1_HEX = (
-    "0374A925CFA0FF1805E5C5A58FDBA31BF0145D5B5BE2F062D3F8BB2EE98F0F6DB0"
-)
+PUBLIC_KEY_1_HEX = "0374A925CFA0FF1805E5C5A58FDBA31BF0145D5B5BE2F062D3F8BB2EE98F0F6DB0"
 """Compressed public key one of the configuration one test vector."""
 
 
@@ -180,9 +176,7 @@ def test_disclosed_keys_verify_against_the_root(
         key_index = (subframe_start - (gst0 & 0xFFFFF)) // 30 + 1
         if key_index < 1:
             continue
-        assert verify_chain_key(
-            message.key, key_index, dsm.kroot, gst0, dsm.alpha
-        )
+        assert verify_chain_key(message.key, key_index, dsm.kroot, gst0, dsm.alpha)
         verified += 1
     assert verified >= 2
 
@@ -267,7 +261,7 @@ def test_validator_rejects_changes_to_data_tag_or_key(
     index = changed_frame * SUBFRAME_PARTS + offset
     page = bits_of(parts[index])
     flipped = "1" if page[bit] == "0" else "0"
-    parts[index] = pack_bits(page[:bit] + flipped + page[bit + 1:])
+    parts[index] = pack_bits(page[:bit] + flipped + page[bit + 1 :])
     even_index = index - index % 2
     even = bits_of(parts[even_index])
     odd = bits_of(parts[even_index + 1])

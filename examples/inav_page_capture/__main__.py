@@ -172,9 +172,15 @@ def _write_snapshot_report(
     report = _report(campaign, audits=audits)
     if archive:
         report["tracking_archive"] = list(archive)
-    table = [] if summary else [
-        render_campaign(campaign, audits=[audit for group in audits for audit in group])
-    ]
+    table = (
+        []
+        if summary
+        else [
+            render_campaign(
+                campaign, audits=[audit for group in audits for audit in group]
+            )
+        ]
+    )
     gps_count = glonass_count = beidou_count = fnav_count = has_count = 0
     if native_nav:
         native = [
@@ -225,10 +231,7 @@ def _write_snapshot_report(
                 "ephemerides": [
                     ephemeris.manifest()
                     for prn in sorted({frame.prn for frame in frames})
-                    if (
-                        ephemeris := assemble_gps_ephemeris(frames, prn)
-                    )
-                    is not None
+                    if (ephemeris := assemble_gps_ephemeris(frames, prn)) is not None
                 ],
             }
             for frames in ring
@@ -278,9 +281,11 @@ def _save_tracking(
         "bytes": len(data),
         "sha256": sha256(data).hexdigest(),
         "capture_started_utc": snapshot.capture_started_utc.isoformat()
-        if snapshot.capture_started_utc is not None else None,
+        if snapshot.capture_started_utc is not None
+        else None,
         "capture_finished_utc": snapshot.capture_finished_utc.isoformat()
-        if snapshot.capture_finished_utc is not None else None,
+        if snapshot.capture_finished_utc is not None
+        else None,
         "application_restored": snapshot.application_restored,
     }
     write_json(result, target.with_suffix(".metadata.json"))
@@ -375,8 +380,10 @@ def main() -> int:
             parser.error("--json must not overwrite the tracking window or metadata")
         snapshot = _load_tracking(args.tracking_ram)
         _write_snapshot_report(
-            InavCampaign((snapshot,)), args.json,
-            native_nav=args.native_nav is not False, summary=args.summary,
+            InavCampaign((snapshot,)),
+            args.json,
+            native_nav=args.native_nav is not False,
+            summary=args.summary,
         )
         return 0
     helper = Path(args.helper)
@@ -416,14 +423,15 @@ def main() -> int:
             on_snapshot=archive_snapshot if directory is not None else None,
         )
     else:
-        snapshot = capture_inav_pages(
-            args.port, helper=helper, baud=args.baud
-        )
+        snapshot = capture_inav_pages(args.port, helper=helper, baud=args.baud)
         archive_snapshot(snapshot)
         campaign = InavCampaign((snapshot,))
     _write_snapshot_report(
-        campaign, args.json, native_nav=args.native_nav is not False,
-        summary=args.summary, archive=archive,
+        campaign,
+        args.json,
+        native_nav=args.native_nav is not False,
+        summary=args.summary,
+        archive=archive,
     )
     return 0
 

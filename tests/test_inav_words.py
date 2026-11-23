@@ -101,7 +101,9 @@ def test_sar_spare_classification_uses_the_following_start_bit() -> None:
     ],
 )
 def test_decode_sar_orbitography_label(
-    beacon: str, country_code: int, label: str | None,
+    beacon: str,
+    country_code: int,
+    label: str | None,
 ) -> None:
     assert decode_sar_beacon_id(beacon) == {
         "country_code": country_code,
@@ -144,7 +146,9 @@ def _sar_parts(
     ],
 )
 def test_sar_short_rlm_assembles_from_four_parts(
-    code: int, parameters: int, service: SarService,
+    code: int,
+    parameters: int,
+    service: SarService,
 ) -> None:
     beacon = "0C621A74630F1D0"
     parts = _sar_parts(beacon, code, f"{parameters:015b}", long_rlm=False)

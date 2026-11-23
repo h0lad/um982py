@@ -294,17 +294,17 @@ class InavSnapshot:
             "prns": sorted({page.prn for page in self.pages}),
             "odd_pages": sum(not page.part.even for page in self.pages),
             "pages_with_osnma": sum(page.part.osnma is not None for page in self.pages),
-            "regions": {
-                name: len(content) for name, content in self.regions.items()
-            },
+            "regions": {name: len(content) for name, content in self.regions.items()},
             "region_bases": {
                 name: base for name, (base, _) in self.memory_windows.items()
             },
             "application_restored": self.application_restored,
             "capture_started_utc": self.capture_started_utc.isoformat()
-            if self.capture_started_utc is not None else None,
+            if self.capture_started_utc is not None
+            else None,
             "capture_finished_utc": self.capture_finished_utc.isoformat()
-            if self.capture_finished_utc is not None else None,
+            if self.capture_finished_utc is not None
+            else None,
             "details": [
                 {
                     "prn": page.prn,
@@ -472,9 +472,7 @@ def extract_inav_pages(
             if record[0] != GALILEO_SIGNAL:
                 continue
             pointer = int.from_bytes(
-                record[
-                    CHANNEL_STATE_POINTER_OFFSET : CHANNEL_STATE_POINTER_OFFSET + 4
-                ],
+                record[CHANNEL_STATE_POINTER_OFFSET : CHANNEL_STATE_POINTER_OFFSET + 4],
                 "little",
             )
             target = window(pointer)
@@ -490,9 +488,7 @@ def extract_inav_pages(
             if not 1 <= prn <= 36:
                 continue
             flags = int.from_bytes(state[:4], "little")
-            time_counter = int.from_bytes(
-                state[STATE_TIME_OFFSET:][:4], "little"
-            )
+            time_counter = int.from_bytes(state[STATE_TIME_OFFSET:][:4], "little")
             page = state[STATE_PAGE_OFFSET:][:STATE_PAGE_LENGTH]
             if not any(page):
                 continue
@@ -533,6 +529,8 @@ def capture_inav_pages(
         capture_started_utc=started,
         capture_finished_utc=datetime.now(UTC),
     )
+
+
 @dataclass(frozen=True, slots=True)
 class SarField:
     """Search and rescue field of one nominal E1-B odd page part."""
@@ -650,16 +648,45 @@ def _sar_field_manifest(part: InavPagePart) -> dict[str, object] | None:
 
 # Cospas-Sarsat T.001 Annex A, Table A3. Each character occupies six bits.
 _MODIFIED_BAUDOT = {
-    0b111000: "A", 0b110011: "B", 0b101110: "C", 0b110010: "D",
-    0b110000: "E", 0b110110: "F", 0b101011: "G", 0b100101: "H",
-    0b101100: "I", 0b111010: "J", 0b111110: "K", 0b101001: "L",
-    0b100111: "M", 0b100110: "N", 0b100011: "O", 0b101101: "P",
-    0b111101: "Q", 0b101010: "R", 0b110100: "S", 0b100001: "T",
-    0b111100: "U", 0b101111: "V", 0b111001: "W", 0b110111: "X",
-    0b110101: "Y", 0b110001: "Z", 0b100100: " ", 0b011000: "-",
-    0b010111: "/", 0b001101: "0", 0b011101: "1", 0b011001: "2",
-    0b010000: "3", 0b001010: "4", 0b000001: "5", 0b010101: "6",
-    0b011100: "7", 0b001100: "8", 0b000011: "9",
+    0b111000: "A",
+    0b110011: "B",
+    0b101110: "C",
+    0b110010: "D",
+    0b110000: "E",
+    0b110110: "F",
+    0b101011: "G",
+    0b100101: "H",
+    0b101100: "I",
+    0b111010: "J",
+    0b111110: "K",
+    0b101001: "L",
+    0b100111: "M",
+    0b100110: "N",
+    0b100011: "O",
+    0b101101: "P",
+    0b111101: "Q",
+    0b101010: "R",
+    0b110100: "S",
+    0b100001: "T",
+    0b111100: "U",
+    0b101111: "V",
+    0b111001: "W",
+    0b110111: "X",
+    0b110101: "Y",
+    0b110001: "Z",
+    0b100100: " ",
+    0b011000: "-",
+    0b010111: "/",
+    0b001101: "0",
+    0b011101: "1",
+    0b011001: "2",
+    0b010000: "3",
+    0b001010: "4",
+    0b000001: "5",
+    0b010101: "6",
+    0b011100: "7",
+    0b001100: "8",
+    0b000011: "9",
 }
 
 
@@ -694,9 +721,7 @@ def decode_sar_beacon_id(beacon_hex: str) -> dict[str, int | str | None]:
     return decoded
 
 
-def _sar_payload(
-    parts: Sequence[SarField], count: int, long_rlm: bool
-) -> str | None:
+def _sar_payload(parts: Sequence[SarField], count: int, long_rlm: bool) -> str | None:
     if len(parts) != count:
         raise ValueError(f"A return-link message needs {count} parts")
     if not parts[0].start or any(part.start for part in parts[1:]):
@@ -1057,9 +1082,7 @@ def extract_channel_states(
             if record[0] != GALILEO_SIGNAL:
                 continue
             pointer = int.from_bytes(
-                record[
-                    CHANNEL_STATE_POINTER_OFFSET : CHANNEL_STATE_POINTER_OFFSET + 4
-                ],
+                record[CHANNEL_STATE_POINTER_OFFSET : CHANNEL_STATE_POINTER_OFFSET + 4],
                 "little",
             )
             target = window(pointer)
@@ -1143,9 +1166,7 @@ class InavCampaign:
     @property
     def pages(self) -> tuple[InavPage, ...]:
         """All captured pages in capture order."""
-        return tuple(
-            page for snapshot in self.snapshots for page in snapshot.pages
-        )
+        return tuple(page for snapshot in self.snapshots for page in snapshot.pages)
 
     @property
     def unique_pages(self) -> tuple[InavPage, ...]:
@@ -1167,9 +1188,7 @@ class InavCampaign:
             snapshot.application_restored is None for snapshot in self.snapshots
         ):
             return None
-        return all(
-            snapshot.application_restored for snapshot in self.snapshots
-        )
+        return all(snapshot.application_restored for snapshot in self.snapshots)
 
     def words(self) -> tuple[InavWord, ...]:
         """Assemble checksum-verified words across all snapshots.

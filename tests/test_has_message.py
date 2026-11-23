@@ -45,10 +45,29 @@ def annex_c_message() -> HasMessage:
 
 def test_field_powers_match_the_icd_table_41() -> None:
     sampled = {
-        8: 29, 9: 58, 10: 116, 11: 232, 12: 205, 13: 135, 14: 19,
-        239: 22, 240: 44, 241: 88, 242: 176, 243: 125, 244: 250,
-        245: 233, 246: 207, 247: 131, 248: 27, 249: 54, 250: 108,
-        251: 216, 252: 173, 253: 71, 254: 142,
+        8: 29,
+        9: 58,
+        10: 116,
+        11: 232,
+        12: 205,
+        13: 135,
+        14: 19,
+        239: 22,
+        240: 44,
+        241: 88,
+        242: 176,
+        243: 125,
+        244: 250,
+        245: 233,
+        246: 207,
+        247: 131,
+        248: 27,
+        249: 54,
+        250: 108,
+        251: 216,
+        252: 173,
+        253: 71,
+        254: 142,
     }
     for power, octet in sampled.items():
         assert has_message._POWERS[power] == octet
@@ -106,7 +125,9 @@ def test_annex_c_mt1_blocks_parse_completely() -> None:
     assert 11 not in gps.satellites
     assert gps.cell_mask_available and len(gps.cells) == 54
     assert (galileo.gnss_id, len(galileo.satellites), galileo.signals) == (
-        2, 22, (1, 4, 7, 13),
+        2,
+        22,
+        (1, 4, 7, 13),
     )
     assert not galileo.cell_mask_available and len(galileo.cells) == 88
     assert mt1.orbits is not None
@@ -207,16 +228,20 @@ def test_truncated_content_does_not_raise() -> None:
 
 def test_clock_subset_blocks_report_the_limit() -> None:
     bits = (
-        "000000000000"          # time of hour
-        "100100"                # mask, orbit, clock full, subset, code, phase
-        "0000"                  # reserved
-        "00000" "00000"         # mask id, IOD set id
-        "0001" "0000"           # one GNSS, GPS
-        + "1" + "0" * 39        # one satellite
-        + "1" + "0" * 15        # one signal
-        + "0"                   # cell mask not available
-        + "000"                 # navigation message index
-        + "000000"              # reserved
+        "000000000000"  # time of hour
+        "100100"  # mask, orbit, clock full, subset, code, phase
+        "0000"  # reserved
+        "00000"
+        "00000"  # mask id, IOD set id
+        "0001"
+        "0000"  # one GNSS, GPS
+        + "1"
+        + "0" * 39  # one satellite
+        + "1"
+        + "0" * 15  # one signal
+        + "0"  # cell mask not available
+        + "000"  # navigation message index
+        + "000000"  # reserved
     )
     result = parse_mt1_message(bits)
     assert result.unsupported == "clock subset block"

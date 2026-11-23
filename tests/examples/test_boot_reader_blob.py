@@ -8,9 +8,7 @@ from examples.inav_page_capture.__main__ import DEFAULT_READER, build_parser
 READER = Path(__file__).resolve().parents[2] / "tools" / "boot-reader"
 BLOB = READER / "reader.bin"
 
-READER_SHA256 = (
-    "7ed2e04d4f78add28a58821880e2cb270012dc0ebd76a5343a8b6d63eb7b7358"
-)
+READER_SHA256 = "7ed2e04d4f78add28a58821880e2cb270012dc0ebd76a5343a8b6d63eb7b7358"
 
 
 def test_reader_image_is_shipped_and_pinned() -> None:

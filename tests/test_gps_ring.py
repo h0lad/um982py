@@ -24,22 +24,70 @@ STATE_SIZE = 0x124
 # PRN 5 ring slots from a live capture, console-verified in the same
 # ephemeris period (IODE 5, GPS week 2446, t_oe 35968 s).
 RING_SLOTS = (
-    0x9676E743, 0xFD314872, 0xA3704407, 0xB2605A36, 0x06D93112,
-    0x9904F794, 0x303BA69E, 0xCE0D258C, 0xBFD71B33, 0x5DD3E71E,
-    0x20140625, 0x04014E70, 0x423B929C, 0x0FA1E309, 0x27D8765C,
-    0xC3FED0A0, 0x8B34839B, 0x3C001C72, 0xBFD71D48, 0x2DD3E71E,
-    0x68232078, 0x67CCA799, 0x30594A85, 0x5282FBD8, 0xDC2D3BF5,
-    0xC7D192C7, 0x78A8D107, 0x1FE833AD, 0xBFD71F50, 0xADD3E71E,
-    0x8C7CC572, 0x17FC0002, 0x00142320, 0x50E2C7A4, 0x956B7A61,
-    0xFCAA4602, 0x60FF78B7, 0x2E71BFFD, 0xBFD72168, 0xBDD3E71E,
-    0x8F60016E, 0x172EBAA6, 0xB3CB7BBC, 0xAC67050E, 0x6A843406,
-    0xF40ACFFD, 0x5F1BC313, 0xDEABDCF9, 0xBFD72327, 0xCDD3E71E,
+    0x9676E743,
+    0xFD314872,
+    0xA3704407,
+    0xB2605A36,
+    0x06D93112,
+    0x9904F794,
+    0x303BA69E,
+    0xCE0D258C,
+    0xBFD71B33,
+    0x5DD3E71E,
+    0x20140625,
+    0x04014E70,
+    0x423B929C,
+    0x0FA1E309,
+    0x27D8765C,
+    0xC3FED0A0,
+    0x8B34839B,
+    0x3C001C72,
+    0xBFD71D48,
+    0x2DD3E71E,
+    0x68232078,
+    0x67CCA799,
+    0x30594A85,
+    0x5282FBD8,
+    0xDC2D3BF5,
+    0xC7D192C7,
+    0x78A8D107,
+    0x1FE833AD,
+    0xBFD71F50,
+    0xADD3E71E,
+    0x8C7CC572,
+    0x17FC0002,
+    0x00142320,
+    0x50E2C7A4,
+    0x956B7A61,
+    0xFCAA4602,
+    0x60FF78B7,
+    0x2E71BFFD,
+    0xBFD72168,
+    0xBDD3E71E,
+    0x8F60016E,
+    0x172EBAA6,
+    0xB3CB7BBC,
+    0xAC67050E,
+    0x6A843406,
+    0xF40ACFFD,
+    0x5F1BC313,
+    0xDEABDCF9,
+    0xBFD72327,
+    0xCDD3E71E,
 )
 
 # The anchor-29 window is the clean subframe 2, word for word.
 SF2_WORDS = (
-    0x8B0638, 0x0A382B, 0x05F314, 0x2A3441, 0x0B9B4E,
-    0xF4B102, 0xA0BEF6, 0x1652A1, 0x0CD619, 0x08C81E,
+    0x8B0638,
+    0x0A382B,
+    0x05F314,
+    0x2A3441,
+    0x0B9B4E,
+    0xF4B102,
+    0xA0BEF6,
+    0x1652A1,
+    0x0CD619,
+    0x08C81E,
 )
 # Console ephemeris of the same satellite and issue of data.
 SF2_EXPECTED = {
@@ -55,8 +103,16 @@ SF2_EXPECTED = {
 
 # The anchor-19 window is the clean subframe 3.
 SF3_WORDS = (
-    0x8B0638, 0x0A38AD, 0xFFF8E3, 0xCD20E6, 0xFFB428,
-    0x09E268, 0x17873D, 0x8EE4A7, 0xFFAC63, 0x050189,
+    0x8B0638,
+    0x0A38AD,
+    0xFFF8E3,
+    0xCD20E6,
+    0xFFB428,
+    0x09E268,
+    0x17873D,
+    0x8EE4A7,
+    0xFFAC63,
+    0x050189,
 )
 SF3_EXPECTED = {
     "cic_rad": -1.4901161193847656e-08,
@@ -71,8 +127,16 @@ SF3_EXPECTED = {
 
 # The anchor-39 window is the receiver's formatted subframe 1 record.
 SF1_RECORD_WORDS = (
-    0x8B0638, 0x0A37A5, 0x639000, 0x3FDE2D, 0xD56E7F,
-    0xA52167, 0x38B1E9, 0x0508C8, 0x00FFFF, 0xE0CEA3,
+    0x8B0638,
+    0x0A37A5,
+    0x639000,
+    0x3FDE2D,
+    0xD56E7F,
+    0xA52167,
+    0x38B1E9,
+    0x0508C8,
+    0x00FFFF,
+    0xE0CEA3,
 )
 
 
@@ -141,10 +205,7 @@ def test_clean_sf2_matches_console_ephemeris() -> None:
     pi = 3.141592653589793
     assert signed(w[2] & 0xFFFF, 16) * 2.0**-5 == SF2_EXPECTED["crs_m"]
     assert (
-        abs(
-            signed(w[3] >> 8, 16) * 2.0**-43 * pi
-            - SF2_EXPECTED["delta_n_rad_per_s"]
-        )
+        abs(signed(w[3] >> 8, 16) * 2.0**-43 * pi - SF2_EXPECTED["delta_n_rad_per_s"])
         < 1e-21
     )
     assert (
@@ -156,10 +217,7 @@ def test_clean_sf2_matches_console_ephemeris() -> None:
     )
     assert signed(w[5] >> 8, 16) * 2.0**-29 == SF2_EXPECTED["cuc_rad"]
     assert (
-        abs(
-            (((w[5] & 0xFF) << 24) | w[6]) * 2.0**-33
-            - SF2_EXPECTED["eccentricity"]
-        )
+        abs((((w[5] & 0xFF) << 24) | w[6]) * 2.0**-33 - SF2_EXPECTED["eccentricity"])
         < 1e-18
     )
     assert signed(w[7] >> 8, 16) * 2.0**-29 == SF2_EXPECTED["cus_rad"]
@@ -207,10 +265,7 @@ def test_clean_sf3_matches_console_ephemeris() -> None:
         < 1e-12
     )
     assert (
-        abs(
-            signed(w[8], 24) * 2.0**-43 * pi
-            - SF3_EXPECTED["omega_dot_rad_per_s"]
-        )
+        abs(signed(w[8], 24) * 2.0**-43 * pi - SF3_EXPECTED["omega_dot_rad_per_s"])
         < 1e-22
     )
     assert (
@@ -267,8 +322,7 @@ def test_slot_layout_round_trips_through_real_words() -> None:
         stored = word ^ (0xFFFFFF if prev & 1 else 0)
         parity = _gps_word_parity(stored, (prev >> 1) & 1, prev & 1)
         reconstructed.append(
-            (prev >> 2) << 28 | (prev & 3) << 26
-            | stored << 2 | (parity >> 4) & 3
+            (prev >> 2) << 28 | (prev & 3) << 26 | stored << 2 | (parity >> 4) & 3
         )
         prev = parity
     for step in range(10):

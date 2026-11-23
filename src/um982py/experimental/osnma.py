@@ -414,17 +414,13 @@ def verify_dsm_kroot_padding(dsm: DsmKroot) -> bool:
     """Verify the padding field of a DSM-KROOT message."""
     if not dsm.padding:
         return True
-    digest = hashlib.sha256(
-        dsm_kroot_signed_message(dsm) + dsm.signature
-    ).digest()
+    digest = hashlib.sha256(dsm_kroot_signed_message(dsm) + dsm.signature).digest()
     return _truncate(len(dsm.padding) * 8, digest) == dsm.padding
 
 
 def verify_dsm_kroot_signature(dsm: DsmKroot, public_key: bytes) -> bool:
     """Verify the signature of a DSM-KROOT message with a public key."""
-    return verify_ecdsa_p256(
-        dsm_kroot_signed_message(dsm), dsm.signature, public_key
-    )
+    return verify_ecdsa_p256(dsm_kroot_signed_message(dsm), dsm.signature, public_key)
 
 
 def tesla_chain_key(
@@ -437,9 +433,7 @@ def tesla_chain_key(
     hash of the next key, the sub-frame time and the chain pattern,
     truncated to the chain key length.
     """
-    digest = hashlib.sha256(
-        next_key + subframe.to_bytes(4, "big") + alpha
-    ).digest()
+    digest = hashlib.sha256(next_key + subframe.to_bytes(4, "big") + alpha).digest()
     return _truncate(key_bits, digest)
 
 
@@ -548,9 +542,7 @@ def _mack_tag_count(key_bits: int, tag_bits: int) -> int:
     return (480 - key_bits) // (tag_bits + 16)
 
 
-def parse_mack_message(
-    mack: bytes, key_bits: int, tag_bits: int
-) -> MackMessage:
+def parse_mack_message(mack: bytes, key_bits: int, tag_bits: int) -> MackMessage:
     """Parse one 60-byte MACK message.
 
     ``key_bits`` and ``tag_bits`` are the chain parameters announced by the
@@ -600,9 +592,7 @@ def _mac(key: bytes, message: bytes, function: int) -> bytes:
     return hmac.new(key, message, hashlib.sha256).digest()
 
 
-def word_authenticated_data(
-    words: Mapping[int, InavWord], adkd: int
-) -> str | None:
+def word_authenticated_data(words: Mapping[int, InavWord], adkd: int) -> str | None:
     """Return the concatenated authenticated data bits of one data type.
 
     For the ephemeris, clock and status type the words one to five of one

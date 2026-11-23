@@ -354,9 +354,7 @@ def assemble_gps_ephemeris(
         eccentricity=(((w2[5] & 0xFF) << 24) | w2[6]) * 2.0**-33,
         sqrt_a_m=(((w2[7] & 0xFF) << 24) | w2[8]) * 2.0**-19,
         toe_s=(w2[9] >> 8) * 16,
-        omega0_rad=_signed((w3[2] & 0xFF) << 24 | w3[3], 32)
-        * 2.0**-31
-        * _PI,
+        omega0_rad=_signed((w3[2] & 0xFF) << 24 | w3[3], 32) * 2.0**-31 * _PI,
         i0_rad=_signed((w3[4] & 0xFF) << 24 | w3[5], 32) * 2.0**-31 * _PI,
         omega_rad=_signed((w3[6] & 0xFF) << 24 | w3[7], 32) * 2.0**-31 * _PI,
         omega_dot_rad_per_s=_signed(w3[8], 24) * 2.0**-43 * _PI,

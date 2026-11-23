@@ -1,6 +1,5 @@
 """Shared worked-example data from the Galileo OSNMA Receiver Guidelines."""
 
-
 import pytest
 
 from um982py.experimental.inav_pages import (
@@ -112,9 +111,7 @@ def example_parts() -> tuple[bytes, ...]:
 def example_words(example_parts: tuple[bytes, ...]) -> dict[int, object]:
     words = {}
     for index in range(0, len(example_parts), 2):
-        word = assemble_inav_word(
-            example_parts[index], example_parts[index + 1]
-        )
+        word = assemble_inav_word(example_parts[index], example_parts[index + 1])
         if word is not None:
             words[word.word_type] = word
     return words

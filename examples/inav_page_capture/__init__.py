@@ -38,20 +38,15 @@ PAGE_HEADER = (
 )
 """Column header of the captured page part table."""
 
-WORD_HEADER = (
-    f"{'Word':>4}  {'IODnav':>6}  {'SVID':>4}  {'GST WN':>6}  TOW"
-)
+WORD_HEADER = f"{'Word':>4}  {'IODnav':>6}  {'SVID':>4}  {'GST WN':>6}  TOW"
 """Column header of the word table."""
 
 AUDIT_HEADER = (
-    f"{'PRN':>3}  {'Sync':>4}  {'Errors':>6}  {'Tail':<5}  {'SSP':>4}"
-    f"  Decoded"
+    f"{'PRN':>3}  {'Sync':>4}  {'Errors':>6}  {'Tail':<5}  {'SSP':>4}  Decoded"
 )
 """Column header of the window decode table."""
 
-ACTIVITY_HEADER = (
-    f"{'PRN':>3}  {'Odd':>3}  {'Nonzero':>7}  Observed"
-)
+ACTIVITY_HEADER = f"{'PRN':>3}  {'Odd':>3}  {'Nonzero':>7}  Observed"
 """Column header of the OSNMA activity table."""
 
 
@@ -99,9 +94,7 @@ def render_word(word: InavWord) -> str:
 
 def render_audit(audit: PageWindowAudit) -> str:
     """Return one table row of an independent window decode."""
-    tail = "-" if audit.tail_valid is None else (
-        "yes" if audit.tail_valid else "no"
-    )
+    tail = "-" if audit.tail_valid is None else ("yes" if audit.tail_valid else "no")
     ssp = "-" if audit.ssp is None else f"0x{audit.ssp:02x}"
     decoded = "-" if audit.decoded is None else audit.decoded.hex()
     return (
@@ -264,8 +257,7 @@ def render_has_messages(
             mt1 = message.mt1
             mask_systems = mt1.mask.systems if mt1.mask is not None else ()
             systems = ", ".join(
-                f"{'GPS' if system.gnss_id == 0 else 'GAL'}"
-                f" {len(system.satellites)}"
+                f"{'GPS' if system.gnss_id == 0 else 'GAL'} {len(system.satellites)}"
                 for system in mask_systems
             )
             systems = systems or "no mask"
@@ -277,9 +269,7 @@ def render_has_messages(
                 f", {len(mt1.phase_biases or ())} phase biases"
             )
         elif message.mt1 is not None:
-            lines.append(
-                f"{prefix}  {state}, partial: {message.mt1.unsupported}"
-            )
+            lines.append(f"{prefix}  {state}, partial: {message.mt1.unsupported}")
         else:
             lines.append(f"{prefix}  {state}, type {message.message_type}")
     if not entries:
@@ -308,8 +298,7 @@ def render_campaign(
         "==========================",
         "",
         f"Snapshots:             {len(campaign.snapshots)}",
-        f"Pages:                 {len(pages)}"
-        f" ({len(campaign.unique_pages)} unique)",
+        f"Pages:                 {len(pages)} ({len(campaign.unique_pages)} unique)",
         f"PRNs:                  {', '.join(str(prn) for prn in prns) or '-'}",
         f"Application restored:  {restored}",
         "",

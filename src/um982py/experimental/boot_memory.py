@@ -241,9 +241,7 @@ class BootMemoryReader:
                 if answer == b"\x06":
                     break
                 if answer != b"\x15":
-                    raise BootMenuError(
-                        f"Unexpected XMODEM response: {answer.hex()}"
-                    )
+                    raise BootMenuError(f"Unexpected XMODEM response: {answer.hex()}")
             else:
                 raise BootMenuError("XMODEM packet rejected three times")
         self._wire.send(b"\x04")
