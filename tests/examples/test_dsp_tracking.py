@@ -32,6 +32,7 @@ def test_boot_capture_and_replay(
     tracking_window[0x80:0x82] = bytes([3, 112])
     pack_into("<I2xH", tracking_window, 0x84, 1, 0x11)
     pack_into("<2d", tracking_window, 0x90, 25_488_463.1169, 133_942_786.7349)
+    pack_into("<d", tracking_window, 0x108, 587_111.925)
     pack_into("<f", tracking_window, 0xA0, 24.5)
     pack_into("<2f", tracking_window, 0xB0, 0.25, 0.015625)
     pack_into("<d", tracking_window, 0xC8, 133_942_787.0)
@@ -91,13 +92,17 @@ def test_boot_capture_and_replay(
         boot_menu_only=True,
     )
     reader.__exit__.assert_called_once()
-    assert "Application restored yes" in capsys.readouterr().out
+    console = capsys.readouterr().out
+    assert "Application restored yes" in console
+    assert "587111.925" in console and "GST" in console
     report = json.loads(output.read_text())
     assert report["application_restored"] is True
     assert report["channels"][0]["doppler_hz"] == 25.0
     assert report["channels"][0]["cn0_dbhz"] == 39.0
     observation = report["channels"][0]["observation"]
     assert observation["gps_tow_ms"] == 587_112_000
+    assert observation["native_time_s"] == pytest.approx(587_111.925)
+    assert observation["native_time_scale"] == "GST"
     assert observation["epoch_counter"] == 75
     assert observation["pseudorange_m"] == 25_488_463.1169
     assert observation["phase_offset_cycles"] == pytest.approx(-0.2651)

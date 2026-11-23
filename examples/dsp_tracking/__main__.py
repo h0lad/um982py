@@ -134,7 +134,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if channels:
         print(
             "  Ch  Signal       Sat  RF  C/N0 dB-Hz   Doppler Hz  Carrier word"
-            "       TOW ms  Pseudorange m"
+            "       TOW ms  Native time   Scale  Pseudorange m"
         )
     for entry in channels:
         signal = f"{entry.constellation[:3]} {entry.band}"
@@ -146,6 +146,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             if observation and (observation.gps_tow_ms is not None)
             else "-"
         )
+        native_time = (
+            f"{observation.native_time_s:.3f}"
+            if observation and observation.native_time_s is not None
+            else "-"
+        )
+        time_scale = observation.native_time_scale if observation else None
         pseudorange = (
             f"{observation.pseudorange_m:.3f}"
             if observation and (observation.pseudorange_m is not None)
@@ -154,7 +160,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(
             f"{entry.channel:4d}  {signal:<10}  {satellite:>4}"
             f"  {entry.rf_index:2d}  {entry.cn0_dbhz:9.2f}  {doppler:>11}"
-            f"  {entry.carrier_word:12d}  {tow:>11}  {pseudorange:>13}"
+            f"  {entry.carrier_word:12d}  {tow:>11}  {native_time:>11}"
+            f"  {time_scale or '-':>5}  {pseudorange:>13}"
         )
     if restored is not None:
         print(f"Application restored {'yes' if restored else 'no'}")

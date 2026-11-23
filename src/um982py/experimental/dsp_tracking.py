@@ -41,6 +41,22 @@ _RF_COUNT = 22
 _OBSERVATION_SIZE = 0xDC
 _PHASE_TRACKED_FLAG = 0x10
 _GPS_WEEK_MS = 604_800_000
+_GPS_WEEK_S = 604_800.0
+_GLONASS_DAY_S = 86_400.0
+_NATIVE_TIME_SCALES = {
+    0x00: "GPST",
+    0x08: "GPST",
+    0x10: "GPST",
+    0x03: "GST",
+    0x13: "GST",
+    0x1B: "GST",
+    0x43: "GST",
+    0x12: "BDT",
+    0x22: "BDT",
+    0x2A: "BDT",
+    0x34: "GLOT",
+    0x3C: "GLOT",
+}
 _SIGNAL_LAYOUTS = {
     0x00: ("GPS", "L1", 1575.42e6, 0),
     0x08: ("GPS", "L2", 1227.60e6, 0),
@@ -105,6 +121,10 @@ class DspTrackingObservation:
     """Doppler stored with the observation at its measurement epoch."""
     phase_lock_ms: int | None = None
     """Internal phase lock counter before output-side adjustments."""
+    native_time_s: float | None = None
+    """High-resolution time tag in the native signal time scale."""
+    native_time_scale: str | None = None
+    """GPST, GST, BDT seconds-of-week, or GLOT seconds-of-day."""
 
     @property
     def phase_offset_cycles(self) -> float | None:
@@ -206,16 +226,22 @@ def _decode_calibration(data: memoryview | None) -> DspDopplerCalibration | None
     return DspDopplerCalibration(unpack_from("<i", data, 0x18)[0], scale)
 
 
-def _decode_observation(address: int, record: memoryview) -> DspTrackingObservation:
+def _decode_observation(
+    address: int, record: memoryview, signal_family: int
+) -> DspTrackingObservation:
     # The stored phase reference at +0x48 is the pseudorange divided by
     # the wavelength, and the carrier phase at +0x18 shares its sign
-    # convention.
+    # convention. The native time at +0x88 was cross-checked against GPS
+    # TOW for all four system scales in two live build-25164 captures.
     flags = int(unpack_from("<H", record, 0x0A)[0])
     pseudorange, phase = unpack_from("<2d", record, 0x10)
     doppler = unpack_from("<f", record, 0x20)[0]
     code_std, phase_std = unpack_from("<2f", record, 0x30)
     reference = unpack_from("<d", record, 0x48)[0]
     counter, tow_ms = unpack_from("<2I", record, 0xD4)
+    native_time = unpack_from("<d", record, 0x88)[0]
+    time_limit = _GLONASS_DAY_S if signal_family in _GLONASS_SPACING_HZ else _GPS_WEEK_S
+    has_native_time = isfinite(native_time) and 0 <= native_time < time_limit
     has_epoch = bool(counter or tow_ms) and tow_ms < _GPS_WEEK_MS
     has_range = isfinite(pseudorange) and pseudorange > 0
     has_phase = bool(flags & _PHASE_TRACKED_FLAG) and isfinite(phase)
@@ -235,6 +261,10 @@ def _decode_observation(address: int, record: memoryview) -> DspTrackingObservat
         else None,
         doppler_hz=doppler if has_epoch and isfinite(doppler) else None,
         phase_lock_ms=unpack_from("<I", record, 0xC4)[0] if has_phase else None,
+        native_time_s=native_time if has_native_time else None,
+        native_time_scale=(
+            _NATIVE_TIME_SCALES[signal_family] if has_native_time else None
+        ),
     )
 
 
@@ -318,7 +348,7 @@ def extract_dsp_tracking(
                 address=address,
                 raw=bytes(row),
                 observation=(
-                    _decode_observation(tracker_address, observation)
+                    _decode_observation(tracker_address, observation, family)
                     if observation is not None
                     else None
                 ),

@@ -47,9 +47,21 @@ when you need a continuous Doppler time series.
 The JSON `observation` object also carries the DSP carrier phase in cycles,
 its separately stored reference, their difference, and the internal epoch
 counter. Phase uses the DSP sign convention and is reported when the
-tracker's phase flag is set. The GPS time tag is measured in milliseconds
-of week and refers to the retained observation. Its week number is absent.
-Use the time tags to check epoch alignment when comparing two channels.
+tracker's phase flag is set. The integer GPS time tag is measured in
+milliseconds of week; its week number is absent.
+
+`native_time_s` decodes a second double-precision time tag at tracker offset
+`0x88`; `native_time_scale` labels its scale. For build 25164, comparisons
+across two live snapshots support GPST and GST seconds-of-week for GPS and
+Galileo, BDT seconds-of-week for BeiDou, and GLOT seconds-of-day for
+GLONASS. The BDT tag is about 14 seconds behind GPST. GLOT is UTC(SU)+3h;
+conversion to GPST also requires the date's leap-second offset and day
+rollover handling. Keep the native scale when comparing records. These interpretations are empirical for this firmware
+build, not a vendor guarantee. In the two captures, valid tags advanced by
+the 333-second interval and were about 64–93 ms behind the integer epoch
+after time-scale conversion. This tag helps detect per-channel epoch skew;
+the RAM windows are read sequentially, not atomically, and retained channel
+records can be stale.
 
 Records include the constellation, band, carrier frequency and wavelength.
 The additional positions recover GPS L2/L5, Galileo E5a/E5b/E6, BeiDou

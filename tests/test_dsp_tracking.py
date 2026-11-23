@@ -63,3 +63,63 @@ def test_extract_dsp_tracking(
 
     windows["tracker"] = (0x3B0000, bytes(tracker[:10]) + b"\x00\x00")
     assert extract_dsp_tracking(windows) == ()
+
+
+@pytest.mark.parametrize(
+    ("family", "svid", "bias", "native_time", "time_scale"),
+    [
+        (0x00, 22, 0, 99_999.925, "GPST"),
+        (0x03, 12, 100, 99_999.925, "GST"),
+        (0x12, 6, 160, 85_985.925, "BDT"),
+        (0x34, 9, 64, 24_381.925, "GLOT"),
+        (0x00, 22, 0, float("nan"), None),
+        (0x34, 9, 64, 86_400.0, None),
+    ],
+)
+def test_extract_native_observation_time(
+    family: int,
+    svid: int,
+    bias: int,
+    native_time: float,
+    time_scale: str | None,
+) -> None:
+    row = bytearray(0x7E)
+    row[:3] = bytes([family, svid, 5])
+    row[9] = 2
+    pack_into("<I", row, 0x1C, 0x466123)
+    measurement_links = bytearray(4)
+    pack_into("<I", measurement_links, 0, 0x3A0000)
+    channel_links = bytearray(4)
+    pack_into("<I", channel_links, 0, 0x3B0000)
+    tracker = bytearray(0xDC)
+    tracker[:2] = bytes([family, svid + bias])
+    if family in (0x34, 0x3C):
+        pack_into("<H", tracker, 2, 73)
+    pack_into("<I2xH", tracker, 4, 1, 0x11)
+    pack_into("<2d", tracker, 0x10, 21_000_000.0, 110_000_000.0)
+    pack_into("<f", tracker, 0x20, -1200.0)
+    pack_into("<2f", tracker, 0x30, 0.5, 0.02)
+    pack_into("<d", tracker, 0x48, 110_000_000.0)
+    pack_into("<d", tracker, 0x88, native_time)
+    pack_into("<2I", tracker, 0xD4, 1, 100_000_000)
+    rf = bytearray(0x1C)
+    pack_into("<d", rf, 8, 0.25)
+    pack_into("<i", rf, 0x18, 2)
+    windows = {
+        "measurements": (0x331DF8, bytes(measurement_links)),
+        "channels": (0x42BCB4, bytes(channel_links)),
+        "row": (0x3A0000, bytes(row)),
+        "tracker": (0x3B0000, bytes(tracker)),
+        "rf": (0x4025C0, bytes(rf)),
+    }
+
+    (record,) = extract_dsp_tracking(windows)
+
+    assert record.observation is not None
+    assert record.observation.gps_tow_ms == 100_000_000
+    if time_scale is None:
+        assert record.observation.native_time_s is None
+        assert record.observation.native_time_scale is None
+    else:
+        assert record.observation.native_time_s == pytest.approx(native_time)
+        assert record.observation.native_time_scale == time_scale
