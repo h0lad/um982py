@@ -66,6 +66,11 @@ def test_boot_capture_and_replay(
         "<3d", satellite_state["gps_state"], 0, 15_000_000, 20_000_000, 10_000_000
     )
     pack_into("<3d", satellite_state["gps_state"], 0x18, 500, -2000, 3000)
+    pack_into(
+        "<3d", satellite_state["gps_state"], 0x30, 25_488_463.0, 25_488_563.0, -123.5
+    )
+    pack_into("<2f", satellite_state["gps_state"], 0x60, 0.25, 1.5)
+    pack_into("<I", satellite_state["gps_state"], 0x70, 4321)
     pack_into("<2I", satellite_state["gps_state"], 0x68, 587_112_000, 587_111_000)
     pack_into("<I", satellite_state["gps_state"], 0x74, 0x3F)
     pack_into("<I12xI", windows[0x13D443B0], 0, 576824000, 2445)
@@ -127,6 +132,12 @@ def test_boot_capture_and_replay(
             "receiver_id": 1,
             "position_ecef_m": [15_000_000.0, 20_000_000.0, 10_000_000.0],
             "velocity_ecef_mps": [500.0, -2000.0, 3000.0],
+            "range_m": 25_488_463.0,
+            "pseudorange_m": 25_488_563.0,
+            "approach_rate_mps": -123.5,
+            "elevation_rad": 0.25,
+            "azimuth_rad": 1.5,
+            "broadcast_ephemeris_age_s": 4321,
             "state_flags": 63,
             "state_time_ms": 587112000,
             "secondary_time_ms": 587111000,

@@ -105,12 +105,12 @@ PYTHONPATH=src python3 -m examples.dsp_tracking --port /dev/ttyUSB0 \
 ```
 
 The output includes ECEF position (metres), velocity (metres per second),
-state flags, and native-system time tags. The time-scale label is GPST, GST,
-BDT, or GLOT. The second time tag is preserved without assigning it a role.
-Entries marked unavailable or with non-finite position values are omitted.
-Other state values remain undecoded. Captures are not atomic, and state tags
-can predate the snapshot time. These are geometry states, not broadcast
-ephemeris parameters.
+state flags, and native-system time tags. ``state_time_ms`` stamps the ECEF
+state; ``secondary_time_ms`` stamps the range and sky-geometry fields, which
+can be older. The time-scale label is GPST, GST, BDT, or GLOT. Entries marked
+unavailable or with non-finite position values are omitted. Other state values
+remain undecoded. Captures are not atomic, and state tags can predate the
+snapshot time. These are geometry states, not broadcast ephemeris parameters.
 
 Live states from all four constellations were checked against same-issue
 broadcast ephemerides propagated to each record's own state time. Position
@@ -123,8 +123,41 @@ time, and its 10-second offset from the DSP state time adds about 30 km of
 satellite motion. Older archives with shorter GPS or GLONASS windows replay
 as record-aligned prefixes; only the captured entries are decoded.
 
+GPS, Galileo and BeiDou records also retain satellite-clock-corrected range,
+raw pseudorange and approach rate at `secondary_time_ms`, plus elevation and
+azimuth in radians. Against the same broadcast ephemerides and a surveyed
+receiver position, range residuals were at most 46 m, pseudorange residuals
+at most 20 m except two outliers near 100 m, approach-rate residuals at most
+0.5 m/s, elevation residuals at most 0.25 degrees and azimuth residuals at
+most 1.3 degrees. Across eight RAM snapshots, using the secondary time reduced
+the range disagreement from up to 17 km to below 600 m; the broadcast check
+above tightens that to tens of metres. The age field equals the whole seconds
+between the secondary time and the `t_oe` in the receiver's broadcast-ephemeris
+RAM table, checked for all 92 GPS, Galileo and BeiDou states in one capture.
+GLONASS records carry sky angles but no range triplet or age. Negative
+elevations are retained: the DSP tracks satellites below the receiver horizon.
+
+## Broadcast ephemerides
+
+The library also decodes the receiver's broadcast-ephemeris copies from DSP
+RAM. `read_dsp_ephemeris_windows` reads four additional tables and
+`extract_dsp_ephemerides` returns GPS/BeiDou Kepler elements with clocks,
+Galileo Kepler elements with both F/NAV and I/NAV clocks, and GLONASS PZ-90
+state vectors. GPS and BeiDou entries also expose the native week and issue
+numbers, and each Kepler entry converts its native week to GPS week. The
+layouts come from the baseband routines that propagate those records; the
+GLONASS reference time is GLOT seconds of day.
+
+A live check against `GPSEPH`, `GALEPH`, `BDSEPH` and `GLOEPH` found field-for-field
+agreement for the 19 GPS, 16 BeiDou, 13 Galileo and 11 GLONASS log entries whose
+issue was still the one retained in RAM. The two remaining GPS log entries had
+already been refreshed when RAM was read. GPS IODC, BeiDou AODE fields, native
+weeks and the derived GPS weeks also matched. Galileo group delays and both
+clock sets matched exactly.
+
 ## References
 
+- [DSP ephemeris layout and Python API](../../src/um982py/experimental/dsp_ephemeris.py)
 - [DSP tracking layout and Python API](../../src/um982py/experimental/dsp_tracking.py)
 - [Receiver-wide memory layout](../../src/um982py/experimental/dsp_receiver.py)
 - [RAM reader protocol](../../tools/boot-reader/um982_ram_reader.S)
