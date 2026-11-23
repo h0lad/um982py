@@ -120,9 +120,9 @@ def test_boot_capture_and_replay(
     )
     reader.__exit__.assert_called_once()
     console = capsys.readouterr().out
-    assert "Application restored yes" in console
+    assert "restored=yes" in console
     assert "587111.925" in console and "GST" in console
-    assert "Satellite state records 1" in console
+    assert "SAT n=1" in console
     report = json.loads(output.read_text())
     assert report["application_restored"] is True
     assert report["satellite_positions"] == [

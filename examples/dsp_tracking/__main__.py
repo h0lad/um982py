@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import asdict
+from math import degrees
 from pathlib import Path
 
 from examples._console import ExampleParser, run, validate_file_paths, write_json
@@ -13,6 +14,7 @@ from um982py.experimental import (
     DSP_TRACKING_MEMORY_WINDOWS,
     BootMemoryReader,
     DspReceiverDiagnostics,
+    DspSatellitePosition,
     DspTrackingChannel,
     extract_dsp_receiver_diagnostics,
     extract_dsp_satellite_positions,
@@ -54,6 +56,120 @@ def _receiver_report(dsp: DspReceiverDiagnostics) -> dict[str, object]:
         for _, notice in dsp.cached_notices
     ]
     return report
+
+
+def _value(value: object, spec: str = "") -> str:
+    if value is None:
+        return "-"
+    return format(value, spec) if spec else str(value)
+
+
+def _print_receiver_state(dsp: DspReceiverDiagnostics, restored: bool | None) -> None:
+    epoch = (
+        f"{dsp.gps_epoch.week}:{dsp.gps_epoch.tow_ms}"
+        if dsp.gps_epoch is not None
+        else "-"
+    )
+    agc = "/".join(str(code) for code in dsp.rf_agc_codes) if dsp.rf_agc_codes else "-"
+    adc = (
+        f"{dsp.sensor_adc.channel}:{dsp.sensor_adc.value_1}/{dsp.sensor_adc.value_2}"
+        if dsp.sensor_adc is not None
+        else "-"
+    )
+    iono = (
+        f"{dsp.gps_ionosphere.flags[0]}/{dsp.gps_ionosphere.flags[1]}"
+        if dsp.gps_ionosphere is not None
+        else "-"
+    )
+    restored_text = "-" if restored is None else "yes" if restored else "no"
+    print(
+        f"RX epoch={epoch} agc={agc} adc={adc} iono={iono} "
+        f"notices={len(dsp.cached_notices)} navpos={len(dsp.nav_positions)} "
+        f"navvel={len(dsp.nav_velocities)} restored={restored_text}"
+    )
+    if dsp.nav_positions:
+        position = dsp.nav_positions[-1]
+        print(
+            f"  NAVPOS t={position.tag} type={position.position_type} "
+            f"lat={position.latitude_deg:.6f} lon={position.longitude_deg:.6f} "
+            f"h={position.height_m:.3f} ecef={position.x_m:.3f}/"
+            f"{position.y_m:.3f}/{position.z_m:.3f}"
+        )
+    if dsp.nav_velocities:
+        velocity = dsp.nav_velocities[-1]
+        print(
+            f"  NAVVEL age={velocity.age} v={velocity.values[0]:.3f}/"
+            f"{velocity.values[1]:.3f}/{velocity.values[2]:.3f} "
+            f"extra={velocity.values[3]:.3f}/{velocity.values[4]:.3f}/"
+            f"{velocity.trailing:.3f}"
+        )
+
+
+def _print_channels(channels: Sequence[DspTrackingChannel]) -> None:
+    print(f"CH n={len(channels)}")
+    if not channels:
+        return
+    print(
+        " CH SIGNAL     ID RF    CN0   DOPPLER      CARRIER        TOW"
+        "     NATIVE SCL       PRANGE    PRCORR  PHASEOFF  LOCK EPOCH"
+    )
+    for entry in channels:
+        observation = entry.observation
+        satellite = _value(entry.satellite_id)
+        doppler = _value(entry.doppler_hz, "+9.2f")
+        tow = _value(observation.gps_tow_ms if observation else None)
+        native = _value(observation.native_time_s if observation else None, ".3f")
+        scale = observation.native_time_scale if observation else None
+        pseudorange = _value(observation.pseudorange_m if observation else None, ".3f")
+        prcorr = _value(
+            observation.range_correction_m if observation else None, "+8.1f"
+        )
+        phase_offset = _value(
+            observation.phase_offset_cycles if observation else None, "+9.4f"
+        )
+        lock = _value(observation.phase_lock_ms if observation else None)
+        epoch = _value(observation.epoch_counter if observation else None)
+        print(
+            f"{entry.channel:3d} {entry.constellation[:3]}/{entry.band:<3} "
+            f"{satellite:>3} {entry.rf_index:2d} {entry.cn0_dbhz:6.2f} "
+            f"{doppler:>9} {entry.carrier_word:12d} {tow:>9} "
+            f"{native:>10} {scale or '-':>4} {pseudorange:>13} "
+            f"{prcorr:>8} {phase_offset:>9} {lock:>5} {epoch:>5}"
+        )
+
+
+def _print_satellites(satellites: Sequence[DspSatellitePosition]) -> None:
+    print(f"SAT n={len(satellites)}")
+    if not satellites:
+        return
+    print(
+        "SYS  ID SID     RADIUS     ELEV      AZ       RANGE          PR"
+        "      RATE  AGE       T1       T2  FLAGS FREQ"
+    )
+    for position in satellites:
+        elevation = (
+            f"{degrees(position.elevation_rad):7.2f}"
+            if position.elevation_rad is not None
+            else "      -"
+        )
+        azimuth = (
+            f"{degrees(position.azimuth_rad):8.2f}"
+            if position.azimuth_rad is not None
+            else "       -"
+        )
+        print(
+            f"{position.constellation[:3]:>3} {position.satellite_id:3d} "
+            f"{position.receiver_id:3d} {position.radius_m:10.0f} "
+            f"{elevation} {azimuth} "
+            f"{_value(position.range_m, '12.1f'):>12} "
+            f"{_value(position.pseudorange_m, '14.1f'):>14} "
+            f"{_value(position.approach_rate_mps, '+8.1f'):>8} "
+            f"{_value(position.broadcast_ephemeris_age_s):>4} "
+            f"{_value(position.state_time_ms):>8} "
+            f"{_value(position.secondary_time_ms):>8} "
+            f"{position.state_flags:08x} "
+            f"{_value(position.glonass_frequency_channel):>4}"
+        )
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -154,47 +270,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     channels = extract_dsp_tracking(regions)
     dsp = extract_dsp_receiver_diagnostics(regions)
     satellite_positions = extract_dsp_satellite_positions(satellite_state_data)
-    print(f"DSP tracking snapshot, {len(channels)} channels")
-    if channels:
-        print(
-            "  Ch  Signal       Sat  RF  C/N0 dB-Hz   Doppler Hz  Carrier word"
-            "       TOW ms  Native time   Scale  Pseudorange m"
-        )
-    for entry in channels:
-        signal = f"{entry.constellation[:3]} {entry.band}"
-        satellite = str(entry.satellite_id) if entry.satellite_id is not None else "-"
-        doppler = f"{entry.doppler_hz:+.2f}" if entry.doppler_hz is not None else "-"
-        observation = entry.observation
-        tow = (
-            str(observation.gps_tow_ms)
-            if observation and (observation.gps_tow_ms is not None)
-            else "-"
-        )
-        native_time = (
-            f"{observation.native_time_s:.3f}"
-            if observation and observation.native_time_s is not None
-            else "-"
-        )
-        time_scale = observation.native_time_scale if observation else None
-        pseudorange = (
-            f"{observation.pseudorange_m:.3f}"
-            if observation and (observation.pseudorange_m is not None)
-            else "-"
-        )
-        print(
-            f"{entry.channel:4d}  {signal:<10}  {satellite:>4}"
-            f"  {entry.rf_index:2d}  {entry.cn0_dbhz:9.2f}  {doppler:>11}"
-            f"  {entry.carrier_word:12d}  {tow:>11}  {native_time:>11}"
-            f"  {time_scale or '-':>5}  {pseudorange:>13}"
-        )
-    if restored is not None:
-        print(f"Application restored {'yes' if restored else 'no'}")
-    if dsp.gps_epoch is not None:
-        print(f"DSP GPS week {dsp.gps_epoch.week}, TOW {dsp.gps_epoch.tow_ms} ms")
-    if dsp.rf_agc_codes is not None:
-        print("RF AGC codes " + ", ".join(map(str, dsp.rf_agc_codes)))
+    print(f"DSP n={len(channels)} sats={len(satellite_positions)}")
+    _print_receiver_state(dsp, restored)
+    _print_channels(channels)
     if satellite_state_data:
-        print(f"Satellite state records {len(satellite_positions)}")
+        _print_satellites(satellite_positions)
 
     if args.json is not None:
         report = {
