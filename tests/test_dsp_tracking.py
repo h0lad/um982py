@@ -1,6 +1,6 @@
 """Check DSP address resolution, raw fields and calibrated Doppler."""
 
-from struct import pack_into
+from struct import pack, pack_into
 
 import pytest
 
@@ -63,6 +63,34 @@ def test_extract_dsp_tracking(
 
     windows["tracker"] = (0x3B0000, bytes(tracker[:10]) + b"\x00\x00")
     assert extract_dsp_tracking(windows) == ()
+
+
+def test_output_clock_correction() -> None:
+    row = bytearray(0x7E)
+    row[:3] = bytes([0, 22, 5])
+    pack_into("<I", row, 0x1C, 0x466123)
+    measurement_links = bytearray(4)
+    pack_into("<I", measurement_links, 0, 0x3A0000)
+    channel_links = bytearray(4)
+    pack_into("<I", channel_links, 0, 0x3B0000)
+    tracker = bytearray(0xDC)
+    tracker[:2] = bytes([0, 22])
+    pack_into("<I2xH", tracker, 4, 1, 0x11)
+    pack_into("<2d", tracker, 0x10, 21_000_000.0, 110_000_000.0)
+    pack_into("<f", tracker, 0x90, 12.5)
+    pack_into("<2I", tracker, 0xD4, 1, 100_000_000)
+    windows = {
+        "measurements": (0x331DF8, bytes(measurement_links)),
+        "channels": (0x42BCB4, bytes(channel_links)),
+        "row": (0x3A0000, bytes(row)),
+        "tracker": (0x3B0000, bytes(tracker)),
+        "clock_reference": (0x13D442E0, b"\x00" * 8 + pack("<d", 2.5)),
+    }
+
+    (record,) = extract_dsp_tracking(windows)
+    assert record.observation is not None
+    assert record.observation.clock_correction_s == 10.0
+    assert record.observation.range_correction_m == 80.0
 
 
 @pytest.mark.parametrize(

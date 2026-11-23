@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from um982py.experimental.boot_memory import BootMemoryReader
 
 __all__ = [
+    "DSP_TRACKING_CLOCK_REFERENCE_WINDOW",
     "DSP_TRACKING_MEMORY_WINDOWS",
     "DspDopplerCalibration",
     "DspTrackingChannel",
@@ -79,6 +80,9 @@ DSP_TRACKING_MEMORY_WINDOWS = (
 )
 """Memory windows available for DSP tracking capture."""
 
+DSP_TRACKING_CLOCK_REFERENCE_WINDOW = ("clock_reference", 0x13D442E0, 0x10)
+"""Optional window holding the DSP clock reference used by output formatting."""
+
 
 @dataclass(frozen=True, slots=True)
 class DspDopplerCalibration:
@@ -121,6 +125,10 @@ class DspTrackingObservation:
     """High-resolution time tag in the native signal time scale."""
     native_time_scale: str | None = None
     """GPST, GST, BDT seconds-of-week, or GLOT seconds-of-day."""
+    clock_correction_s: float | None = None
+    """Output-side clock correction derived from tracker offset 0x90."""
+    range_correction_m: float | None = None
+    """Pseudorange correction applied by the receiver's output formatter."""
 
     @property
     def phase_offset_cycles(self) -> float | None:
@@ -223,16 +231,27 @@ def _decode_calibration(data: memoryview | None) -> DspDopplerCalibration | None
 
 
 def _decode_observation(
-    address: int, record: memoryview, signal_family: int
+    address: int,
+    record: memoryview,
+    signal_family: int,
+    clock_reference: float | None = None,
 ) -> DspTrackingObservation:
     # The stored phase reference and carrier phase share a sign convention.
     flags = int(unpack_from("<H", record, 0x0A)[0])
     pseudorange, phase = unpack_from("<2d", record, 0x10)
     doppler = unpack_from("<f", record, 0x20)[0]
     code_std, phase_std = unpack_from("<2f", record, 0x30)
-    reference = unpack_from("<d", record, 0x48)[0]
+    phase_reference = unpack_from("<d", record, 0x48)[0]
     counter, tow_ms = unpack_from("<2I", record, 0xD4)
     native_time = unpack_from("<d", record, 0x88)[0]
+    raw_clock = unpack_from("<f", record, 0x90)[0]
+    reference = clock_reference
+    valid_clock = reference is not None and isfinite(reference)
+    clock_correction = (
+        raw_clock - reference
+        if reference is not None and valid_clock and isfinite(raw_clock)
+        else None
+    )
     time_limit = _GLONASS_DAY_S if signal_family in _GLONASS_SPACING_HZ else _GPS_WEEK_S
     has_native_time = isfinite(native_time) and 0 <= native_time < time_limit
     has_epoch = bool(counter or tow_ms) and tow_ms < _GPS_WEEK_MS
@@ -243,7 +262,9 @@ def _decode_observation(
         tracker_flags=flags,
         pseudorange_m=pseudorange if has_range else None,
         carrier_phase_cycles=phase if has_phase else None,
-        phase_reference_cycles=reference if reference and isfinite(reference) else None,
+        phase_reference_cycles=(
+            phase_reference if phase_reference and isfinite(phase_reference) else None
+        ),
         epoch_counter=counter if has_epoch else None,
         gps_tow_ms=tow_ms if has_epoch else None,
         pseudorange_std_m=code_std
@@ -257,6 +278,10 @@ def _decode_observation(
         native_time_s=native_time if has_native_time else None,
         native_time_scale=(
             _NATIVE_TIME_SCALES[signal_family] if has_native_time else None
+        ),
+        clock_correction_s=clock_correction,
+        range_correction_m=(
+            8.0 * clock_correction if clock_correction is not None else None
         ),
     )
 
@@ -272,6 +297,13 @@ def extract_dsp_tracking(
     window is optional. This follows the frequency positions in measurement bank zero.
     """
     windows = tuple((base, memoryview(data)) for base, data in regions.values())
+    clock_reference: float | None = None
+    for base, data in windows:
+        offset = 0x13D442E8 - base
+        if 0 <= offset <= len(data) - 8:
+            value = unpack_from("<d", data, offset)[0]
+            if isfinite(value):
+                clock_reference = value
 
     def read(address: int, size: int) -> memoryview | None:
         for base, data in windows:
@@ -341,7 +373,9 @@ def extract_dsp_tracking(
                 address=address,
                 raw=bytes(row),
                 observation=(
-                    _decode_observation(tracker_address, observation, family)
+                    _decode_observation(
+                        tracker_address, observation, family, clock_reference
+                    )
                     if observation is not None
                     else None
                 ),

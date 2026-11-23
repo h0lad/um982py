@@ -18,6 +18,8 @@ __all__ = [
     "DSP_RECEIVER_MEMORY_WINDOWS",
     "DspGpsEpoch",
     "DspGpsIonosphere",
+    "DspNavPosition",
+    "DspNavVelocity",
     "DspReceiverDiagnostics",
     "DspSensorAdc",
     "extract_dsp_receiver_diagnostics",
@@ -71,6 +73,69 @@ class DspSensorAdc:
 
 
 @dataclass(frozen=True, slots=True)
+class DspNavPosition:
+    """A NAVPOS diagnostic notice parsed into numeric fields."""
+
+    tag: int
+    mode: int
+    position_type: int
+    flag: int
+    latitude_deg: float
+    longitude_deg: float
+    height_m: float
+    x_m: float
+    y_m: float
+    z_m: float
+    count: int
+
+
+@dataclass(frozen=True, slots=True)
+class DspNavVelocity:
+    """A NAVVEL diagnostic notice parsed into numeric fields."""
+
+    values: tuple[float, float, float, float, float]
+    age: int
+    trailing: float
+
+
+def _parse_navpos(text: str) -> DspNavPosition | None:
+    parts = text.strip().split(",")
+    if len(parts) < 12 or parts[0] != "$NAVPOS":
+        return None
+    try:
+        return DspNavPosition(
+            int(parts[1]),
+            int(parts[2]),
+            int(parts[3]),
+            int(parts[4]),
+            float(parts[5]),
+            float(parts[6]),
+            float(parts[7]),
+            float(parts[8]),
+            float(parts[9]),
+            float(parts[10]),
+            int(parts[11]),
+        )
+    except ValueError:
+        return None
+
+
+def _parse_navvel(text: str) -> DspNavVelocity | None:
+    parts = text.strip().split(",")
+    if len(parts) < 8 or parts[0] != "$NAVVEL":
+        return None
+    try:
+        values = tuple(float(part) for part in parts[1:6])
+        return DspNavVelocity(
+            (values[0], values[1], values[2], values[3], values[4]),
+            int(parts[6]),
+            float(parts[7]),
+        )
+    except ValueError:
+        return None
+
+
+@dataclass(frozen=True, slots=True)
 class DspReceiverDiagnostics:
     """Receiver-wide state and diagnostic messages retained at capture."""
 
@@ -81,6 +146,8 @@ class DspReceiverDiagnostics:
     gps_ionosphere: DspGpsIonosphere | None
     cached_notices: tuple[tuple[int, BasebandNotice], ...]
     """Diagnostic buffer base and parsed notice, in memory order within each buffer."""
+    nav_positions: tuple[DspNavPosition, ...] = ()
+    nav_velocities: tuple[DspNavVelocity, ...] = ()
 
 
 def extract_dsp_receiver_diagnostics(
@@ -125,10 +192,22 @@ def extract_dsp_receiver_diagnostics(
         for _, base, size in _NOTICE_WINDOWS
         for notice in scan_notices(read(base, size))
     )
+    positions = []
+    velocities = []
+    for _, notice in notices:
+        text = notice.raw.decode("latin1")
+        position = _parse_navpos(text)
+        if position is not None:
+            positions.append(position)
+        velocity = _parse_navvel(text)
+        if velocity is not None:
+            velocities.append(velocity)
     return DspReceiverDiagnostics(
         rf_agc_codes=tuple(gains) if any(gains) and max(gains) < 128 else None,
         sensor_adc=adc,
         gps_epoch=epoch,
         gps_ionosphere=ionosphere,
         cached_notices=notices,
+        nav_positions=tuple(positions),
+        nav_velocities=tuple(velocities),
     )

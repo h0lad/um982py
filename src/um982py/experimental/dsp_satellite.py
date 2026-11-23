@@ -82,6 +82,26 @@ class DspSatellitePosition:
         x, y, z = self.position_ecef_m
         return sqrt(x * x + y * y + z * z)
 
+    @property
+    def valid(self) -> bool:
+        """Whether the firmware marks this state as usable."""
+        return bool(self.state_flags & 1)
+
+    @property
+    def broadcast_path_selected(self) -> bool:
+        """Whether the firmware selects the broadcast-ephemeris path."""
+        return bool(self.state_flags & 2)
+
+    @property
+    def ionosphere_correction_selected(self) -> bool:
+        """Whether the firmware applies the ionosphere/troposphere path."""
+        return bool(self.state_flags & 4)
+
+    @property
+    def diagnostic_status_bit(self) -> bool:
+        """Bit controlling the diagnostic return status in the baseband code."""
+        return bool(self.state_flags & 0x10)
+
 
 def read_dsp_satellite_state_windows(reader: BootMemoryReader) -> dict[str, bytes]:
     """Read the satellite state tables without exposing their memory layout."""

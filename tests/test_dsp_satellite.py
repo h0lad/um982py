@@ -103,11 +103,11 @@ def test_hidden_range_and_sky_fields() -> None:
     pack_into("<3d", gps, 0x30, 25_000_000.0, 25_000_100.0, -500.0)
     pack_into("<2f", gps, 0x60, 0.5, 1.25)
     pack_into("<I", gps, 0x70, 1234)
-    pack_into("<I", gps, 0x74, 0x3F)
+    pack_into("<I", gps, 0x74, 0x2F)
 
     glonass = regions["glonass_state"]
     pack_into("<3d", glonass, 0, 10_000_000.0, 20_000_000.0, 12_000_000.0)
-    pack_into("<I", glonass, 0x74, 0x441F)
+    pack_into("<I", glonass, 0x74, 0x440F)
 
     positions = extract_dsp_satellite_positions(regions)
     gps_state, glonass_state = positions
@@ -117,6 +117,10 @@ def test_hidden_range_and_sky_fields() -> None:
     assert gps_state.elevation_rad == 0.5
     assert gps_state.azimuth_rad == 1.25
     assert gps_state.broadcast_ephemeris_age_s == 1234
+    assert gps_state.valid
+    assert gps_state.broadcast_path_selected
+    assert gps_state.ionosphere_correction_selected
+    assert not gps_state.diagnostic_status_bit
     assert glonass_state.range_m is None
     assert glonass_state.pseudorange_m is None
     assert glonass_state.approach_rate_mps is None
@@ -124,6 +128,10 @@ def test_hidden_range_and_sky_fields() -> None:
     assert glonass_state.azimuth_rad == 0.0
     assert glonass_state.broadcast_ephemeris_age_s is None
     assert glonass_state.glonass_frequency_channel == 3
+    assert glonass_state.valid
+    assert glonass_state.broadcast_path_selected
+    assert glonass_state.ionosphere_correction_selected
+    assert not glonass_state.diagnostic_status_bit
 
 
 def test_tail_records_and_short_table_prefixes() -> None:

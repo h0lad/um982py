@@ -93,6 +93,9 @@ in JSON under `receiver_state`.
 
 Replay automatically reads the additional files when present. Cached messages
 may predate the binary state. Buffer order does not establish chronology.
+NAVPOS and NAVVEL notices are also parsed into typed position and velocity
+records. Their ECEF values agree with `BESTNAVXYZ` to within normal solution
+noise across capture epochs.
 
 ## Satellite positions
 
@@ -136,7 +139,8 @@ between the secondary time and the `t_oe` in the receiver's broadcast-ephemeris
 RAM table, checked for all 92 GPS, Galileo and BeiDou states in one capture.
 GLONASS records carry sky angles but no range triplet or age; their FDMA
 channel is decoded from the high byte of the state flags and matched `GLOEPH`
-`freqo` for every logged slot. Negative
+`freqo` for every logged slot. Named flag properties expose the RE-confirmed
+validity, broadcast-path, ionosphere-path and diagnostic-status bits. Negative
 elevations are retained: the DSP tracks satellites below the receiver horizon.
 
 ## Broadcast ephemerides
@@ -154,8 +158,16 @@ A live check against `GPSEPH`, `GALEPH`, `BDSEPH` and `GLOEPH` found field-for-f
 agreement for the 19 GPS, 16 BeiDou, 13 Galileo and 11 GLONASS log entries whose
 issue was still the one retained in RAM. The two remaining GPS log entries had
 already been refreshed when RAM was read. GPS IODC, BeiDou AODE fields, native
-weeks and the derived GPS weeks also matched. Galileo group delays and both
-clock sets matched exactly.
+weeks and the derived GPS weeks also matched. Galileo group delays, both clock
+sets and IODNAV matched exactly. GLONASS FT and flag nibbles also matched.
+`extract_dsp_glonass_work` decodes the baseband propagation work records, whose
+reference times are the GLONASS ephemeris issue times converted to GLOT seconds
+of day.
+
+Observation records also expose the output-side clock correction at tracker
+offset `0x90` when the optional `clock_reference` window is supplied. Against
+uniquely matched `RANGE` observations, the correction is eight times
+`clock_correction_s` with a median residual of about 5 m.
 
 ## References
 

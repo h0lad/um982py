@@ -7,6 +7,7 @@ from um982py.experimental import (
     DspGalileoEphemeris,
     DspGlonassEphemeris,
     extract_dsp_ephemerides,
+    extract_dsp_glonass_work,
 )
 
 
@@ -55,11 +56,13 @@ def test_kepler_ephemeris_fields() -> None:
     assert entry.week_native == 2446
     assert entry.gps_week == 2446
     assert entry.iodc == 187
+    assert entry.iode == 187
 
 
 def test_galileo_keeps_both_clock_sets() -> None:
     data = bytearray(0xF0)
     pack_into("<H", data, 0x02, 1422)
+    data[0x04] = 13
     pack_into("<I", data, 0x10, 152400)
     pack_into("<d", data, 0x18, 5440.5)
     pack_into("<I", data, 0x98, 152400)
@@ -87,6 +90,7 @@ def test_galileo_keeps_both_clock_sets() -> None:
     assert (entry.e1e5a_bgd_s, entry.e1e5b_bgd_s) == (3e-9, 4e-9)
     assert entry.week_native == 1422
     assert entry.gps_week == 2446
+    assert entry.iodnav == 13
 
 
 def test_beidou_issue_fields() -> None:
@@ -116,6 +120,8 @@ def test_glonass_state_vector() -> None:
         (0x30, 10_000_000.0),
     ):
         pack_into("<d", data, offset, value)
+    data[0x02] = 9
+    data[0x04] = 5
     pack_into("<I", data, 0x68, 81900)
     pack_into("<H", data, 0x70, 1058)
 
@@ -127,6 +133,26 @@ def test_glonass_state_vector() -> None:
     assert entry.e_time_sod_s == 81900
     assert (entry.x, entry.y, entry.z) == (20_000_000.0, 10_000_000.0, 10_000_000.0)
     assert entry.nt == 1058
+    assert entry.ft == 5
+    assert entry.flags == 9
+
+
+def test_glonass_work_record() -> None:
+    data = bytearray(0x40)
+    pack_into("<I", data, 0, 900)
+    for offset, value in zip(
+        range(0x08, 0x40, 8),
+        (825.0, 20_000_000.0, 10_000_000.0, 10_000_000.0, 1.0, 2.0, 3.0),
+        strict=True,
+    ):
+        pack_into("<d", data, offset, value)
+
+    (record,) = extract_dsp_glonass_work({"glonass_work": bytes(data)})
+    assert record.index == 0
+    assert record.reference_time_sod_s == 900
+    assert record.propagation_time_sod_s == 825.0
+    assert record.position_ecef_m == (20_000_000.0, 10_000_000.0, 10_000_000.0)
+    assert record.velocity_ecef_mps == (1.0, 2.0, 3.0)
 
 
 def test_missing_tables_return_no_ephemerides() -> None:

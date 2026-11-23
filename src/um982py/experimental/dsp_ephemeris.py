@@ -14,11 +14,15 @@ if TYPE_CHECKING:
 
 __all__ = [
     "DSP_EPHEMERIS_MEMORY_WINDOWS",
+    "DSP_GLONASS_WORK_WINDOW",
     "DspGalileoEphemeris",
     "DspGlonassEphemeris",
+    "DspGlonassWorkRecord",
     "DspKeplerEphemeris",
     "extract_dsp_ephemerides",
+    "extract_dsp_glonass_work",
     "read_dsp_ephemeris_windows",
+    "read_dsp_glonass_work_windows",
 ]
 
 _KEPLER_TABLES = (
@@ -27,14 +31,29 @@ _KEPLER_TABLES = (
 )
 _GALILEO_TABLE = ("galileo_ephemeris", 0x13D13418, 36, 0xF0)
 _GLONASS_TABLE = ("glonass_ephemeris", 0x13D61B18, 32, 0x78)
+DSP_GLONASS_WORK_WINDOW = ("glonass_work", 0x13D02600, 24 * 0x40)
 
 DSP_EPHEMERIS_MEMORY_WINDOWS = (
     ("gps_ephemeris", 0x13D729E8, 42 * 0xC0),
     ("galileo_ephemeris", 0x13D13418, 36 * 0xF0),
     ("beidou_ephemeris", 0x13D50510, 63 * 0xC0),
     ("glonass_ephemeris", 0x13D61B18, 32 * 0x78),
+    DSP_GLONASS_WORK_WINDOW,
 )
 """Memory windows holding the receiver's broadcast ephemeris copies."""
+
+
+@dataclass(frozen=True, slots=True)
+class DspGlonassWorkRecord:
+    """A GLONASS propagation work record written by the baseband receiver."""
+
+    index: int
+    reference_time_sod_s: int
+    """Ephemeris reference time in GLOT seconds of day."""
+    propagation_time_sod_s: float
+    """Time to which this work record was propagated."""
+    position_ecef_m: tuple[float, float, float]
+    velocity_ecef_mps: tuple[float, float, float]
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +101,13 @@ class DspKeplerEphemeris:
             return None
         return self.week_native + {"GPS": 0, "BEIDOU": 1356}[self.constellation]
 
+    @property
+    def iode(self) -> int | None:
+        """Issue of data, ephemeris, derived from the GPS IODC."""
+        if self.iodc is None:
+            return None
+        return self.iodc & 0xFF
+
 
 @dataclass(frozen=True, slots=True)
 class DspGalileoEphemeris:
@@ -116,6 +142,8 @@ class DspGalileoEphemeris:
     e1e5b_bgd_s: float
     week_native: int | None = None
     """Galileo week number in Galileo's native week scale."""
+    iodnav: int | None = None
+    """Galileo issue of data, navigation."""
 
     @property
     def gps_week(self) -> int | None:
@@ -146,6 +174,10 @@ class DspGlonassEphemeris:
     delta_tau_n: float
     gamma: float
     nt: int
+    ft: int | None = None
+    """GLONASS ephemeris flag retained in byte 4."""
+    flags: int | None = None
+    """GLONASS ephemeris flags retained in byte 2."""
 
 
 def _record(
@@ -280,6 +312,7 @@ def _galileo(satellite_id: int, rec: bytes) -> DspGalileoEphemeris | None:
         e1e5a_bgd_s=clock[6],
         e1e5b_bgd_s=clock[7],
         week_native=unpack_from("<H", rec, 0x02)[0],
+        iodnav=rec[0x04] & 0x1F,
     )
 
 
@@ -307,6 +340,8 @@ def _glonass(satellite_id: int, rec: bytes) -> DspGlonassEphemeris | None:
         delta_tau_n=delta_tau_n,
         gamma=gamma,
         nt=unpack_from("<H", rec, 0x70)[0],
+        ft=rec[0x04] & 0x07,
+        flags=rec[0x02] & 0x0F,
     )
 
 
@@ -316,6 +351,44 @@ def read_dsp_ephemeris_windows(reader: BootMemoryReader) -> dict[str, bytes]:
         name: reader.read_range(address, length)
         for name, address, length in DSP_EPHEMERIS_MEMORY_WINDOWS
     }
+
+
+def read_dsp_glonass_work_windows(reader: BootMemoryReader) -> dict[str, bytes]:
+    """Read the GLONASS propagation work records."""
+    name, address, length = DSP_GLONASS_WORK_WINDOW
+    return {name: reader.read_range(address, length)}
+
+
+def extract_dsp_glonass_work(
+    regions: Mapping[str, bytes],
+) -> tuple[DspGlonassWorkRecord, ...]:
+    """Decode GLONASS propagation work records from captured DSP RAM.
+
+    The reference time matches the GLONASS ephemeris issue time converted to
+    GLOT seconds of day. The position and velocity fields are the work values
+    written by the baseband propagation helpers.
+    """
+    raw = regions.get(DSP_GLONASS_WORK_WINDOW[0])
+    if raw is None or len(raw) == 0 or len(raw) % 0x40:
+        return ()
+    result = []
+    for index in range(min(len(raw) // 0x40, 24)):
+        rec = raw[index * 0x40 : (index + 1) * 0x40]
+        reference = unpack_from("<I", rec, 0x00)[0]
+        values = [unpack_from("<d", rec, offset)[0] for offset in range(0x08, 0x40, 8)]
+        if reference == 0 or not all(map(isfinite, values)):
+            continue
+        propagation_time, x, y, z, vx, vy, vz = values
+        result.append(
+            DspGlonassWorkRecord(
+                index=index,
+                reference_time_sod_s=reference,
+                propagation_time_sod_s=propagation_time,
+                position_ecef_m=(x, y, z),
+                velocity_ecef_mps=(vx, vy, vz),
+            )
+        )
+    return tuple(result)
 
 
 def extract_dsp_ephemerides(
