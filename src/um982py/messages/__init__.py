@@ -21,7 +21,14 @@ if TYPE_CHECKING:
         Sentence,
         TextLine,
     )
-    from um982py.messages.navigation import BestNavigation, Fix, Heading, Position
+    from um982py.messages.navigation import (
+        BestNavigation,
+        DopplerVelocity,
+        Fix,
+        Gsa,
+        Heading,
+        Position,
+    )
     from um982py.messages.observations import Observation, TrackingStatus
     from um982py.messages.receiver_status import (
         PpsConfigInfo,
@@ -45,8 +52,10 @@ _EXPORTS: dict[str, tuple[str, str | None]] = {
     "BinaryMessage": ("um982py.messages.frames", "BinaryMessage"),
     "BinexMessage": ("um982py.messages.frames", "BinexMessage"),
     "CommandResponse": ("um982py.messages.frames", "CommandResponse"),
+    "DopplerVelocity": ("um982py.messages.navigation", "DopplerVelocity"),
     "ErrorEllipse": ("um982py.precision", "ErrorEllipse"),
     "Fix": ("um982py.messages.navigation", "Fix"),
+    "Gsa": ("um982py.messages.navigation", "Gsa"),
     "Heading": ("um982py.messages.navigation", "Heading"),
     "OemAsciiHeader": ("um982py.messages.frames", "OemAsciiHeader"),
     "OemBinaryHeader": ("um982py.messages.frames", "OemBinaryHeader"),
@@ -81,8 +90,10 @@ __all__ = [
     "BinaryMessage",
     "BinexMessage",
     "CommandResponse",
+    "DopplerVelocity",
     "ErrorEllipse",
     "Fix",
+    "Gsa",
     "Heading",
     "LogListMessage",
     "Message",

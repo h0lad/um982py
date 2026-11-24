@@ -3,20 +3,28 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Generator
+from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite
-from threading import Event, Lock
-from typing import TYPE_CHECKING
+from queue import Empty
+from threading import Event, Lock, Thread
+from typing import TYPE_CHECKING, Literal
 
-from um982py.errors import ProtocolError, ResponseTimeout, TransportError
-from um982py.messages import Sentence
+from um982py.errors import (
+    ProtocolError,
+    ResponseTimeout,
+    TransportClosed,
+    TransportError,
+)
+from um982py.messages import Message, Sentence
 from um982py.messages.navigation import Fix
 from um982py.ntrip import ReconnectPolicy
+from um982py.rtk_session import RtkHealth, RtkSession
+from um982py.streaming import ReceiverStream
 
 if TYPE_CHECKING:
     from um982py.receiver import Receiver
-    from um982py.streaming import ReceiverStream
 
 __all__ = ["LiveHealth", "PositionSession", "PositionSubscription", "PositionUpdate"]
 
@@ -104,7 +112,13 @@ class PositionSession:
     The factory opens a fresh receiver for each connection. If supplied, the
     configure callback runs after every connection and can enable GGA output.
     It is responsible for any receiver settings it changes. The optional
-    ``on_disconnect`` callback runs before a reconnection attempt.
+    ``on_disconnect`` callback runs before a reconnection attempt. The optional
+    ``on_message`` callback receives every decoded frame before GGA filtering.
+    It must not raise or use the receiver. With ``subscribe=True``, each
+    connection uses a ``ReceiverStream`` subscription instead of driving reads
+    from this generator. Other decoded logs stay available to ``on_message``.
+    An NTRIP URL with ``subscribe=True`` starts an ``RtkSession`` relay for each
+    connection. ``correction_health()`` exposes its status.
 
     Only transport errors trigger a reconnect. The stop event interrupts the
     backoff and is checked within ``poll_seconds`` when the receiver is idle.
@@ -116,6 +130,12 @@ class PositionSession:
         *,
         configure: Callable[[Receiver], None] | None = None,
         on_disconnect: Callable[[Exception], None] | None = None,
+        on_message: Callable[[Message], None] | None = None,
+        subscribe: bool = False,
+        ntrip_url: str | None = None,
+        ntrip_username: str | None = None,
+        ntrip_password: str | None = None,
+        ntrip_version: Literal[1, 2] = 2,
         poll_seconds: float = 1.0,
         reconnect: ReconnectPolicy | None = None,
     ) -> None:
@@ -125,6 +145,8 @@ class PositionSession:
             raise TypeError("configure must be callable")
         if on_disconnect is not None and not callable(on_disconnect):
             raise TypeError("on_disconnect must be callable")
+        if on_message is not None and not callable(on_message):
+            raise TypeError("on_message must be callable")
         if (
             isinstance(poll_seconds, bool)
             or not isfinite(poll_seconds)
@@ -134,6 +156,12 @@ class PositionSession:
         self.receiver_factory = receiver_factory
         self.configure = configure
         self.on_disconnect = on_disconnect
+        self.on_message = on_message
+        self.subscribe = subscribe
+        self.ntrip_url = ntrip_url
+        self.ntrip_username = ntrip_username
+        self.ntrip_password = ntrip_password
+        self.ntrip_version = ntrip_version
         self.poll_seconds = poll_seconds
         self.reconnect = reconnect or ReconnectPolicy()
         self._lock = Lock()
@@ -144,6 +172,7 @@ class PositionSession:
         self._malformed = 0
         self._last_fix: float | None = None
         self._error: str | None = None
+        self._rtk: RtkSession | None = None
         self._reconnect_delay = self.reconnect.initial_seconds
 
     def _require_idle(self) -> None:
@@ -165,6 +194,8 @@ class PositionSession:
         except ResponseTimeout:
             return None
         message = frame.message
+        if self.on_message is not None:
+            self.on_message(message)
         if not isinstance(message, Sentence) or message.kind != "GGA":
             return None
         try:
@@ -212,8 +243,126 @@ class PositionSession:
                 self._error,
             )
 
+    def correction_health(self) -> RtkHealth | None:
+        """Return NTRIP relay status, or None when no URL was configured."""
+        rtk = self._rtk
+        return None if rtk is None else rtk.health()
+
+    def _run_rtk(self, rtk: RtkSession, stop: Event) -> None:
+        # The relay records terminal errors in its health snapshot.
+        with suppress(Exception):
+            rtk.run(stop)
+
+    def _subscribed_positions(
+        self, stop: Event
+    ) -> Generator[PositionUpdate, None, None]:
+        """Yield fixes from a ReceiverStream subscription on each connection."""
+        self._require_idle()
+        previous: int | None = None
+        try:
+            while not stop.is_set():
+                self._begin_connection_attempt()
+                try:
+                    with self.receiver_factory() as receiver:
+                        if self.configure is not None:
+                            self.configure(receiver)
+                        stream = ReceiverStream(
+                            receiver, poll_seconds=min(self.poll_seconds, 1.0)
+                        )
+                        subscription = stream.subscribe(capacity=1024)
+                        with stream:
+                            with self._lock:
+                                self._connections += 1
+                                connection = self._connections
+                                self._state = "connected"
+                            relay_stop = Event()
+                            relay: Thread | None = None
+                            if self.ntrip_url is not None:
+                                rtk = RtkSession.from_url(
+                                    stream,
+                                    self.ntrip_url,
+                                    username=self.ntrip_username,
+                                    password=self.ntrip_password,
+                                    version=self.ntrip_version,
+                                )
+                                with self._lock:
+                                    self._rtk = rtk
+                                relay = Thread(
+                                    target=self._run_rtk,
+                                    args=(rtk, relay_stop),
+                                    daemon=True,
+                                )
+                                relay.start()
+                            try:
+                                while not stop.is_set():
+                                    try:
+                                        event = subscription.get_event(
+                                            timeout=min(self.poll_seconds, 0.2)
+                                        )
+                                    except Empty:
+                                        failure = stream.failure
+                                        if failure is not None:
+                                            raise failure from None
+                                        continue
+                                    except TransportClosed:
+                                        failure = stream.failure
+                                        if stop.is_set():
+                                            break
+                                        if isinstance(failure, BaseException):
+                                            raise failure from None
+                                        raise
+                                    message = event.message
+                                    if self.on_message is not None:
+                                        self.on_message(message)
+                                    if (
+                                        not isinstance(message, Sentence)
+                                        or message.kind != "GGA"
+                                    ):
+                                        continue
+                                    try:
+                                        fix = Fix.from_message(message)
+                                    except ProtocolError:
+                                        with self._lock:
+                                            self._malformed += 1
+                                        continue
+                                    with self._lock:
+                                        self._fixes += 1
+                                        self._last_fix = event.received_monotonic
+                                    update = PositionUpdate(
+                                        fix,
+                                        event.received_at,
+                                        event.received_monotonic,
+                                        previous,
+                                        connection,
+                                    )
+                                    previous = fix.quality
+                                    self._reconnect_delay = (
+                                        self.reconnect.initial_seconds
+                                    )
+                                    yield update
+                                failure = stream.failure
+                                if failure is not None and not stop.is_set():
+                                    raise failure from None
+                            finally:
+                                relay_stop.set()
+                                if relay is not None:
+                                    relay.join()
+                                with self._lock:
+                                    self._rtk = None
+                except (TransportError, OSError) as error:
+                    if self._wait_reconnect_backoff(stop, error):
+                        break
+        except Exception as error:
+            self._mark_failed(error)
+            raise
+        finally:
+            self._mark_stopped()
+
     def positions(self, stop: Event) -> Generator[PositionUpdate, None, None]:
         """Yield fixes until stopped, and close the iterator if you stop early."""
+        if self.subscribe:
+            yield from self._subscribed_positions(stop)
+            return
         self._require_idle()
         previous: int | None = None
         try:

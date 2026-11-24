@@ -5,11 +5,12 @@ from types import SimpleNamespace
 
 import pytest
 
-from conftest import sentence
+from conftest import ReplayTransport, ascii_message, sentence
 from um982py.errors import TransportClosed
 from um982py.live import PositionSession
 from um982py.ntrip import ReconnectPolicy
 from um982py.protocol.ascii import parse_ascii
+from um982py.receiver import Receiver
 from um982py.rover_session import RoverSession
 
 
@@ -63,6 +64,43 @@ def test_position_session_reconnects_and_reports_quality_changes() -> None:
     assert session.health().attempts == 2
     updates.close()
     assert first.closed and second.closed and session.health().state == "stopped"
+
+
+def test_position_session_passes_non_gga_frames_to_callback() -> None:
+    raw = ascii_message(
+        "DOPPVELA",
+        "SOL_COMPUTED,DOPPLER_VELOCITY,0.0,0.0,10.0,90.0,2.0,0.3,0.4",
+    )
+    doppler = parse_ascii(raw)
+    receiver = FakeReceiver([raw])
+    seen: list[object] = []
+    session = PositionSession(
+        lambda: receiver,  # type: ignore[arg-type]
+        on_message=lambda message: seen.append(message),
+    )
+    assert session._next_position_update(receiver, 1, None) is None
+    assert seen == [doppler]
+
+
+def test_position_session_subscription_delivers_gga_frames() -> None:
+    transport = ReplayTransport(chunk=65536)
+    transport.pending.extend(gga(4) + gga(4))
+    seen: list[object] = []
+    session = PositionSession(
+        lambda: Receiver(transport),  # type: ignore[arg-type]
+        on_message=seen.append,
+        subscribe=True,
+        poll_seconds=0.01,
+    )
+    updates = session.positions(Event())
+    first = next(updates)
+    second = next(updates)
+    assert first.fix.quality == second.fix.quality == 4
+    assert first.connection == second.connection == 1
+    assert session.health().fixes == 2
+    assert len(seen) == 2
+    updates.close()
+    assert session.health().state == "stopped"
 
 
 def test_position_session_propagates_configuration_error() -> None:

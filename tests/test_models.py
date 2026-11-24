@@ -6,22 +6,37 @@ from conftest import ascii_message, sentence
 from um982py.errors import ProtocolError
 from um982py.messages import (
     BestNavigation,
+    DopplerVelocity,
     Fix,
+    Gsa,
     Heading,
     Sentence,
     Version,
 )
+from um982py.messages.enums import PositionType
 from um982py.protocol.ascii import parse_ascii
 from um982py.receiver_models import FirmwareInfo, LogList
 
 
 @pytest.mark.parametrize(
-    "model", [Version, BestNavigation, FirmwareInfo, LogList, Fix, Heading]
+    "model",
+    [
+        Version,
+        BestNavigation,
+        DopplerVelocity,
+        FirmwareInfo,
+        Gsa,
+        LogList,
+        Fix,
+        Heading,
+    ],
 )
 def test_wrong_message(
     model: type[Version]
     | type[BestNavigation]
+    | type[DopplerVelocity]
     | type[FirmwareInfo]
+    | type[Gsa]
     | type[LogList]
     | type[Fix]
     | type[Heading],
@@ -78,6 +93,41 @@ def test_gga_doppler_prediction_signature(
     assert fix.quality_known is bool(quality)
     assert fix.satellites_known is bool(satellites)
     assert fix.valid is (bool(quality) and int(quality) > 0)
+
+
+def test_library_quality_and_position_labels() -> None:
+    predicted = Fix("120000", 50, 8, 1, 0, 1, 100, 45, 1, "")
+    standalone = Fix("120000", 50, 8, 1, 12, 1, 100, 45, 1, "")
+    assert predicted.quality_label == "Doppler predicted"
+    assert standalone.quality_label == "standalone"
+    assert PositionType.NARROW_FLOAT.label == "NARROW_FLOAT"
+    assert PositionType.PPP.label == "PPP"
+    assert PositionType.PPP.is_ppp
+    assert not PositionType.NARROW_INT.is_ppp
+
+
+def test_doppler_velocity_and_gsa_from_message() -> None:
+    velocity = DopplerVelocity.from_message(
+        parse_ascii(
+            ascii_message(
+                "DOPPVELA",
+                "SOL_COMPUTED,DOPPLER_VELOCITY,0.1,0.2,10.0,90.0,2.0,0.3,0.4",
+            )
+        )
+    )
+    assert velocity.ground_speed_mps == 10.0
+    assert velocity.course_true_deg == 90.0
+    assert velocity.vertical_speed_mps == 2.0
+    assert velocity.ground_speed_std_mps == 0.4
+    assert velocity.vertical_speed_std_mps == 0.3
+    assert velocity.epoch_gps_seconds == 1451520123.0
+
+    gsa = Gsa.from_message(
+        parse_ascii(sentence(b"GPGSA,A,3,1,2,3,,,,,,,,,,1.4,0.9,1.1,1"))
+    )
+    assert gsa.mode == "A" and gsa.fix_mode == 3
+    assert (gsa.pdop, gsa.hdop, gsa.vdop) == (1.4, 0.9, 1.1)
+    assert gsa.system_id == 1
 
 
 def test_prediction_signature_requires_coordinates() -> None:

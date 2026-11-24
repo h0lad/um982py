@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Literal, Self
 
 from um982py.antenna import AntennaLog
 from um982py.commands import Log, queries
+from um982py.commands.configuration import rtk_reliability
 from um982py.commands.core import Command
 from um982py.commands.types import Port
 from um982py.errors import ResponseTimeout, TransportError
@@ -164,6 +165,9 @@ class Rover:
     Configure the receiver as a rover first. This session polls BESTNAV and,
     optionally, UNIHEADING. It does not change the receiver configuration.
     The supplied receiver remains open unless ``close_receiver`` is true.
+    Optional ``rtk_reliability_level`` and ``adr_reliability_level`` values set
+    those receiver thresholds when the stream starts. The previous settings are
+    not restored.
 
     The next position query raises any fatal correction error. These errors
     also appear in ``correction_health``. Closing waits for pending I/O.
@@ -177,6 +181,8 @@ class Rover:
         username: str | None = None,
         password: str | None = None,
         ntrip_version: Literal[1, 2] = 2,
+        rtk_reliability_level: int | None = None,
+        adr_reliability_level: int | None = None,
         close_receiver: bool = False,
     ) -> None:
         if ntrip_url is None and (username is not None or password is not None):
@@ -194,6 +200,8 @@ class Rover:
             if ntrip_url is not None
             else None
         )
+        self._rtk_reliability = rtk_reliability_level
+        self._adr_reliability = adr_reliability_level
         self._close_receiver = close_receiver
         self._stop = Event()
         self._thread: Thread | None = None
@@ -212,6 +220,8 @@ class Rover:
         username: str | None = None,
         password: str | None = None,
         ntrip_version: Literal[1, 2] = 2,
+        rtk_reliability_level: int | None = None,
+        adr_reliability_level: int | None = None,
     ) -> Self:
         """Open a serial port or TCP gateway for use as a context manager."""
         receiver = Receiver.connect(target, baudrate, timeout=timeout)
@@ -222,6 +232,8 @@ class Rover:
                 username=username,
                 password=password,
                 ntrip_version=ntrip_version,
+                rtk_reliability_level=rtk_reliability_level,
+                adr_reliability_level=adr_reliability_level,
                 close_receiver=True,
             )
         except BaseException:
@@ -239,6 +251,10 @@ class Rover:
             self._closed = True
             raise
         self._started = True
+        if self._rtk_reliability is not None or self._adr_reliability is not None:
+            self.stream.execute(
+                rtk_reliability(self._rtk_reliability or 3, self._adr_reliability)
+            ).result()
         if self._rtk is not None:
             self._thread = Thread(
                 target=self._run_corrections, name="um982py-rtk", daemon=True

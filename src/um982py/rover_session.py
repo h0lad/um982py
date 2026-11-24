@@ -51,7 +51,9 @@ class RoverSession:
     The factory opens a new receiver each time. The optional configuration
     callback runs before the stream and NTRIP relay start on each connection.
     Transport errors retry with backoff, while protocol, configuration and
-    fatal correction errors propagate. Caster reconnection is handled by the relay.
+    fatal correction errors propagate. Caster reconnection is handled by the
+    relay. Optional RTK and ADR reliability levels are applied on every
+    receiver connection and are not restored.
     Close the iterator when stopping early. A stop can wait for in-flight I/O.
     """
 
@@ -66,6 +68,8 @@ class RoverSession:
         username: str | None = None,
         password: str | None = None,
         ntrip_version: Literal[1, 2] = 2,
+        rtk_reliability_level: int | None = None,
+        adr_reliability_level: int | None = None,
     ) -> None:
         if not callable(receiver_factory):
             raise TypeError("receiver_factory must be callable")
@@ -83,6 +87,8 @@ class RoverSession:
         self.username = username
         self.password = password
         self.ntrip_version = ntrip_version
+        self.rtk_reliability_level = rtk_reliability_level
+        self.adr_reliability_level = adr_reliability_level
         self._lock = Lock()
         self._state = "idle"
         self._attempts = 0
@@ -115,6 +121,8 @@ class RoverSession:
                 username=self.username,
                 password=self.password,
                 ntrip_version=self.ntrip_version,
+                rtk_reliability_level=self.rtk_reliability_level,
+                adr_reliability_level=self.adr_reliability_level,
             ) as rover:
                 with self._lock:
                     self._connections += 1

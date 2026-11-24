@@ -24,6 +24,7 @@ def test_rtk2go_setup_has_expected_settings_and_no_password_prompt(
             "",
             "",
             "",
+            "",
             "yes",
         ]
     )
@@ -37,6 +38,7 @@ def test_rtk2go_setup_has_expected_settings_and_no_password_prompt(
     assert parsed.caster == "http://rtk2go.com:2101/Weinstadt"
     assert parsed.ntrip_version == 1 and parsed.username == "rover@valid.invalid"
     assert parsed.duration == 60 and not parsed.no_gga
+    assert parsed.rtk_reliability is None
     assert "NTRIP_PASSWORD=none" in script
     assert "without encryption" in capsys.readouterr().out
     assert stat.S_IMODE(path.stat().st_mode) == 0o700
@@ -56,6 +58,7 @@ def test_password_setup_prompts_at_run_time_and_never_stores_password(
             "/dev/ttyUSB1",
             "115200",
             "300",
+            "2",
             "no",
         ]
     )
@@ -66,6 +69,7 @@ def test_password_setup_prompts_at_run_time_and_never_stores_password(
     command = shlex.split(script.splitlines()[-1])
     parsed = _parser().parse_args(command[4:])
     assert parsed.no_gga and parsed.baud == 115200 and parsed.duration == 300
+    assert parsed.rtk_reliability == 2
     assert "getpass.getpass" in script and "NTRIP_PASSWORD" in script
     monkeypatch.setenv("NTRIP_PASSWORD", "synthetic credential")
     assert _password(parsed) == "synthetic credential"

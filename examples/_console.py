@@ -8,17 +8,23 @@ import os
 import sys
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import cast, overload
+from typing import TYPE_CHECKING, cast, overload
 
+from um982py.commands.configuration import rtk_reliability
 from um982py.commands.logging import interval_from_rate
 from um982py.errors import UM982Error
 from um982py.messages import Record
 from um982py.stats import finite
 
+if TYPE_CHECKING:
+    from um982py.receiver import Receiver
+
 __all__ = [
     "ExampleParser",
     "add_debug_argument",
     "add_receiver_arguments",
+    "add_reliability_arguments",
+    "apply_reliability",
     "debug_header",
     "experiment_parser",
     "progress_printer",
@@ -142,6 +148,33 @@ class ExampleParser(argparse.ArgumentParser):
             if getattr(parsed, "port", None) is None:
                 self.error("--record requires --port for a live run")
         return parsed
+
+
+def add_reliability_arguments(parser: argparse.ArgumentParser) -> None:
+    """Add optional RTK and carrier-phase reliability thresholds."""
+    parser.add_argument(
+        "--rtk-reliability",
+        type=int,
+        choices=(1, 2, 3, 4),
+        help="RTK engine reliability threshold; lower values accept float "
+        "solutions sooner (1 low, 3 default, 4 high)",
+    )
+    parser.add_argument(
+        "--adr-reliability",
+        type=int,
+        choices=(1, 2, 3, 4),
+        help="carrier-phase reliability threshold, default 1 when supplied",
+    )
+
+
+def apply_reliability(receiver: "Receiver", args: argparse.Namespace) -> bool:
+    """Apply reliability options when at least one was supplied."""
+    rtk = getattr(args, "rtk_reliability", None)
+    adr = getattr(args, "adr_reliability", None)
+    if rtk is None and adr is None:
+        return False
+    receiver.execute(rtk_reliability(rtk or 3, adr))
+    return True
 
 
 def validate_file_paths(arguments: Mapping[str, object]) -> None:

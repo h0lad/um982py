@@ -1,11 +1,32 @@
 from threading import Event
 
-from conftest import ReplayTransport
+from conftest import ReplayTransport, acknowledgement
 from test_bodies import manual_message
 from um982py import Receiver
 from um982py.errors import TransportClosed
 from um982py.ntrip import ReconnectPolicy
 from um982py.rover_session import RoverSession
+
+
+def test_rover_session_applies_rtk_reliability() -> None:
+    config_command = b"CONFIG RTK RELIABILITY 2 1"
+    transport = ReplayTransport(
+        {
+            config_command + b"\r\n": acknowledgement(config_command.decode()),
+            b"BESTNAVA\r\n": manual_message("BESTNAVA").raw + b"\r\n",
+        }
+    )
+    session = RoverSession(
+        lambda: Receiver(transport, timeout=0.1),
+        rtk_reliability_level=2,
+        adr_reliability_level=1,
+    )
+    stop = Event()
+    updates = session.positions(stop, interval=0.001)
+    next(updates)
+    assert config_command + b"\r\n" in transport.writes
+    stop.set()
+    assert list(updates) == []
 
 
 def test_rover_session_reconnects_receiver_and_reports_connection_health() -> None:

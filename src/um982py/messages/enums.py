@@ -6,6 +6,32 @@ def _reported_datum[T](value: T) -> T | str:
     return "WGS84" if type(value) is int and value == 61 else value
 
 
+_POSITION_TYPE_LABELS: dict[int, str] = {
+    0: "none",
+    1: "fixed position",
+    2: "fixed height",
+    8: "Doppler velocity",
+    16: "SINGLE",
+    17: "PSRDIFF",
+    18: "SBAS",
+    32: "L1_FLOAT",
+    33: "IONO_FREE_FLOAT",
+    34: "NARROW_FLOAT",
+    48: "L1_INT",
+    49: "WIDE_INT",
+    50: "NARROW_INT",
+    52: "INS",
+    53: "INS_PSRSP",
+    54: "INS_PSRDIFF",
+    55: "INS_RTKFLOAT",
+    56: "INS_RTKFIXED",
+    68: "PPP_CONVERGING",
+    69: "PPP",
+    70: "PPP_AR",
+    71: "PPP_RTK",
+}
+
+
 class PositionType(IntEnum):
     NONE = 0
     FIXEDPOS = 1
@@ -32,6 +58,21 @@ class PositionType(IntEnum):
 
     def __str__(self) -> str:
         return self.name
+
+    @property
+    def label(self) -> str:
+        """Return the documented position type name used in reports."""
+        return _POSITION_TYPE_LABELS.get(int(self), self.name)
+
+    @property
+    def is_ppp(self) -> bool:
+        """Whether this is one of the receiver's PPP position types."""
+        return self in (
+            PositionType.PPP_CONVERGING,
+            PositionType.PPP,
+            PositionType.PPP_AR,
+            PositionType.PPP_RTK,
+        )
 
 
 class SolutionStatus(IntEnum):

@@ -55,6 +55,14 @@ class FakeSocket:
         pass
 
 
+def test_parser_accepts_rtk_reliability() -> None:
+    args = ntrip_main._parser().parse_args(
+        ["--duration", "10", "--rtk-reliability", "2", "--adr-reliability", "1"]
+    )
+    assert args.rtk_reliability == 2
+    assert args.adr_reliability == 1
+
+
 def test_reconnection_retries_caster_and_preserves_deadline(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

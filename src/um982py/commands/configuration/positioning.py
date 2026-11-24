@@ -18,6 +18,12 @@ def rtk_timeout(seconds: int) -> Command[CommandResponse]:
 def rtk_reliability(
     position: int = 3, adr: int | None = None
 ) -> Command[CommandResponse]:
+    """Set RTK engine and carrier-phase reliability thresholds, 1..4.
+
+    Lower values accept carrier-phase solutions sooner. The documented RTK
+    defaults are 3 for the position engine and 1 for ADR. Omitting ``adr``
+    leaves that value at its receiver default.
+    """
     values = [integer(position, 1, 4)]
     if adr is not None:
         values.append(integer(adr, 1, 4))

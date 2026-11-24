@@ -118,6 +118,19 @@ def _coordinate(value: str, direction: str, *, latitude: bool) -> float | None:
     return -coordinate if direction in ("S", "W") else coordinate
 
 
+_QUALITY_LABELS: dict[int, str] = {
+    0: "no fix",
+    1: "standalone",
+    2: "DGPS",
+    3: "PPS",
+    4: "RTK fixed",
+    5: "RTK float",
+    6: "dead reckoning",
+    7: "manual input",
+    8: "simulation",
+}
+
+
 @dataclass(frozen=True, slots=True)
 class Fix:
     utc: str
@@ -142,6 +155,19 @@ class Fix:
             and self.latitude is not None
             and self.longitude is not None
         )
+
+    @property
+    def quality_label(self) -> str:
+        """Return the documented GGA quality label.
+
+        Quality 1 with zero satellites is the receiver's Doppler-prediction
+        signature. It is a possible prediction, not proof of one.
+        """
+        if not self.quality_known:
+            return "unknown"
+        if self.possibly_predicted is True:
+            return "Doppler predicted"
+        return _QUALITY_LABELS.get(self.quality, f"type {self.quality}")
 
     @property
     def possibly_predicted(self) -> bool | None:
@@ -267,6 +293,110 @@ class Fix:
 
 
 @dataclass(frozen=True, slots=True)
+class DopplerVelocity:
+    """Computed DOPPVEL ground motion and receiver-reported deviations.
+
+    This is the receiver's Doppler solution. It is not a raw Doppler
+    measurement and it does not establish accuracy independently of the
+    position solution.
+    """
+
+    status: SolutionStatus | str | int
+    velocity_type: PositionType | str | int
+    ground_speed_mps: float
+    course_true_deg: float | None
+    vertical_speed_mps: float | None
+    ground_speed_std_mps: float | None
+    vertical_speed_std_mps: float | None
+    latency_s: float | None
+    age_s: float | None
+    epoch_gps_seconds: float | None = None
+    message: Message | None = field(default=None, repr=False, compare=False)
+
+    @classmethod
+    def from_message(cls, message: Message) -> Self:
+        """Decode a primary or secondary DOPPVEL frame."""
+        from um982py.commands import Log
+        from um982py.measurement import gps_epoch
+        from um982py.messages.decode import decode_log
+
+        if isinstance(message, (Sentence, AsciiMessage)):
+            name = message.name.upper()
+            if not name.startswith("DOPPVEL"):
+                raise ProtocolError("Not a DOPPVEL message")
+            log = Log.DOPPVELH if name.startswith("DOPPVELH") else Log.DOPPVEL
+        elif isinstance(message, BinaryMessage):
+            message_id = message.header.message_id
+            if message_id == Log.DOPPVELH.definition.message_id:
+                log = Log.DOPPVELH
+            elif message_id == Log.DOPPVEL.definition.message_id:
+                log = Log.DOPPVEL
+            else:
+                raise ProtocolError("Not a DOPPVEL message")
+        else:
+            raise ProtocolError("Not a DOPPVEL message")
+        try:
+            record = decode_log(message, log=log)
+            speed = _optional_number(record["hor_spd"])
+            if speed is None or speed < 0:
+                raise ProtocolError("Invalid DOPPVEL ground speed")
+            track = _optional_number(record["trk_gnd"])
+            epoch = gps_epoch(message)
+            return cls(
+                status=_solution_status(_enum_value(record["v_sol_status"])),
+                velocity_type=_position_type(_enum_value(record["vel_type"])),
+                ground_speed_mps=speed,
+                course_true_deg=track % 360 if track is not None else None,
+                vertical_speed_mps=_optional_number(record["vert_spd"]),
+                ground_speed_std_mps=_standard_deviation(record["horspd_std"]),
+                vertical_speed_std_mps=_standard_deviation(record["verspd_std"]),
+                latency_s=_optional_number(record["latency"]),
+                age_s=_optional_number(record["age"]),
+                epoch_gps_seconds=epoch,
+                message=message,
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ProtocolError("Invalid DOPPVEL value") from error
+
+
+@dataclass(frozen=True, slots=True)
+class Gsa:
+    """DOP and fix-mode fields from an NMEA GSA sentence."""
+
+    mode: str | None
+    fix_mode: int | None
+    pdop: float | None
+    hdop: float | None
+    vdop: float | None
+    system_id: int | None
+    message: Message | None = field(default=None, repr=False, compare=False)
+
+    @classmethod
+    def from_message(cls, message: Message) -> Self:
+        """Decode an NMEA GSA frame."""
+        from um982py.messages.decode import decode_log
+
+        if not isinstance(message, Sentence) or message.kind != "GSA":
+            raise ProtocolError("Not a GSA message")
+        try:
+            record = decode_log(message)
+            mode = record["mode"]
+            fix_mode = record["fix_type"]
+            system_id = record["system_id"]
+            return cls(
+                mode=mode if isinstance(mode, str) else None,
+                fix_mode=fix_mode if type(fix_mode) is int else None,
+                pdop=_optional_number(record["pdop"]),
+                hdop=_optional_number(record["hdop"]),
+                vdop=_optional_number(record["vdop"]),
+                system_id=system_id if type(system_id) is int else None,
+                message=message,
+            )
+        except (KeyError, TypeError, ValueError) as error:
+            raise ProtocolError("Invalid GSA value") from error
+
+
+@dataclass(frozen=True, slots=True)
 class Heading:
     degrees: float | None
     valid: bool
@@ -340,6 +470,19 @@ class BestNavigation:
     def valid(self) -> bool:
         """Whether the receiver reports a computed position of a known type."""
         return _computed(self.solution_status, self.position_type, position=True)
+
+    @property
+    def position_type_label(self) -> str:
+        """Return the documented label for the reported position type."""
+        value = self.position_type
+        if isinstance(value, PositionType):
+            return value.label
+        if type(value) is int:
+            try:
+                return PositionType(value).label
+            except ValueError:
+                return str(value)
+        return str(value)
 
     @property
     def rtk_fixed(self) -> bool:

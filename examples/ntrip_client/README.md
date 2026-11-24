@@ -67,6 +67,18 @@ your **own real email address**, not a placeholder. For a separate password
 account, the script asks for the password when started unless `NTRIP_PASSWORD`
 is already set. It does not write the password to disk.
 
+### RTK reliability
+
+The example sets rover mode but leaves the receiver's RTK reliability threshold
+unchanged unless `--rtk-reliability` is given. Values 1 to 4 run from low to
+high reliability. Lower values accept a float solution sooner, which can be
+useful on a short baseline but increases the risk of accepting a wrong fix.
+Value 3 is the receiver default. `--adr-reliability` separately sets the
+carrier-phase threshold, which defaults to 1 when a reliability option is used.
+These commands change live receiver settings and are not restored on exit.
+
+The guided setup can add `--rtk-reliability` to the generated start script.
+
 The wizard creates `ntrip-rover/start.sh` with owner-only permissions and
 refuses to overwrite an existing directory. Use `--directory NAME` to create
 another configuration. Start the client with:

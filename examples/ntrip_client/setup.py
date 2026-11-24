@@ -64,6 +64,8 @@ def main() -> int:
     port = ask("Receiver serial port", "/dev/ttyUSB0")
     baud = integer("Receiver baud rate", 1, 4_000_000, "921600")
     duration = integer("Correction observation time in seconds", 1, 86400, "60")
+    print("Lower RTK reliability accepts float fixes sooner. Level 3 is the default.")
+    reliability = choice("RTK reliability", ("default", "1", "2", "4"), "default")
     print("GGA sends the rover's approximate position to the caster every 10 seconds.")
     gga = choice("Send GGA when a valid fix is available", ("yes", "no"), "yes")
     command = [
@@ -84,6 +86,8 @@ def main() -> int:
     ]
     if username is not None:
         command += ["--username", username]
+    if reliability != "default":
+        command += ["--rtk-reliability", reliability]
     if gga == "no":
         command.append("--no-gga")
     prefix = ""

@@ -11,7 +11,13 @@ from contextlib import closing
 from time import monotonic, sleep
 from urllib.parse import urlsplit
 
-from examples._console import ExampleParser, debug_header, run
+from examples._console import (
+    ExampleParser,
+    add_reliability_arguments,
+    apply_reliability,
+    debug_header,
+    run,
+)
 from examples.ntrip_client import CorrectionStats, forward_corrections, gga_from_fix
 from examples.ntrip_client.precision import PrecisionMonitor, precision_line
 from examples.position_tracking import TrackPoint, collect_positions
@@ -56,6 +62,7 @@ def _parser() -> ExampleParser:
         action="store_true",
         help="compare RTCM station coordinates with receiver BASEINFO",
     )
+    add_reliability_arguments(parser)
     parser.add_argument("--debug", action="store_true")
     return parser
 
@@ -415,6 +422,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     with Receiver.connect(args.port, args.baud, timeout=args.timeout) as receiver:
         receiver.execute(modes.rover())
         print("NTRIP: receiver set to rover mode", file=sys.stderr)
+        if apply_reliability(receiver, args):
+            print("NTRIP: receiver reliability updated", file=sys.stderr)
         try:
             _baseline(receiver, args, monitor)
             _stream(receiver, args, stats, monitor, password)
