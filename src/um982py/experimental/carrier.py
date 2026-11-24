@@ -65,6 +65,22 @@ class Divergence:
     filtered_mps: float | None
     exceeds_threshold: bool
     reset: bool
+    noise_mps: float | None = None
+    """Expected filtered-rate noise sigma_r * alpha / sqrt(2 - alpha), where
+    sigma_r is the robust scatter of this arc's earlier rates. It is ``None`` until
+    the arc has ``NOISE_MINIMUM_RATES`` rates."""
+    significant: bool = False
+    """The filtered rate exceeds both the threshold and three noise sigmas."""
+
+
+NOISE_MINIMUM_RATES = 10
+
+
+def _robust_sigma(values: Sequence[float]) -> float:
+    ordered = sorted(values)
+    middle = ordered[len(ordered) // 2]
+    deviations = sorted(abs(value - middle) for value in values)
+    return 1.4826 * deviations[len(deviations) // 2]
 
 
 def monitor_divergence(
@@ -91,6 +107,7 @@ def monitor_divergence(
         cmc = sample.code_m - sample.phase_m
         if reset:
             origin, filtered = cmc, 0.0
+            rates: list[float] = []
             output.append(Divergence(sample.epoch, 0.0, None, None, False, True))
         else:
             if previous is None:
@@ -99,14 +116,23 @@ def monitor_divergence(
             rate = (cmc - (previous.code_m - previous.phase_m)) / dt
             alpha = -math.expm1(-dt / tau)
             filtered += alpha * (rate - filtered)
+            noise = (
+                _robust_sigma(rates) * alpha / math.sqrt(2.0 - alpha)
+                if len(rates) >= NOISE_MINIMUM_RATES
+                else None
+            )
+            rates.append(rate)
+            exceeds = abs(filtered) > threshold
             output.append(
                 Divergence(
                     sample.epoch,
                     cmc - origin,
                     rate,
                     filtered,
-                    abs(filtered) > threshold,
+                    exceeds,
                     False,
+                    noise,
+                    exceeds and noise is not None and abs(filtered) > 3.0 * noise,
                 )
             )
         previous = sample

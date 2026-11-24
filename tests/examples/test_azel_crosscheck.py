@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 from pathlib import Path
 
 import pytest
@@ -9,6 +10,7 @@ from examples.azel_crosscheck import (
     galileo_elements,
     prn_of,
     satellite_state,
+    time_of_flight,
     visibility_from_satvis,
 )
 
@@ -158,3 +160,28 @@ def test_zenith_uses_angular_separation_for_the_tolerance() -> None:
     assert difference.azimuth_error == 180.0
     assert difference.direction_error == pytest.approx(1.0)
     assert difference.is_within_tolerance
+
+
+CROSSCHECK = Path(__file__).resolve().parents[1] / "fixtures" / "crosscheck"
+
+
+def test_beidou_state_matches_rtklib_at_the_bdt_epoch() -> None:
+    # Live R4.10Build25164 BDSEPHB frame for C24: toe 234000 s is BDT, the
+    # value in the IGS BRDC file of 2026-11-24. RTKLIB demo5 satpos() with that
+    # BRDC record gives the reference ECEF at GPST 237359 s of week 2446.
+    message = next(
+        iter(StreamDecoder().feed((CROSSCHECK / "BDSEPHB-C24.bin").read_bytes()))
+    )
+    record = Log.BDSEPH.decode(message)
+    assert record.real("toe") == 234000.0
+    state = satellite_state(record, SatelliteSystem.BEIDOU, 237359.0)
+    reference = (25586905.2982, 2970459.7648, 10740144.5034)
+    assert math.dist((state.x, state.y, state.z), reference) < 0.01
+
+
+def test_beidou_time_of_flight_uses_bdt() -> None:
+    message = next(
+        iter(StreamDecoder().feed((CROSSCHECK / "BDSEPHB-C24.bin").read_bytes()))
+    )
+    record = Log.BDSEPH.decode(message)
+    assert time_of_flight(record, SatelliteSystem.BEIDOU, 234014.0) == 0.0

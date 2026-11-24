@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import isfinite, sqrt
+from math import cos, isfinite, sin, sqrt
 from struct import unpack_from
 from typing import TYPE_CHECKING
 
@@ -15,10 +15,12 @@ if TYPE_CHECKING:
 __all__ = [
     "DSP_EPHEMERIS_MEMORY_WINDOWS",
     "DSP_GLONASS_PROPAGATION_WINDOW",
+    "GLONASS_EARTH_RATE",
     "DspGalileoEphemeris",
     "DspGlonassEphemeris",
     "DspGlonassPropagationRecord",
     "DspKeplerEphemeris",
+    "earth_fixed_state",
     "extract_dsp_ephemerides",
     "extract_dsp_glonass_propagation",
     "read_dsp_ephemeris_windows",
@@ -53,7 +55,41 @@ class DspGlonassPropagationRecord:
     propagation_time_sod_s: float
     """Time to which the state was propagated."""
     position_ecef_m: tuple[float, float, float]
+    """Earth-fixed PZ-90 position at the propagation time."""
     velocity_ecef_mps: tuple[float, float, float]
+    """Earth-fixed PZ-90 velocity at the propagation time."""
+    position_inertial_m: tuple[float, float, float] | None = None
+    """Stored state: the frame aligned with PZ-90 at the reference time."""
+    velocity_inertial_mps: tuple[float, float, float] | None = None
+
+
+GLONASS_EARTH_RATE = 7.292115e-5
+"""PZ-90 Earth rotation rate in rad/s (GLONASS ICD)."""
+
+
+def earth_fixed_state(
+    position: tuple[float, float, float],
+    velocity: tuple[float, float, float],
+    elapsed_s: float,
+) -> tuple[tuple[float, float, float], tuple[float, float, float]]:
+    """Rotate a state from the frame fixed at the reference time into PZ-90.
+
+    DSP RAM keeps GLONASS states integrated in the inertial frame that
+    coincides with PZ-90 at the ephemeris reference time. On 2026-11-24 the
+    stored positions equalled IGS broadcast PZ-90 positions rotated by
+    omega * (propagation - reference) about z, to a few metres.
+    """
+    angle = GLONASS_EARTH_RATE * elapsed_s
+    cosine, sine = cos(angle), sin(angle)
+    x, y, z = position
+    vx, vy, vz = velocity
+    ex, ey = cosine * x + sine * y, -sine * x + cosine * y
+    evx, evy = cosine * vx + sine * vy, -sine * vx + cosine * vy
+    return (ex, ey, z), (
+        evx + GLONASS_EARTH_RATE * ey,
+        evy - GLONASS_EARTH_RATE * ex,
+        vz,
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -380,13 +416,17 @@ def extract_dsp_glonass_propagation(
         if reference == 0 or not all(map(isfinite, values)):
             continue
         propagation_time, x, y, z, vx, vy, vz = values
+        elapsed = (propagation_time - reference + 43200.0) % 86400.0 - 43200.0
+        position, velocity = earth_fixed_state((x, y, z), (vx, vy, vz), elapsed)
         result.append(
             DspGlonassPropagationRecord(
                 index=index,
                 reference_time_sod_s=reference,
                 propagation_time_sod_s=propagation_time,
-                position_ecef_m=(x, y, z),
-                velocity_ecef_mps=(vx, vy, vz),
+                position_ecef_m=position,
+                velocity_ecef_mps=velocity,
+                position_inertial_m=(x, y, z),
+                velocity_inertial_mps=(vx, vy, vz),
             )
         )
     return tuple(result)

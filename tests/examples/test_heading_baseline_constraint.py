@@ -42,3 +42,16 @@ def test_constrain_rejects_nonpositive_length() -> None:
         constrain_to_length(1.0, 0.0, 0.0, 0.0)
     with pytest.raises(ValueError, match="constrained baseline length"):
         constrain_to_length(1.0, 0.0, 0.0, -1.0)
+
+
+def test_length_sigma_flags_a_baseline_that_contradicts_the_separation() -> None:
+    # Live 2026-11-24 BSLNENUHD (NARROW_FLOAT): 1.26 m for antennas about
+    # 0.06 m apart; the ENU sigmas make the contradiction tens of sigma.
+    from examples.heading_baseline_constraint import constrain_to_length, length_sigma
+
+    components = (-0.6150, -0.0074, 1.0983)
+    sigma = length_sigma(components, (0.2365, 0.1707, 0.1815))
+    attitude = constrain_to_length(*components, 0.06)
+    score = (attitude.unconstrained_length - 0.06) / sigma
+    assert 0.18 < sigma < 0.22
+    assert score > 5.0

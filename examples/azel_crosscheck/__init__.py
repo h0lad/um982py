@@ -20,6 +20,8 @@ from um982py.messages.enums import SatelliteSystem
 DIRECTION_TOLERANCE_DEGREES = 2.0
 ELEVATION_THRESHOLD_DEGREES = 10.0
 GLONASS_EPOCH_MILLISECONDS = 1000.0
+GPST_MINUS_BDT_SECONDS = 14.0
+GLONASS_SLOT_OFFSET = 37
 
 __all__ = [
     "DIRECTION_TOLERANCE_DEGREES",
@@ -29,6 +31,7 @@ __all__ = [
     "SatelliteGeometry",
     "cross_check",
     "galileo_elements",
+    "native_number",
     "prn_of",
     "satellite_state",
     "time_of_flight",
@@ -130,6 +133,13 @@ def galileo_elements(record: Record) -> KeplerElements:
     return KeplerElements.from_record(record)
 
 
+def native_number(system: SatelliteSystem, prn: int) -> int:
+    """PRN in the system's own numbering; GLONASS wire numbers are slot + 37."""
+    if system is SatelliteSystem.GLONASS and prn > GLONASS_SLOT_OFFSET:
+        return prn - GLONASS_SLOT_OFFSET
+    return prn
+
+
 def prn_of(record: Record, system: SatelliteSystem) -> int:
     """Satellite number of an ephemeris record for its own system."""
     if system is SatelliteSystem.GLONASS:
@@ -140,9 +150,17 @@ def prn_of(record: Record, system: SatelliteSystem) -> int:
 
 
 def time_of_flight(record: Record, system: SatelliteSystem, epoch: float) -> float:
-    """Seconds between an ephemeris reference time and the observation epoch."""
+    """Seconds between an ephemeris reference time and the observation epoch.
+
+    ``epoch`` is GPST seconds of week. BDSEPH ``toe`` is BDT seconds of week:
+    it equals the broadcast value, for example 234000 s in IGS BRDC files,
+    while BDSEPH ``week`` is the GPS week. The epoch therefore moves to
+    BDT = GPST - 14 s before the subtraction.
+    """
     if system is SatelliteSystem.GLONASS:
         difference = epoch - record.real("e_time") / GLONASS_EPOCH_MILLISECONDS
+    elif system is SatelliteSystem.BEIDOU:
+        difference = epoch - GPST_MINUS_BDT_SECONDS - record.real("toe")
     else:
         difference = epoch - record.real("toe")
     return (difference + 302400) % 604800 - 302400

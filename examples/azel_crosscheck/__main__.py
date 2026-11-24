@@ -19,6 +19,7 @@ from examples.azel_crosscheck import (
     DIRECTION_TOLERANCE_DEGREES,
     CrossCheckReport,
     cross_check,
+    native_number,
 )
 from um982py.capture import decode_records, read_frames, select_position_pair
 from um982py.commands import Log
@@ -63,7 +64,8 @@ def build_payload(report: CrossCheckReport) -> dict[str, object]:
         "differences": [
             {
                 "system": difference.system.name,
-                "prn": difference.prn,
+                "prn": native_number(difference.system, difference.prn),
+                "wire_prn": difference.prn,
                 "azimuth_error_degrees": difference.azimuth_error,
                 "elevation_error_degrees": difference.elevation_error,
                 "direction_error_degrees": difference.direction_error,

@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 import sys
 from collections.abc import Iterable, Sequence
+from dataclasses import replace
 
 from examples._console import (
     ExampleParser,
@@ -22,6 +23,7 @@ from examples.elevation_optimizer import (
     sky_from_satvis_log,
     solution_at,
 )
+from examples.satellite_monitor import constellation_of
 from um982py.capture import latest_epoch, record_epoch
 from um982py.commands import Log
 from um982py.messages import Record
@@ -30,7 +32,9 @@ from um982py.messages import Record
 def _satellites_from(records: Iterable[Record]) -> tuple[SkySatellite, ...]:
     """Collect the sky positions of already decoded SATVIS2 records."""
     return tuple(
-        satellite for record in records for satellite in sky_from_satvis_log(record)
+        replace(satellite, system=str(constellation_of(record)))
+        for record in records
+        for satellite in sky_from_satvis_log(record)
     )
 
 
@@ -47,7 +51,13 @@ def main(argv: Sequence[str] | None = None) -> int:
         "--ceiling", type=float, default=90.0, help="highest mask to consider"
     )
     parser.add_argument(
-        "--max-pdop", type=float, help="maximum acceptable common-clock PDOP"
+        "--max-pdop",
+        type=float,
+        default=6.0,
+        help=(
+            "maximum acceptable PDOP with one clock per constellation "
+            "(default 6; a large value such as 1000 bounds only the satellite count)"
+        ),
     )
     parser.add_argument(
         "--duration", type=float, default=5.0, help="live collection time in seconds"
@@ -102,7 +112,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "minimum_satellites": args.minimum_satellites,
             "ceiling": args.ceiling,
             "gps_seconds": record_epoch(frames[0]) if frames else None,
-            "clock_model": "one shared clock across visible satellites",
+            "clock_model": "one receiver clock per constellation",
             "maximum_pdop": args.max_pdop,
             "chosen": chosen_payload,
             "grid_search": scanned_payload,

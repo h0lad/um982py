@@ -39,6 +39,17 @@ def _estimate_payload(estimate: UereEstimate) -> dict[str, object]:
     }
 
 
+def _same_satellite_set(position: Record, dilution: Record) -> bool:
+    """PSRPOS solution satellites equal the PSRDOP list at the same epoch."""
+    used = position.get("count_solnsvs")
+    listed = dilution.get("sats_list")
+    return (
+        isinstance(used, int)
+        and isinstance(listed, tuple)
+        and used == dilution.get("count_sats") == len(listed) > 0
+    )
+
+
 def _payload(
     positions: Sequence[Record],
     dilutions: Sequence[Record],
@@ -54,7 +65,10 @@ def _payload(
         and position.get("sol_status", position.get("p_sol_status"))
         in (0, "SOL_COMPUTED")
         and position.get("pos_type") in (16, "SINGLE")
-        and assume_matched_geometry
+        and (
+            assume_matched_geometry
+            or _same_satellite_set(position, by_epoch[record_epoch(position)])
+        )
     ]
     estimates = [
         estimate_epoch(record_epoch(position), position, dilution)
@@ -77,7 +91,10 @@ def _payload(
             "uere": None,
             "median_reported_pseudorange_sigma_m": pseudorange,
             "diagnostic_ratio_to_pseudorange_sigma": None,
-            "limitation": "Satellite geometry match is unverified.",
+            "limitation": (
+                "No epoch where the PSRPOS solution count equals the PSRDOP "
+                "satellite list; use --assume-matched-geometry to override."
+            ),
         }
     horizontal, vertical = median_uere(estimates)
     return {
@@ -86,8 +103,13 @@ def _payload(
         "uere": {"horizontal": horizontal, "vertical": vertical},
         "median_reported_pseudorange_sigma_m": pseudorange,
         "limitation": (
-            "Assumes matching unweighted satellite geometry and independent equal "
-            "range errors. RANGE sigmas are receiver diagnostics, not total UERE."
+            "Assumes unweighted satellite geometry and independent equal range "
+            "errors. RANGE sigmas are receiver diagnostics, not total UERE."
+        ),
+        "geometry_match": (
+            "assumed"
+            if assume_matched_geometry
+            else "PSRPOS solution count equals the PSRDOP satellite list"
         ),
         "pseudorange_comparison_epochs": len(matched_ranges),
         "diagnostic_ratio_to_pseudorange_sigma": None

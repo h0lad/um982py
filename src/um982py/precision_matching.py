@@ -61,7 +61,8 @@ def match_stream_precision(
 
     Completion is when the full frame was decoded, not the receiver epoch or
     the first byte's arrival. Monitor stream drops and session health too.
-    Duplicate keys within the supplied batch are treated as ambiguous.
+    Byte-identical duplicates collapse to one record. Duplicate keys with
+    differing content within the supplied batch are treated as ambiguous.
     """
     from um982py.messages.decode import decode_log
 
@@ -104,12 +105,20 @@ def _match(
     Key = tuple[str, int, Decimal]
     parsed: list[tuple[Fix, Key, float | None]] = []
     rejected = 0
+    # Identical sentences with one key, such as GPGGA and GNGGA logs that both
+    # print $GNGGA, are one observation. Only differing content is ambiguous.
+    seen_fixes: dict[Key, list[dict[str, object]]] = defaultdict(list)
     for record, session, arrival in fixes:
         try:
             fix = Fix.from_record(record)
             if not fix.valid or fix.antenna is None or not session:
                 raise ValueError("fix identity unavailable")
-            parsed.append((fix, (session, fix.antenna, utc_seconds(fix.utc)), arrival))
+            key = (session, fix.antenna, utc_seconds(fix.utc))
+            content: dict[str, object] = dict(record)
+            if content in seen_fixes[key]:
+                continue
+            seen_fixes[key].append(content)
+            parsed.append((fix, key, arrival))
         except (ProtocolError, ValueError):
             rejected += 1
     candidates: dict[Key, list[tuple[Record, float | None]]] = defaultdict(list)
@@ -118,9 +127,9 @@ def _match(
             precision = PositionPrecision.from_gst(record)
             if precision.antenna is None or precision.utc is None or not session:
                 raise ValueError("GST identity unavailable")
-            candidates[(session, precision.antenna, utc_seconds(precision.utc))].append(
-                (record, arrival)
-            )
+            key = (session, precision.antenna, utc_seconds(precision.utc))
+            if all(dict(record) != dict(other) for other, _ in candidates[key]):
+                candidates[key].append((record, arrival))
         except (ProtocolError, ValueError):
             rejected += 1
     counts = Counter(key for _, key, _ in parsed)

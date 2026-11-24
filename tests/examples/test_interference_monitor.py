@@ -40,8 +40,8 @@ DROPOUT_DB = 12.0
 DROPOUT_SATELLITES = (3, 5, 7, 9, 11, 13)
 
 JITTERED_SERIES = (39.0, 40.0, 41.0, 40.0, 39.0, 41.0, 40.0, 40.0, 39.0, 41.0)
-WARNING_EPOCH = 4
-CRITICAL_EPOCH = 6
+WARNING_EPOCH = 6
+CRITICAL_EPOCH = 8
 SHALLOW_DROP_DB = 7.5
 DEEP_DROP_DB = 11.5
 
@@ -254,3 +254,16 @@ def test_replay_alert_keeps_its_source_index_and_receiver_timestamp() -> None:
             "z_score": None,
         }
     ]
+
+
+def test_acquisition_ramp_is_not_a_collapse() -> None:
+    # Live G23 L1 C/A after acquisition on 2026-11-24: the C/N0 estimate rises
+    # from 12 to 24 dB-Hz. A session-wide reference flagged the start as a
+    # critical collapse although JAMSTATUS reported no interference.
+    ramp = (12.0, 12.2, 12.0, 12.0, 14.8, 15.7, 16.9, 18.3, 18.9, 19.1, 20.9)
+    settled = (21.3, 21.8, 21.9, 21.6, 22.3, 22.2, 22.1, 21.9, 21.6, 21.7, 21.2)
+    samples = [
+        Cn0Sample(epoch=epoch, satellite=23, cn0=cn0)
+        for epoch, cn0 in enumerate(ramp + settled)
+    ]
+    assert detect_cn0_collapse(samples) == ()

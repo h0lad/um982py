@@ -182,6 +182,7 @@ def test_rtklib_reads_glonass_navigation(convbin: str, tmp_path: Path) -> None:
         for line in output.read_text().split("END OF HEADER", 1)[1].splitlines()
         if line.strip()
     ]
-    assert len(lines) == 4
+    # RINEX 3.05 added a fourth GLONASS orbit line; RTKLIB 2.4.3 omits it.
+    assert len(lines) in (4, 5)
     assert lines[0][:23] == "R03 2024 03 11 07 45 00"
     assert float(lines[2][61:80].replace("D", "E")) == 5

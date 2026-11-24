@@ -23,20 +23,28 @@ def test_merge_preserves_values_and_resets_phase_at_segment_boundaries(
     first, second, output = (
         tmp_path / name for name in ("a.obs", "b.obs", "merged.obs")
     )
+    # Lock times grow with the epoch, as on a receiver tracking continuously.
     _write(
         first,
         (
-            record(0, [observation(), observation(prn=7, system=3, signal=22)]),
-            record(1, [observation()]),
+            record(
+                0,
+                [observation(lock=100), observation(prn=7, system=3, signal=22)],
+            ),
+            record(1, [observation(lock=101)]),
         ),
     )
     _write(
         second,
         (
             record(
-                2, [observation(), observation(prn=2, signal=17, frequency=1227.60e6)]
+                2,
+                [
+                    observation(lock=102),
+                    observation(prn=2, signal=17, frequency=1227.60e6, lock=102),
+                ],
             ),
-            record(3, [observation()]),
+            record(3, [observation(lock=103)]),
         ),
     )
     result = merge_gps_observations((str(first), second), str(output))

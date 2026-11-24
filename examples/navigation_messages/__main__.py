@@ -17,6 +17,7 @@ from examples._console import (
 from examples._console_capture import open_receiver
 from examples.navigation_messages import (
     FAMILIES,
+    GPST_MINUS_BDT_SECONDS,
     figures,
     navigation_satellites,
     satellite_csv,
@@ -94,8 +95,10 @@ def _device_position(
 def _newest_epoch(records: dict[str, tuple[Record, ...]]) -> float:
     """Newest broadcast reference epoch, in seconds of the GPS week."""
     return max(
-        record.real("e_time") / 1000.0 if "e_time" in record else record.real("toe")
-        for family in records.values()
+        record.real("e_time") / 1000.0
+        if "e_time" in record
+        else record.real("toe") + (GPST_MINUS_BDT_SECONDS if name == "BDSEPH" else 0.0)
+        for name, family in records.items()
         for record in family
     )
 

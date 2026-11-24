@@ -119,3 +119,15 @@ def test_satellite_number_reads_every_family() -> None:
     assert satellite_number(records["GLOEPH"][0]) == pytest.approx(38, abs=0)
     with pytest.raises(ValueError, match="satellite number"):
         satellite_number(Record("EMPTY", (("value", 1.0),)))
+
+
+def test_beidou_time_of_flight_uses_bdt() -> None:
+    from um982py.protocol import StreamDecoder
+
+    fixture = Path(__file__).resolve().parents[1] / "fixtures" / "crosscheck"
+    message = next(
+        iter(StreamDecoder().feed((fixture / "BDSEPHB-C24.bin").read_bytes()))
+    )
+    record = Log.BDSEPH.decode(message)
+    assert time_of_flight(record, 234014.0, SatelliteSystem.BEIDOU) == 0.0
+    assert time_of_flight(record, 234014.0) == 14.0

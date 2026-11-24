@@ -138,3 +138,37 @@ def test_isolated_slips_flag_no_common_mode_event() -> None:
         Slip(prn=12, epoch=11.0, cycles=0.7),
     )
     assert common_mode_events(slips) == ()
+
+
+def test_reacquisition_inside_a_gap_starts_a_new_arc() -> None:
+    # Live G18 L1 C/A, 2026-11-24: lock time 1.01 s, an invalid-phase epoch,
+    # then 1.01 s again. The lock did not decrease between the kept epochs,
+    # yet the phase was reacquired and jumped by 10 cycles.
+    observations = [
+        Observation(prn=18, epoch=8.0, carrier_phase=0.0, doppler=0.0, lock_time=1.01),
+        Observation(
+            prn=18, epoch=10.0, carrier_phase=10.04, doppler=0.0, lock_time=1.01
+        ),
+        Observation(
+            prn=18, epoch=11.0, carrier_phase=10.04, doppler=0.0, lock_time=2.01
+        ),
+    ]
+    assert detect_slips(observations) == ()
+
+
+def test_shared_clock_residual_is_not_a_slip() -> None:
+    observations = []
+    for prn in range(1, 7):
+        for epoch in range(4):
+            shift = 0.6 if epoch >= 2 else 0.0
+            observations.append(
+                Observation(
+                    prn=prn,
+                    epoch=float(epoch),
+                    carrier_phase=100.0 * epoch + shift,
+                    doppler=100.0,
+                    lock_time=10.0 + epoch,
+                )
+            )
+    assert detect_slips(observations) == ()
+    assert len(detect_slips(observations, remove_common_mode=False)) == 6

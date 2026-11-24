@@ -253,3 +253,69 @@ def gain_curve(
         )
         for index in range(count + 1)
     )
+
+
+def clustered_standard_errors(
+    samples: Sequence[SkySample], fit: GainFit
+) -> tuple[float, float, float] | None:
+    """Satellite-clustered (sandwich) standard errors of the three coefficients.
+
+    Epochs of one satellite share its transmit power, obstruction and
+    multipath, so they are not independent. The sandwich estimator
+    (X'X)^-1 [sum_s X_s' e_s e_s' X_s] (X'X)^-1 treats each satellite as one
+    cluster; it needs more satellites than coefficients.
+    """
+    clusters: dict[tuple[str, int], list[SkySample]] = {}
+    for sample in samples:
+        clusters.setdefault((str(sample.constellation), sample.prn), []).append(sample)
+    if len(clusters) <= 3:
+        return None
+
+    def row(sample: SkySample) -> tuple[float, float, float]:
+        unit = 1.0 - math.sin(math.radians(sample.elevation))
+        return 1.0, unit, unit * unit
+
+    def residual(sample: SkySample) -> float:
+        _, unit, square = row(sample)
+        measured = sample.cn0 + 20.0 * math.log10(sample.range / fit.reference_range)
+        return measured - (
+            fit.zenith_cn0 + fit.linear_rolloff * unit + fit.quadratic_rolloff * square
+        )
+
+    bread = [[0.0] * 3 for _ in range(3)]
+    meat = [[0.0] * 3 for _ in range(3)]
+    for group in clusters.values():
+        score = [0.0, 0.0, 0.0]
+        for sample in group:
+            values = row(sample)
+            error = residual(sample)
+            for i in range(3):
+                score[i] += values[i] * error
+                for j in range(3):
+                    bread[i][j] += values[i] * values[j]
+        for i in range(3):
+            for j in range(3):
+                meat[i][j] += score[i] * score[j]
+    inverse = _inverse3(bread)
+    if inverse is None:
+        return None
+    covariance = _product(_product(inverse, meat), inverse)
+    return tuple(math.sqrt(max(0.0, covariance[i][i])) for i in range(3))  # type: ignore[return-value]
+
+
+def _product(a: list[list[float]], b: list[list[float]]) -> list[list[float]]:
+    return [
+        [sum(a[i][k] * b[k][j] for k in range(3)) for j in range(3)] for i in range(3)
+    ]
+
+
+def _inverse3(m: list[list[float]]) -> list[list[float]] | None:
+    (a, b, c), (d, e, f), (g, h, i) = m
+    det = a * (e * i - f * h) - b * (d * i - f * g) + c * (d * h - e * g)
+    if abs(det) < 1e-12:
+        return None
+    return [
+        [(e * i - f * h) / det, (c * h - b * i) / det, (b * f - c * e) / det],
+        [(f * g - d * i) / det, (a * i - c * g) / det, (c * d - a * f) / det],
+        [(d * h - e * g) / det, (b * g - a * h) / det, (a * e - b * d) / det],
+    ]

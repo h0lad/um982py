@@ -59,6 +59,7 @@ def test_visible_health_preserves_unknown() -> None:
 def test_visible_health_decodes_real_ascii_and_binary_layouts() -> None:
     ascii_record = decode_log(manual_message("SATELLITEA"))
     assert gps_visible_health(ascii_record)[0] == (3, True)
-    data = pack("<IIIIHhIdddd", 0, 1, 1, 1, 3, 0, 1, 25.2, 308.1, 0.0, 0.0)
+    # Channel in bytes 0-1, PRN in bytes 2-3, as the live receiver sends it.
+    data = pack("<IIIIhHIdddd", 0, 1, 1, 1, 0, 3, 1, 25.2, 308.1, 0.0, 0.0)
     binary_record = decode_log(binary_message("SATELLITE", data))
     assert gps_visible_health(binary_record) == ((3, False),)

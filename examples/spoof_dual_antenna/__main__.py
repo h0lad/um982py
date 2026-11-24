@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import argparse
 import sys
 from collections.abc import Sequence
 from copy import copy
@@ -15,7 +16,7 @@ from examples._console import (
     run,
     write_json,
 )
-from examples._console_capture import capture_records
+from examples._console_capture import capture_records, open_receiver
 from examples.spoof_dual_antenna import (
     EcefBaseline,
     EnuBaseline,
@@ -30,6 +31,7 @@ from examples.spoof_dual_antenna import (
 )
 from um982py.capture import iter_frames, record_epoch, select_position
 from um982py.commands import Log
+from um982py.errors import ResponseTimeout
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef
 from um982py.messages import Record, SpoofInfo
 
@@ -221,6 +223,17 @@ def _spoof_payload(spoof: SpoofInfo | None) -> dict[str, object] | None:
     }
 
 
+def _heading_offset(args: argparse.Namespace) -> tuple[Record, ...]:
+    """Query the configured heading offset once in its ASCII form."""
+    receiver = open_receiver(args)
+    try:
+        return tuple(receiver.collect(Log.HEADINGOFFSET.read(binary=False)))
+    except ResponseTimeout:
+        return ()
+    finally:
+        receiver.close()
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Replay transcripts or query the receiver, then report the spoofing checks."""
     parser = ExampleParser(
@@ -259,14 +272,18 @@ def main(argv: Sequence[str] | None = None) -> int:
         capture_args = copy(args)
         capture_args.antenna = "primary"
         capture_args.swap_antennas = False
+        # HEADINGOFFSET only has verified one-shot queries, so it is read once
+        # after the periodic logs instead of being subscribed with them.
+        periodic = {field: log for field, log in _FIELDS.items() if field != "offset"}
         captured = capture_records(
             capture_args,
-            list(_FIELDS.values()),
+            list(periodic.values()),
             duration=args.duration,
             interval=args.interval,
         )
         capture = Capture(
-            **{field: captured[log.value] for field, log in _FIELDS.items()}
+            **{field: captured[log.value] for field, log in periodic.items()},
+            offset=_heading_offset(capture_args),
         )
     payload = _payload(
         capture, swapped=args.swap_antennas, tolerance=args.position_tolerance

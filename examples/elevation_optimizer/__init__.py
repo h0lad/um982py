@@ -23,6 +23,8 @@ class SkySatellite:
     prn: int
     elevation: float
     azimuth: float
+    system: str = ""
+    """Constellation; each distinct value gets its own receiver clock state."""
 
     @property
     def line_of_sight(self) -> tuple[float, float, float]:
@@ -59,16 +61,29 @@ def line_of_sight(azimuth: float, elevation: float) -> tuple[float, float, float
 
 
 def normal_matrix(
-    azimuths: Sequence[float], elevations: Sequence[float]
+    azimuths: Sequence[float],
+    elevations: Sequence[float],
+    systems: Sequence[str] | None = None,
 ) -> list[list[float]]:
-    """Form ``G^T G`` for unit line-of-sight rows and a receiver clock column."""
+    """Form ``G^T G`` for unit line-of-sight rows and receiver clock columns.
+
+    Without ``systems`` all satellites share one clock column; otherwise each
+    distinct system has its own clock (inter-system bias) column.
+    """
     if len(azimuths) != len(elevations):
         raise ValueError("azimuths and elevations must have equal length")
     if not azimuths:
         raise ValueError("at least one sky position is required")
+    groups = list(systems) if systems is not None else [""] * len(azimuths)
+    if len(groups) != len(azimuths):
+        raise ValueError("systems must match the sky positions")
+    names = sorted(set(groups))
     rows = [
-        [*line_of_sight(azimuth, elevation), 1.0]
-        for azimuth, elevation in zip(azimuths, elevations, strict=True)
+        [
+            *line_of_sight(azimuth, elevation),
+            *(1.0 if group == name else 0.0 for name in names),
+        ]
+        for azimuth, elevation, group in zip(azimuths, elevations, groups, strict=True)
     ]
     size = len(rows[0])
     return [
@@ -109,12 +124,21 @@ def inverse(matrix: Sequence[Sequence[float]]) -> list[list[float]]:
     return [row[size:] for row in augmented]
 
 
-def pdop(azimuths: Sequence[float], elevations: Sequence[float]) -> float:
-    """Return PDOP, or infinity for fewer than four satellites or singular geometry."""
-    if len(elevations) < MINIMUM_SATELLITES_FOR_PDOP:
+def pdop(
+    azimuths: Sequence[float],
+    elevations: Sequence[float],
+    systems: Sequence[str] | None = None,
+) -> float:
+    """Return PDOP, or infinity when the geometry cannot fix position and clocks.
+
+    ``systems`` adds one clock state per distinct constellation, so a mixed
+    sky needs three satellites plus one per constellation.
+    """
+    clocks = len(set(systems)) if systems else 1
+    if len(elevations) < max(MINIMUM_SATELLITES_FOR_PDOP, 3 + clocks):
         return math.inf
     try:
-        covariant = inverse(normal_matrix(azimuths, elevations))
+        covariant = inverse(normal_matrix(azimuths, elevations, systems))
     except ValueError:
         return math.inf
     diagonal = covariant[0][0] + covariant[1][1] + covariant[2][2]
@@ -134,6 +158,7 @@ def pdop_at_mask(satellites: Sequence[SkySatellite], mask: float) -> float:
     return pdop(
         [satellite.azimuth for satellite in kept],
         [satellite.elevation for satellite in kept],
+        [satellite.system for satellite in kept],
     )
 
 
@@ -172,6 +197,7 @@ def solution_at(
     value = pdop(
         [satellite.azimuth for satellite in kept],
         [satellite.elevation for satellite in kept],
+        [satellite.system for satellite in kept],
     )
     if not math.isfinite(value) or value > max_pdop:
         return None

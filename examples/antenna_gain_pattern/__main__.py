@@ -13,6 +13,7 @@ from examples.antenna_gain_pattern import (
     DEFAULT_CURVE_STEP,
     GainFit,
     SkySample,
+    clustered_standard_errors,
     epoch_sky_samples,
     fit_gain_pattern,
     gain_curve,
@@ -54,6 +55,22 @@ def _gain_pattern_payload(
             "reference_range": fit.reference_range,
             "fit_residual_rms_db": fit.residual_rms_db,
             "sample_count": fit.sample_count,
+            "satellites": len(
+                {(str(sample.constellation), sample.prn) for sample in samples}
+            ),
+            "satellite_clustered_standard_errors": (
+                None
+                if (errors := clustered_standard_errors(samples, fit)) is None
+                else {
+                    "zenith_cn0": errors[0],
+                    "linear_rolloff": errors[1],
+                    "quadratic_rolloff": errors[2],
+                }
+            ),
+            "standard_error_note": (
+                "Epochs of one satellite are correlated, so the clustered errors "
+                "count satellites, not epochs, as independent samples."
+            ),
         },
         "curve": [list(row) for row in gain_curve(fit, step)],
     }

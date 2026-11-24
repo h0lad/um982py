@@ -1,7 +1,10 @@
 """Check extraction of broadcast ephemerides retained in DSP RAM."""
 
 import math
+from pathlib import Path
 from struct import pack_into
+
+import pytest
 
 from um982py.experimental import (
     DspGalileoEphemeris,
@@ -151,8 +154,28 @@ def test_glonass_propagation_record() -> None:
     assert record.index == 0
     assert record.reference_time_sod_s == 900
     assert record.propagation_time_sod_s == 825.0
-    assert record.position_ecef_m == (20_000_000.0, 10_000_000.0, 10_000_000.0)
-    assert record.velocity_ecef_mps == (1.0, 2.0, 3.0)
+    assert record.position_inertial_m == (20_000_000.0, 10_000_000.0, 10_000_000.0)
+    assert record.velocity_inertial_mps == (1.0, 2.0, 3.0)
+    # Back-propagated by 75 s: the inertial frame leads PZ-90 by -omega * 75 s.
+    angle = -75.0 * 7.292115e-5
+    x = math.cos(angle) * 20_000_000.0 + math.sin(angle) * 10_000_000.0
+    y = -math.sin(angle) * 20_000_000.0 + math.cos(angle) * 10_000_000.0
+    assert record.position_ecef_m == pytest.approx((x, y, 10_000_000.0), abs=1e-6)
+
+
+def test_live_glonass_state_matches_broadcast_pz90_after_rotation() -> None:
+    # DSP RAM of R4.10Build25164, 2026-11-24. Index 6 is R07, reference
+    # 81900 s GLOT, propagated 410 s. The reference is RK4 integration of the
+    # IGS BRDC record (toc 19:45 UTC) to the same time; before the rotation
+    # into PZ-90 the stored state was 195 km away.
+    fixture = Path(__file__).parent / "fixtures" / "crosscheck"
+    raw = (fixture / "dsp-glonass-propagation.ram").read_bytes()
+    records = extract_dsp_glonass_propagation({"glonass_propagation": raw})
+    record = next(item for item in records if item.index == 6)
+    reference = (-11768555.855, -889725.341, 22646710.218)
+    assert math.dist(record.position_ecef_m, reference) < 10.0
+    assert record.position_inertial_m is not None
+    assert math.dist(record.position_inertial_m, reference) > 100_000.0
 
 
 def test_missing_tables_return_no_ephemerides() -> None:

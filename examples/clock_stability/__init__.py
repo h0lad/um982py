@@ -10,17 +10,20 @@ from enum import StrEnum
 from um982py.stats import allan_deviation, fractional_frequency
 
 SLOPE_BLOCKS = 64
+MINIMUM_CLASSIFICATION_TAUS = 3
 
 __all__ = [
     "NOISE_SLOPES",
     "SLOPE_BLOCKS",
     "ClockStability",
     "NoiseType",
+    "OverlappingPoint",
     "analyse",
     "classify_noise",
     "frequency_adev",
     "frequency_deviation",
     "log_log_slope",
+    "overlapping_adev",
     "phase_adev",
     "resolved_pairs",
 ]
@@ -56,6 +59,59 @@ class ClockStability:
     phase_slope: float | None
     frequency_slope: float | None
     noise: NoiseType | None
+    overlapping: tuple[OverlappingPoint, ...] = ()
+    overlapping_slope: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class OverlappingPoint:
+    """Overlapping Allan deviation at one averaging time (NIST SP 1065)."""
+
+    tau: float
+    deviation: float
+    terms: int
+    """Overlapping second differences in the estimate."""
+    independent: int
+    """Non-overlapping second differences, used for the simple interval."""
+
+    @property
+    def interval(self) -> tuple[float, float]:
+        """Simple one-sigma interval deviation * (1 -/+ 1/sqrt(independent))."""
+        half = self.deviation / math.sqrt(self.independent)
+        return max(0.0, self.deviation - half), self.deviation + half
+
+
+def overlapping_adev(
+    phase: Sequence[float], tau0: float = 1.0
+) -> tuple[OverlappingPoint, ...]:
+    """Overlapping ADEV from a phase series at octave averaging factors.
+
+    sigma^2(m tau0) = sum (x[i+2m] - 2 x[i+m] + x[i])^2 / (2 (m tau0)^2 (N - 2m)),
+    for factors up to (N - 1) // 4 so each tau keeps at least three
+    non-overlapping second differences.
+    """
+    if not math.isfinite(tau0) or tau0 <= 0:
+        raise ValueError("tau0 must be finite and positive")
+    count = len(phase)
+    points = []
+    factor = 1
+    while factor <= (count - 1) // 4:
+        terms = count - 2 * factor
+        total = math.fsum(
+            (phase[i + 2 * factor] - 2 * phase[i + factor] + phase[i]) ** 2
+            for i in range(terms)
+        )
+        tau = factor * tau0
+        points.append(
+            OverlappingPoint(
+                tau=tau,
+                deviation=math.sqrt(total / (2 * tau * tau * terms)),
+                terms=terms,
+                independent=(count - 1) // factor - 1,
+            )
+        )
+        factor *= 2
+    return tuple(points)
 
 
 def frequency_deviation(
@@ -123,6 +179,14 @@ def analyse(samples: Sequence[float], *, tau0: float = 1.0) -> ClockStability:
     frequency = frequency_adev(pairs)
     phase_slope = log_log_slope(pairs)
     frequency_slope = log_log_slope(frequency)
+    overlapping = overlapping_adev(samples, tau0)
+    overlapping_slope = (
+        log_log_slope([(point.tau, point.deviation) for point in overlapping])
+        if len(overlapping) >= MINIMUM_CLASSIFICATION_TAUS
+        else None
+    )
+    # A noise type needs a slope over at least three averaging times; the
+    # overlapping estimator reaches longer taus than the 64-block series.
     return ClockStability(
         sample_count=len(samples),
         taus=tuple(tau for tau, _ in pairs),
@@ -130,5 +194,7 @@ def analyse(samples: Sequence[float], *, tau0: float = 1.0) -> ClockStability:
         frequency_deviation=tuple(deviation for _, deviation in frequency),
         phase_slope=phase_slope,
         frequency_slope=frequency_slope,
-        noise=None if frequency_slope is None else classify_noise(frequency_slope),
+        noise=None if overlapping_slope is None else classify_noise(overlapping_slope),
+        overlapping=overlapping,
+        overlapping_slope=overlapping_slope,
     )

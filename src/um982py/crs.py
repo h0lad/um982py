@@ -20,6 +20,12 @@ class CoordinateTransform:
     accuracy_m: float | None
     pyproj_version: str
     proj_version: str
+    epoch_dependent: bool | None = None
+    """Whether the selected operation changes with the coordinate epoch.
+
+    ``False`` means a static operation, such as a null ETRS89-to-WGS 84 step,
+    was chosen: the supplied epoch had no effect and plate motion (about
+    2.5 cm per year in Europe) is not modelled. ``None`` without an epoch."""
 
 
 def transform_coordinate(
@@ -79,9 +85,17 @@ def transform_coordinate(
     if coordinate_epoch is None:
         x, y, z = transformer.transform(*coordinates, errcheck=True)
         epoch = None
+        epoch_dependent = None
     else:
         x, y, z, epoch = transformer.transform(
             *coordinates, tt=coordinate_epoch, errcheck=True
+        )
+        later = transformer.transform(
+            *coordinates, tt=coordinate_epoch + 10.0, errcheck=True
+        )
+        epoch_dependent = any(
+            abs(value - shifted) > 1e-6
+            for value, shifted in zip((x, y, z), later[:3], strict=True)
         )
     if not all(isfinite(value) for value in (x, y, z)) or (
         epoch is not None and not isfinite(epoch)
@@ -100,4 +114,5 @@ def transform_coordinate(
         accuracy if accuracy >= 0 else None,
         pyproj.__version__,
         pyproj.proj_version_str,
+        epoch_dependent,
     )

@@ -6,6 +6,8 @@ import math
 from dataclasses import dataclass
 
 from um982py.messages import Record
+from um982py.messages.enums import PositionType
+from um982py.quality import classify
 
 FULL_TURN_DEGREES = 360.0
 
@@ -128,3 +130,23 @@ def swapped_attitude(attitude: Attitude) -> Attitude:
         pitch=-attitude.pitch,
         baseline_length=attitude.baseline_length,
     )
+
+
+def baseline_fix_class(record: Record) -> str:
+    """Fix class of a baseline record's position type: fixed, float, single...
+
+    Only integer-fixed baselines carry centimetre-level direction; float
+    solutions can be metres off and their heading is not reliable.
+    """
+    position_type = record.get("pos_type")
+    if isinstance(position_type, str):
+        try:
+            position_type = int(PositionType[position_type.strip()])
+        except KeyError:
+            return "unknown"
+    if not isinstance(position_type, int):
+        return "unknown"
+    try:
+        return str(classify(position_type).value)
+    except (KeyError, ValueError):
+        return "unknown"

@@ -16,6 +16,8 @@ MAD_SCALE = 0.6745
 COLLAPSE_THRESHOLD = 3.5
 CRITICAL_THRESHOLD = 6.0
 MINIMUM_SERIES = 5
+REFERENCE_WINDOW = 60
+MINIMUM_MAD_DB = 0.5
 
 
 class AlertKind(StrEnum):
@@ -156,7 +158,14 @@ def cn0_samples(records: Sequence[Record]) -> tuple[Cn0Sample, ...]:
 def detect_cn0_collapse(
     samples: Sequence[Cn0Sample], *, threshold: float = COLLAPSE_THRESHOLD
 ) -> tuple[Alert, ...]:
-    """Flag epochs where a satellite's C/N0 falls below ``-threshold`` sigma."""
+    """Flag epochs where a satellite's C/N0 falls below ``-threshold`` sigma.
+
+    Each sample is scored against the median and MAD of up to
+    ``REFERENCE_WINDOW`` earlier samples of the same satellite, with the MAD
+    floored at ``MINIMUM_MAD_DB`` so quantised plateaus do not give infinite
+    scores. A satellite needs ``MINIMUM_SERIES`` earlier samples before it is
+    tested.
+    """
     if threshold <= 0:
         raise ValueError("threshold must be positive")
     series: dict[int, list[Cn0Sample]] = {}
@@ -164,12 +173,18 @@ def detect_cn0_collapse(
         series.setdefault(sample.satellite, []).append(sample)
     collapsed: dict[int, tuple[list[int], float]] = {}
     for satellite, owned in series.items():
-        if len(owned) < MINIMUM_SERIES:
-            continue
-        reference = [sample.cn0 for sample in owned]
-        middle = median(reference)
-        deviation = _deviation(reference, middle)
-        for sample in owned:
+        for index, sample in enumerate(owned):
+            # Causal reference: only earlier samples of this satellite count,
+            # so the C/N0 rise after acquisition is never scored against the
+            # settled level that follows it.
+            reference = [
+                earlier.cn0
+                for earlier in owned[max(0, index - REFERENCE_WINDOW) : index]
+            ]
+            if len(reference) < MINIMUM_SERIES:
+                continue
+            middle = median(reference)
+            deviation = max(_deviation(reference, middle), MINIMUM_MAD_DB)
             z_score = _z_score(sample.cn0, middle, deviation)
             if z_score > -threshold:
                 continue

@@ -225,7 +225,9 @@ def test_satellite_glonass_id_in_ascii_and_binary(channel: int) -> None:
     fields = list(message.fields)
     fields[0], fields[4] = "GLONASS", f"42{channel:+d}"
     ascii_record = decode_log(replace(message, fields=tuple(fields)))
-    binary = pack("<IIIIHhIdddd", 1, 1, 1, 1, 42, channel, 0, 25.2, 308.1, 0.0, 0.0)
+    # Live R4.10Build25164 SATELLITEB puts the channel in bytes 0-1 and the
+    # PRN in bytes 2-3 (tests/fixtures/crosscheck/SATELLITEB-GLONASS.bin).
+    binary = pack("<IIIIhHIdddd", 1, 1, 1, 1, channel, 42, 0, 25.2, 308.1, 0.0, 0.0)
     binary_record = decode_log(binary_message("SATELLITE", binary))
     for record in (ascii_record, binary_record):
         satellite_id = record.records("satellites")[0]["prn_slot"]

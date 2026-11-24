@@ -16,7 +16,7 @@ constraint. Measurement, 228, 115492. doi:10.1016/j.measurement.2024.115492
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from um982py.messages import Record
 
@@ -33,6 +33,15 @@ class ConstrainedAttitude:
     """Requested constrained baseline length in metres."""
     unconstrained_length: float
     """Raw baseline length reported by the receiver in metres."""
+    length_sigma: float | None = None
+    """Standard deviation of the raw length from the ENU sigmas, metres."""
+
+    @property
+    def length_z_score(self) -> float | None:
+        """(raw length - constraint) / length sigma, or ``None`` without sigmas."""
+        if self.length_sigma is None or self.length_sigma <= 0:
+            return None
+        return (self.unconstrained_length - self.baseline_length) / self.length_sigma
 
 
 def _heading_degrees(east: float, north: float) -> float:
@@ -73,16 +82,40 @@ def constrain_to_length(
     )
 
 
+def length_sigma(
+    components: tuple[float, float, float], sigmas: tuple[float, float, float]
+) -> float:
+    """First-order sigma of the baseline length from independent ENU sigmas."""
+    length = math.sqrt(sum(value * value for value in components))
+    if length <= 0:
+        raise ValueError("baseline has zero length")
+    return math.sqrt(
+        sum(
+            (value / length) ** 2 * sigma**2
+            for value, sigma in zip(components, sigmas, strict=True)
+        )
+    )
+
+
 def attitude_from_record(
     record: Record, baseline_length_m: float
 ) -> ConstrainedAttitude:
-    """Build a constrained attitude from a BSLNENUHD record."""
-    return constrain_to_length(
+    """Build a constrained attitude from a BSLNENUHD record.
+
+    The record's ENU sigmas give the raw length's sigma, so the report can
+    test whether the receiver baseline agrees with the physical length. A
+    large score means the baseline solution, and its heading, is unreliable.
+    """
+    components = (
         record.real("delta_1"),
         record.real("delta_2"),
         record.real("delta_3"),
-        baseline_length_m,
     )
+    attitude = constrain_to_length(*components, baseline_length_m)
+    if all(name in record for name in ("std_1", "std_2", "std_3")):
+        sigmas = (record.real("std_1"), record.real("std_2"), record.real("std_3"))
+        return replace(attitude, length_sigma=length_sigma(components, sigmas))
+    return attitude
 
 
 def heading_residual(

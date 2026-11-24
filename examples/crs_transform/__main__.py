@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import sys
 from collections.abc import Sequence
 from dataclasses import asdict
 
@@ -24,6 +25,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         promote_to_3d=args.promote_to_3d,
     )
     print(json.dumps(asdict(result), indent=2))
+    if result.epoch_dependent is False:
+        print(
+            "warning: the selected operation is time-independent, so --epoch "
+            "had no effect and plate motion is not modelled",
+            file=sys.stderr,
+        )
     return 0
 
 

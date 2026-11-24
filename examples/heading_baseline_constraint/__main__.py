@@ -16,6 +16,8 @@ from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.messages import Record
 
+LENGTH_Z_LIMIT = 3.0
+
 
 def _payload(
     records: Sequence[Record],
@@ -34,6 +36,7 @@ def _payload(
     residuals: list[float] = []
     pitch_diffs: list[float] = []
     length_errors: list[float] = []
+    length_scores: list[float] = []
 
     for record in records:
         epoch = record_epoch(record)
@@ -68,8 +71,13 @@ def _payload(
                 "unconstrained_length_error": (
                     attitude.unconstrained_length - baseline_length_m
                 ),
+                "unconstrained_length_sigma": attitude.length_sigma,
+                "length_z_score": attitude.length_z_score,
+                "position_type": record.get("pos_type"),
             }
         )
+        if attitude.length_z_score is not None:
+            length_scores.append(attitude.length_z_score)
         if residual is not None:
             residuals.append(residual)
         if pitch_diff is not None:
@@ -103,7 +111,16 @@ def _payload(
                 sum(length_errors) / len(length_errors) if length_errors else None
             ),
             "unconstrained_length_error_std_m": _std(length_errors),
+            "length_test_epochs": len(length_scores),
+            "length_inconsistent_epochs": sum(
+                abs(score) > LENGTH_Z_LIMIT for score in length_scores
+            ),
         },
+        "length_test": (
+            f"|raw length - supplied length| > {LENGTH_Z_LIMIT:g} sigma marks a "
+            "receiver baseline that contradicts the physical separation; its "
+            "heading and pitch are then unreliable."
+        ),
         "limitation": (
             "Equal-weight rescaling preserves the full baseline direction and "
             "cannot improve its heading or pitch. Residuals are relative to the "
@@ -165,10 +182,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     payload = _payload(baselines, headings, args.baseline_length)
     stats = payload["statistics"]
     heading_rms = stats["heading_residual_rms_deg"] if isinstance(stats, dict) else None
+    counts = stats if isinstance(stats, dict) else {}
     rms_text = f"{heading_rms:.3f} deg" if isinstance(heading_rms, float) else "N/A"
     print(
         f"Matched {payload['matched_epochs']} epochs; "
-        f"heading residual RMS = {rms_text}",
+        f"heading residual RMS = {rms_text}; "
+        f"{counts.get('length_inconsistent_epochs')} of "
+        f"{counts.get('length_test_epochs')} "
+        f"baselines contradict the {payload['baseline_length_m']:g} m length",
         file=sys.stderr,
     )
     write_json(payload, args.json)

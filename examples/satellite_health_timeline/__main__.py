@@ -11,6 +11,15 @@ from um982py.messages import Record
 from um982py.messages.gps_health import GpsLnavHealth
 from um982py.messages.satellite_health import EphemerisHealth, GalileoEphemerisHealth
 
+GLONASS_SLOT_OFFSET = 37
+
+
+def _native_number(system: object, prn: int) -> int:
+    """GLONASS slot instead of the SATELLITE slot + 37, as in GLOEPH events."""
+    if system in (1, "GLONASS") and prn > GLONASS_SLOT_OFFSET:
+        return prn - GLONASS_SLOT_OFFSET
+    return prn
+
 
 def decode_health(record: Record) -> list[dict[str, object]]:
     timestamp = record_epoch(record)
@@ -50,11 +59,14 @@ def decode_health(record: Record) -> list[dict[str, object]]:
         ]
     if record.name in ("GLOEPH", "BDSEPH", "BD3EPH"):
         eph = EphemerisHealth.from_record(record)
+        fields = asdict(eph)
+        # One key and native numbering for every source, so events join.
+        fields["satellite"] = fields.pop("satellite_id")
         return [
             {
                 "epoch_gps_seconds": timestamp,
                 "source": record.name,
-                **asdict(eph),
+                **fields,
                 "healthy": eph.healthy,
             }
         ]
@@ -70,7 +82,9 @@ def decode_health(record: Record) -> list[dict[str, object]]:
                     "epoch_gps_seconds": timestamp,
                     "source": record.name,
                     "system": record["satellite_system"],
-                    "satellite": satellite_id.integer("prn"),
+                    "satellite": _native_number(
+                        record["satellite_system"], satellite_id.integer("prn")
+                    ),
                     "raw_health": raw,
                     "healthy": {0: True, 1: False}.get(raw),
                     "elevation_deg": row.real("elev"),

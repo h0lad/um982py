@@ -22,6 +22,7 @@ from examples.attitude_budget import (
     component_budget,
     required_baseline,
 )
+from examples.heading_attitude import baseline_fix_class
 from um982py import Receiver
 from um982py.capture import DataLog, iter_frames
 from um982py.commands import Log
@@ -130,8 +131,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     debug_header(args, "attitude_budget")
     paths = _paths(args)
     if paths is not None:
+        baselines = _records(paths, Log.BSLNENUHD)
         budget = _budget(
-            _records(paths, Log.BSLNENUHD),
+            baselines,
             _records(paths, selected_log(args, Log.BESTPOS)),
             swapped=args.swap_antennas,
         )
@@ -139,8 +141,9 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         receiver = open_receiver(args)
         try:
+            baselines = _queried(receiver, Log.BSLNENUHD)
             budget = _budget(
-                _queried(receiver, Log.BSLNENUHD),
+                baselines,
                 _queried(receiver, selected_log(args, Log.BESTPOS)),
                 swapped=args.swap_antennas,
             )
@@ -148,6 +151,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         finally:
             receiver.close()
     payload = _payload(budget, offsets)
+    if budget is not None and baselines:
+        fix_class = baseline_fix_class(baselines[-1])
+        payload["baseline_fix_class"] = fix_class
+        payload["baseline_position_type"] = baselines[-1].get("pos_type")
+        if fix_class != "fixed":
+            payload["warning"] = (
+                "baseline is not integer-fixed; the component sigmas describe a "
+                "float solution whose length and direction can be metres off"
+            )
     if budget is not None:
         print(
             f"Attitude budget: heading sigma {budget.heading_sigma:.4f} deg, "

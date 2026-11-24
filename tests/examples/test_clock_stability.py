@@ -107,3 +107,16 @@ def test_classification_table_covers_the_published_slopes() -> None:
     assert sorted(slope for _, slope in NOISE_SLOPES) == [-1.0, -0.5, 0.0, 0.5, 1.0]
     assert classify_noise(-0.52) is NoiseType.WHITE_FM
     assert classify_noise(0.9) is NoiseType.LINEAR_DRIFT
+
+
+def test_overlapping_adev_of_a_quadratic_phase_is_analytic() -> None:
+    # x(t) = t^2 has the constant second difference 2 m^2, so
+    # sigma^2(m) = (2 m^2)^2 / (2 m^2) = 2 m^2 for tau0 = 1 s.
+    from examples.clock_stability import overlapping_adev
+
+    phase = [float(t * t) for t in range(129)]
+    points = overlapping_adev(phase)
+    assert [point.tau for point in points] == [1, 2, 4, 8, 16, 32]
+    for point in points:
+        assert point.deviation == pytest.approx(2**0.5 * point.tau)
+        assert point.terms == 129 - 2 * int(point.tau)

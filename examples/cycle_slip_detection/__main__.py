@@ -9,6 +9,7 @@ from examples._console import ExampleParser, add_receiver_arguments, run, write_
 from examples._console_capture import capture_records
 from examples.cycle_slip_detection import (
     DEFAULT_MAX_GAP_SECONDS,
+    MINIMUM_COMMON_MODE_SATELLITES,
     SLIP_THRESHOLD_CYCLES,
     Observation,
     common_mode_events,
@@ -127,7 +128,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     slips = detect_slips(
         observations, threshold_cycles=args.threshold, max_gap=args.max_gap
     )
-    candidates = common_mode_events(slips)
+    candidates = common_mode_events(
+        detect_slips(
+            observations,
+            threshold_cycles=args.threshold,
+            max_gap=args.max_gap,
+            remove_common_mode=False,
+        )
+    )
     payload = {
         "status": "analysed" if tested else "insufficient_data",
         "tested_increments": tested,
@@ -136,6 +144,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         "interpretation": (
             "Candidate discontinuities; gaps and lock resets are not tested. "
             "Zero flags does not prove slip-free tracking."
+        ),
+        "common_mode": (
+            "The median residual of each epoch with at least "
+            f"{MINIMUM_COMMON_MODE_SATELLITES} satellites is removed before the "
+            "threshold; shared clock effects appear under the clock candidates."
         ),
         "threshold_cycles": args.threshold,
         "slips": [

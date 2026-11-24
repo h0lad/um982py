@@ -209,7 +209,10 @@ LAYOUTS: tuple[Layout, ...] = (
                 name="satellites",
                 offset=16,
                 fields=(
-                    Field(name="prn_slot", kind="sat", offset=0, size=4),
+                    # R4.10Build25164 sends the GLONASS frequency channel
+                    # (zero elsewhere) in bytes 0-1 and the PRN in bytes 2-3,
+                    # as in SATVIS2, contrary to the manual's description.
+                    Field(name="prn_slot", kind="sat_channel_first", offset=0, size=4),
                     Field(name="health", kind="u", offset=4, size=4),
                     Field(name="elev", kind="d", offset=8, size=8),
                     Field(name="az", kind="d", offset=16, size=8),

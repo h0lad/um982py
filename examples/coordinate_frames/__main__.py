@@ -15,6 +15,7 @@ from examples.coordinate_frames import (
     antenna_position,
     round_trip_baseline,
 )
+from examples.heading_attitude import baseline_fix_class
 from um982py.antenna import AntennaLog
 from um982py.capture import record_epoch, select_position
 from um982py.commands import Log
@@ -171,6 +172,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     payload["epoch"] = epoch
     payload["position_epoch_offset_s"] = record_epoch(origin) - epoch
     payload["baseline_direction"] = "physical ANT1 to ANT2 in the ANT1 local frame"
+    payload["baseline_fix_class"] = baseline_fix_class(baseline_record)
+    if payload["baseline_fix_class"] != "fixed":
+        payload["baseline_warning"] = (
+            "the baseline is not integer-fixed, so the converted antenna position "
+            "inherits a float baseline that can be metres off"
+        )
     payload["antenna_precision"] = None
     payload["precision_note"] = (
         "Receiver ECEF standard deviations describe the origin; derived antenna "

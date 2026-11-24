@@ -209,7 +209,11 @@ def motion_main(name: str, argv: Sequence[str] | None) -> int:
                 velocity = solve_velocity(
                     measurements, max_velocity_std_mps=args.max_velocity_std
                 )
-                result: dict[str, object] = {"epoch": epoch, **asdict(velocity)}
+                result: dict[str, object] = {
+                    "epoch": epoch,
+                    **asdict(velocity),
+                    "redundancy": velocity.redundancy,
+                }
                 if compare_receiver:
                     result["receiver_comparison"] = _receiver_comparison(
                         epoch,
@@ -255,6 +259,8 @@ def motion_main(name: str, argv: Sequence[str] | None) -> int:
                         "epoch": epoch,
                         "start_epoch": previous_epoch,
                         **asdict(displacement),
+                        "redundancy": displacement.redundancy,
+                        "residual_check": displacement.redundancy > 0,
                     }
                 )
                 velocities.append(displacement.velocity_mps)

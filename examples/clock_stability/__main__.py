@@ -24,6 +24,26 @@ def payload_of(report: ClockStability) -> dict[str, object]:
         "phase_slope": report.phase_slope,
         "frequency_slope": report.frequency_slope,
         "noise": None if report.noise is None else report.noise.value,
+        "noise_basis": (
+            "slope of overlapping ADEV over at least three taus"
+            if report.noise is not None
+            else "fewer than three overlapping taus; noise type not classified"
+        ),
+        "overlapping": [
+            {
+                "tau": point.tau,
+                "adev": point.deviation,
+                "interval_1sigma": list(point.interval),
+                "terms": point.terms,
+                "independent_differences": point.independent,
+            }
+            for point in report.overlapping
+        ],
+        "overlapping_slope": report.overlapping_slope,
+        "measurement_note": (
+            "TIME clock offsets are receiver navigation-filter estimates; short-tau "
+            "deviations are dominated by pseudorange noise, not oscillator noise."
+        ),
     }
 
 

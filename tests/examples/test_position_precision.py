@@ -6,6 +6,7 @@ from examples.position_precision import __main__ as cli
 from examples.position_precision import map_precision
 
 from um982py import Log, load_records
+from um982py.messages import Record
 
 FIXTURE = Path(__file__).parents[1] / "fixtures/position-precision.txt"
 
@@ -53,7 +54,23 @@ def test_unmatched_and_ambiguous_statistics_are_never_attached() -> None:
     assert result["status"] == "no_matched_precision"
     feature = result["geojson"]["features"][0]
     assert feature["properties"]["precision"] is None
-    result = map_precision(fixes, statistics * 2)
+    # Byte-identical duplicates, such as GPGGA and GNGGA logs that both print
+    # $GNGGA, are one observation. Differing content with one key stays
+    # ambiguous and is never attached.
+    result = map_precision(fixes * 2, statistics * 2)
+    assert result["ambiguous_fixes"] == 0 and result["matched_precision"] == 1
+    other_gst = _with(statistics[0], "rms", 9.99)
+    result = map_precision(fixes, [statistics[0], other_gst])
     assert result["ambiguous_fixes"] == 1 and result["matched_precision"] == 0
-    result = map_precision(fixes * 2, statistics)
+    other_fix = _with(fixes[0], "satellites", 3)
+    result = map_precision([fixes[0], other_fix], statistics)
     assert result["ambiguous_fixes"] == 2 and result["matched_precision"] == 0
+
+
+def _with(record: Record, name: str, value: object) -> Record:
+    return replace(
+        record,
+        entries=tuple(
+            (key, value if key == name else old) for key, old in record.entries
+        ),
+    )

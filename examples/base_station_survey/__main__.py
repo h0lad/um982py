@@ -67,6 +67,15 @@ def payload_of(
             "Nominal errors assume independent epochs; adjusted errors use a clipped "
             "lag-one correlation screening estimate. Neither includes systematic bias."
         ),
+        "uncertainty_is_lower_bound": True,
+        "lower_bound_reason": (
+            "Errors correlated over longer than the occupation are invisible to both "
+            "estimates, so they are lower bounds. On 2026-11-24 three-minute "
+            "single-point means of one antenna scattered 0.55-0.65 m per axis "
+            "although each reported adjusted errors near 0.1 m; occupations "
+            "shorter than about an hour do not average atmospheric and multipath "
+            "biases."
+        ),
         "x": axis_payload(result.x),
         "y": axis_payload(result.y),
         "z": axis_payload(result.z),

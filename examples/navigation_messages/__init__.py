@@ -52,6 +52,7 @@ TABLE_HEADINGS = (
 __all__ = [
     "COLOURS",
     "FAMILIES",
+    "GPST_MINUS_BDT_SECONDS",
     "HIGH_ORBIT_MIN",
     "MEDIUM_ORBIT_MAX",
     "MEDIUM_ORBIT_MIN",
@@ -213,10 +214,21 @@ def satellite_number(record: Record) -> int:
     raise ValueError("ephemeris record has no satellite number")
 
 
-def time_of_flight(record: Record, epoch: float) -> float:
-    """Seconds between the broadcast epoch of the elements and ``epoch``."""
+GPST_MINUS_BDT_SECONDS = 14.0
+
+
+def time_of_flight(
+    record: Record, epoch: float, system: SatelliteSystem | None = None
+) -> float:
+    """Seconds between the broadcast epoch of the elements and ``epoch``.
+
+    ``epoch`` is GPST seconds of week. BDSEPH ``toe`` is BDT seconds of week,
+    so BeiDou records are compared at BDT = GPST - 14 s.
+    """
     if "e_time" in record:
         return epoch - record.real("e_time") / 1000.0
+    if system is SatelliteSystem.BEIDOU:
+        return epoch - GPST_MINUS_BDT_SECONDS - record.real("toe")
     return epoch - record.real("toe")
 
 
@@ -227,7 +239,7 @@ def navigation_satellite(
     epoch: float,
 ) -> NavigationSatellite:
     """Propagate one ephemeris record to ``epoch`` and place it in the sky."""
-    flight_time = time_of_flight(record, epoch)
+    flight_time = time_of_flight(record, epoch, system)
     if system is SatelliteSystem.GLONASS:
         elements = GlonassElements.from_record(record)
         state = glonass_state(elements, flight_time)

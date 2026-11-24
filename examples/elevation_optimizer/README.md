@@ -24,7 +24,11 @@ python -m examples.elevation_optimizer \
 
 `--minimum-satellites` sets the minimum satellite count for candidate masks.
 `--ceiling` sets the highest mask to consider, in degrees.
-`--max-pdop` sets an optional bound on the unweighted common-clock PDOP.
+`--max-pdop` bounds the unweighted PDOP, computed with one receiver clock per
+constellation (default 6; a large value such as `--max-pdop 1000` bounds only the satellite
+count).
+Without a PDOP bound the highest mask keeps only the minimum number of
+satellites, which on 2026-11-24 meant a 57° mask with PDOP 131.
 The report includes the mask sweep and geometry epoch for comparison.
 
 The selected mask applies to the captured sky geometry.

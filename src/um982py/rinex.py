@@ -319,11 +319,17 @@ def _header_lines(
     return lines
 
 
+_LOCK_TOLERANCE = 0.5
+
+
 def _epoch_lines(
     epochs: Sequence[Epoch],
     codes: dict[str, tuple[str, ...]],
 ) -> tuple[list[str], int, int]:
-    previous_lock: dict[tuple[str, str], float] = {}
+    # Lock time must grow with the epoch interval. A reacquisition between
+    # two exported epochs, also across epochs with invalid phase, can leave
+    # the lock no larger than before and still breaks phase continuity.
+    previous_lock: dict[tuple[str, str], tuple[float, float]] = {}
     lines: list[str] = []
     satellite_count = observation_count = 0
     for epoch, satellites in epochs:
@@ -362,9 +368,14 @@ def _epoch_lines(
                 if code[0] == "L":
                     key = satellite, code[1:]
                     lock = row.real("lock_time")
-                    if key in previous_lock and lock < previous_lock[key]:
-                        flag = "1"
-                    previous_lock[key] = lock
+                    if key in previous_lock:
+                        earlier_epoch, earlier_lock = previous_lock[key]
+                        if (
+                            lock
+                            < earlier_lock + (epoch - earlier_epoch) - _LOCK_TOLERANCE
+                        ):
+                            flag = "1"
+                    previous_lock[key] = epoch, lock
                 field = f"{value:14.3f}{flag} "
                 if len(field) != 16:
                     raise ValueError("observation exceeds RINEX field width")

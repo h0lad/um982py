@@ -107,6 +107,14 @@ def _payload(
                 "conservative radius bound, not exact radial quantile"
             ),
             "single_epoch": "scatter and uncertainty undefined (null)",
+            "lower_bound": (
+                "Errors correlated over longer than the occupation are "
+                "invisible to both estimates, so they are lower bounds. On "
+                "2026-11-24 three-minute single-point means of one antenna "
+                "scattered 0.55-0.65 m per axis although each reported adjusted "
+                "errors near 0.1 m; occupations shorter than about an hour do "
+                "not average atmospheric and multipath biases."
+            ),
         },
         "fix": {
             "ecef": list(result.ecef),

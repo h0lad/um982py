@@ -33,6 +33,26 @@ class VelocitySolution:
     residual_rms_mps: float
     satellites: int
     formal_3d_std_mps: float | None = None
+    """3D standard deviation from the assumed measurement sigmas."""
+    aposteriori_3d_std_mps: float | None = None
+    """Formal deviation scaled by sqrt(chi-square / redundancy), or ``None`` at zero
+    redundancy. It reflects the observed residual scatter instead of the
+    assumed sigma."""
+
+    @property
+    def redundancy(self) -> int:
+        """Measurements beyond the four unknowns."""
+        return self.satellites - 4
+
+
+def _variance_factor(
+    residuals: Sequence[float], sigmas: Sequence[float]
+) -> float | None:
+    redundancy = len(residuals) - 4
+    if redundancy <= 0:
+        return None
+    chi_square = math.fsum((r / s) ** 2 for r, s in zip(residuals, sigmas, strict=True))
+    return math.sqrt(chi_square / redundancy)
 
 
 def solve_velocity(
@@ -70,8 +90,16 @@ def solve_velocity(
             f"exceeds {max_velocity_std_mps:g} m/s"
         )
     vx, vy, vz, clock = solution.parameters
+    factor = _variance_factor(
+        solution.residuals, [item.sigma_mps for item in measurements]
+    )
     return VelocitySolution(
-        (vx, vy, vz), clock, rms(solution.residuals), len(measurements), formal_3d_std
+        (vx, vy, vz),
+        clock,
+        rms(solution.residuals),
+        len(measurements),
+        formal_3d_std,
+        None if factor is None else formal_3d_std * factor,
     )
 
 
@@ -96,6 +124,11 @@ class DisplacementSolution:
     clock_change_m: float
     residual_rms_m: float
     satellites: int
+
+    @property
+    def redundancy(self) -> int:
+        """Measurements beyond the four unknowns. Zero means no residual check."""
+        return self.satellites - 4
 
 
 def solve_displacement(

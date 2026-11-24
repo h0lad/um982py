@@ -14,6 +14,8 @@ GPS_L2_HZ = 1227.60e6
 SLIP_THRESHOLD_CYCLES = 0.5
 GEOMETRY_FREE_THRESHOLD_METRES = 0.05
 DEFAULT_MAX_GAP_SECONDS = 2.0
+LOCK_CONTINUITY_TOLERANCE_SECONDS = 0.5
+MINIMUM_COMMON_MODE_SATELLITES = 4
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,8 +90,11 @@ def doppler_residuals(
     """Phase residuals of one ordered satellite, within continuous tracking.
 
     Gaps and reported lock resets start new arcs. They are unobservable
-    intervals, not evidence that no slip occurred. Do not prefilter large
-    residuals: those are exactly the discontinuities being tested.
+    intervals, not evidence that no slip occurred. Lock time must grow by
+    the epoch interval: a reacquisition between two kept epochs, which
+    leaves the lock time no larger than before, also starts a new arc. Do
+    not prefilter large residuals: those are exactly the discontinuities
+    being tested.
     """
     if not math.isfinite(max_gap) or max_gap <= 0:
         raise ValueError("max_gap must be finite and positive")
@@ -110,11 +115,7 @@ def doppler_residuals(
         interval = current.epoch - previous.epoch
         if interval <= 0:
             raise ValueError("satellite epochs must increase strictly")
-        if interval > max_gap or (
-            previous.lock_time is not None
-            and current.lock_time is not None
-            and current.lock_time < previous.lock_time
-        ):
+        if interval > max_gap or not _lock_continues(previous, current, interval):
             continue
         measured = current.carrier_phase - previous.carrier_phase
         predicted = predicted_increment(previous.doppler, current.doppler, interval)
@@ -122,13 +123,56 @@ def doppler_residuals(
     return tuple(residuals)
 
 
+def _lock_continues(
+    previous: Observation, current: Observation, interval: float
+) -> bool:
+    if previous.lock_time is None or current.lock_time is None:
+        return True
+    return (
+        current.lock_time
+        >= previous.lock_time + interval - LOCK_CONTINUITY_TOLERANCE_SECONDS
+    )
+
+
+def epoch_common_mode(
+    residuals: dict[int, tuple[tuple[float, float], ...]],
+) -> dict[float, float]:
+    """Median residual of each epoch shared by enough satellites, in cycles.
+
+    Receiver clock frequency changes inside an interval are not described by
+    the two Doppler samples at its ends and shift every satellite's residual
+    of one frequency by the same number of cycles.
+    """
+    by_epoch: dict[float, list[float]] = {}
+    for series in residuals.values():
+        for epoch, residual in series:
+            by_epoch.setdefault(epoch, []).append(residual)
+    common = {}
+    for epoch, values in by_epoch.items():
+        if len(values) >= MINIMUM_COMMON_MODE_SATELLITES:
+            ordered = sorted(values)
+            middle = len(ordered) // 2
+            common[epoch] = (
+                ordered[middle]
+                if len(ordered) % 2
+                else 0.5 * (ordered[middle - 1] + ordered[middle])
+            )
+    return common
+
+
 def detect_slips(
     observations: Sequence[Observation],
     *,
     threshold_cycles: float = SLIP_THRESHOLD_CYCLES,
     max_gap: float = DEFAULT_MAX_GAP_SECONDS,
+    remove_common_mode: bool = True,
 ) -> tuple[Slip, ...]:
-    """Slips whose phase increment disagrees with the Doppler prediction."""
+    """Slips whose phase increment disagrees with the Doppler prediction.
+
+    With ``remove_common_mode`` the per-epoch median residual of at least
+    ``MINIMUM_COMMON_MODE_SATELLITES`` satellites is subtracted first, so a
+    receiver clock effect shared by all satellites is not counted as a slip.
+    """
     if not math.isfinite(threshold_cycles) or threshold_cycles <= 0:
         raise ValueError("threshold_cycles must be finite and positive")
     if not math.isfinite(max_gap) or max_gap <= 0:
@@ -136,11 +180,17 @@ def detect_slips(
     by_prn: dict[int, list[Observation]] = {}
     for observation in observations:
         by_prn.setdefault(observation.prn, []).append(observation)
+    residuals = {
+        prn: doppler_residuals(group, max_gap=max_gap)
+        for prn, group in sorted(by_prn.items())
+    }
+    common = epoch_common_mode(residuals) if remove_common_mode else {}
     slips = []
-    for prn, group in sorted(by_prn.items()):
-        for epoch, residual in doppler_residuals(group, max_gap=max_gap):
-            if abs(residual) >= threshold_cycles:
-                slips.append(Slip(prn=prn, epoch=epoch, cycles=residual))
+    for prn, series in residuals.items():
+        for epoch, residual in series:
+            corrected = residual - common.get(epoch, 0.0)
+            if abs(corrected) >= threshold_cycles:
+                slips.append(Slip(prn=prn, epoch=epoch, cycles=corrected))
     return tuple(slips)
 
 

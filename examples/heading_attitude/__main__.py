@@ -12,6 +12,7 @@ from examples.heading_attitude import (
     Attitude,
     angular_rate,
     attitude_from_record,
+    baseline_fix_class,
     swapped_attitude,
 )
 from um982py.capture import record_epoch
@@ -39,6 +40,7 @@ def _payload(records: Sequence[Record], *, swapped: bool = False) -> dict[str, o
             **_attitude_payload(_attitude(record, swapped=swapped)),
             "solution_status": record.get("p_sol_status"),
             "position_type": record.get("pos_type"),
+            "fix_class": baseline_fix_class(record),
         }
         for record in records
     ]
@@ -59,8 +61,14 @@ def _payload(records: Sequence[Record], *, swapped: bool = False) -> dict[str, o
                 "rate_degrees_per_second": rate,
             }
         )
+    fixed = sum(item["fix_class"] == "fixed" for item in attitudes)
+    latest_fixed = bool(attitudes) and attitudes[-1]["fix_class"] == "fixed"
     return {
         "baselines": len(attitudes),
+        "fixed_baselines": fixed,
+        "warning": None
+        if latest_fixed or not attitudes
+        else "latest baseline is not integer-fixed; heading and pitch are unreliable",
         "latest": None if not attitudes else attitudes[-1],
         "history": attitudes,
         "angular_rates": rates,
@@ -138,8 +146,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     if isinstance(latest, dict):
         print(
             f"Heading: {latest['heading']}; pitch {latest['pitch']}; "
-            f"baseline {latest['baseline_length']} m "
-            f"({payload['baselines']} baselines)",
+            f"baseline {latest['baseline_length']} m, {latest['fix_class']} "
+            f"({payload['fixed_baselines']} of {payload['baselines']} fixed)",
             file=sys.stderr,
         )
     write_json(payload, args.json)

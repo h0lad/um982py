@@ -14,12 +14,54 @@ from um982py.commands import Log
 from um982py.geometry import (
     DilutionOfPrecision,
     ReportedDilution,
+    SatelliteGeometry,
     geometry_from_record,
 )
 from um982py.messages.record import Record
 
 _REPORTED_TIMEOUT = 0.2
 _REPORTED_LOG = {"PSRDOP": Log.PSRDOP, "RTKDOP": Log.RTKDOP}
+
+
+# PSRDOP/RTKDOP satellite lists use the offset PRNs of the N4 manual table
+# "Satellite PRN Number (with Offset)"; SATVIS2 numbers GLONASS as slot + 37.
+_OFFSET_RANGES = (
+    (1, 32, "GPS", 0),
+    (33, 42, "QZSS", 160),
+    (43, 66, "GLONASS", -5),
+    (75, 110, "GALILEO", -74),
+    (161, 223, "BEIDOU", -160),
+)
+
+
+def satvis_identity(offset_prn: int) -> tuple[str, int] | None:
+    """Constellation and SATVIS2 PRN of a PSRDOP list entry, or ``None``."""
+    for low, high, constellation, shift in _OFFSET_RANGES:
+        if low <= offset_prn <= high:
+            return constellation, offset_prn + shift
+    return None
+
+
+def receiver_set_geometry(
+    frames: Sequence[Record], used: Sequence[int]
+) -> tuple[list[tuple[str, SatelliteGeometry]], list[int]]:
+    """Geometry of the receiver's own solution satellites and unmatched PRNs."""
+    sky = {
+        (str(constellation_of(frame)), satellite.integer("prn")): SatelliteGeometry(
+            azimuth=satellite.real("azimuth"), elevation=satellite.real("elevation")
+        )
+        for frame in frames
+        for satellite in frame.records("satellites")
+    }
+    matched: list[tuple[str, SatelliteGeometry]] = []
+    missing: list[int] = []
+    for offset_prn in used:
+        identity = satvis_identity(offset_prn)
+        if identity is None or identity not in sky:
+            missing.append(offset_prn)
+        else:
+            matched.append((identity[0], sky[identity]))
+    return matched, missing
 
 
 def _parser() -> ExampleParser:
@@ -101,6 +143,55 @@ def _payload(
     return payload
 
 
+def _add_receiver_set(
+    payload: dict[str, object],
+    frames: Sequence[Record],
+    reported: ReportedDilution,
+    record: Record,
+) -> None:
+    """Compare the receiver's DOP with DOP of the satellites it reports using."""
+    listed = record.get("sats_list")
+    used = (
+        [value for value in listed if isinstance(value, int)]
+        if isinstance(listed, tuple)
+        else []
+    )
+    matched, missing = receiver_set_geometry(frames, used)
+    groups = [group for group, _ in matched]
+    entry: dict[str, object] = {
+        "satellites": len(used),
+        "matched": len(matched),
+        "unmatched_prns": missing,
+        "clock_groups": sorted(set(groups)),
+        "computed": None,
+    }
+    payload["receiver_set"] = entry
+    payload["difference_basis"] = "all visible satellites"
+    if not used or missing:
+        return
+    try:
+        own = DilutionOfPrecision.from_geometry(
+            [geometry for _, geometry in matched], clock_groups=groups
+        )
+    except ValueError:
+        return
+    entry["computed"] = {
+        "gdop": own.gdop,
+        "pdop": own.pdop,
+        "hdop": own.hdop,
+        "vdop": own.vdop,
+        "tdop": own.tdop,
+    }
+    single = len(set(groups)) == 1
+    payload["difference_basis"] = "receiver solution satellites"
+    payload["difference"] = {
+        "gdop": own.gdop - reported.gdop if single else None,
+        "pdop": own.pdop - reported.pdop,
+        "hdop": own.hdop - reported.hdop,
+        "tdop": own.tdop - reported.tdop if single else None,
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Collect one SATVIS2 epoch and report computed against reported DOP."""
     parser = _parser()
@@ -122,6 +213,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     frames = latest_epoch(captured["SATVIS2"])
     reported = None
+    reported_record = None
     for name in ("PSRDOP", "RTKDOP"):
         matching = [
             record
@@ -129,7 +221,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             if frames and abs(record_epoch(record) - record_epoch(frames[0])) < 0.01
         ]
         if matching:
-            reported = ReportedDilution.from_record(matching[-1], name)
+            reported_record = matching[-1]
+            reported = ReportedDilution.from_record(reported_record, name)
             break
     mask = reported.elevation_mask if reported is not None else args.mask
     grouped = [
@@ -161,6 +254,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         file=sys.stderr,
     )
     payload = _payload(computed, reported, mask, clock_groups=groups)
+    if reported is not None and reported_record is not None:
+        _add_receiver_set(payload, frames, reported, reported_record)
     payload["gps_seconds"] = record_epoch(frames[0])
     payload["visible_satellites"] = len(satellites)
     payload["common_clock_assumption"] = asdict(

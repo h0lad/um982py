@@ -262,9 +262,29 @@ def main(argv: Sequence[str] | None = None) -> int:
             for name in sigma_fields
         },
     }
-    payload["status"] = (
-        "comparison_available" if payload["delays"] else "no_synchronized_GPS_pairs"
+    delays = payload["delays"]
+    negative = (
+        [
+            item["prn"]
+            for item in delays
+            if isinstance(item, dict) and item["measured_vertical_delay_metres"] <= 0
+        ]
+        if isinstance(delays, list)
+        else []
     )
+    payload["status"] = (
+        "no_synchronized_GPS_pairs"
+        if not delays
+        else "bias_dominated"
+        if negative
+        else "comparison_available"
+    )
+    payload["nonpositive_measured_delay_prns"] = negative
+    if negative:
+        payload["status_reason"] = (
+            "a measured ionospheric delay at or below zero is physically impossible, "
+            "so uncalibrated code biases and noise dominate this epoch's measurement"
+        )
     payload["measurement"] = (
         "code TEC proxy; receiver/satellite biases are uncalibrated; relative "
         "difference is unavailable for measured delays at or below 0.01 m"

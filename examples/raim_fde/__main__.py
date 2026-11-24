@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import math
 import sys
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import replace
 from pathlib import Path
 
@@ -19,7 +19,6 @@ from examples._console import (
 from examples._console_capture import capture_records, selected_log
 from examples.raim_fde import RaimResult, raim_fde
 from examples.wls_position import (
-    RangeMeasurement,
     geodetic_position_error,
 )
 from examples.wls_position import measurements as wls_measurements
@@ -30,64 +29,8 @@ from um982py.capture import (
     select_position_pair,
 )
 from um982py.commands import Log
-from um982py.experimental.orbit import state_from_record
-from um982py.geodesy import geodetic_from_ecef, receiver_ecef, records_from
+from um982py.geodesy import geodetic_from_ecef, receiver_ecef
 from um982py.measurement import gps_epoch
-from um982py.messages import (
-    Record,
-)
-from um982py.messages.enums import SatelliteSystem
-
-SATELLITE_SYSTEM_SHIFT = 16
-SATELLITE_SYSTEM_MASK = 0b111
-RESERVED_SYSTEM = 0b111
-
-
-def measurements(
-    record: Record,
-    ephemerides: Mapping[SatelliteSystem, Mapping[int, Record]],
-    epoch: float,
-) -> tuple[RangeMeasurement, ...]:
-    """Build one highest-C/N0 pseudorange per satellite from an ephemeris set."""
-    selected: dict[tuple[SatelliteSystem, int], Record] = {}
-    for observation in records_from(record, "observations"):
-        tracking = observation.integer("tracking_status")
-        code = (tracking >> SATELLITE_SYSTEM_SHIFT) & SATELLITE_SYSTEM_MASK
-        if code == RESERVED_SYSTEM:
-            continue
-        system = SatelliteSystem(code)
-        prn = observation.integer("prn")
-        if prn not in ephemerides.get(system, {}):
-            continue
-        key = (system, prn)
-        current = selected.get(key)
-        if current is None or observation.real("cn0") > current.real("cn0"):
-            selected[key] = observation
-    measurements = []
-    for (system, prn), observation in sorted(selected.items()):
-        ephemeris = ephemerides[system][prn]
-        if system is SatelliteSystem.GLONASS:
-            propagation = epoch - ephemeris.real("e_time") / 1000.0
-        else:
-            propagation = epoch - ephemeris.real("toe")
-        constellation = {
-            SatelliteSystem.GALILEO: "GALILEO",
-            SatelliteSystem.BEIDOU: "BEIDOU",
-        }.get(system, "GPS")
-        state = state_from_record(ephemeris, propagation, system=constellation)
-        measurements.append(
-            RangeMeasurement(
-                system=system,
-                prn=prn,
-                x=state.x,
-                y=state.y,
-                z=state.z,
-                pseudorange=observation.real("pseudorange"),
-                pseudorange_std=observation.real("pseudorange_std"),
-                satellite_clock=state.clock_bias,
-            )
-        )
-    return tuple(measurements)
 
 
 def _payload(

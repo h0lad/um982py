@@ -59,7 +59,11 @@ class SignalBandSummary:
     satellites: int
     pairs: int
     median_difference_db: float
+    """Median of the per-satellite medians, so each satellite counts once."""
     mad_difference_db: float
+    """Median absolute deviation of the per-satellite medians."""
+    pooled_median_difference_db: float | None = None
+    """Median of all pairs; satellites tracked longer weigh more."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -240,7 +244,11 @@ def compare_antennas(
 def summarize_by_signal(
     comparison: AntennaComparison,
 ) -> tuple[SignalBandSummary, ...]:
-    """Pool paired C/N0 differences across satellites for each tracked signal band."""
+    """Summarise paired C/N0 differences for each tracked signal band.
+
+    Epochs of one satellite are strongly correlated, so the band statistic is
+    the median of per-satellite medians; the pooled median is also reported.
+    """
     grouped: dict[tuple[int, int, int], list[ReceptionPair]] = defaultdict(list)
     for pair in comparison.pairs:
         band_key = (pair.key.system, pair.key.signal, pair.key.l2c_flag)
@@ -250,7 +258,11 @@ def summarize_by_signal(
         status = (system << 16) | (signal << 21) | (l2c_flag << 26)
         identity = tracking_signal(status) if system <= 6 else None
         differences = [pair.difference_db for pair in band_pairs]
-        center = median(differences)
+        by_satellite: dict[int, list[float]] = defaultdict(list)
+        for pair in band_pairs:
+            by_satellite[pair.key.prn].append(pair.difference_db)
+        satellite_medians = [median(values) for values in by_satellite.values()]
+        center = median(satellite_medians)
         summaries.append(
             SignalBandSummary(
                 system=system,
@@ -262,7 +274,10 @@ def summarize_by_signal(
                 satellites=len({pair.key.prn for pair in band_pairs}),
                 pairs=len(differences),
                 median_difference_db=center,
-                mad_difference_db=median(abs(value - center) for value in differences),
+                mad_difference_db=median(
+                    abs(value - center) for value in satellite_medians
+                ),
+                pooled_median_difference_db=median(differences),
             )
         )
     return tuple(summaries)

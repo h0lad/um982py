@@ -26,6 +26,12 @@ python -m examples.satellite_monitor \
 `--duration` and `--interval` control live SATVIS2 collection. Use `--mask` to
 set an elevation cutoff in degrees.
 
+`field_7` keeps its neutral name because the manual does not define it. On
+R4.10Build25164 it equalled, to 0.01 dB-Hz, the RANGE C/N0 of the same epoch
+for 3,900 of 3,900 compared satellites (2026-11-24): the primary signal (GPS
+L1 C/A, GLONASS G1, Galileo E1-C, BeiDou B1I), or another tracked signal of
+the satellite when the primary one was not tracked. `field_6` was always zero.
+
 ## Library usage
 
 ### Check satellite reception

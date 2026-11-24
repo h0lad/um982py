@@ -191,7 +191,15 @@ def test_matching_requires_unique_session_and_nearby_dispatch() -> None:
     fixes = load_records(path, Log.GPGGA)
     statistics = load_records(path, Log.GPGST)
     assert match_precision(fixes, statistics).matched == 1
-    assert match_precision(fixes * 2, statistics).ambiguous == 2
+    assert match_precision(fixes * 2, statistics).matched == 1
+    differing = replace(
+        fixes[0],
+        entries=tuple(
+            (key, 3 if key == "satellites" else value)
+            for key, value in fixes[0].entries
+        ),
+    )
+    assert match_precision([fixes[0], differing], statistics).ambiguous == 2
     with pytest.raises(ValueError, match="max_records"):
         match_precision(fixes, statistics, max_records=1)
     now = datetime.now(UTC)

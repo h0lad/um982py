@@ -51,6 +51,55 @@ def read_observations(
     )
 
 
+MINIMUM_LEVELLING_SECONDS = 600.0
+MAXIMUM_LEVELLING_ERROR_TECU = 1.0
+
+
+def _levelling_arcs(
+    code_samples: Sequence[TecSample],
+    phase_samples: Sequence[TecSample],
+) -> list[dict[str, object]]:
+    """Levelling quality of each arc: the offset's standard error and span.
+
+    The standard error std(code - phase) / sqrt(n) assumes independent code
+    errors, so with correlated multipath it is a lower bound. Short arcs of
+    noisy code leave levelled TEC with errors of tens of TECU.
+    """
+    code = {(item.prn, item.arc, item.epoch): item.tec for item in code_samples}
+    grouped: dict[tuple[int, int], list[tuple[float, float]]] = {}
+    for item in phase_samples:
+        value = code.get((item.prn, item.arc, item.epoch))
+        if value is not None:
+            grouped.setdefault((item.prn, item.arc), []).append(
+                (item.epoch, value - item.tec)
+            )
+    arcs: list[dict[str, object]] = []
+    for (prn, arc), rows in sorted(grouped.items()):
+        offsets = [offset for _, offset in rows]
+        epochs = [epoch for epoch, _ in rows]
+        count = len(offsets)
+        centre = sum(offsets) / count
+        spread = (
+            math.sqrt(sum((value - centre) ** 2 for value in offsets) / (count - 1))
+            if count > 1
+            else math.inf
+        )
+        error = spread / math.sqrt(count)
+        duration = max(epochs) - min(epochs)
+        arcs.append(
+            {
+                "prn": prn,
+                "arc": arc,
+                "samples": count,
+                "duration_s": duration,
+                "offset_standard_error_tecu": error if math.isfinite(error) else None,
+                "reliable": duration >= MINIMUM_LEVELLING_SECONDS
+                and error <= MAXIMUM_LEVELLING_ERROR_TECU,
+            }
+        )
+    return arcs
+
+
 def _levelled_series(
     code_samples: Sequence[TecSample],
     phase_samples: Sequence[TecSample],
@@ -171,6 +220,13 @@ def build_payload(
             }
             for sample in levelled
         ],
+        "levelling_arcs": (arcs := _levelling_arcs(samples, phase_samples or ())),
+        "levelling_criteria": (
+            f"reliable arcs span at least {MINIMUM_LEVELLING_SECONDS:g} s with an "
+            f"offset standard error of at most {MAXIMUM_LEVELLING_ERROR_TECU:g} TECU"
+        ),
+        "reliable_levelled_arcs": sum(bool(arc["reliable"]) for arc in arcs),
+        "negative_levelled_samples": sum(sample.tec < 0 for sample in levelled),
         "rot": [
             {"prn": rate.prn, "epoch": rate.epoch, "rate": rate.rate, "arc": rate.arc}
             for rate in rates
