@@ -1,10 +1,10 @@
 # Journey motion: sea, aviation and outdoor sport
 
-Capture or replay BESTNAVXYZ solutions to inspect ground speed, true course,
-vertical speed, ellipsoidal height and solution type. The report integrates
-horizontal speed over recorded intervals and estimates moving time. Profiles
-for sailing, flying and mountain biking use the same measurement model. Adjust
-the thresholds to suit your data.
+Capture or replay BESTNAVXYZ positions with DOPPVEL Doppler velocity reports
+to inspect ground speed, true course, vertical speed, ellipsoidal height and
+solution type. The report integrates horizontal speed over recorded intervals
+and estimates moving time. Profiles for sailing, flying and mountain biking use
+the same measurement model. Adjust the thresholds to suit your data.
 
 ```bash
 python -m examples.journey_track --profile marine --port /dev/ttyUSB0 --duration 300 --dual-heading --record /tmp/passage.bin --json /tmp/passage.json
@@ -35,18 +35,27 @@ heading follows the antenna baseline. Establish the mounting orientation before
 using it as a vessel or aircraft heading. Course over ground can differ from
 that heading. If the installed antenna roles are reversed, set `--swap-antennas`.
 
-Ground speed comes from the receiver's computed ECEF velocity, rotated into the
-local WGS84 ENU frame. Below `--course-threshold-mps`, the report omits course.
-Distance uses trapezoidal integration of speed. An interval counts as moving
-when its mean speed meets `--moving-threshold-mps`. Invalid solutions and
-intervals longer than `--max-gap-s` do not contribute.
+Ground speed, course over ground and vertical speed come from computed DOPPVEL
+Doppler solutions. Each position takes the nearest valid DOPPVEL epoch within
+`--doppler-tolerance-s` and reports the epoch offset, receiver latency, age and
+reported speed standard deviations. No interpolation or latency correction is
+applied. Captures with no DOPPVEL records at all fall back to Doppler-typed
+ECEF velocity in BESTNAVXYZ; the sample's `velocity_source` shows which
+measurement was used. Below `--course-threshold-mps`, the report omits
+course. Distance uses trapezoidal integration of speed over the position
+intervals. An interval counts as moving when its mean speed meets
+`--moving-threshold-mps`. Invalid solutions and intervals longer than
+`--max-gap-s` do not contribute.
 
 The report shows the time covered by valid intervals. Noise can inflate the
-distance, and peak speed is unfiltered. The report records velocity latency
-without correcting for it.
+distance, and peak speed is unfiltered. DOPPVEL shares observations with the
+position solution, so its agreement with the receiver velocity is not an
+independent accuracy check. It is a computed Doppler solution, not a raw
+Doppler measurement.
 
 Add `--waypoint LAT LON` to report approximate great-circle distance and initial
 true bearing to a destination, and the horizontal velocity component towards it.
+Closing speed uses Doppler course and is omitted when course is suppressed.
 Distances use a mean-radius sphere rather than an ellipsoidal model. Closing
 speed can be negative, and the report does not predict arrival time.
 
@@ -67,4 +76,5 @@ receiver-reported latency when both it and the GPS epoch are available.
 ## References
 
 - Unicore N4 R1.15 BESTNAVXYZ position and velocity fields.
+- Unicore N4 DOPPVEL receiver Doppler velocity fields.
 - BSLNENUHD receiver baseline extension.

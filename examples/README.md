@@ -196,7 +196,7 @@ before rebooting. Other augmentation settings are not explicitly saved.
 
 ### Recording, export and navigation data
 
-- [`journey_track`](journey_track/README.md): Reviews ground motion for sea, air and outdoor sport with optional dual-antenna baseline direction. Check stale and invalid fixes, source transitions and measured cadence; reported precision is not surveyed accuracy.
+- [`journey_track`](journey_track/README.md): Reviews ground motion for sea, air and outdoor sport from paired positions and Doppler velocity, with optional dual-antenna baseline direction. Check epoch pairing, stale and invalid fixes, source transitions and measured cadence; reported precision is not surveyed accuracy.
 - [`navigation_message_hex`](navigation_message_hex/README.md): Dumps navigation messages as annotated hex. Exact wire identity and byte offsets support decoder investigation; reserved bytes have no inferred meaning.
 - [`navigation_messages`](navigation_messages/README.md): Builds navigation tables, sky views and orbit figures. Use an appropriate observer and ephemerides; figures illustrate propagation, not a validated navigation solution.
 - [`rinex_export`](rinex_export/README.md): Writes multi-GNSS RINEX 3.05 from RANGE logs with an omission report. Correct signal mapping, phase convention, epochs and station/antenna metadata; file validity does not establish field accuracy.
