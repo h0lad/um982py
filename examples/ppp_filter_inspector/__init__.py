@@ -12,6 +12,7 @@ from um982py.experimental import (
     PppDebugSatellite,
     ppp_debug_satellite,
 )
+from um982py.gnss import WEEK_SECONDS
 from um982py.measurement import gps_epoch
 from um982py.messages import BinaryMessage, Message
 from um982py.messages.enums import SatelliteSystem
@@ -234,7 +235,9 @@ def match_ppp_range(
         ):
             continue
         try:
-            week, milliseconds = divmod(round(gps_epoch(message) * 1000), 604_800_000)
+            week, milliseconds = divmod(
+                round(gps_epoch(message) * 1000), WEEK_SECONDS * 1000
+            )
         except ValueError:
             continue
         if milliseconds not in targets or milliseconds in ambiguous:

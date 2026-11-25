@@ -12,6 +12,7 @@ from um982py.experimental.orbit import (
     azimuth_elevation,
     state_from_record,
 )
+from um982py.gnss import WEEK_SECONDS
 from um982py.messages import Record
 from um982py.messages.enums import SatelliteSystem
 
@@ -161,7 +162,7 @@ def time_of_flight(record: Record, system: SatelliteSystem, epoch: float) -> flo
         difference = epoch - GPST_MINUS_BDT_SECONDS - record.real("toe")
     else:
         difference = epoch - record.real("toe")
-    return (difference + 302400) % 604800 - 302400
+    return (difference + 302400) % WEEK_SECONDS - 302400
 
 
 _CONSTELLATION_CONSTANTS: dict[SatelliteSystem, str] = {

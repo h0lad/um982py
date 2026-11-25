@@ -20,15 +20,11 @@ from examples._console import (
     write_json,
 )
 from examples._console_capture import capture_logs
-from examples.broadcast_orbit_audit import (
-    LIGHT_SPEED,
-    OrbitDifference,
-    compare_state,
-    sisre_summary,
-)
+from examples.broadcast_orbit_audit import OrbitDifference, compare_state, sisre_summary
 from um982py.commands import Log
 from um982py.experimental.gps_motion import choose_ephemeris
 from um982py.experimental.orbit import KeplerElements, orbit_state
+from um982py.gnss import SPEED_OF_LIGHT, WEEK_SECONDS
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.precise import parse_sp3
@@ -143,7 +139,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             skipped["no_healthy_matching_ephemeris"] += 1
             continue
         elements = KeplerElements.from_record(record)
-        toe = record.integer("week") * 604800 + elements.toe
+        toe = record.integer("week") * WEEK_SECONDS + elements.toe
         dt = point.epoch - toe
         metadata.append(
             {
@@ -264,7 +260,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "common_clock_aligned_m": (
                         row.clock_difference_seconds - median(clocks[row.epoch])
                     )
-                    * LIGHT_SPEED
+                    * SPEED_OF_LIGHT
                     if row.clock_difference_seconds is not None
                     and len(clocks[row.epoch]) >= 4
                     else None,

@@ -2,6 +2,10 @@
 
 Convert receiver UTC to GPST using leap seconds.
 
+The leap-second table here serves host-clock conversion. For the leap
+seconds and announcements broadcast by the satellites, see the
+[UTC and leap-second monitor](../utc_leap_monitor/README.md).
+
 ## Run
 
 Run from the repository root after [installation](../README.md#running-the-examples).

@@ -8,6 +8,7 @@ from enum import StrEnum
 from examples.satellite_monitor import Constellation as SkyConstellation
 from um982py.capture import gps_signals
 from um982py.geodesy import records_from
+from um982py.gnss import F_L1
 from um982py.measurement import gps_epoch
 from um982py.messages import Record, Value
 from um982py.stats import least_squares, percentile
@@ -105,8 +106,7 @@ def _strongest_signals(
     strongest: dict[int, tuple[float, float]] = {}
     if system == 0 and signal == 0:
         observations = [
-            observation
-            for observation, _ in gps_signals(record, [1575.42e6], phase=False)
+            observation for observation, _ in gps_signals(record, [F_L1], phase=False)
         ]
     else:
         observations = [

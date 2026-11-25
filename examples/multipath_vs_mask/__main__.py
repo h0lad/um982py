@@ -15,7 +15,6 @@ from examples._console_capture import open_receiver, selected_log
 from examples._observation_arcs import CarrierState
 from examples.multipath_analysis import Observation
 from examples.multipath_vs_mask import (
-    CARRIER_HZ,
     ZENITH_MULTIPATH_METRES,
     MaskStep,
     ReceiverState,
@@ -38,6 +37,7 @@ from um982py.capture import (
 from um982py.commands import Log
 from um982py.commands.configuration import elevation_mask
 from um982py.experimental.capture import receiver_state
+from um982py.gnss import F_L1
 from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 from um982py.subscriptions import temporary_subscriptions
@@ -285,7 +285,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser.add_argument(
         "--frequency",
         type=float,
-        default=CARRIER_HZ,
+        default=F_L1,
         choices=tuple(GPS_FREQUENCIES.values()),
         help="carrier frequency of the observations in Hz",
     )

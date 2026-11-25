@@ -17,6 +17,7 @@ from examples.cycle_slip_detection import (
 )
 from um982py.capture import gps_signals
 from um982py.commands import Log
+from um982py.gnss import F_L1
 from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 
@@ -24,7 +25,7 @@ from um982py.messages.record import Record
 def read_observations(record: Record, epoch: float) -> tuple[Observation, ...]:
     """First observation per satellite of one RANGE frame."""
     observations = []
-    for item, _ in gps_signals(record, [1575.42e6]):
+    for item, _ in gps_signals(record, [F_L1]):
         prn = item.integer("prn")
         observations.append(
             Observation(

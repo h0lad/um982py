@@ -13,10 +13,11 @@ from um982py.experimental.range_compressed2 import (
     GPS_L1_CODE_WINDOW_M as _WINDOW_M,
 )
 from um982py.geodesy import SPEED_OF_LIGHT
+from um982py.gnss import F_L1, F_L2
 from um982py.messages import Record
 
 _L1_TO_L2_FREQUENCY_RATIO = 154 / 120
-_L2_WAVELENGTH_M = SPEED_OF_LIGHT / 1227.60e6
+_L2_WAVELENGTH_M = SPEED_OF_LIGHT / F_L2
 
 
 @dataclass(frozen=True, slots=True)
@@ -33,11 +34,11 @@ def compare_gps_l1(reference: Record, compressed: CompressedRange2) -> list[Comp
     """Test an L2 phase anchor against a simultaneous full GPS L1 observation."""
     by_prn = {
         row.integer("prn"): row.real("pseudorange")
-        for row, _ in gps_signals(reference, (1575.42e6,), phase=False)
+        for row, _ in gps_signals(reference, (F_L1,), phase=False)
     }
     l2_reference = {
         row.integer("prn"): -row.real("carrier_phase") * _L2_WAVELENGTH_M
-        for row, _ in gps_signals(reference, (1227.60e6,))
+        for row, _ in gps_signals(reference, (F_L2,))
     }
     rows = []
     for satellite in compressed.satellites:

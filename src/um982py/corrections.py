@@ -5,7 +5,7 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from um982py.gnss import b2b_epoch
+from um982py.gnss import b2b_epoch, has_epoch
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.messages.enums import PositionType, enum_member
@@ -255,12 +255,7 @@ def audit_has(
         if received < previous:
             raise ValueError("HAS records must be in reception order")
         previous = received
-        toh = record.integer("toh")
-        if not 0 <= toh < 3600:
-            raise ValueError("HAS time of hour must be in 0..3599")
-        epoch = math.floor(received / 3600) * 3600 + toh
-        if epoch > received:
-            epoch -= 3600
+        epoch = has_epoch(received, record.integer("toh"))
         age = received - epoch
         mask_id, iod = record.integer("mask_id"), record.integer("iod_set_id")
         flags = []

@@ -18,6 +18,7 @@ from um982py.experimental.orbit import (
     orbit_state,
 )
 from um982py.messages.record import Record
+from um982py.stats import cross
 
 SKY_WIDTH = 640.0
 SKY_HEIGHT = 680.0
@@ -189,11 +190,7 @@ def orbital_elements(
         ((speed_squared - mu / radius) * p - dot * v) / mu
         for p, v in zip(position, inertial, strict=True)
     )
-    momentum = (
-        position[1] * inertial[2] - position[2] * inertial[1],
-        position[2] * inertial[0] - position[0] * inertial[2],
-        position[0] * inertial[1] - position[1] * inertial[0],
-    )
+    momentum = cross(position, inertial)
     inclination = math.degrees(
         math.acos(momentum[2] / math.sqrt(sum(component**2 for component in momentum)))
     )

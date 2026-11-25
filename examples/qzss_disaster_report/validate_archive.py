@@ -6,6 +6,7 @@ import json
 from collections import Counter
 from pathlib import Path
 
+from um982py.gnss import WEEK_SECONDS
 from um982py.messages.qzss_dcr import decode_qzqsm
 from um982py.messages.record import Record
 
@@ -26,7 +27,7 @@ def validate_archive(data: bytes) -> dict[str, object]:
         block = data[start : start + 36]
         stamp = int.from_bytes(block[:4], "big")
         timestamp = stamp >> 20, stamp & ((1 << 20) - 1)
-        if timestamp[1] >= 604800:
+        if timestamp[1] >= WEEK_SECONDS:
             raise ValueError("archive contains an invalid GPS time of week")
         first = timestamp if first is None else first
         last = timestamp

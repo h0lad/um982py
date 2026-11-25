@@ -6,20 +6,17 @@ from dataclasses import dataclass
 
 from examples.ionosphere_tec import Observation, slant_tec
 from um982py.geodesy import SPEED_OF_LIGHT
+from um982py.gnss import DAY_SECONDS, F_L1, IONOSPHERE_CONSTANT, TECU
 from um982py.messages import Record
 
-GPS_L1_HZ = 1575.42e6
-IONOSPHERE_COEFFICIENT = 40.3
-TECU = 1e16
 NIGHT_TIME_DELAY_SECONDS = 5e-9
-SECONDS_PER_DAY = 86_400.0
 PEAK_LOCAL_SECONDS = 50_400.0
 SEMICIRCLE_DEGREES = 180.0
 GEOMAGNETIC_LIMIT = 0.416
 
 __all__ = [
-    "GPS_L1_HZ",
-    "IONOSPHERE_COEFFICIENT",
+    "F_L1",
+    "IONOSPHERE_CONSTANT",
     "NIGHT_TIME_DELAY_SECONDS",
     "KlobucharCoefficients",
     "diurnal_profile",
@@ -127,7 +124,7 @@ def vertical_delay_seconds(
     magnetic_latitude = geomagnetic_latitude + 0.064 * math.cos(
         math.pi * (geomagnetic_longitude - 1.617)
     )
-    local_seconds = (43_200.0 * geomagnetic_longitude + gps_seconds) % SECONDS_PER_DAY
+    local_seconds = (43_200.0 * geomagnetic_longitude + gps_seconds) % DAY_SECONDS
     period = coefficients.period(magnetic_latitude)
     amplitude = coefficients.amplitude(magnetic_latitude)
     phase = 2.0 * math.pi * (local_seconds - PEAK_LOCAL_SECONDS) / period
@@ -167,7 +164,7 @@ def vertical_delay_from_slant_tec(
 ) -> float:
     """L1 vertical delay in metres from a slant TEC in TECU."""
     vertical_tec = slant_tec_tecu / obliquity_factor(elevation_degrees)
-    return IONOSPHERE_COEFFICIENT * vertical_tec * TECU / GPS_L1_HZ**2
+    return IONOSPHERE_CONSTANT * vertical_tec * TECU / F_L1**2
 
 
 def measured_vertical_delay(
@@ -183,7 +180,7 @@ def measured_vertical_delay(
 def local_solar_seconds(gps_seconds: float, longitude_degrees: float) -> float:
     """Local solar time of day in seconds for a longitude."""
     offset = longitude_degrees / 15.0 * 3600.0
-    return (gps_seconds + offset) % SECONDS_PER_DAY
+    return (gps_seconds + offset) % DAY_SECONDS
 
 
 def diurnal_profile(

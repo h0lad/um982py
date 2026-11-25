@@ -29,12 +29,14 @@ __all__ = [
     "F_L2",
     "F_L5",
     "GPS_EPOCH",
+    "IONOSPHERE_CONSTANT",
     "J2_GLONASS",
     "MU",
     "MU_GALILEO_BEIDOU",
     "MU_GLONASS",
     "PZ90_A",
     "SPEED_OF_LIGHT",
+    "TECU",
     "WEEK_SECONDS",
     "WGS84_A",
     "WGS84_E2",
@@ -42,6 +44,8 @@ __all__ = [
     "b2b_epoch",
     "bdt_week_to_gps_seconds",
     "gps_to_utc",
+    "has_epoch",
+    "leap_seconds_at",
     "unwrap_time",
     "wrap",
 ]
@@ -70,6 +74,11 @@ PZ90_A = 6_378_136.0
 """PZ-90 semi-major axis used by the GLONASS equations of motion (m)."""
 J2_GLONASS = 1.0826257e-3
 """Second zonal harmonic of the GLONASS ICD geopotential."""
+
+IONOSPHERE_CONSTANT = 40.3
+"""First-order ionospheric delay constant, delay = 40.3 TEC / f^2 (m^3/s^2)."""
+TECU = 1e16
+"""One TEC unit in electrons per square metre."""
 
 F_L1 = 1575.42e6
 """GPS L1, Galileo E1, BeiDou B1C, QZSS L1 and SBAS L1 carrier (Hz)."""
@@ -170,3 +179,40 @@ def b2b_epoch(received_gps_seconds: float, seconds_of_day: int) -> float:
         raise ValueError("BeiDou seconds of day must be in 0..86399")
     received_bdt = received_gps_seconds - BDT_GPS_SECONDS
     return unwrap_time(received_bdt, seconds_of_day, DAY_SECONDS) + BDT_GPS_SECONDS
+
+
+def has_epoch(received_gps_seconds: float, time_of_hour: int) -> float:
+    """Resolve a Galileo HAS time of hour to the latest hour not after receipt.
+
+    GST counts the same seconds as GPST, so the result is in GPS seconds.
+    """
+    if not math.isfinite(received_gps_seconds):
+        raise ValueError("receiver epoch must be finite")
+    if type(time_of_hour) is not int or not 0 <= time_of_hour < 3600:
+        raise ValueError("HAS time of hour must be in 0..3599")
+    epoch = math.floor(received_gps_seconds / 3600) * 3600 + time_of_hour
+    return epoch - 3600 if epoch > received_gps_seconds else epoch
+
+
+def leap_seconds_at(
+    gps_seconds: float, *, deltat_ls: int, wn_lsf: int, dn: int, deltat_lsf: int
+) -> int:
+    """GPS-UTC whole seconds at an epoch from broadcast UTC parameters.
+
+    IS-GPS-200 section 20.3.3.5.2.4: ``deltat_lsf`` takes effect at the end
+    of day ``dn`` (1 = Sunday) of week ``wn_lsf``, at UTC midnight. An 8-bit
+    ``wn_lsf`` is resolved to the week nearest the epoch.
+    """
+    if not math.isfinite(gps_seconds):
+        raise ValueError("GPS epoch must be finite")
+    _check_leap_seconds(deltat_ls)
+    _check_leap_seconds(deltat_lsf)
+    if type(dn) is not int or not 1 <= dn <= 7:
+        raise ValueError("leap-second day number must be in 1..7")
+    if type(wn_lsf) is not int or wn_lsf < 0:
+        raise ValueError("leap-second week must be a non-negative integer")
+    week = gps_seconds / WEEK_SECONDS
+    if wn_lsf < 256:
+        wn_lsf = round(unwrap_time(week, wn_lsf, 256))
+    effective = wn_lsf * WEEK_SECONDS + dn * DAY_SECONDS + deltat_ls
+    return deltat_lsf if gps_seconds >= effective else deltat_ls

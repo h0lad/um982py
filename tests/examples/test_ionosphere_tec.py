@@ -1,7 +1,6 @@
 from collections.abc import Sequence
 
 from examples.ionosphere_tec import (
-    TECU,
     TECU_PER_METRE,
     Observation,
     TecRate,
@@ -15,6 +14,7 @@ from examples.ionosphere_tec import (
 from pytest import approx
 
 from um982py.geodesy import wavelength
+from um982py.gnss import TECU
 from um982py.stats import stddev
 
 L1_HZ = 1575.42e6

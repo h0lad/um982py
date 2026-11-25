@@ -14,10 +14,10 @@ from examples.multipath_analysis import (
     rms,
 )
 from um982py.geodesy import records_from, wavelength
+from um982py.gnss import F_L1
 from um982py.messages.record import Record
 from um982py.receiver_models import LogList
 
-CARRIER_HZ = 1575.42e6
 ZENITH_MULTIPATH_METRES = 0.5
 GEOMETRY_METRES = 22_000_000.0
 LOWEST_ELEVATION = 0.5
@@ -115,18 +115,18 @@ def synthetic_observations(
     if samples <= 1:
         raise ValueError("at least two samples are required")
     cadence = period / SAMPLES_PER_PERIOD
-    carrier_wavelength = wavelength(CARRIER_HZ)
+    carrier_wavelength = wavelength(F_L1)
     return tuple(
         Observation(
             prn=signal.prn,
             epoch=index * cadence,
-            frequency_hz=CARRIER_HZ,
+            frequency_hz=F_L1,
             pseudorange=GEOMETRY_METRES
             + signal.amplitude * math.sin(2 * math.pi * index / SAMPLES_PER_PERIOD),
             carrier_phase=-GEOMETRY_METRES / carrier_wavelength,
             carrier_state=CarrierState(
                 epoch=index * cadence,
-                frequency_hz=CARRIER_HZ,
+                frequency_hz=F_L1,
                 signal=0,
                 lock_seconds=index * cadence + 1,
                 phase_cycles=-GEOMETRY_METRES / carrier_wavelength,

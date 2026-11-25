@@ -110,7 +110,6 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`has_b2b_ppp_fix`](has_b2b_ppp_fix/README.md): Averages Galileo E6-HAS and BeiDou B2b-PPP fixes with divergence telemetry. Service availability, convergence, freshness and datum must be checked; a PPP label alone is insufficient.
 - [`maritime_cog_heading`](maritime_cog_heading/README.md): Compares single-antenna course over ground with dual-antenna heading for marine platforms. COG/heading differences include current, leeway and latency; they are not purely attitude errors.
 - [`ppp_convergence_benchmark`](ppp_convergence_benchmark/README.md): Measures time-to-first-fix and sustained precision for PPP services, with optional reference-position error CDFs. Convergence is defined by receiver-reported precision, not independent truth.
-- [`uncertainty_coverage`](uncertainty_coverage/README.md): Summarises reported BESTNAV standard deviations and checks their empirical coverage against the sample mean. Coverage fractions are optimistic because the same data set supplies both estimates.
 - [`live_position`](live_position/README.md): Streams deduplicated GGA fixes in a refreshable dashboard with Doppler motion, detailed fix type, uncertainty, DOP and GNSS statistics, and reconnects after receiver transport failures. Check validity, freshness and predicted-fix indicators; this is the preferred basic integration reference.
 - [`ntrip_client`](ntrip_client/README.md): Applies public NTRIP RTCM corrections to a UM982 rover with optional RTK reliability settings. Check correction age, reconnect behavior, GGA and station consistency; successful transport is not proof of an RTK fix.
 - [`ntrip_sources`](ntrip_sources/README.md): Lists caster mountpoints and their advertised locations. Advertised formats/coverage are server metadata; actual availability requires a connection and usable corrections.
@@ -129,7 +128,6 @@ before rebooting. Other augmentation settings are not explicitly saved.
 
 ### Geometry, orbits and attitude
 
-- [`attitude_budget`](attitude_budget/README.md): Turns baseline noise into heading and pitch uncertainty. Use baseline component uncertainty; absolute position sigma cannot substitute for it.
 - [`azel_crosscheck`](azel_crosscheck/README.md): Checks broadcast-orbit azimuth and elevation against SATVIS2. Valid nearby observer position and suitable ephemerides; receiver agreement is not independent orbit truth.
 - [`broadcast_orbit_audit`](broadcast_orbit_audit/README.md): Compares broadcast orbits with a precise SP3 product. Align satellite, epoch, frame and clock conventions; report missing products and interpolation limits.
 - [`coordinate_frames`](coordinate_frames/README.md): Converts between ECEF, geodetic, ENU and baselines. Match position/baseline epochs and use the physical primary origin; round-trip residuals are numerical consistency.
@@ -138,10 +136,11 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`doppler_velocity`](doppler_velocity/README.md): Solves velocity and clock drift from GPS Doppler. The native receiver example compares ECEF velocity and per-axis uncertainty at matched epochs.
 - [`elevation_optimizer`](elevation_optimizer/README.md): Finds the elevation mask with the best satellite geometry. Noise and geometry vary together; verify the chosen mask on another collection.
 - [`ephemeris_orbit`](ephemeris_orbit/README.md): Propagates broadcast ephemerides for four constellations with each system's ICD constants and the BeiDou GEO frame rotation. Offsets are relative to each ephemeris, not a common epoch; time-system conversion, health/age selection and uncertainty are outside this demonstration.
+- [`has_orbit_audit`](has_orbit_audit/README.md): Applies Galileo E6-HAS orbit and clock corrections to the GPS and Galileo broadcast ephemerides they reference and scores both against an SP3 product as SISRE. Needs a matching precise product and the satellite phase-centre offset; per-epoch clock alignment removes only the common datum.
 - [`heading_attitude`](heading_attitude/README.md): Turns a dual-antenna baseline into heading and pitch. Respect antenna direction, installation offset and solution status; heading precision depends on baseline geometry.
 - [`heading_baseline_constraint`](heading_baseline_constraint/README.md): Estimates heading and pitch while constraining the BSLNENUHD baseline to the measured antenna separation. Residuals are relative to the receiver's UNIHEADING, not independent truth.
+- [`relativistic_clock`](relativistic_clock/README.md): Sizes the eccentricity term of every broadcast satellite clock and solves GPS positions with and without it. Reports only the difference between the two solutions; the shift depends on the satellite geometry.
 - [`dual_rtk_consistency`](dual_rtk_consistency/README.md): Cross-checks position-derived baselines against UNIHEADING. Receiver outputs can share errors and are not independent truth.
-- [`orbit_position_effect`](orbit_position_effect/README.md): Maps assumed orbit errors into expected horizontal, vertical and 3-D position errors through the current DOP. A first-order scalar approximation, not a rigorous covariance analysis.
 - [`vadase`](vadase/README.md): Solves displacement and velocity from time-differenced carrier phase. Continuous carrier arcs, satellite motion and clock estimation; event attribution needs independent motion evidence.
 
 ### Signals, antennas and interference
@@ -162,7 +161,6 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`field_recording`](field_recording/README.md): Records and verifies segmented receiver byte streams. Keep raw bytes, metadata and manifests; loss counters and interrupted-session state matter.
 - [`unattended_station`](unattended_station/README.md): Records resumable research segments and a station journal. Monitor gaps, storage, reconnects and manifests; hardware/power-loss testing is needed for the intended installation.
 - [`polar_ionosphere`](polar_ionosphere/README.md): Compares code TEC proxies with signal tracking and receiver status. Continuous observations, geometry and independent event labels; association alone does not prove cause.
-- [`ice_motion`](ice_motion/README.md): Computes position-derived ECEF and ENU motion from field data. Ordered position epochs, a stable reference and independent site evidence; receiver motion is not automatically ice motion.
 - [`research_session`](research_session/README.md): Records observations and ephemerides and exports reproducible RINEX and provenance. Preserve station metadata and paired-antenna identity; independent reference comparison needs compatible frames/epochs.
 - [`compressed_observation_audit`](compressed_observation_audit/README.md): Compares compressed observations with simultaneous RANGE data. Measures the wire-size ratio, GPS L1 pseudorange wraps and how often L2 phase resolves them.
 - [`satellite_health_timeline`](satellite_health_timeline/README.md): Reports time-stamped GPS, Galileo, GLONASS and BeiDou health from receiver logs. Time-order status evidence and keep missing records unknown; silence is not restored health.
@@ -171,9 +169,6 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`cycle_slip_detection`](cycle_slip_detection/README.md): Flags cycle slips from Doppler consistency. Requires observed increments within bounded gaps; lock resets are new arcs and flags are candidates.
 - [`hatch_smoothing`](hatch_smoothing/README.md): Smooths code with carrier phase and resets on cycle slips. Reset on discontinuities; smoothing reduces code noise but retains bias and can accumulate ionospheric divergence.
 - [`multipath_analysis`](multipath_analysis/README.md): Calculates RMS code-minus-carrier residuals as a multipath proxy. Detrend continuous arcs with enough samples; residuals include noise and model error as well as multipath.
-- [`multifrequency_slips`](multifrequency_slips/README.md): Detects cycle-slip candidates from dual-frequency geometry-free phase combinations. Jumps can also be caused by rapid ionospheric change; the flags are candidates, not confirmed slips.
-- [`noise_multipath`](noise_multipath/README.md): Separates code-noise and multipath-bias proxies from code-minus-carrier residuals per short arc. The mean includes ambiguity offset and ionospheric drift; use as a relative quality proxy.
-- [`phase_fluctuations`](phase_fluctuations/README.md): Estimates short-term carrier-phase fluctuation per satellite after removing a linear trend. Residuals contain multipath and scintillation; calibrate phase noise with a zero-baseline test.
 - [`multipath_vs_mask`](multipath_vs_mask/README.md): Sweeps elevation masks and checks receiver state. Replay filters one pass; synthetic inverse-sine behavior is an assumption, and empty masks have no measured RMS.
 - [`sidereal_multipath`](sidereal_multipath/README.md): Checks whether multipath repeats after one sidereal day. Separate training and test captures from different repeat days (at least 23 h apart), with aligned signal/geometry; evaluate improvement on held-out data.
 - [`triple_frequency_closure`](triple_frequency_closure/README.md): Tests triple-frequency combinations that cancel geometry and ionosphere. Match simultaneous continuous carriers; closure detects some combinations and has insensitive modes.
@@ -181,11 +176,9 @@ before rebooting. Other augmentation settings are not explicitly saved.
 ### Atmosphere and reflectometry
 
 - [`gnss_reflectometry`](gnss_reflectometry/README.md): Estimates reflector heights and guides snow-depth and water-level comparisons, including a no-hardware demonstration. Continuous elevation arcs and suitable reflecting surfaces; snow/water interpretations need surveyed datum and field references.
-- [`spatial_tec`](spatial_tec/README.md): Compares matched slant-TEC changes between two stations. Requires synchronized continuous carrier arcs; it does not map pierce points or estimate absolute TEC.
 - [`ionosphere_tec`](ionosphere_tec/README.md): Computes slant TEC, ROT and ROTI from dual-frequency ranges. Ambiguities and hardware biases limit absolute TEC; preserve continuous signal identity.
 - [`klobuchar_vs_tec`](klobuchar_vs_tec/README.md): Compares Klobuchar delay with dual-frequency TEC. Match observer/visibility epochs and valid coefficients; uncalibrated differential code biases remain.
 - [`pwv_meteorology`](pwv_meteorology/README.md): Derives precipitable water vapour from zenith wet delay. Requires valid delay, pressure and temperature assumptions; a manual calculation is not a receiver-derived weather observation.
-- [`scintillation_monitor`](scintillation_monitor/README.md): Computes an uncalibrated S4-like proxy from C/N₀. Requires regular per-signal samples; filtered C/N0 lacks calibrated intensity and thermal-noise correction.
 
 ### Time and startup
 
@@ -193,6 +186,7 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`clock_stability`](clock_stability/README.md): Computes Allan deviation from receiver clock offsets. Requires sufficient regular epochs; receiver clock estimates are not independent oscillator measurements.
 - [`time_transfer`](time_transfer/README.md): Converts receiver UTC to GPST using leap seconds. Distinguish UTC from GPST and receiver timestamps from external PPS measurements; absolute transfer needs calibrated delays.
 - [`ttff_profile`](ttff_profile/README.md): Measures time to first fix after cold or warm starts. Controlled restart conditions and explicit reset time; failed/censored runs must remain in the report.
+- [`utc_leap_monitor`](utc_leap_monitor/README.md): Cross-checks GPS, Galileo and BeiDou UTC parameters, announced leap seconds and the Galileo-GPS time offset from the navigation messages, without a leap-second table. A brief disagreement around an announcement is expected; parameters from another week raise an alarm.
 
 ### Recording, export and navigation data
 
@@ -212,15 +206,6 @@ before rebooting. Other augmentation settings are not explicitly saved.
 - [`inav_page_capture`](inav_page_capture/README.md): Captures the decoded Galileo E1-B I/NAV pages stored per signal, including odd-part OSNMA data. One snapshot returns one page per signal; sub-frame assembly needs repeated captures.
 - [`raw_data_tracking`](raw_data_tracking/README.md): Parses raw DSP tracking containers, inner messages and notices. Retain epoch, signal, validity and lock identity; raw observations alone do not solve position.
 - [`tracking_field_lab`](tracking_field_lab/README.md): Correlates unknown tracking fields with your own labels. Independent event labels and continuous capture; receiver indicators alone cannot create ground-truth labels.
-
-### Controlled scientific experiments
-
-- [`spatial_tec`](spatial_tec/README.md): Compares TEC changes at two stations. Match time, frequency and phase conventions; spatial interpretation requires actual station geometry and continuous arcs.
-- [`noise_multipath`](noise_multipath/README.md): Compares shared-antenna noise and repeat-track measurements. Supply controlled paired data and compatible repeat geometry; variance attribution depends on those controls.
-- [`multifrequency_slips`](multifrequency_slips/README.md): Tests ideal responses to injected cycle slips. Enumerates assumed frequencies/thresholds; a simulated detection matrix is not a measured detection rate.
-- [`uncertainty_coverage`](uncertainty_coverage/README.md): Compares reported uncertainty with position errors. Independent truth in compatible axes/epochs; temporal correlation limits confidence in finite-sample coverage.
-- [`phase_fluctuations`](phase_fluctuations/README.md): Measures carrier phase variability. Supply range-increasing metres and explicit arc IDs; gap rejection does not independently validate the physical source.
-- [`orbit_position_effect`](orbit_position_effect/README.md): Estimates the position effect of satellite state errors. Input rows share an epoch and conventions; conditioning and linearization bound the inference.
 
 ## Adapting an example
 

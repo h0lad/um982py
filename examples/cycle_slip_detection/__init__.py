@@ -7,8 +7,6 @@ from itertools import pairwise
 
 from um982py.geodesy import wavelength
 
-GPS_L1_HZ = 1575.42e6
-GPS_L2_HZ = 1227.60e6
 SLIP_THRESHOLD_CYCLES = 0.5
 GEOMETRY_FREE_THRESHOLD_METRES = 0.05
 DEFAULT_MAX_GAP_SECONDS = 2.0

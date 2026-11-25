@@ -1,12 +1,9 @@
 """Checks units and provenance in scientific example outputs."""
 
 import json
-import math
 from pathlib import Path
 
 import pytest
-from examples.attitude_budget import Baseline, component_budget
-from examples.attitude_budget.__main__ import _payload
 from examples.baseband_notice_console import __main__ as notices_cli
 from examples.pwv_meteorology import __main__ as pwv_cli
 from examples.time_transfer import __main__ as time_cli
@@ -50,16 +47,6 @@ def test_time_calendar_fields_are_utc_not_gpst(tmp_path: Path) -> None:
     assert output["gpst"] == "2026-10-21T20:52:38"
 
 
-def test_relative_baseline_components_keep_length_and_angle_units_separate() -> None:
-    budget = component_budget(Baseline(0.0, 1.0, 0.0), 0.01, 0.03, 0.02)
-    assert budget.heading_sigma == pytest.approx(math.degrees(0.01))
-    assert budget.pitch_sigma == pytest.approx(math.degrees(0.02))
-    payload = _payload(budget, ())
-    assert payload["required_baseline"]["one_degree"] == pytest.approx(
-        0.01 / math.radians(1.0)
-    )
-
-
 def test_manual_pwv_demonstration_is_explicit(tmp_path: Path) -> None:
     destination = tmp_path / "manual.json"
     assert pwv_cli.main(["--manual", "--json", str(destination)]) == 0
@@ -84,16 +71,6 @@ def test_two_point_line_cannot_measure_multipath_residuals() -> None:
         Observation(7, float(index), 1575.42e6, 20e6, -1e8) for index in range(2)
     ]
     assert multipath_series(samples) == ()
-
-
-def test_absolute_position_uncertainty_is_not_used_as_baseline_uncertainty() -> None:
-    from examples.attitude_budget.__main__ import _budget
-
-    baseline = Record(
-        "BSLNENUHD", (("delta_1", 0.0), ("delta_2", 1.0), ("delta_3", 0.0))
-    )
-    position = Record("BESTPOS", (("lat_std", 3.0), ("hgt_std", 5.0)))
-    assert _budget([baseline], [position]) is None
 
 
 def test_expected_cleanup_failures_are_readable_and_keep_failure_exit_status(

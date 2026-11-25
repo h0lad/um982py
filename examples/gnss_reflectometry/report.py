@@ -11,7 +11,6 @@ from examples.gnss_reflectometry import (
     MINIMUM_ELEVATION_SPAN,
     MINIMUM_SAMPLES,
     PEAK_TO_NOISE_THRESHOLD,
-    SPEED_OF_LIGHT,
     Arc,
     ArcResult,
     ReflectometryJoin,
@@ -21,6 +20,7 @@ from examples.gnss_reflectometry import (
     reflection_footprint,
     segment_arcs,
 )
+from um982py.gnss import SPEED_OF_LIGHT
 from um982py.signals import tracking_signal
 
 

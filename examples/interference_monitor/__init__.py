@@ -7,6 +7,7 @@ from enum import StrEnum
 from types import MappingProxyType
 
 from um982py.capture import gps_signals
+from um982py.gnss import F_L1
 from um982py.messages import Record, SpoofInfo, Value
 from um982py.stats import percentile
 
@@ -142,7 +143,7 @@ def cn0_samples(records: Sequence[Record]) -> tuple[Cn0Sample, ...]:
     samples: list[Cn0Sample] = []
     for epoch, record in enumerate(records):
         strongest: dict[int, float] = {}
-        for observation, _ in gps_signals(record, [1575.42e6], phase=False):
+        for observation, _ in gps_signals(record, [F_L1], phase=False):
             satellite = observation.integer("prn")
             cn0 = observation.real("cn0")
             strongest[satellite] = max(cn0, strongest.get(satellite, cn0))

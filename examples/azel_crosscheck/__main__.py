@@ -22,6 +22,7 @@ from examples.azel_crosscheck import (
 from um982py.capture import decode_records, read_frames, select_position_pair
 from um982py.commands import Log
 from um982py.geodesy import receiver_ecef
+from um982py.gnss import WEEK_SECONDS
 from um982py.measurement import gps_epoch
 from um982py.messages import (
     Record,
@@ -157,7 +158,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if first_satellite is None:
         parser.error("SATVIS2 frame carries no timestamp")
     absolute_epoch = gps_epoch(first_satellite)
-    epoch = absolute_epoch % 604800.0
+    epoch = absolute_epoch % WEEK_SECONDS
     satellite_records = tuple(
         record
         for record in satellite_records

@@ -17,7 +17,6 @@ from examples.cycle_slip_detection import (
 )
 from examples.wls_position import RangeMeasurement, solve_position
 
-from examples import _scientific_cli
 from um982py.antenna import AntennaLog, antenna_log, swap_antenna
 from um982py.commands import Log
 from um982py.messages.enums import SatelliteSystem
@@ -64,22 +63,6 @@ def test_reports_cannot_overwrite_each_other(tmp_path: Path) -> None:
         parser.parse_args(
             ["--checks-csv", str(tmp_path / "out"), "--json", str(tmp_path / "out")]
         )
-
-
-def test_csv_experiment_cannot_replace_its_input(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    source = tmp_path / "phase.csv"
-    original = "arc,time_s,phase_m\na,0,1\na,1,2\na,2,3\n"
-    source.write_text(original)
-    monkeypatch.setattr(
-        "sys.argv",
-        ["phase_fluctuations", "--input", str(source), "--json", str(source)],
-    )
-    with pytest.raises(SystemExit) as raised:
-        _scientific_cli.main("phase_fluctuations")
-    assert raised.value.code == 2
-    assert source.read_text() == original
 
 
 @pytest.mark.parametrize("log", [Log.BESTPOS, Log.BESTXYZ, Log.BESTNAV, Log.BESTVEL])

@@ -16,7 +16,6 @@ from examples._console import (
 from examples._console_capture import capture_records, selected_log
 from examples.ionosphere_tec import Observation
 from examples.klobuchar_vs_tec import (
-    GPS_L1_HZ,
     KlobucharCoefficients,
     measured_vertical_delay,
     vertical_delay_metres,
@@ -29,12 +28,12 @@ from um982py.capture import (
 )
 from um982py.commands import Log
 from um982py.geodesy import geodetic_from_ecef
+from um982py.gnss import F_L1, F_L5, WEEK_SECONDS
 from um982py.measurement import gps_epoch
 from um982py.messages import (
     Record,
 )
 
-L5_HZ = 1176.45e6
 GPS_L1_SIGNAL_TYPE = 0
 GPS_L5_SIGNAL_TYPE = 14
 SATELLITE_SYSTEM_SHIFT = 16
@@ -47,10 +46,10 @@ def gps_pairs(record: Record) -> dict[int, tuple[Observation, Observation]]:
     """L1/L5 observation pair of every dual-frequency GPS satellite."""
     by_prn: dict[int, dict[int, Observation]] = {}
     for observation, frequency in gps_signals(record, phase=False):
-        signal = GPS_L1_SIGNAL_TYPE if frequency == GPS_L1_HZ else GPS_L5_SIGNAL_TYPE
+        signal = GPS_L1_SIGNAL_TYPE if frequency == F_L1 else GPS_L5_SIGNAL_TYPE
         by_prn.setdefault(observation.integer("prn"), {})[signal] = Observation(
             prn=observation.integer("prn"),
-            frequency_hz=(GPS_L1_HZ if signal == GPS_L1_SIGNAL_TYPE else L5_HZ),
+            frequency_hz=(F_L1 if signal == GPS_L1_SIGNAL_TYPE else F_L5),
             pseudorange=observation.real("pseudorange"),
             carrier_phase=observation.real("carrier_phase"),
         )
@@ -231,7 +230,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             position.real("p_x"), position.real("p_y"), position.real("p_z")
         )
     pairs = gps_pairs(range_record)
-    epoch = gps_epoch(range_record.message) % 604800.0
+    epoch = gps_epoch(range_record.message) % WEEK_SECONDS
     gps_seconds = gps_epoch(range_record)
     coefficient_epoch = coefficient_epochs[
         bisect_right(coefficient_epochs, gps_seconds) - 1

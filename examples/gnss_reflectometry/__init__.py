@@ -6,11 +6,11 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass, field
 from itertools import pairwise
 
+from um982py.gnss import SPEED_OF_LIGHT
 from um982py.messages.record import Record
 from um982py.signals import tracking_signal
 from um982py.stats import detrend, finite, least_squares, lomb_scargle, mean
 
-SPEED_OF_LIGHT = 299_792_458.0
 MIN_ELEVATION_DEGREES = 5.0
 MAX_ELEVATION_DEGREES = 30.0
 MIN_HEIGHT_METRES = 1.0

@@ -8,17 +8,10 @@ from statistics import median
 
 from examples._observation_arcs import CarrierState
 from um982py.geodesy import wavelength
+from um982py.gnss import F_L1, F_L2, IONOSPHERE_CONSTANT, TECU
 from um982py.stats import mean, stddev
 
-GPS_L1_HZ = 1575.42e6
-GPS_L2_HZ = 1227.60e6
-IONOSPHERE_COEFFICIENT = 40.3
-TECU = 1e16
-TECU_PER_METRE = (
-    GPS_L1_HZ**2
-    * GPS_L2_HZ**2
-    / ((GPS_L1_HZ**2 - GPS_L2_HZ**2) * IONOSPHERE_COEFFICIENT * TECU)
-)
+TECU_PER_METRE = F_L1**2 * F_L2**2 / ((F_L1**2 - F_L2**2) * IONOSPHERE_CONSTANT * TECU)
 ROTI_WINDOW_MINUTES = 5.0
 SECONDS_PER_MINUTE = 60.0
 
@@ -77,7 +70,7 @@ class TecReport:
 def tec_scale_per_metre(frequency_a: float, frequency_b: float) -> float:
     """Slant TEC in TECU per metre of differential code delay."""
     high, low = sorted((frequency_a, frequency_b), reverse=True)
-    return high**2 * low**2 / ((high**2 - low**2) * IONOSPHERE_COEFFICIENT * TECU)
+    return high**2 * low**2 / ((high**2 - low**2) * IONOSPHERE_CONSTANT * TECU)
 
 
 def _frequency_pair(

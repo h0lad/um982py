@@ -7,6 +7,7 @@ from examples.wls_position import RangeMeasurement
 from um982py.capture import gps_signals
 from um982py.experimental.orbit import EARTH_ROTATION_RATE, state_from_record
 from um982py.geodesy import SPEED_OF_LIGHT
+from um982py.gnss import F_L1, WEEK_SECONDS
 from um982py.messages import Record
 from um982py.messages.enums import SatelliteSystem
 
@@ -15,7 +16,6 @@ SATELLITE_SYSTEM_SHIFT = 16
 SATELLITE_SYSTEM_MASK = 0b111
 SIGNAL_TYPE_SHIFT = 21
 SIGNAL_TYPE_MASK = 0b11111
-GPS_WEEK_SECONDS = 604800.0
 MAX_EPHEMERIS_AGE_SECONDS = 7200.0
 
 
@@ -26,7 +26,7 @@ def select_gps_ephemerides(
     travel_by_prn = (
         {
             item.integer("prn"): item.real("pseudorange") / SPEED_OF_LIGHT
-            for item, _ in gps_signals(ranges, [1575.42e6], phase=False)
+            for item, _ in gps_signals(ranges, [F_L1], phase=False)
         }
         if ranges is not None
         else {}
@@ -38,7 +38,7 @@ def select_gps_ephemerides(
                 "iode1"
             ) != record.integer("iode2"):
                 continue
-            toe = record.integer("week") * GPS_WEEK_SECONDS + record.real("toe")
+            toe = record.integer("week") * WEEK_SECONDS + record.real("toe")
             prn = record.integer("prn")
             age = abs(epoch - travel_by_prn.get(prn, 0.0) - toe)
         except KeyError, TypeError, ValueError:
@@ -56,7 +56,7 @@ def gps_l1_measurements(
     record: Record, ephemerides: dict[int, Record], epoch: float
 ) -> tuple[RangeMeasurement, ...]:
     selected: dict[int, Record] = {}
-    for observation, _ in gps_signals(record, [1575.42e6], phase=False):
+    for observation, _ in gps_signals(record, [F_L1], phase=False):
         tracking = observation.integer("tracking_status")
         system = (tracking >> SATELLITE_SYSTEM_SHIFT) & SATELLITE_SYSTEM_MASK
         signal = (tracking >> SIGNAL_TYPE_SHIFT) & SIGNAL_TYPE_MASK
@@ -89,6 +89,7 @@ def gps_l1_measurements(
                 pseudorange=observation.real("pseudorange"),
                 pseudorange_std=observation.real("pseudorange_std"),
                 satellite_clock=state.clock_bias,
+                relativity=state.relativity,
             )
         )
     return tuple(measurements)

@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 from examples.broadcast_orbit_audit import (
-    LIGHT_SPEED,
     RADIAL_WEIGHT,
     OrbitDifference,
     compare_state,
@@ -16,6 +15,7 @@ from examples.broadcast_orbit_audit import (
 
 from tests.examples._specialist import FIXTURES
 from um982py.experimental.orbit import KeplerElements, orbit_state
+from um982py.gnss import SPEED_OF_LIGHT
 
 ANCHORS = json.loads((FIXTURES / "rtklib-orbits.json").read_text())["cases"]
 
@@ -97,14 +97,14 @@ def test_radial_error_alone_is_weighted_by_the_documented_factor() -> None:
 
 
 def test_a_clock_offset_cancels_the_radial_orbit_error() -> None:
-    clock = RADIAL_WEIGHT / LIGHT_SPEED
+    clock = RADIAL_WEIGHT / SPEED_OF_LIGHT
     assert signal_in_space_range_error(difference(1.0, clock=clock)) == pytest.approx(
         0.0, abs=1e-12
     )
 
 
 def test_clock_only_error_is_not_radially_weighted() -> None:
-    assert signal_in_space_range_error(difference(0, clock=2 / LIGHT_SPEED)) == 2
+    assert signal_in_space_range_error(difference(0, clock=2 / SPEED_OF_LIGHT)) == 2
 
 
 def test_seven_metres_along_track_scores_one_metre_of_variance() -> None:

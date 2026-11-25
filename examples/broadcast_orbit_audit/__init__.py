@@ -4,7 +4,8 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from um982py.stats import Vector, dot, finite, norm, subtract, unit
+from um982py.gnss import EARTH_ROTATION_RATE, SPEED_OF_LIGHT
+from um982py.stats import Vector, cross, dot, finite, norm, subtract, unit
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,21 +36,15 @@ def compare_state(
     finite(epoch, *broadcast, *reference, *velocity_ecef, broadcast_clock)
     if reference_clock is not None:
         finite(reference_clock)
-    omega = 7.2921151467e-5
+    omega = EARTH_ROTATION_RATE
     velocity = (
         velocity_ecef[0] - omega * broadcast[1],
         velocity_ecef[1] + omega * broadcast[0],
         velocity_ecef[2],
     )
     radial = unit(broadcast)
-    x, y, z = broadcast
-    vx, vy, vz = velocity
-    cross = unit((y * vz - z * vy, z * vx - x * vz, x * vy - y * vx))
-    along = (
-        cross[1] * radial[2] - cross[2] * radial[1],
-        cross[2] * radial[0] - cross[0] * radial[2],
-        cross[0] * radial[1] - cross[1] * radial[0],
-    )
+    normal = unit(cross(broadcast, velocity))
+    along = cross(normal, radial)
     delta = subtract(broadcast, reference)
     return OrbitDifference(
         satellite,
@@ -57,7 +52,7 @@ def compare_state(
         delta,
         dot(delta, radial),
         dot(delta, along),
-        dot(delta, cross),
+        dot(delta, normal),
         norm(delta),
         None if reference_clock is None else broadcast_clock - reference_clock,
     )
@@ -67,7 +62,6 @@ RADIAL_WEIGHT = 0.98
 """GPS radial weight of a broadcast orbit error in global-average SISRE."""
 ANGULAR_WEIGHT = 1.0 / 49.0
 """GPS along/cross-track weight (Montenbruck et al., 2018, table 1)."""
-LIGHT_SPEED = 299_792_458.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,16 +93,23 @@ def signal_in_space_range_error(
     if radial_weight < 0 or angular_weight < 0:
         raise ValueError("weights must be non-negative")
     range_error = radial_weight * difference.radial_m - (
-        difference.clock_difference_seconds * LIGHT_SPEED
+        difference.clock_difference_seconds * SPEED_OF_LIGHT
     )
     angular = difference.along_m**2 + difference.cross_m**2
     return math.sqrt(range_error * range_error + angular_weight * angular)
 
 
-def sisre_summary(differences: Sequence[OrbitDifference]) -> SisreSummary:
+def sisre_summary(
+    differences: Sequence[OrbitDifference],
+    *,
+    radial_weight: float = RADIAL_WEIGHT,
+    angular_weight: float = ANGULAR_WEIGHT,
+) -> SisreSummary:
     """RMS and maximum SISRE of the epochs that carry a reference clock."""
     scores = [
-        signal_in_space_range_error(difference)
+        signal_in_space_range_error(
+            difference, radial_weight=radial_weight, angular_weight=angular_weight
+        )
         for difference in differences
         if difference.clock_difference_seconds is not None
     ]

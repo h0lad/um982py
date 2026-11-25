@@ -16,6 +16,7 @@ __all__ = [
     "LinearSolution",
     "allan_deviation",
     "correlation",
+    "cross",
     "detrend",
     "dot",
     "finite",
@@ -199,6 +200,15 @@ def norm(a: Sequence[float]) -> float:
 def subtract(a: Vector, b: Vector) -> Vector:
     """Subtract the components of one vector from another."""
     return a[0] - b[0], a[1] - b[1], a[2] - b[2]
+
+
+def cross(a: Vector, b: Vector) -> Vector:
+    """Calculate the right-handed cross product of two 3D vectors."""
+    return (
+        a[1] * b[2] - a[2] * b[1],
+        a[2] * b[0] - a[0] * b[2],
+        a[0] * b[1] - a[1] * b[0],
+    )
 
 
 def unit(a: Vector) -> Vector:

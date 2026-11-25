@@ -21,16 +21,6 @@ NAMES = tuple(
         if path.is_dir() and not path.name.startswith((".", "_"))
     )
 )
-CSV_EXPERIMENTS = frozenset(
-    {
-        "spatial_tec",
-        "noise_multipath",
-        "multifrequency_slips",
-        "uncertainty_coverage",
-        "phase_fluctuations",
-        "orbit_position_effect",
-    }
-)
 WORKFLOW_EXAMPLES = frozenset(
     {
         "crs_transform",
@@ -42,7 +32,6 @@ WORKFLOW_EXAMPLES = frozenset(
 )
 NO_ANTENNA_EXAMPLES = frozenset({"dsp_tracking", "inav_page_capture"})
 SHARED_TESTS = {
-    **dict.fromkeys(CSV_EXPERIMENTS, "test_scientific_cli.py"),
     **dict.fromkeys(WORKFLOW_EXAMPLES, "examples/test_workflow_examples.py"),
     "offline_ppp": "test_offline_ppp.py",
     "rinex_navigation": "test_rinex_nav.py",
@@ -137,10 +126,7 @@ def test_example_cli_responds_to_help(name: str) -> None:
     )
     assert result.returncode == 0, result.stderr
     assert "usage:" in result.stdout
-    if name not in CSV_EXPERIMENTS | WORKFLOW_EXAMPLES | NO_ANTENNA_EXAMPLES | {
-        "ice_motion",
-        "offline_ppp",
-    }:
+    if name not in WORKFLOW_EXAMPLES | NO_ANTENNA_EXAMPLES | {"offline_ppp"}:
         assert "--antenna" in result.stdout
     if name == "gnss_reflectometry":
         assert "--spectra-csv" in result.stdout

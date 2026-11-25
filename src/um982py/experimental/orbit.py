@@ -62,6 +62,7 @@ __all__ = [
     "glonass_state",
     "orbit_state",
     "receiver_ecef",
+    "relativistic_correction",
     "solve_kepler",
     "state_from_record",
     "system_of",
@@ -95,17 +96,19 @@ class KeplerElements:
     toc: float | None = None
 
     @classmethod
-    def from_record(cls, record: Record) -> KeplerElements:
+    def from_record(cls, record: Record, *, inav: bool = False) -> KeplerElements:
         """Galileo F/NAV (E1/E5a) and I/NAV (E1/E5b) broadcast distinct clock
-        polynomials and broadcast group delays. When F/NAV was not received,
-        its fields are unset (zero) and the I/NAV values must be used
-        (Galileo OS SIS ICD, sections 5.1.3-5.1.4).
+        polynomials and broadcast group delays. F/NAV is used when received,
+        matching E1/E5a precise clocks, and ``inav`` selects the I/NAV clock
+        that Galileo HAS corrects. When F/NAV was not received, its fields are unset
+        (zero) and the I/NAV values must be used (Galileo OS SIS ICD, sections
+        5.1.3-5.1.4).
         """
         axis = record.real("a") if "a" in record else record.real("roota") ** 2
         galileo = "fnavaf0" in record
         toc: float | None
         if galileo:
-            fnav = _truthy(record.get("fnavreceived"))
+            fnav = not inav and _truthy(record.get("fnavreceived"))
             prefix = "fnavaf" if fnav else "inavaf"
             af0, af1, af2 = (record.real(f"{prefix}{i}") for i in range(3))
             tgd = record.real("e1e5abgd" if fnav else "e1e5bbgd")
@@ -143,13 +146,17 @@ class KeplerElements:
 
 @dataclass(frozen=True, slots=True)
 class SatelliteState:
-    """Satellite position and clock state at one instant."""
+    """Satellite position and clock state at one instant.
+
+    ``clock_bias`` includes ``relativity``, the periodic eccentricity term.
+    """
 
     x: float
     y: float
     z: float
     clock_bias: float
     radius: float
+    relativity: float = 0.0
 
 
 def _first_present_field(record: Record, *names: str, default: float = 0.0) -> float:
@@ -276,6 +283,7 @@ def orbit_state(
         z=z,
         clock_bias=clock_correction(elements, time_of_flight, eccentric_anomaly, mu=mu),
         radius=math.sqrt(x * x + y * y + z * z),
+        relativity=relativistic_correction(elements, eccentric_anomaly, mu=mu),
     )
 
 
@@ -287,7 +295,6 @@ def clock_correction(
     mu: float = MU,
 ) -> float:
     """Calculate satellite clock bias in seconds, including the relativistic term."""
-    relativistic = -2 * math.sqrt(mu * elements.semi_major_axis) / SPEED_OF_LIGHT**2
     clock_time = (
         time_of_flight
         + elements.toe
@@ -298,8 +305,26 @@ def clock_correction(
         elements.af0
         + elements.af1 * clock_time
         + elements.af2 * clock_time**2
-        + relativistic * elements.eccentricity * math.sin(eccentric_anomaly)
+        + relativistic_correction(elements, eccentric_anomaly, mu=mu)
         - elements.tgd
+    )
+
+
+def relativistic_correction(
+    elements: KeplerElements, eccentric_anomaly: float, *, mu: float = MU
+) -> float:
+    """Periodic relativistic clock term F e sqrt(A) sin E in seconds.
+
+    The orbit's eccentricity makes the satellite clock run faster at apogee
+    and slower at perigee. IS-GPS-200 section 20.3.3.3.3.1 and the Galileo
+    OS SIS ICD section 5.1.4 leave this term to the user.
+    """
+    return (
+        -2
+        * math.sqrt(mu * elements.semi_major_axis)
+        / SPEED_OF_LIGHT**2
+        * elements.eccentricity
+        * math.sin(eccentric_anomaly)
     )
 
 

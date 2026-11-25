@@ -8,7 +8,6 @@ from examples._console import ExampleParser, add_receiver_arguments, run, write_
 from examples._console_capture import capture_records
 from examples._observation_arcs import CarrierState, continuous
 from examples.ionosphere_tec import (
-    GPS_L1_HZ,
     Observation,
     TecSample,
     level_tec,
@@ -20,12 +19,13 @@ from examples.ionosphere_tec import (
 )
 from um982py.capture import GPS_FREQUENCIES, gps_signals
 from um982py.commands import Log
+from um982py.gnss import F_L1, F_L2, F_L5
 from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 
 
 def read_observations(
-    record: Record, frequency_hz: float, secondary_frequency_hz: float = 1176.45e6
+    record: Record, frequency_hz: float, secondary_frequency_hz: float = F_L5
 ) -> tuple[Observation, ...]:
     """GPS observations at their actual selected carrier frequencies."""
     return tuple(
@@ -264,7 +264,7 @@ def _parser() -> ExampleParser:
     parser.add_argument(
         "--frequency",
         type=float,
-        default=GPS_L1_HZ,
+        default=F_L1,
         choices=tuple(GPS_FREQUENCIES.values()),
         help="carrier frequency of the observations in Hz",
     )
@@ -318,9 +318,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             flush=True,
         )
     if args.secondary_frequency is None:
-        args.secondary_frequency = (
-            1227.60e6 if args.antenna in ("secondary", "2") else 1176.45e6
-        )
+        args.secondary_frequency = F_L2 if args.antenna in ("secondary", "2") else F_L5
     if args.frequency == args.secondary_frequency:
         parser.error("choose two different GPS carrier frequencies")
     records = capture_records(

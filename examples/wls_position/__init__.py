@@ -36,6 +36,8 @@ class RangeMeasurement:
     pseudorange_std: float
     satellite_clock: float = 0.0
     """Satellite clock bias in seconds, to be added to the pseudorange."""
+    relativity: float = 0.0
+    """Relativistic eccentricity term included in ``satellite_clock`` (s)."""
 
 
 @dataclass(frozen=True, slots=True)

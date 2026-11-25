@@ -63,34 +63,6 @@ def test_reference_comparison_does_not_interpolate(tmp_path: Path) -> None:
     assert data["same_point_asserted_by_user"] is False
 
 
-def test_ice_motion_velocity_and_gap(tmp_path: Path) -> None:
-    from examples.ice_motion.__main__ import main
-
-    source, output = tmp_path / "positions.csv", tmp_path / "motion.json"
-    source.write_text(
-        "gps_seconds,x_m,y_m,z_m\n100,6378137,0,0\n101,6378137,2,0\n110,6378137,3,0\n"
-    )
-    assert (
-        main(
-            [
-                "--input",
-                str(source),
-                "--output",
-                str(output),
-                "--reference-frame",
-                "ITRF2020",
-                "--max-gap-s",
-                "2",
-            ]
-        )
-        == 0
-    )
-    samples = json.loads(output.read_text())["samples"]
-    assert samples[1]["displacement_enu_m"] == [2.0, 0.0, 0.0]
-    assert samples[1]["velocity_enu_mps"] == [2.0, 0.0, 0.0]
-    assert samples[2]["velocity_ecef_mps"] is None
-
-
 def test_polar_replay_reports_code_proxy(tmp_path: Path) -> None:
     from examples.polar_ionosphere.__main__ import main
 

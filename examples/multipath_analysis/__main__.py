@@ -7,7 +7,6 @@ from examples._console import ExampleParser, add_receiver_arguments, run, write_
 from examples._console_capture import capture_records
 from examples._observation_arcs import CarrierState
 from examples.multipath_analysis import (
-    GPS_L1_HZ,
     MultipathSeries,
     Observation,
     epoch_summaries,
@@ -15,6 +14,7 @@ from examples.multipath_analysis import (
 )
 from um982py.capture import GPS_FREQUENCIES, gps_signals
 from um982py.commands import Log
+from um982py.gnss import F_L1
 from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 
@@ -89,7 +89,7 @@ def _parser() -> ExampleParser:
     parser.add_argument(
         "--frequency",
         type=float,
-        default=GPS_L1_HZ,
+        default=F_L1,
         choices=tuple(GPS_FREQUENCIES.values()),
         help="carrier frequency of the observations in Hz",
     )

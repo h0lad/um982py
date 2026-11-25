@@ -10,7 +10,6 @@ from examples._observation_arcs import CarrierState, continuous
 from um982py.geodesy import wavelength
 from um982py.stats import detrend
 
-GPS_L1_HZ = 1575.42e6
 DETREND_ORDER = 1
 
 

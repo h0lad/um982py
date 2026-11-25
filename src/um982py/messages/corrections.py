@@ -2,7 +2,10 @@
 
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Literal
+from typing import TYPE_CHECKING, Literal
+
+if TYPE_CHECKING:
+    from um982py.messages.record import Record
 
 
 class Availability(StrEnum):
@@ -143,3 +146,75 @@ def has_signal_name(gnss_id: int, signal_index: int) -> str | None:
         raise ValueError("HAS signal index must be in 0..15")
     signals = HAS_SIGNALS.get(gnss_id)
     return None if signals is None else signals[signal_index]
+
+
+@dataclass(frozen=True, slots=True)
+class HasSatelliteCorrection:
+    """One satellite's HAS orbit and clock correction in metres.
+
+    ``gnss_id`` uses HAS numbering (0 GPS, 2 Galileo). ``iod_ref`` names the
+    corrected broadcast issue (IODnav or IODE), and ``navigation_message`` is
+    the mask's reference message index (0 I/NAV or LNAV). Radial, in-track and
+    cross-track follow the NTW frame of the Galileo HAS SIS ICD, section 7.2.
+    """
+
+    gnss_id: int
+    prn: int
+    iod_ref: int
+    navigation_message: int
+    radial: Correction
+    in_track: Correction
+    cross_track: Correction
+    clock: Correction | None
+
+
+def has_satellite_corrections(
+    mask: Record, orbit: Record, clock: Record | None = None
+) -> dict[tuple[int, int], HasSatelliteCorrection]:
+    """Map E6ORBITBLOCK and E6CLOCKFULLBLOCK slots to satellites.
+
+    Slots follow the satellite-mask order of each system in the
+    E6MASKBLOCK, system after system (HAS SIS ICD, sections 5.2.1-5.2.3).
+    The blocks must share the mask's ``mask_id`` and ``iod_set_id``.
+    """
+    blocks = (orbit,) if clock is None else (orbit, clock)
+    for block in blocks:
+        if (block.integer("mask_id"), block.integer("iod_set_id")) != (
+            mask.integer("mask_id"),
+            mask.integer("iod_set_id"),
+        ):
+            raise ValueError(f"{block.name} belongs to another HAS mask or IOD set")
+    orbits = orbit.records("corrections")
+    clocks = () if clock is None else clock["delta_clock_corrections"]
+    multipliers = () if clock is None else clock["delta_clock_multipliers"]
+    if not isinstance(clocks, tuple) or not isinstance(multipliers, tuple):
+        raise TypeError("E6CLOCKFULLBLOCK corrections must be sequences")
+    result: dict[tuple[int, int], HasSatelliteCorrection] = {}
+    slot = 0
+    for index, system in enumerate(mask.records("systems")):
+        satellites = system["satellite_mask"]
+        if not isinstance(satellites, bytes):
+            raise TypeError("HAS satellite mask must be bytes")
+        gnss_id = system.integer("gnss_id")
+        for bit in mask_indices(satellites):
+            if slot >= len(orbits):
+                raise ValueError("HAS mask selects more satellites than slots")
+            entry = orbits[slot]
+            raw_clock = clocks[slot] if slot < len(clocks) else None
+            multiplier = multipliers[index] if index < len(multipliers) else None
+            result[gnss_id, bit + 1] = HasSatelliteCorrection(
+                gnss_id,
+                bit + 1,
+                entry.integer("iod_ref"),
+                system.integer("navigation_message_index"),
+                has_correction(entry.integer("radial"), "radial"),
+                has_correction(entry.integer("in_track"), "in_track"),
+                has_correction(entry.integer("cross_track"), "cross_track"),
+                None
+                if not isinstance(raw_clock, int) or not isinstance(multiplier, int)
+                else has_correction(
+                    raw_clock, "clock", multiplier=has_clock_multiplier(multiplier)
+                ),
+            )
+            slot += 1
+    return result

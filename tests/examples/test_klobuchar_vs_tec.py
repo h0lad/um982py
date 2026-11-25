@@ -5,10 +5,7 @@ from examples.ionosphere_tec import (
     Observation,
 )
 from examples.klobuchar_vs_tec import (
-    GPS_L1_HZ,
-    IONOSPHERE_COEFFICIENT,
     NIGHT_TIME_DELAY_SECONDS,
-    TECU,
     KlobucharCoefficients,
     diurnal_profile,
     local_solar_seconds,
@@ -21,11 +18,12 @@ from examples.klobuchar_vs_tec import (
 
 from um982py.commands import Log
 from um982py.geodesy import SPEED_OF_LIGHT, wavelength
+from um982py.gnss import F_L1, IONOSPHERE_CONSTANT, TECU
 from um982py.protocol import StreamDecoder
 
 FIXTURES = Path(__file__).resolve().parents[1] / "fixtures" / "captures-live"
 EPOCH_SECONDS = 399_541.0
-L5_HZ = 1176.45e6
+F_L5 = 1176.45e6
 LATITUDE = 52.5336647
 LONGITUDE = 13.3763266
 GEOMETRY_METRES = 20_000_000.0
@@ -46,20 +44,20 @@ def injected_observations(tec_tecu: float) -> tuple[Observation, ...]:
     """Dual-frequency observations for a known slant TEC."""
 
     def delay(frequency_hz: float) -> float:
-        return IONOSPHERE_COEFFICIENT * tec_tecu * TECU / frequency_hz**2
+        return IONOSPHERE_CONSTANT * tec_tecu * TECU / frequency_hz**2
 
     return (
         Observation(
             prn=7,
-            frequency_hz=GPS_L1_HZ,
-            pseudorange=GEOMETRY_METRES + delay(GPS_L1_HZ),
-            carrier_phase=-(GEOMETRY_METRES - delay(GPS_L1_HZ)) / wavelength(GPS_L1_HZ),
+            frequency_hz=F_L1,
+            pseudorange=GEOMETRY_METRES + delay(F_L1),
+            carrier_phase=-(GEOMETRY_METRES - delay(F_L1)) / wavelength(F_L1),
         ),
         Observation(
             prn=7,
-            frequency_hz=L5_HZ,
-            pseudorange=GEOMETRY_METRES + delay(L5_HZ),
-            carrier_phase=-(GEOMETRY_METRES - delay(L5_HZ)) / wavelength(L5_HZ),
+            frequency_hz=F_L5,
+            pseudorange=GEOMETRY_METRES + delay(F_L5),
+            carrier_phase=-(GEOMETRY_METRES - delay(F_L5)) / wavelength(F_L5),
         ),
     )
 
@@ -161,7 +159,7 @@ def test_measured_vertical_delay_recovers_an_injected_slant_tec() -> None:
     measured = measured_vertical_delay(observations, 45.0)
     assert measured is not None
     expected = vertical_delay_from_slant_tec(INJECTED_TEC, 45.0)
-    zenith_delay = IONOSPHERE_COEFFICIENT * INJECTED_TEC * TECU / GPS_L1_HZ**2
+    zenith_delay = IONOSPHERE_CONSTANT * INJECTED_TEC * TECU / F_L1**2
     assert measured == pytest.approx(expected, abs=1e-9)
     assert measured * obliquity_factor(45.0) == pytest.approx(zenith_delay, abs=1e-9)
 
