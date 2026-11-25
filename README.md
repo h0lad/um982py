@@ -48,39 +48,6 @@ with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
 
 See the [example catalogue](examples/README.md) for setup and more workflows.
 
-## Receiver output rates
-
-```bash
-um982py --port /dev/ttyUSB0 --baud 921600 output-rate --log GPGGA --rate-hz 10
-```
-
-In Python, use `receiver.set_output_rate(Log.GPGGA, 10)`. Available N4 rates
-are 1, 2, 5, 10, 20 and 50 Hz, depending on the receiver, signal group and log.
-`FREQJAMSTATUS`, `HWSTATUS`, `JAMSTATUS`, `PPSSTATUS` and `RTCSTATUS` are
-limited to 1 Hz. Measure delivered cadence from distinct receiver epochs.
-
-## RTK reliability
-
-UM982 applies an RTK reliability threshold before it promotes a carrier-phase
-solution into BESTNAV. Level 3 is the receiver default. Lower levels accept
-float solutions sooner, while higher levels reject them more aggressively.
-Use `rtk_reliability()` to change the live receiver setting:
-
-```python
-from um982py import Receiver
-from um982py.commands.configuration import rtk_reliability
-
-with Receiver.connect("/dev/ttyUSB0", 921600) as receiver:
-    receiver.execute(rtk_reliability(2))  # RTK level 2, ADR default 1
-```
-
-The NTRIP rover and live position examples expose the same control through
-`--rtk-reliability` and `--adr-reliability`. These options change receiver
-settings and are not restored when the example exits. A lower threshold can
-turn a `PSRDIFF` fallback back into `NARROW_FLOAT`, but it also increases the
-risk of accepting an incorrect fix. Verify against a known coordinate before
-trusting the result.
-
 ## Development
 
 ```bash
