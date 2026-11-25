@@ -12,8 +12,6 @@ RTK/Motion Sensor-Integrated Positioning-Based Autonomous Driving Algorithm for
 a Speed Sprayer. Sensors, 22(24), 9881. doi:10.3390/s22249881
 """
 
-from __future__ import annotations
-
 import math
 from dataclasses import dataclass
 
@@ -49,7 +47,7 @@ def _ecef_from_bestnav(record: Record) -> tuple[float, float, float] | None:
         if not all(math.isfinite(v) for v in (lat, lon, hgt, undulation)):
             return None
         return ecef_from_geodetic(lat, lon, hgt + undulation)
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         return None
 
 
@@ -60,7 +58,7 @@ def _is_rtk_fixed(record: Record) -> bool:
             solution_status_code(record) == SolutionStatus.SOL_COMPUTED
             and classify(position_type_code(record)) == FixClass.FIXED
         )
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         return False
 
 
@@ -76,7 +74,7 @@ def baseline_from_positions(master: Record, slave: Record) -> ConsistencyEpoch |
             for row in (master, slave)
         ):
             return None
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         return None
     diff = (
         slave_ecef[0] - master_ecef[0],

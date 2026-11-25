@@ -1,7 +1,5 @@
 # Propagate every captured ephemeris to a satellite position and sky view.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Sequence
 
@@ -36,7 +34,7 @@ def collect(receiver: Receiver, seconds: float) -> dict[str, list[Record]]:
             for message in receiver.collect(command, timeout=seconds):
                 try:
                     seen[name].append(log.decode(message))
-                except (ValueError, ProtocolError):
+                except ValueError, ProtocolError:
                     continue
         except ResponseTimeout:
             continue
@@ -50,7 +48,7 @@ def report(records: dict[str, list[Record]], seconds: float) -> dict[str, object
         for record in entries:
             try:
                 state = state_from_record(record, seconds)
-            except (KeyError, ValueError):
+            except KeyError, ValueError:
                 continue
             satellites.append(
                 {

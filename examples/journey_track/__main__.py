@@ -35,7 +35,7 @@ class _DopplerSample:
 def _finite(record: Record, key: str) -> float | None:
     try:
         value = record.real(key)
-    except (KeyError, TypeError, ValueError):
+    except KeyError, TypeError, ValueError:
         return None
     return value if math.isfinite(value) else None
 
@@ -63,7 +63,7 @@ def _doppler_samples(
             continue
         try:
             epoch = gps_epoch(row)
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             rejected += 1
             continue
         speed = _finite(row, "hor_spd")
@@ -165,7 +165,7 @@ def analyze(
             if not math.isfinite(attitude.heading):
                 continue
             headings.append((gps_epoch(record), attitude.heading))
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             continue
 
     samples: list[dict[str, object]] = []
@@ -189,7 +189,7 @@ def analyze(
             latitude, longitude, height = geodetic_from_ecef(
                 row.real("p_x"), row.real("p_y"), row.real("p_z")
             )
-        except (ValueError, ZeroDivisionError):
+        except ValueError, ZeroDivisionError:
             rejected += 1
             previous = None
             continue

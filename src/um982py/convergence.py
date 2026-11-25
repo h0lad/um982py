@@ -154,7 +154,7 @@ class ConvergenceMonitor:
 
     def observe(
         self,
-        position: "Position",
+        position: Position,
         *,
         now_gps_seconds: float,
         now: float | None = None,

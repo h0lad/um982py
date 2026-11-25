@@ -2,7 +2,7 @@
 
 from collections.abc import Iterator, Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Self, cast
+from typing import TYPE_CHECKING, Self, cast, override
 
 from um982py.messages.frames import Message
 
@@ -22,17 +22,20 @@ class Record(Mapping[str, Value]):
     name: str
     entries: tuple[tuple[str, Value], ...]
     message: Message | None = None
-    source: "ObservationSource | None" = field(default=None, kw_only=True, repr=False)
+    source: ObservationSource | None = field(default=None, kw_only=True, repr=False)
 
+    @override
     def __getitem__(self, key: str) -> Value:
         for name, value in self.entries:
             if name == key:
                 return value
         raise KeyError(key)
 
+    @override
     def __iter__(self) -> Iterator[str]:
         return (name for name, _ in self.entries)
 
+    @override
     def __len__(self) -> int:
         return len(self.entries)
 

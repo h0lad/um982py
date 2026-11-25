@@ -1,7 +1,5 @@
 """Exercise the NTRIP example with a simulated receiver and caster."""
 
-from __future__ import annotations
-
 from datetime import UTC, datetime
 from io import BytesIO
 from pathlib import Path

@@ -1,7 +1,5 @@
 # Collect RANGE frames and report per-signal quality.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Callable, Sequence
 

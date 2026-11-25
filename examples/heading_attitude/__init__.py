@@ -1,7 +1,5 @@
 """Turns an east, north, up baseline into heading and pitch."""
 
-from __future__ import annotations
-
 import math
 from dataclasses import dataclass
 
@@ -148,5 +146,5 @@ def baseline_fix_class(record: Record) -> str:
         return "unknown"
     try:
         return str(classify(position_type).value)
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         return "unknown"

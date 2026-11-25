@@ -1,7 +1,5 @@
 """Asynchronous PPP position monitoring."""
 
-from __future__ import annotations
-
 import asyncio
 from collections.abc import AsyncIterator, Callable
 from dataclasses import dataclass

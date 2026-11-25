@@ -1,7 +1,5 @@
 """Read DSP tracking RAM through the boot menu or replay an archived snapshot."""
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 from contextlib import nullcontext
 from dataclasses import asdict

@@ -1,7 +1,5 @@
 # Estimate user range error from position uncertainty and DOP.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Sequence
 

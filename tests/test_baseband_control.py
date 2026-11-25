@@ -1,11 +1,10 @@
 """Checks baseband parser contracts for builders and diagnostic notices."""
 
-from __future__ import annotations
-
 from collections.abc import Callable
 
 import pytest
 
+from conftest import source_id
 from um982py.experimental import (
     ae_enable,
     agnss_config,
@@ -56,6 +55,7 @@ def test_control_builders_preserve_native_width_and_decimal_grammar() -> None:
         lambda: rf_spi_register_write(0, 1 << 32),
         lambda: rf_spi_write(0x8000000000),
     ],
+    ids=source_id,
 )
 def test_control_arguments_reject_truncation_and_invalid_selector(
     build: Callable[[], object],

@@ -98,6 +98,7 @@ def monitor_divergence(
     previous: RangeSample | None = None
     output = []
     origin = filtered = 0.0
+    rates: list[float] = []
     for sample in samples:
         if previous is not None and sample.epoch <= previous.epoch:
             raise ValueError("sample epochs must increase strictly")
@@ -107,7 +108,7 @@ def monitor_divergence(
         cmc = sample.code_m - sample.phase_m
         if reset:
             origin, filtered = cmc, 0.0
-            rates: list[float] = []
+            rates = []
             output.append(Divergence(sample.epoch, 0.0, None, None, False, True))
         else:
             if previous is None:

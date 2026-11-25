@@ -46,7 +46,7 @@ class Command[T]:
         ):
             raise ValueError("Command must not contain protocol delimiters")
 
-    def decoded_with[U](self, decode: Callable[[Message], U]) -> "Command[U]":
+    def decoded_with[U](self, decode: Callable[[Message], U]) -> Command[U]:
         """Return the same request with ``decode`` applied to its reply."""
         return Command(self.text, self.matches, decode, self.dollar_prefixed)
 

@@ -1,7 +1,5 @@
 """Summarize GNSS-IR arcs, observed sectors and repeat-pass phase changes."""
 
-from __future__ import annotations
-
 import math
 from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence

@@ -1,7 +1,5 @@
 """Averages Galileo E6-HAS and BeiDou B2b-PPP fixes with a divergence audit."""
 
-from __future__ import annotations
-
 import math
 from collections import Counter
 from collections.abc import Sequence
@@ -158,7 +156,7 @@ def _optional_real(record: Record, key: str) -> float | None:
     """Numeric field value, or None when the log omits it."""
     try:
         return record.real(key)
-    except (KeyError, TypeError):
+    except KeyError, TypeError:
         return None
 
 
@@ -166,7 +164,7 @@ def _optional_int(record: Record, key: str) -> int | None:
     """Integer field value, or None when the log omits it."""
     try:
         return record.integer(key)
-    except (KeyError, TypeError):
+    except KeyError, TypeError:
         return None
 
 
@@ -349,7 +347,7 @@ def xyz_fallback(records: Sequence[Record]) -> MeanFix:
                 if all(math.isfinite(value) for value in point):
                     positions.append(point)
                 break
-            except (KeyError, TypeError):
+            except KeyError, TypeError:
                 continue
     if not positions:
         raise ValueError("no BESTXYZ positions for a fallback fix")

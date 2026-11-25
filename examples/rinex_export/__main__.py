@@ -1,7 +1,5 @@
 # Export multi-GNSS RINEX 3.05 observations from one or both antenna inputs.
 
-from __future__ import annotations
-
 import json
 import sys
 from collections.abc import Sequence

@@ -99,7 +99,7 @@ class DopplerMonitor:
     def accept(self, message: Message) -> None:
         try:
             sample = DopplerVelocity.from_message(message)
-        except (ProtocolError, TypeError, ValueError, KeyError):
+        except ProtocolError, TypeError, ValueError, KeyError:
             return
         with self._lock:
             self._latest = TimedDoppler(sample, monotonic())
@@ -119,7 +119,7 @@ class NavigationMonitor:
     def accept(self, message: Message) -> None:
         try:
             navigation = BestNavigation.from_message(message)
-        except (ProtocolError, ValueError, TypeError, KeyError):
+        except ProtocolError, ValueError, TypeError, KeyError:
             return
         with self._lock:
             self._latest = navigation
@@ -139,7 +139,7 @@ class GsaMonitor:
     def accept(self, message: Message) -> None:
         try:
             info = Gsa.from_message(message)
-        except (ProtocolError, TypeError, ValueError, KeyError):
+        except ProtocolError, TypeError, ValueError, KeyError:
             return
         with self._lock:
             self._latest = info

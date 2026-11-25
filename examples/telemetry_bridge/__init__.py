@@ -1,7 +1,5 @@
 """Streams every decoded frame as newline-delimited JSON."""
 
-from __future__ import annotations
-
 import json
 from collections.abc import Iterable
 from dataclasses import dataclass

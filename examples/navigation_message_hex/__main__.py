@@ -1,7 +1,5 @@
 # Dump every received navigation message as annotated hexadecimal.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Iterable, Sequence
 from contextlib import ExitStack
@@ -116,7 +114,7 @@ def collect(
                         receiver, (wire, log.output(Trigger.ON_CHANGED, binary=True))
                     )
                 )
-            except (ValueError, CommandRejected):
+            except ValueError, CommandRejected:
                 subscriptions.enter_context(
                     temporary_subscriptions(
                         receiver, (wire, log.output(1, binary=True))

@@ -1,7 +1,5 @@
 # Compare dual-antenna heading, sky view and spoof indicators.
 
-from __future__ import annotations
-
 import argparse
 import sys
 from collections.abc import Sequence
@@ -118,7 +116,7 @@ def _heading_agreement(
         enu = EnuBaseline.from_record(enu_record)
         if swapped:
             enu = enu.negated()
-    except (KeyError, TypeError, ValueError):
+    except KeyError, TypeError, ValueError:
         return None
     return compare_headings(enu, reference)
 

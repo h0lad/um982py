@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import json
 import math
 from contextlib import suppress
@@ -80,7 +78,7 @@ def _nmea_position(sentence: Sentence) -> tuple[float, float] | None:
             return -value if hemisphere in ("S", "W") else value
 
         return degrees(lat_text, north_south), degrees(lon_text, east_west)
-    except (IndexError, ValueError):
+    except IndexError, ValueError:
         return None
 
 

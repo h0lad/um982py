@@ -1,7 +1,5 @@
 """Write position tracks to CSV."""
 
-from __future__ import annotations
-
 import csv
 from dataclasses import asdict, fields
 from pathlib import Path

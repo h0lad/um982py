@@ -1,7 +1,5 @@
 """Carrier-arc identity checks for the N4 RANGE tracking status."""
 
-from __future__ import annotations
-
 from examples._observation_arcs import CarrierState, continuous
 
 L2_HZ = 1227.60e6

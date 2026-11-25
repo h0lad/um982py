@@ -164,7 +164,7 @@ class PppDebugResidual:
     residual_m: float
 
     @property
-    def satellite(self) -> "PppDebugSatellite":
+    def satellite(self) -> PppDebugSatellite:
         """Resolve the satellite identity where the native slot is known."""
         return ppp_debug_satellite(self.slot)
 

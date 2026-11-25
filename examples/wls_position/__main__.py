@@ -1,7 +1,5 @@
 # Solve position from pseudoranges by weighted least squares.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Sequence
 from pathlib import Path

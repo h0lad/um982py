@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pytest
 from examples.cw_jamming import (
     CW_FLAGS,

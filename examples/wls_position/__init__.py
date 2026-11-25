@@ -1,7 +1,5 @@
 """Solves a position from pseudoranges with weighted least squares."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass

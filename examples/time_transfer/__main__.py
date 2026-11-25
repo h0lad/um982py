@@ -1,7 +1,5 @@
 # Convert receiver TIME records between UTC and GPST.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections.abc import Callable, Sequence

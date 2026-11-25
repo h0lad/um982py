@@ -1,7 +1,5 @@
 """Counts per-constellation visibility and writes a sky-plot CSV."""
 
-from __future__ import annotations
-
 import csv
 import io
 import math

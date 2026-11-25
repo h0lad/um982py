@@ -1,7 +1,5 @@
 """Static GPS PPP using CSSRlib's Python implementation and CODE products."""
 
-from __future__ import annotations
-
 import csv
 import hashlib
 import importlib

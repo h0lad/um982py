@@ -1,7 +1,5 @@
 # Stream decoded receiver frames as newline-delimited JSON.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Iterable, Iterator, Sequence
 from math import isfinite

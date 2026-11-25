@@ -1,7 +1,5 @@
 """Capture Galileo, GPS, GLONASS and BeiDou navigation or replay Galileo streams."""
 
-from __future__ import annotations
-
 import json
 import sys
 from argparse import BooleanOptionalAction
@@ -25,6 +23,8 @@ from um982py.experimental import (
     GalileoHasPage,
     GlonassFdmaString,
     GpsLnavSubframe,
+    HasMessage,
+    HasPageSet,
     InavCampaign,
     InavSnapshot,
     PageWindowAudit,
@@ -188,6 +188,7 @@ def _write_snapshot_report(
         ]
     )
     gps_count = glonass_count = beidou_count = fnav_count = has_count = 0
+    recovered: list[tuple[HasPageSet, HasMessage | None]] = []
     if native_nav:
         native = [
             (

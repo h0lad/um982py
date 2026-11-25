@@ -130,7 +130,7 @@ def test_readme_corrected_rover(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     class FakeRover:
-        def __enter__(self) -> "FakeRover":
+        def __enter__(self) -> FakeRover:
             return self
 
         def __exit__(self, *args: object) -> None:

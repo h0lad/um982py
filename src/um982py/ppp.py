@@ -1,7 +1,5 @@
 """Configure satellite PPP and read its position solutions."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Iterator
 from dataclasses import dataclass
 from enum import IntEnum

@@ -1,7 +1,5 @@
 """Statistics, spectral and least-squares helpers."""
 
-from __future__ import annotations
-
 import itertools
 import math
 from collections.abc import Sequence

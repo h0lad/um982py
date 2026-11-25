@@ -1,7 +1,5 @@
 """Compares Klobuchar delay with dual-frequency vertical TEC."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass

@@ -1,7 +1,5 @@
 """Tests for heading_baseline_constraint helpers."""
 
-from __future__ import annotations
-
 import math
 
 import pytest

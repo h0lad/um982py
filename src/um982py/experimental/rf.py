@@ -67,7 +67,7 @@ class AntennaSignalProfile:
     masks: tuple[AntennaSignalMask, ...]
 
     @classmethod
-    def from_record(cls, record: Record) -> "AntennaSignalProfile":
+    def from_record(cls, record: Record) -> AntennaSignalProfile:
         if record.name not in ("ANT1GROUP", "ANT2GROUP"):
             raise ValueError("expected an ANT1GROUP or ANT2GROUP record")
         masks = []
@@ -104,7 +104,7 @@ class AgcReadings:
     ant2_l5: int | None
 
     @classmethod
-    def from_record(cls, record: Record) -> "AgcReadings":
+    def from_record(cls, record: Record) -> AgcReadings:
         if record.name != "AGC":
             raise ValueError("expected an AGC record")
         return cls(

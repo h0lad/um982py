@@ -1,7 +1,5 @@
 """Receiver-wide diagnostics retained in UM982 DSP RAM."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from math import isfinite
 from struct import unpack_from

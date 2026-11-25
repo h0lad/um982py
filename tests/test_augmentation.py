@@ -1,7 +1,5 @@
 """Augmentation plans, receiver readback and failure handling."""
 
-from __future__ import annotations
-
 import asyncio
 from collections.abc import Callable
 from unittest.mock import patch

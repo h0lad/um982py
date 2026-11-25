@@ -1,7 +1,5 @@
 """Turns baseline length and noise into heading and pitch uncertainty."""
 
-from __future__ import annotations
-
 import math
 from dataclasses import dataclass, replace
 

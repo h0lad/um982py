@@ -4,7 +4,7 @@ from typing import cast
 
 import pytest
 
-from conftest import ReplayTransport, ascii_message, rtcm
+from conftest import ReplayTransport, ascii_message, rtcm, source_id
 from test_protocol import binary
 from um982py.commands import Log, assistance, masking, modes, queries
 from um982py.commands import configuration as config
@@ -271,6 +271,7 @@ def test_configuration_variants() -> None:
         lambda: config.signal_group(1, 1, product="UM980"),
         lambda: config.signal_group(7, True),
     ],
+    ids=source_id,
 )
 def test_reference_validation(factory: Callable[[], object]) -> None:
     with pytest.raises(ValueError):

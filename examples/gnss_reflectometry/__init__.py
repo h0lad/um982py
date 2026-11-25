@@ -1,7 +1,5 @@
 """Analyze multi-GNSS C/N0 arcs, reflector heights and reflection footprints."""
 
-from __future__ import annotations
-
 import math
 from collections import Counter, defaultdict
 from collections.abc import Iterable, Sequence

@@ -1,7 +1,5 @@
 """Checks that every catalogued example imports and exposes a CLI."""
 
-from __future__ import annotations
-
 import ast
 import importlib
 import os

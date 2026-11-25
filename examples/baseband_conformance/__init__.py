@@ -1,7 +1,5 @@
 """Records an ACK and reject matrix with a receiver state check."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum

@@ -1,7 +1,5 @@
 """Computes slant TEC, ROT and ROTI from dual-frequency observations."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass

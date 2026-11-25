@@ -1,7 +1,5 @@
 # Collect a TIME track and report the Allan deviation of the clock offset.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Callable, Sequence
 

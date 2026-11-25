@@ -1,7 +1,5 @@
 """Recoverable NTRIP correction relay for a running receiver stream."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from threading import Event
 from time import monotonic

@@ -1,7 +1,5 @@
 """Accumulates a static occupation into one precise outlier-checked fix."""
 
-from __future__ import annotations
-
 import math
 from collections import Counter
 from collections.abc import Iterable, Sequence

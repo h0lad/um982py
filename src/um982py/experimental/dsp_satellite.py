@@ -1,7 +1,5 @@
 """Per-satellite ECEF positions retained in UM982 DSP memory."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from math import isfinite, pi, sqrt
 from struct import unpack_from

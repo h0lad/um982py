@@ -176,7 +176,7 @@ class BootMemoryReader:
             # menu or with the helper resident, so return to the application.
             try:
                 reader.application_restored = reader._return_to_application()
-            except (OSError, serial.SerialException):
+            except OSError, serial.SerialException:
                 reader.application_restored = False
             finally:
                 handle.close()

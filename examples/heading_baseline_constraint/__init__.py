@@ -13,8 +13,6 @@ GNSS-based heading and pitch angles estimation considering baseline length
 constraint. Measurement, 228, 115492. doi:10.1016/j.measurement.2024.115492
 """
 
-from __future__ import annotations
-
 import math
 from dataclasses import dataclass, replace
 

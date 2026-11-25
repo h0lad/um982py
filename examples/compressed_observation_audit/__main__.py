@@ -1,7 +1,5 @@
 # Audit RANGECMP compression against full RANGE observations.
 
-from __future__ import annotations
-
 import argparse
 import sys
 from collections.abc import Sequence

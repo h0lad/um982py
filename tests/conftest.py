@@ -1,10 +1,18 @@
+import inspect
 from collections import deque
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
 
 from um982py.commands.types import Port, Trigger
 from um982py.protocol.checksums import nmea_checksum, rtcm_crc24q, unicore_crc32
+
+
+def source_id(factory: Callable[[], object]) -> str:
+    """Name a parametrized lambda case after its source expression."""
+    return inspect.getsource(factory).strip().removeprefix("lambda: ").rstrip(",")
+
 
 FIXTURES = Path(__file__).parent / "fixtures"
 

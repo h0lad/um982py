@@ -1,7 +1,5 @@
 # Collect dual-antenna baselines and report heading and pitch.
 
-from __future__ import annotations
-
 import itertools
 import sys
 from collections.abc import Callable, Sequence

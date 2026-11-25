@@ -1,7 +1,5 @@
 """Measures time to first fix after a documented reset."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass

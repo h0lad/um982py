@@ -1,7 +1,5 @@
 """Builds GPS broadcast states and capture wiring for velocity runs."""
 
-from __future__ import annotations
-
 import argparse
 import math
 import sys
@@ -58,7 +56,7 @@ def _observer(
         try:
             timestamp = gps_epoch(record)
             position_ecef = (record.real("p_x"), record.real("p_y"), record.real("p_z"))
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             continue
         if math.isfinite(timestamp) and is_near_earth_position(position_ecef):
             eligible.append((timestamp, position_ecef))

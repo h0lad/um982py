@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 from dataclasses import fields as dataclass_fields
 
 import pytest

@@ -116,7 +116,7 @@ class PositionPrecision:
         return {**asdict(self), "horizontal_rms_m": self.horizontal_rms_m}
 
     @classmethod
-    def from_gst(cls, record: Record) -> "PositionPrecision":
+    def from_gst(cls, record: Record) -> PositionPrecision:
         """Interpret a decoded GST/GSTH record without attaching it to a fix."""
         kind = record.name[2:]
         if kind not in ("GST", "GSTH"):

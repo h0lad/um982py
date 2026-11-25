@@ -1,7 +1,5 @@
 """Position tracks from BESTNAV and PPPNAV fixes."""
 
-from __future__ import annotations
-
 import math
 from collections import Counter
 from dataclasses import asdict, dataclass

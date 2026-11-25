@@ -1,7 +1,5 @@
 """Renders raw navigation-message bytes as annotated hexadecimal."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 
 from um982py.messages.layouts import LAYOUTS as DOCUMENTED_LAYOUTS

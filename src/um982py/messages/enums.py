@@ -1,6 +1,7 @@
 from collections.abc import Mapping
 from enum import IntEnum, IntFlag, StrEnum
 from types import MappingProxyType
+from typing import override
 
 
 def _reported_datum[T](value: T) -> T | str:
@@ -15,7 +16,7 @@ def enum_member[E: IntEnum](enum: type[E], value: object) -> E | None:
             return enum[value]
         if isinstance(value, int) and not isinstance(value, bool):
             return enum(value)
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         pass
     return None
 
@@ -76,6 +77,7 @@ class PositionType(IntEnum):
     PPP_AR = 70
     PPP_RTK = 71
 
+    @override
     def __str__(self) -> str:
         return self.name
 
@@ -110,7 +112,7 @@ class PositionType(IntEnum):
         return self in _DIFFERENTIAL
 
     @property
-    def fix_class(self) -> "FixClass | None":
+    def fix_class(self) -> FixClass | None:
         """Return the solution category, or None for unclassified types."""
         return POSITION_CLASSES.get(self)
 
@@ -181,6 +183,7 @@ class SolutionStatus(IntEnum):
     SINGULARITY = 3
     COV_TRACE = 4
 
+    @override
     def __str__(self) -> str:
         return self.name
 
@@ -240,7 +243,7 @@ class MessageSatelliteSystem(_Constellation, IntEnum):
     NAVIC = 9
 
     @classmethod
-    def from_wire(cls, value: int | str) -> "MessageSatelliteSystem":
+    def from_wire(cls, value: int | str) -> MessageSatelliteSystem:
         """Decode a binary value or the documented ASCII satellite-system name."""
         if isinstance(value, str):
             try:

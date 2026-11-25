@@ -1,7 +1,5 @@
 # Record RINEX observations, download products and run static PPP in Python.
 
-from __future__ import annotations
-
 import argparse
 import gzip
 import hashlib
@@ -102,7 +100,7 @@ def download_product(url: str, path: Path) -> None:
         except urllib.error.HTTPError as error:
             if attempt == 2 or (error.code not in (408, 429) and error.code < 500):
                 raise
-        except (OSError, EOFError):
+        except OSError, EOFError:
             if attempt == 2:
                 raise
         time.sleep(0.5 * 2**attempt)

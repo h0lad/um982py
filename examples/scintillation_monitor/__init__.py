@@ -1,7 +1,5 @@
 """Computes an uncalibrated S4-like variability proxy from receiver C/N0."""
 
-from __future__ import annotations
-
 import math
 from collections import Counter
 from collections.abc import Sequence

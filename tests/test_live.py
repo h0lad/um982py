@@ -25,7 +25,7 @@ class FakeReceiver:
         self.frames = iter(frames)
         self.closed = False
 
-    def __enter__(self) -> "FakeReceiver":
+    def __enter__(self) -> FakeReceiver:
         return self
 
     def __exit__(self, *args: object) -> None:

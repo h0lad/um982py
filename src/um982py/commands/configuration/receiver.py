@@ -51,7 +51,7 @@ class SignalGroup:
         return SIGNAL_GROUP_BANDS.get(self.slave, f"unknown group {self.slave}")
 
     @classmethod
-    def from_message(cls, message: Message) -> "SignalGroup":
+    def from_message(cls, message: Message) -> SignalGroup:
         if not (
             isinstance(message, Sentence)
             and message.name == "CONFIG"

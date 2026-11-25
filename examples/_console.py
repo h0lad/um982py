@@ -8,7 +8,7 @@ import os
 import sys
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from pathlib import Path
-from typing import TYPE_CHECKING, cast, overload
+from typing import TYPE_CHECKING, cast, overload, override
 
 from um982py.commands.configuration import rtk_reliability
 from um982py.commands.logging import interval_from_rate
@@ -61,6 +61,7 @@ class ExampleParser(argparse.ArgumentParser):
     @overload
     def parse_args[N](self, *, namespace: N) -> N: ...
 
+    @override
     def parse_args(
         self, args: Iterable[str] | None = None, namespace: object | None = None
     ) -> object:
@@ -167,7 +168,7 @@ def add_reliability_arguments(parser: argparse.ArgumentParser) -> None:
     )
 
 
-def apply_reliability(receiver: "Receiver", args: argparse.Namespace) -> bool:
+def apply_reliability(receiver: Receiver, args: argparse.Namespace) -> bool:
     """Apply reliability options when at least one was supplied."""
     rtk = getattr(args, "rtk_reliability", None)
     adr = getattr(args, "adr_reliability", None)
@@ -399,7 +400,7 @@ def read_numeric_csv(
         for row in reader:
             try:
                 values = {name: float(row[name]) for name in columns}
-            except (TypeError, ValueError):
+            except TypeError, ValueError:
                 raise ValueError(
                     f"{path}: invalid numeric CSV row {reader.line_num}"
                 ) from None

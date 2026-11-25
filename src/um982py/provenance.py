@@ -47,7 +47,7 @@ class ObservationSource:
 
 
 def _observation_source(
-    records: Sequence["Record"], declared: ObservationSource | None = None
+    records: Sequence[Record], declared: ObservationSource | None = None
 ) -> ObservationSource | None:
     if declared is not None and not isinstance(declared, ObservationSource):
         raise TypeError("source must be an ObservationSource")

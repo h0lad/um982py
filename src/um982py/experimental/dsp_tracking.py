@@ -1,7 +1,5 @@
 """Per-channel DSP tracking RAM for UM982 receivers."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from math import isfinite
 from struct import unpack_from

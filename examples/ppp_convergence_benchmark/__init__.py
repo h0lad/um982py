@@ -12,8 +12,6 @@ Pseudo-Kinematic, and UAV Experiments. Remote Sensing, 16(21), 4008.
 doi:10.3390/rs16214008
 """
 
-from __future__ import annotations
-
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass

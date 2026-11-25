@@ -1,7 +1,5 @@
 """Deliver modem-pushed PPPNAV fixes to a callback as they are read."""
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass

@@ -71,7 +71,7 @@ class RoverPosition:
         return self.position.epoch_gps_seconds
 
     @property
-    def receiver_time(self) -> "ReceiverTime | None":
+    def receiver_time(self) -> ReceiverTime | None:
         return self.position.receiver_time
 
     @property
@@ -93,7 +93,7 @@ class RoverPosition:
 
     def motion(
         self, *, heading_offset_deg: float = 0.0, min_course_speed_m_s: float = 0.5
-    ) -> "Motion":
+    ) -> Motion:
         """Interpret ground motion and the matched, mounting-adjusted heading."""
         from um982py.motion import Motion
 
@@ -146,7 +146,7 @@ def _attitude(
         angle, pitch, length = (
             heading.real(key) for key in ("heading", "pitch", "length")
         )
-    except (TypeError, ValueError, KeyError):
+    except TypeError, ValueError, KeyError:
         return None, None, None, None
     if (
         abs(offset) > tolerance

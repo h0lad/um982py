@@ -1,7 +1,5 @@
 """Checks azimuth and elevation from broadcast ephemerides against SATVIS2."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass

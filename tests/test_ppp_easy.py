@@ -1,7 +1,5 @@
 """Exercise the public PPP workflow with receiver responses."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass, replace
 from struct import pack_into
 from threading import Event

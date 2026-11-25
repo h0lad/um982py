@@ -14,8 +14,6 @@ Positioning Solutions. Applied Sciences, 16(20), 10228.
 doi:10.3390/app162010228
 """
 
-from __future__ import annotations
-
 import itertools
 import math
 from collections.abc import Sequence
@@ -83,7 +81,7 @@ def compute_cog_heading(
     def timestamp(row: Record) -> float | None:
         try:
             epoch = gps_epoch(row)
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             return None
         return epoch if math.isfinite(epoch) else None
 
@@ -99,7 +97,7 @@ def compute_cog_heading(
                 solution_status_code(row) == SolutionStatus.SOL_COMPUTED
                 and classify(position_type_code(row)) != FixClass.NONE
             )
-        except (KeyError, ValueError):
+        except KeyError, ValueError:
             return False
 
     results: list[MaritimeEpoch] = []

@@ -1,7 +1,5 @@
 # Compare satellite geometry across elevation masks.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections.abc import Iterable, Sequence

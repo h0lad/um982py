@@ -1,7 +1,5 @@
 # Monitor receiver jamming, spoofing and signal indicators.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections.abc import Sequence

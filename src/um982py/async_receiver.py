@@ -1,36 +1,48 @@
 """Use the receiver from asyncio while keeping the event loop responsive."""
 
 import asyncio
-from collections.abc import AsyncGenerator, AsyncIterator, Callable, Sequence
+from collections.abc import (
+    AsyncGenerator,
+    AsyncIterator,
+    Callable,
+    Coroutine,
+    Sequence,
+)
 from contextlib import asynccontextmanager, suppress
+from functools import wraps
 from sys import exception
 from types import TracebackType
-from typing import Self
+from typing import Any, Concatenate, Self
 
 from um982py._polling import poll_async, validate_callback, validate_interval
 from um982py.antenna import AntennaLog
 from um982py.async_ppp import AsyncPppSession
-from um982py.augmentation import AugmentationState
 from um982py.commands import Log, queries
-from um982py.commands.configuration.receiver import SignalGroup
 from um982py.commands.core import Command
 from um982py.commands.types import Port
-from um982py.measurement import RangeSample
 from um982py.messages.frames import CommandResponse, Message
-from um982py.messages.navigation import BestNavigation, Fix, Heading
-from um982py.messages.receiver_status import PpsStatus, SpoofInfo
-from um982py.messages.record import Record
-from um982py.messages.version import Version
+from um982py.messages.navigation import Fix
 from um982py.ppp import PppService
 from um982py.receiver import Receiver
-from um982py.receiver_models import (
-    FirmwareInfo,
-    LogList,
-    PerformanceStatus,
-    ReceiverConfig,
-    ReceiverSystemStatus,
-)
-from um982py.satellites import Satellite
+
+
+def _threaded[**P, R](
+    method: Callable[Concatenate[Receiver, P], R],
+) -> Callable[Concatenate[AsyncReceiver, P], Coroutine[Any, Any, R]]:
+    """Expose a blocking ``Receiver`` method as a coroutine with its signature.
+
+    The call runs in a worker thread under the receiver's transaction lock.
+    It looks the method up on the wrapped receiver at call time, so subclass
+    overrides apply.
+    """
+    name = method.__name__
+
+    @wraps(method)
+    async def call(self: AsyncReceiver, /, *args: P.args, **kwargs: P.kwargs) -> R:
+        bound: Callable[P, R] = getattr(self.receiver, name)
+        return await self._run(lambda: bound(*args, **kwargs))
+
+    return call
 
 
 async def _wait_for_io[T](task: asyncio.Task[T]) -> T:
@@ -93,8 +105,7 @@ class AsyncReceiver:
     ) -> None:
         await self.close()
 
-    async def close(self) -> None:
-        await self._run(self.receiver.close)
+    close = _threaded(Receiver.close)
 
     async def execute[T](
         self,
@@ -114,30 +125,21 @@ class AsyncReceiver:
             lambda: self.receiver.collect(command, timeout=timeout, quiet=quiet)
         )
 
-    async def receive(self, *, timeout: float | None = None) -> Message:
-        return await self._run(lambda: self.receiver.receive(timeout=timeout))
+    receive = _threaded(Receiver.receive)
 
-    async def drain_pending(self) -> tuple[Message, ...]:
-        """Return the messages currently in the queue."""
-        return await self._run(self.receiver.drain_pending)
+    drain_pending = _threaded(Receiver.drain_pending)
 
     async def messages(self) -> AsyncIterator[Message]:
         while True:
             yield await self.receive()
 
-    async def version(self, *, binary: bool = False) -> Version:
-        return await self._run(lambda: self.receiver.version(binary=binary))
+    version = _threaded(Receiver.version)
 
-    async def configuration(self) -> ReceiverConfig:
-        """Query and parse the current receiver configuration."""
-        return await self._run(self.receiver.configuration)
+    configuration = _threaded(Receiver.configuration)
 
-    async def signal_group(self) -> SignalGroup:
-        return await self._run(self.receiver.signal_group)
+    signal_group = _threaded(Receiver.signal_group)
 
-    async def log_list(self) -> LogList:
-        """Query the active log subscriptions."""
-        return await self._run(self.receiver.log_list)
+    log_list = _threaded(Receiver.log_list)
 
     async def set_output_rate(
         self,
@@ -159,28 +161,17 @@ class AsyncReceiver:
             error.add_note("Output settings may have changed before cancellation.")
             raise
 
-    async def firmware_info(self, *, binary: bool = False) -> FirmwareInfo:
-        """Query extended firmware metadata."""
-        return await self._run(lambda: self.receiver.firmware_info(binary=binary))
+    firmware_info = _threaded(Receiver.firmware_info)
 
-    async def performance_status(self) -> PerformanceStatus:
-        """Query RTOS task CPU utilization."""
-        return await self._run(self.receiver.performance_status)
+    performance_status = _threaded(Receiver.performance_status)
 
-    async def system_status(self) -> ReceiverSystemStatus:
-        """Query hardware clock frequencies and component builds."""
-        return await self._run(self.receiver.system_status)
+    system_status = _threaded(Receiver.system_status)
 
-    async def pps_status(self) -> PpsStatus:
-        return await self._run(self.receiver.pps_status)
+    pps_status = _threaded(Receiver.pps_status)
 
-    async def spoof_info(self) -> SpoofInfo:
-        """Read receiver-reported spoofing indicators, not authentication."""
-        return await self._run(self.receiver.spoof_info)
+    spoof_info = _threaded(Receiver.spoof_info)
 
-    async def fix(self, *, antenna: int = 1) -> Fix:
-        """Query a one-shot GGA position fix for the selected antenna."""
-        return await self._run(lambda: self.receiver.fix(antenna=antenna))
+    fix = _threaded(Receiver.fix)
 
     async def poll_positions(
         self,
@@ -220,7 +211,7 @@ class AsyncReceiver:
         )
         positions = stream.__enter__()
 
-        async def receive_positions() -> AsyncGenerator[Fix, None]:
+        async def receive_positions() -> AsyncGenerator[Fix]:
             while True:
                 item = await self._run(lambda: next(positions, None))
                 if item is None:
@@ -242,14 +233,7 @@ class AsyncReceiver:
                         lambda: stream.__exit__(type(error), error, error.__traceback__)
                     )
 
-    async def enable_augmentation(
-        self, *, persist: bool = False, sbas_service: str = "AUTO"
-    ) -> AugmentationState:
-        return await self._run(
-            lambda: self.receiver.enable_augmentation(
-                persist=persist, sbas_service=sbas_service
-            )
-        )
+    enable_augmentation = _threaded(Receiver.enable_augmentation)
 
     async def start_ppp(self, *, service: PppService = "E6-HAS") -> AsyncPppSession:
         """Configure and verify a PPP service for asynchronous position queries."""
@@ -262,46 +246,15 @@ class AsyncReceiver:
             raise
         return AsyncPppSession(self, session)
 
-    async def best_navigation(
-        self, *, binary: bool = False, antenna: int = 1
-    ) -> BestNavigation:
-        """Query the best position and velocity solution for the selected antenna."""
-        return await self._run(
-            lambda: self.receiver.best_navigation(binary=binary, antenna=antenna)
-        )
+    best_navigation = _threaded(Receiver.best_navigation)
 
-    async def heading(self) -> Heading:
-        """Query a one-shot dual-antenna THS heading solution."""
-        return await self._run(self.receiver.heading)
+    heading = _threaded(Receiver.heading)
 
-    async def satellites(self) -> tuple[Satellite, ...]:
-        """Return tracked satellites with named constellations and signals."""
-        return await self._run(self.receiver.satellites)
+    satellites = _threaded(Receiver.satellites)
 
-    async def read_log(
-        self,
-        log: Log | AntennaLog,
-        *,
-        binary: bool | None = None,
-        antenna: int = 1,
-    ) -> Record:
-        return await self._run(
-            lambda: self.receiver.read_log(log, binary=binary, antenna=antenna)
-        )
+    read_log = _threaded(Receiver.read_log)
 
-    async def range_samples(
-        self,
-        *,
-        antenna: int = 1,
-        systems: tuple[int, ...] | None = None,
-        signals: tuple[int, ...] | None = None,
-    ) -> tuple[RangeSample, ...]:
-        """Read one RANGE or RANGEH epoch and return observations in SI units."""
-        return await self._run(
-            lambda: self.receiver.range_samples(
-                antenna=antenna, systems=systems, signals=signals
-            )
-        )
+    range_samples = _threaded(Receiver.range_samples)
 
     async def _run[T](self, operation: Callable[[], T]) -> T:
         async with self._lock:

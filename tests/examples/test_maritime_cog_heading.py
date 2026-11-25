@@ -1,7 +1,5 @@
 """Tests for maritime_cog_heading helpers."""
 
-from __future__ import annotations
-
 import pytest
 from examples.maritime_cog_heading import cog_from_positions, compute_cog_heading
 

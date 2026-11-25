@@ -69,7 +69,7 @@ class Credentials:
             username, password = decoded.split(":", 1)
             if not 16 <= len(password.encode("utf-8")) <= 256:
                 return None
-        except (ValueError, UnicodeError, binascii.Error):
+        except ValueError, UnicodeError, binascii.Error:
             return None
         stored = self._users.get(username, self._dummy)
         salt = bytes.fromhex(stored.split("$")[1])

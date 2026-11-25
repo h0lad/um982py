@@ -51,7 +51,7 @@ class Position(Protocol):
     def epoch_gps_seconds(self) -> float | None: ...
 
     @property
-    def receiver_time(self) -> "ReceiverTime | None": ...
+    def receiver_time(self) -> ReceiverTime | None: ...
 
     @property
     def satellites_used(self) -> int | None: ...
@@ -476,7 +476,7 @@ class BestNavigation:
     velocity_latency_s: float | None = field(default=None, kw_only=True)
 
     @property
-    def receiver_time(self) -> "ReceiverTime | None":
+    def receiver_time(self) -> ReceiverTime | None:
         from um982py.measurement import receiver_time
 
         return receiver_time(self.message)
@@ -540,7 +540,7 @@ class BestNavigation:
         )
         return result if result.available else None
 
-    def motion(self, *, min_course_speed_m_s: float = 0.5) -> "Motion":
+    def motion(self, *, min_course_speed_m_s: float = 0.5) -> Motion:
         """Interpret valid ground speed, course and vertical speed."""
         from um982py.motion import Motion
 
@@ -655,7 +655,7 @@ def _computed(status: str | int, kind: str | int, *, position: bool = False) -> 
         position_type = (
             PositionType[kind] if isinstance(kind, str) else PositionType(kind)
         )
-    except (KeyError, ValueError):
+    except KeyError, ValueError:
         return False
     if position and position_type == PositionType.DOPPLER_VELOCITY:
         return False

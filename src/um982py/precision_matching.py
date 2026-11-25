@@ -1,7 +1,5 @@
 """Conservative matching of GGA fixes and GST precision records."""
 
-from __future__ import annotations
-
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from dataclasses import dataclass
@@ -119,7 +117,7 @@ def _match(
                 continue
             seen_fixes[key].append(content)
             parsed.append((fix, key, arrival))
-        except (ProtocolError, ValueError):
+        except ProtocolError, ValueError:
             rejected += 1
     candidates: dict[Key, list[tuple[Record, float | None]]] = defaultdict(list)
     for record, session, arrival in statistics:
@@ -130,7 +128,7 @@ def _match(
             key = (session, precision.antenna, utc_seconds(precision.utc))
             if all(dict(record) != dict(other) for other, _ in candidates[key]):
                 candidates[key].append((record, arrival))
-        except (ProtocolError, ValueError):
+        except ProtocolError, ValueError:
             rejected += 1
     counts = Counter(key for _, key, _ in parsed)
     output = []

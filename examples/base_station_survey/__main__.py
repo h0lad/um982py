@@ -1,7 +1,5 @@
 # Capture a BESTXYZ track and report the survey-in average.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections.abc import Callable, Sequence
@@ -144,7 +142,7 @@ def _bestnav_crosscheck(
         latitude = latest.real("lat")
         longitude = latest.real("lon")
         height = latest.real("hgt")
-    except (KeyError, TypeError, ValueError):
+    except KeyError, TypeError, ValueError:
         return None
     undulation = latest.get("undulation")
     if not isinstance(undulation, (int, float)):

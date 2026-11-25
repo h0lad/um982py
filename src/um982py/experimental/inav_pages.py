@@ -196,7 +196,7 @@ class InavPagePart:
         return None if self.osnma is None else self.osnma[1:]
 
     @property
-    def sar_field(self) -> "SarField | None":
+    def sar_field(self) -> SarField | None:
         """Decoded search and rescue field, or ``None``."""
         return None if self.sar is None else decode_sar_field(self.sar)
 
@@ -287,7 +287,7 @@ class InavSnapshot:
             for name, data in self.regions.items()
         }
 
-    def window_audits(self) -> tuple["PageWindowAudit", ...]:
+    def window_audits(self) -> tuple[PageWindowAudit, ...]:
         """Audit only the symbol windows captured in this snapshot."""
         return audit_page_windows(extract_channel_states(self.memory_windows))
 
@@ -570,7 +570,7 @@ class SarField:
         """The twenty data bits as five hexadecimal digits."""
         return self.data.hex()[:5].upper()
 
-    def is_spare_before(self, following: "SarField") -> bool:
+    def is_spare_before(self, following: SarField) -> bool:
         """Check the start bits of two consecutive fields of one satellite."""
         return self.start and following.start
 

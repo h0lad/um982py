@@ -41,7 +41,7 @@ def select_gps_ephemerides(
             toe = record.integer("week") * GPS_WEEK_SECONDS + record.real("toe")
             prn = record.integer("prn")
             age = abs(epoch - travel_by_prn.get(prn, 0.0) - toe)
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             continue
         if (
             math.isfinite(age)

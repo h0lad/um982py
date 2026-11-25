@@ -1,7 +1,5 @@
 """Reconnect a receiver and deliver timestamped GGA position updates."""
 
-from __future__ import annotations
-
 from collections.abc import Callable, Generator, Iterator
 from contextlib import suppress
 from dataclasses import dataclass
@@ -300,7 +298,7 @@ class PositionSession(_Reconnecting):
                     with self._lock:
                         self._rtk = None
 
-    def positions(self, stop: Event) -> Generator[PositionUpdate, None, None]:
+    def positions(self, stop: Event) -> Generator[PositionUpdate]:
         """Yield fixes until stopped, and close the iterator if you stop early."""
         connection = (
             self._subscribed_connection if self.subscribe else self._polled_connection

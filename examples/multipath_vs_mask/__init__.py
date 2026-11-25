@@ -1,7 +1,5 @@
 """Sweeps elevation masks for multipath and checks receiver state."""
 
-from __future__ import annotations
-
 import itertools
 import math
 from collections.abc import Mapping, Sequence

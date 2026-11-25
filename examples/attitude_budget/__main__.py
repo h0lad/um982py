@@ -1,7 +1,5 @@
 # Estimate heading and pitch uncertainty from baseline noise.
 
-from __future__ import annotations
-
 import argparse
 import math
 import sys

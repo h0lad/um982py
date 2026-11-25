@@ -1,7 +1,5 @@
 # Compare single-antenna COG with dual-antenna heading on a marine vessel.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections.abc import Sequence

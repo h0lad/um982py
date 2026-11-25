@@ -88,7 +88,7 @@ class Motion:
         heading_deg: float | None = None,
         heading_offset_deg: float = 0.0,
         min_course_speed_m_s: float = 0.5,
-    ) -> "Motion":
+    ) -> Motion:
         """Interpret BESTNAV and, optionally, an epoch-matched baseline heading.
 
         Add ``heading_offset_deg`` to the baseline heading to obtain the

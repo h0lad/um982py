@@ -1,7 +1,5 @@
 """Tests for ppp_convergence_benchmark helpers."""
 
-from __future__ import annotations
-
 from argparse import Namespace
 from dataclasses import replace
 from pathlib import Path

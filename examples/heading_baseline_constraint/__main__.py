@@ -1,7 +1,5 @@
 # Estimate heading and pitch with a known baseline-length constraint.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections.abc import Sequence

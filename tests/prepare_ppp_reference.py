@@ -1,7 +1,5 @@
 """Prepare the public NYA1 PPP comparison with verified CODE products."""
 
-from __future__ import annotations
-
 import argparse
 import gzip
 from pathlib import Path

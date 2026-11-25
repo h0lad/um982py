@@ -1,7 +1,5 @@
 """Watches jamming and spoofing through SPOOFINFO, ANTENNA and C/N0."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass

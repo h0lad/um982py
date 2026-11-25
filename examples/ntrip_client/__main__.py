@@ -1,7 +1,5 @@
 # Feed NTRIP corrections to a UM982 and show the resulting position.
 
-from __future__ import annotations
-
 import argparse
 import math
 import os
@@ -98,7 +96,7 @@ def _sample(
         if debug:
             print(f"{log.value}: {error}", file=sys.stderr, flush=True)
         return False
-    except (ResponseTimeout, ProtocolError, KeyError, ValueError):
+    except ResponseTimeout, ProtocolError, KeyError, ValueError:
         return True
     finally:
         receiver.drain_pending()
@@ -173,7 +171,7 @@ def _reference_check(
         stats.reference_difference_m = None
         stats.reference_queried_at = None
         return False
-    except (ResponseTimeout, ProtocolError, KeyError, TypeError, ValueError):
+    except ResponseTimeout, ProtocolError, KeyError, TypeError, ValueError:
         stats.reference_difference_m = None
         stats.reference_queried_at = None
     finally:
@@ -264,8 +262,8 @@ def _stream(
     policy = ReconnectPolicy(args.reconnect_delay, args.reconnect_max_delay)
     delay = policy.initial_seconds
     while monotonic() < deadline:
+        prior_frames = stats.frames_forwarded
         try:
-            prior_frames = stats.frames_forwarded
             _stream_once(receiver, args, stats, monitor, password, deadline)
             return
         except (CasterDisconnected, NtripError) as error:

@@ -1,7 +1,5 @@
 """Raw-data dump paths and temporary capture."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from enum import StrEnum
 from math import isfinite

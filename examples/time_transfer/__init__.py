@@ -1,7 +1,5 @@
 """Converts GPST to UTC through the leap-second table."""
 
-from __future__ import annotations
-
 import itertools
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta

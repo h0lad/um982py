@@ -1,7 +1,5 @@
 # Compare Klobuchar delay with dual-frequency TEC.
 
-from __future__ import annotations
-
 import sys
 from bisect import bisect_right
 from collections.abc import Sequence

@@ -1,7 +1,5 @@
 """Estimates user range error from position sigma and DOP."""
 
-from __future__ import annotations
-
 import itertools
 import math
 from collections.abc import Sequence

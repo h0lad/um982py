@@ -1,7 +1,5 @@
 """Fits an empirical C/N0 elevation pattern from receiver observations."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass

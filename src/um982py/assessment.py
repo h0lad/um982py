@@ -47,7 +47,7 @@ class PositionLimits:
 
 @dataclass(frozen=True, slots=True)
 class PositionAssessment:
-    solution: "EpochSolution | Position"
+    solution: EpochSolution | Position
     epoch_age_s: float | None
     horizontal_rms_m: float | None
     vertical_std_m: float | None
@@ -71,7 +71,7 @@ def limit_reason(name: str, value: float | None, maximum: float | None) -> str |
 
 
 def assess_position(
-    solution: "EpochSolution | Position",
+    solution: EpochSolution | Position,
     limits: PositionLimits,
     *,
     epoch_age_s: float | None = None,

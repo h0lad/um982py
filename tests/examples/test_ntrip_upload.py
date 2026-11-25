@@ -49,7 +49,7 @@ def test_bkg_source_uploads_to_rover(station: Station, version: int) -> None:
                     )
                     await writer.drain()
                     await asyncio.sleep(0.2)
-            except (OSError, ConnectionError):
+            except OSError, ConnectionError:
                 pass
             finally:
                 writers.discard(writer)

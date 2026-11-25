@@ -1,7 +1,5 @@
 """Classifies continuous-wave jamming from JAMSTATUS and FREQJAMSTATUS."""
 
-from __future__ import annotations
-
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from enum import StrEnum

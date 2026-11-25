@@ -1,7 +1,5 @@
 """WGS84 geodesy helpers shared by library and examples."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
@@ -207,5 +205,5 @@ def records_from(record: Record, key: str) -> tuple[Record, ...]:
     """Return a nested record sequence, tolerating a missing key."""
     try:
         return record.records(key)
-    except (KeyError, TypeError):
+    except KeyError, TypeError:
         return ()

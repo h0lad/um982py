@@ -1,7 +1,5 @@
 """Small reusable pieces for GGA uplink and RTCM forwarding."""
 
-from __future__ import annotations
-
 from collections import Counter
 from dataclasses import dataclass, field
 from datetime import UTC, datetime

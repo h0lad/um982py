@@ -1,7 +1,5 @@
 """Checks dual-antenna heading, sky view and spoof indicators."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass

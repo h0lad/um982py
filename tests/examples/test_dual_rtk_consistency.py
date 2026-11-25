@@ -1,7 +1,5 @@
 """Tests for dual_rtk_consistency helpers."""
 
-from __future__ import annotations
-
 import pytest
 from examples.dual_rtk_consistency import (
     _is_rtk_fixed,

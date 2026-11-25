@@ -1,7 +1,5 @@
 """Selects the elevation mask that keeps the required satellites."""
 
-from __future__ import annotations
-
 import math
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass

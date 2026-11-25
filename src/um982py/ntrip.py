@@ -1,7 +1,5 @@
 """Read RTCM correction streams from NTRIP v1 and v2 casters."""
 
-from __future__ import annotations
-
 import base64
 import math
 import re

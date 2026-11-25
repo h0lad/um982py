@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import pytest
 from examples.signal_quality_report import (
     LOCK_BOUNDARIES,

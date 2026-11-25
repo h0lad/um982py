@@ -1,7 +1,5 @@
 """Segment received bytes into an auditable, replayable field session."""
 
-from __future__ import annotations
-
 import hashlib
 import json
 import os

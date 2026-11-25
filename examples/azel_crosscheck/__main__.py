@@ -1,7 +1,5 @@
 # Compare broadcast-orbit azimuth and elevation with SATVIS2.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Mapping, Sequence
 from pathlib import Path

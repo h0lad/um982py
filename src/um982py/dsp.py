@@ -1,7 +1,5 @@
 """DSP capture, wire framing and payload decoding."""
 
-from __future__ import annotations
-
 import json
 from dataclasses import asdict, dataclass, replace
 from enum import StrEnum

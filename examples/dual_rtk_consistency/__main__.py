@@ -1,7 +1,5 @@
 # Compare master/slave position baselines with UNIHEADING.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections.abc import Sequence

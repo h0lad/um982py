@@ -1,7 +1,5 @@
 """Tests for urban_nlos_filter helpers."""
 
-from __future__ import annotations
-
 import pytest
 from examples.urban_nlos_filter import classify_satellite, evaluate_labelled, nlos_score
 

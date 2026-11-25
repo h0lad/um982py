@@ -1,7 +1,5 @@
 """Choose a current receiver solution and summarize reported uncertainty."""
 
-from __future__ import annotations
-
 import math
 from collections import Counter
 from dataclasses import dataclass, field

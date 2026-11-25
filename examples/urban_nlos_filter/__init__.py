@@ -13,8 +13,6 @@ Checking for GNSS NLOS and Multipath Mitigation in Urban Areas. The Journal of
 Navigation, 66(6), 653-669. doi:10.1017/S0373463313000169
 """
 
-from __future__ import annotations
-
 import math
 from collections.abc import Sequence
 from dataclasses import dataclass

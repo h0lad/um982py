@@ -9,16 +9,15 @@ description = "Unicore UM982 GNSS library"
 license = "AGPL-3.0-only"
 license-files = ["LICENSE"]
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">=3.14"
 keywords = ["gnss", "gps", "um982py", "unicore", "nmea", "rtcm", "rinex"]
 classifiers = [
   "Development Status :: 4 - Beta",
   "Intended Audience :: Developers",
   "Intended Audience :: Science/Research",
   "Programming Language :: Python :: 3 :: Only",
-  "Programming Language :: Python :: 3.12",
-  "Programming Language :: Python :: 3.13",
   "Programming Language :: Python :: 3.14",
+  "Programming Language :: Python :: Free Threading :: 2 - Beta",
   "Topic :: Scientific/Engineering :: GIS",
   "Typing :: Typed",
 ]
@@ -26,12 +25,14 @@ dependencies = ["pyserial>=3.5,<4"]
 
 [project.optional-dependencies]
 geodesy = ["pyproj>=3.7,<4"]
+
+[dependency-groups]
 dev = [
   "hatchling>=1.27",
-  "mypy>=1.13",
-  "pytest>=8.3",
+  "mypy>=2.4",
+  "pytest>=9",
   "pytest-cov>=6",
-  "ruff>=0.9",
+  "ruff>=0.17",
   "types-pyserial",
 ]
 
@@ -53,7 +54,7 @@ include = [
 ]
 
 [tool.ruff]
-target-version = "py312"
+target-version = "py314"
 line-length = 88
 src = ["src", "tests", "examples"]
 
@@ -69,15 +70,24 @@ select = [
 "tests/test_reference.py" = ["S101", "S106"]
 
 [tool.mypy]
-python_version = "3.12"
+python_version = "3.14"
 mypy_path = "src"
 strict = true
+enable_error_code = [
+  "explicit-override",
+  "ignore-without-code",
+  "possibly-undefined",
+  "truthy-bool",
+  "unused-awaitable",
+]
 files = ["src/um982py", "examples"]
 
-[tool.pytest.ini_options]
+[tool.pytest]
+minversion = "9.0"
 testpaths = ["tests"]
 pythonpath = ["src", ".", "tests"]
-addopts = "-ra --strict-markers --strict-config"
+addopts = ["-ra"]
+strict = true
 markers = ["hardware: requires an explicitly selected receiver port"]
 
 [tool.coverage.run]

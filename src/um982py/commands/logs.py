@@ -277,12 +277,12 @@ class Log(StrEnum):
         return LOGS[self.value] if self.value in LOGS else EXTENDED_LOGS[self.value]
 
     @property
-    def wire(self) -> "Log":
+    def wire(self) -> Log:
         """The log sent on the wire, matching ``AntennaLog.wire``."""
         return self
 
     @property
-    def logical(self) -> "Log":
+    def logical(self) -> Log:
         """The measured quantity, matching ``AntennaLog.logical``."""
         return self
 

@@ -1,7 +1,5 @@
 # Benchmark PPP convergence against precision targets and an optional reference.
 
-from __future__ import annotations
-
 import argparse
 import math
 import sys
@@ -106,7 +104,7 @@ def _collect_epochs(
                     if not isinstance(nav.position_type, str)
                     else classify(int(PositionType[nav.position_type]))
                 )
-            except (ValueError, KeyError):
+            except ValueError, KeyError:
                 monitor = new_monitor()
                 counts["unknown_type"] += 1
                 continue

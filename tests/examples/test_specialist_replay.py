@@ -1,7 +1,5 @@
 """Runs specialist command lines against RTKLIB and labelled wire captures."""
 
-from __future__ import annotations
-
 import importlib
 import json
 import math

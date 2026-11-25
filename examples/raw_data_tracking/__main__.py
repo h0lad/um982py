@@ -1,7 +1,5 @@
 # Inspect raw baseband containers, messages and tracking fields.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Sequence
 from dataclasses import asdict

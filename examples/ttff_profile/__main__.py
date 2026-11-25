@@ -1,7 +1,5 @@
 # Measure time to first fix after receiver starts.
 
-from __future__ import annotations
-
 import argparse
 import sys
 from collections.abc import Sequence
@@ -165,7 +163,7 @@ def live_run(args: argparse.Namespace) -> tuple[tuple[FixEpoch, ...], TtffMeasur
                                 epochs, start=args.start, reset_seconds=0.0
                             )
             break
-        except (TransportError, ResponseTimeout):
+        except TransportError, ResponseTimeout:
             sleep(min(0.2, max(0.0, deadline - monotonic())))
     return tuple(epochs), measure(epochs, start=args.start, reset_seconds=0.0)
 

@@ -1,7 +1,5 @@
 """Tests the inner message catalogue and payload decoder."""
 
-from __future__ import annotations
-
 from dataclasses import FrozenInstanceError
 from struct import pack
 from types import MappingProxyType

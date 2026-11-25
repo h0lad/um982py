@@ -1,6 +1,7 @@
 # um982py
 
-Python 3.12+ library and CLI for the Unicore UM982 GNSS receiver.
+Python 3.14+ library and CLI for the Unicore UM982 GNSS receiver. It is fully
+typed and also runs on the free-threaded (no-GIL) CPython 3.14 build.
 
 The receivers UM980 and UD960 might also work up to some extend 
 but I didn't test due to lack of hardware.
@@ -51,7 +52,7 @@ See the [example catalogue](examples/README.md) for setup and more workflows.
 ## Development
 
 ```bash
-python -m pip install -e '.[dev]'
+python -m pip install -e . --group dev
 ruff check .
 ruff format --check .
 python -m mypy

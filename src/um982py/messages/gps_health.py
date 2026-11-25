@@ -69,7 +69,7 @@ class GpsLnavHealth:
         return _SIGNAL_STATUS[self.signal_status_code]
 
     @classmethod
-    def from_record(cls, record: Record) -> "GpsLnavHealth":
+    def from_record(cls, record: Record) -> GpsLnavHealth:
         """Interpret the transmitting satellite's GPSEPH health."""
         if record.name != "GPSEPH":
             raise ValueError("expected a GPSEPH record")

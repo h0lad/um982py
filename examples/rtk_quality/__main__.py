@@ -1,7 +1,5 @@
 # Summarize fix type, correction age and availability.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Callable, Sequence
 

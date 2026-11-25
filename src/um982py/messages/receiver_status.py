@@ -79,7 +79,7 @@ class SpoofInfo:
     glonass_mask: int
 
     @classmethod
-    def from_record(cls, record: Record) -> "SpoofInfo":
+    def from_record(cls, record: Record) -> SpoofInfo:
         if record.name != "SPOOFINFO":
             raise ValueError("expected a SPOOFINFO record")
         position_type = record["position_type"]
@@ -209,7 +209,7 @@ class PpsStatus:
     stage: int
 
     @classmethod
-    def from_record(cls, record: Record) -> "PpsStatus":
+    def from_record(cls, record: Record) -> PpsStatus:
         if record.name != "PPSSTATUS":
             raise ValueError("expected a PPSSTATUS record")
         return cls(

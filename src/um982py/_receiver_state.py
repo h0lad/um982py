@@ -1,7 +1,5 @@
 """Read receiver configuration, mode, masks and output subscriptions."""
 
-from __future__ import annotations
-
 from typing import TYPE_CHECKING
 
 from um982py.commands import queries

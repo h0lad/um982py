@@ -1,7 +1,5 @@
 """Broadcast ephemerides retained in UM982 DSP RAM."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from math import isfinite, sqrt
 from struct import unpack_from

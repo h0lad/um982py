@@ -1,7 +1,5 @@
 """Exercise the offline PPP workflow without network access or a receiver."""
 
-from __future__ import annotations
-
 import gzip
 import io
 import json

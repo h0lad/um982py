@@ -303,7 +303,7 @@ class StatusSite:
                 if len(raw) > HEADER_LIMIT:
                     raise ProtocolError("header too large")
                 request = parse_request(raw, website=True)
-            except (ProtocolError, asyncio.LimitOverrunError):
+            except ProtocolError, asyncio.LimitOverrunError:
                 await self._reply(
                     writer,
                     "400 Bad Request",
@@ -341,7 +341,7 @@ class StatusSite:
             await self._reply(
                 writer, "304 Not Modified" if unchanged else "200 OK", resource, method
             )
-        except (OSError, TimeoutError, asyncio.IncompleteReadError):
+        except OSError, TimeoutError, asyncio.IncompleteReadError:
             pass
         finally:
             self.peers[address] -= 1
@@ -350,7 +350,7 @@ class StatusSite:
             writer.close()
             try:
                 await asyncio.wait_for(writer.wait_closed(), 1)
-            except (OSError, TimeoutError):
+            except OSError, TimeoutError:
                 writer.transport.abort()
 
     async def _reply(

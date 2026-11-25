@@ -17,7 +17,7 @@ from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
 from time import monotonic
-from typing import Protocol
+from typing import Protocol, override
 
 from um982py.antenna import AntennaLog
 from um982py.commands import Log, Trigger, logging
@@ -99,7 +99,7 @@ def _valid_positions(records: Iterable[Record]) -> Iterator[tuple[float, Record]
         try:
             xyz = receiver_ecef(record)
             time = gps_epoch(record)
-        except (KeyError, TypeError, ValueError):
+        except KeyError, TypeError, ValueError:
             continue
         if all(math.isfinite(x) for x in xyz) and math.dist(xyz, (0, 0, 0)) > 1e6:
             yield time, record
@@ -422,7 +422,7 @@ def iter_live_records(
     rate_hz: float | None = None,
     intervals: Mapping[DataLog, float] | None = None,
     binary: bool = True,
-) -> Generator[tuple[str, Record], None, None]:
+) -> Generator[tuple[str, Record]]:
     """Temporarily subscribe and yield records until the duration elapses.
 
     ``intervals`` overrides the default period in seconds for selected periodic
@@ -505,15 +505,18 @@ def replay_receiver(raw: bytes) -> Receiver:
             self._offset = 0
             self.closed = False
 
+        @override
         def read(self, size: int, timeout: float) -> bytes:
             del timeout
             chunk = self._payload[self._offset : self._offset + size]
             self._offset += len(chunk)
             return chunk
 
+        @override
         def write(self, data: bytes, timeout: float) -> None:
             del data, timeout
 
+        @override
         def close(self) -> None:
             self.closed = True
 

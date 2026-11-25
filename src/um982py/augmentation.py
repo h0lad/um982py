@@ -1,7 +1,5 @@
 """Commands for enabling receiver augmentation."""
 
-from __future__ import annotations
-
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Protocol
 

@@ -1,7 +1,5 @@
 """Tests the precise static fix example against hand-computed statistics."""
 
-from __future__ import annotations
-
 import math
 from pathlib import Path
 

@@ -56,7 +56,7 @@ class GalileoEphemerisHealth:
     e5b: GalileoSignalStatus
 
     @classmethod
-    def from_record(cls, record: Record) -> "GalileoEphemerisHealth":
+    def from_record(cls, record: Record) -> GalileoEphemerisHealth:
         if record.name != "GALEPH":
             raise ValueError("expected a GALEPH record")
 
@@ -104,7 +104,7 @@ class EphemerisHealth:
         return {0: True, 1: False}.get(self.raw)
 
     @classmethod
-    def from_record(cls, record: Record) -> "EphemerisHealth":
+    def from_record(cls, record: Record) -> EphemerisHealth:
         if record.name == "GLOEPH":
             # R1.15 defines Sloto as GLONASS slot + 37.
             if record.integer("sloto") <= 37:

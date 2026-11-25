@@ -1,7 +1,5 @@
 # Collect SATVIS2 frames and report constellation visibility and a sky plot.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections.abc import Callable, Sequence

@@ -74,7 +74,7 @@ class ReceiverState:
     def __post_init__(self) -> None:
         object.__setattr__(self, "settings", _settings(self))
 
-    def differences(self, other: "ReceiverState") -> tuple[str, ...]:
+    def differences(self, other: ReceiverState) -> tuple[str, ...]:
         """List fields that differ, ignoring output-subscription order."""
         return tuple(
             name

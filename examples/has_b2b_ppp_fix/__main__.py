@@ -1,7 +1,5 @@
 # Runs a dual-service PPP occupation with live divergence telemetry.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections import defaultdict

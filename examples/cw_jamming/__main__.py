@@ -1,7 +1,5 @@
 # Classify continuous-wave jamming from receiver diagnostics.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Sequence
 

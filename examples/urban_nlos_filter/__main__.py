@@ -4,8 +4,6 @@
 # and C/N0. Low scores mark satellites that are probably line-of-sight, and high
 # scores flag candidates for exclusion or down-weighting.
 
-from __future__ import annotations
-
 import csv
 import sys
 from collections.abc import Sequence

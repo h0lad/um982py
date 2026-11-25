@@ -318,7 +318,7 @@ class Caster:
                 request = parse_request(
                     raw, allow_upload=self.source_credentials is not None
                 )
-            except (ProtocolError, asyncio.LimitOverrunError):
+            except ProtocolError, asyncio.LimitOverrunError:
                 await self._reply(writer, "400 Bad Request")
                 return
             if request.method in ("SOURCE", "POST"):
@@ -393,7 +393,7 @@ class Caster:
             writer.close()
             try:
                 await asyncio.wait_for(writer.wait_closed(), 1.0)
-            except (OSError, TimeoutError):
+            except OSError, TimeoutError:
                 writer.transport.abort()
 
     async def _upload(

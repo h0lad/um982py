@@ -1,7 +1,5 @@
 # Record baseband command replies and receiver state changes.
 
-from __future__ import annotations
-
 import argparse
 import sys
 from collections.abc import Sequence
@@ -136,7 +134,7 @@ def _probe(
             )
             receiver.execute(request, timeout=_remaining(deadline, receiver.timeout))
             accepted = True
-        except (CommandRejected, ResponseTimeout):
+        except CommandRejected, ResponseTimeout:
             pass
         end = min(deadline, monotonic() + args.window_seconds)
         while (remaining := end - monotonic()) > 0 and not recording.limit_reached:

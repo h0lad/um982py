@@ -350,7 +350,7 @@ class BasebandStream(_ByteStream):
                 packet = RawBasebandPacket.from_bytes(
                     bytes(buffer[scan : scan + declared])
                 )
-            except (ChecksumError, ProtocolError):
+            except ChecksumError, ProtocolError:
                 scan += 1
                 continue
             return packet, scan + declared
@@ -371,7 +371,7 @@ class BasebandStream(_ByteStream):
             ):
                 try:
                     RawBasebandPacket.from_bytes(bytes(buffer[scan : scan + declared]))
-                except (ChecksumError, ProtocolError):
+                except ChecksumError, ProtocolError:
                     pass
                 else:
                     return scan

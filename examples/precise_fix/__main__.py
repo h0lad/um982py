@@ -1,7 +1,5 @@
 # Estimate a static position from BESTXYZ epochs.
 
-from __future__ import annotations
-
 import math
 import sys
 from collections import Counter

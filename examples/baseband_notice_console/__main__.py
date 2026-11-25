@@ -1,7 +1,5 @@
 # Track baseband configuration from diagnostic notices.
 
-from __future__ import annotations
-
 import sys
 from collections.abc import Sequence
 from dataclasses import asdict

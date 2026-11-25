@@ -51,7 +51,7 @@ def _log_entry(line: str) -> Record:
     )
 
 
-def decode_log(message: Message, *, log: "Log | None" = None) -> Record:
+def decode_log(message: Message, *, log: Log | None = None) -> Record:
     """Decode a frame, requiring an explicit log for ambiguous binary IDs."""
     from um982py.commands import Log
     from um982py.commands.logging import request
@@ -80,7 +80,7 @@ def decode_log(message: Message, *, log: "Log | None" = None) -> Record:
         raise ProtocolError("Malformed log body") from error
 
 
-def _decode_log(message: Message, *, log: "Log | None") -> Record:
+def _decode_log(message: Message, *, log: Log | None) -> Record:
     if isinstance(message, Sentence):
         return decode_nmea(message)
     if isinstance(message, RtcmMessage):
@@ -183,7 +183,7 @@ def _decode_log(message: Message, *, log: "Log | None") -> Record:
     return replace(record, message=message)
 
 
-def _matching_logs(message: AsciiMessage | BinaryMessage) -> list["Log"]:
+def _matching_logs(message: AsciiMessage | BinaryMessage) -> list[Log]:
     if isinstance(message, BinaryMessage):
         key: tuple[str, str | int] = ("binary", message.header.message_id)
     else:
@@ -193,7 +193,7 @@ def _matching_logs(message: AsciiMessage | BinaryMessage) -> list["Log"]:
 
 
 @cache
-def _log_index() -> dict[tuple[str, str | int], tuple["Log", ...]]:
+def _log_index() -> dict[tuple[str, str | int], tuple[Log, ...]]:
     """Index the static catalogue once, retaining all ambiguous candidates.
 
     Cache only catalogue entries, never names supplied by incoming traffic.

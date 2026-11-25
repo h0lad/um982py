@@ -1,7 +1,5 @@
 """Single-owner receiver worker with bounded message subscriptions."""
 
-from __future__ import annotations
-
 from collections.abc import Sequence
 from concurrent.futures import Future
 from contextlib import suppress
@@ -322,12 +320,13 @@ class ReceiverStream:
                 try:
                     operation, future = self._operations.get_nowait()
                 except Empty:
-                    operation = None
-                if operation is not None and future.set_running_or_notify_cancel():
-                    try:
-                        future.set_result(operation())
-                    except Exception as error:
-                        future.set_exception(error)
+                    pass
+                else:
+                    if future.set_running_or_notify_cancel():
+                        try:
+                            future.set_result(operation())
+                        except Exception as error:
+                            future.set_exception(error)
                 for frame in self.receiver._drain_timed():
                     self._dispatch(frame)
                 with suppress(ResponseTimeout):
@@ -349,8 +348,11 @@ class ReceiverStream:
                     subscription._finish()
             while True:
                 try:
-                    _, future = self._operations.get_nowait()
+                    _, pending = self._operations.get_nowait()
                 except Empty:
                     break
-                if future.set_running_or_notify_cancel():
-                    future.set_exception(TransportClosed("receiver stream stopped"))
+                else:
+                    if pending.set_running_or_notify_cancel():
+                        pending.set_exception(
+                            TransportClosed("receiver stream stopped")
+                        )

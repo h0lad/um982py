@@ -1,7 +1,5 @@
 """Converts between ECEF, geodetic and ENU frames and baselines."""
 
-from __future__ import annotations
-
 import math
 from dataclasses import dataclass
 

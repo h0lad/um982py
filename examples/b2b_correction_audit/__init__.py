@@ -52,7 +52,7 @@ class NavigationAlignment:
 def _label(value: object, kind: type[PositionType] | type[SolutionStatus]) -> str:
     try:
         return kind(int(str(value))).name
-    except (ValueError, TypeError):
+    except ValueError, TypeError:
         return str(value)
 
 
