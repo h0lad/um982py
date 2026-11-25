@@ -43,6 +43,7 @@ from um982py.experimental import (
     replay_sar_stream,
     verify_osnma_stream,
 )
+from um982py.state import preserved_receiver_state
 
 DEFAULT_READER = (
     Path(__file__).resolve().parents[2] / "tools" / "boot-reader" / "reader.bin"
@@ -167,11 +168,16 @@ def _write_snapshot_report(
     native_nav: bool,
     summary: bool,
     archive: Sequence[dict[str, object]] = (),
+    runtime_state: dict[str, object] | None = None,
 ) -> None:
     audits = [snapshot.window_audits() for snapshot in campaign.snapshots]
     report = _report(campaign, audits=audits)
     if archive:
         report["tracking_archive"] = list(archive)
+    if runtime_state is not None:
+        report["runtime_state"] = runtime_state
+    if campaign.stopped is not None:
+        report["stopped"] = campaign.stopped
     table = (
         []
         if summary
@@ -264,6 +270,19 @@ def _write_snapshot_report(
     if campaign.application_restored is not None:
         totals += f", application_restored={campaign.application_restored}"
     print(totals, file=sys.stdout if summary and destination else sys.stderr)
+    inconsistent = [
+        index
+        for index, snapshot in enumerate(campaign.snapshots, 1)
+        if not snapshot.consistency()["consistent"]
+    ]
+    if inconsistent:
+        print(
+            "warning: snapshots "
+            + ", ".join(map(str, inconsistent))
+            + " hold odd parts with mixed or invalid secondary sync patterns; "
+            "their decoded page fields are not trustworthy",
+            file=sys.stderr,
+        )
 
 
 def _save_tracking(
@@ -413,27 +432,38 @@ def main() -> int:
         if directory is not None:
             archive.append(_save_tracking(directory, len(archive) + 1, snapshot))
 
-    if args.snapshots > 1:
-        campaign = capture_inav_campaign(
-            args.port,
-            helper=helper,
-            baud=args.baud,
-            snapshots=args.snapshots,
-            pause_seconds=args.pause,
-            on_snapshot=archive_snapshot if directory is not None else None,
-        )
-    else:
-        snapshot = capture_inav_pages(args.port, helper=helper, baud=args.baud)
-        archive_snapshot(snapshot)
-        campaign = InavCampaign((snapshot,))
+    # Each snapshot restarts the application, which reloads the saved
+    # configuration; runtime settings are captured first and restored after.
+    with preserved_receiver_state(args.port, args.baud) as preserved:
+        if args.snapshots > 1:
+            campaign = capture_inav_campaign(
+                args.port,
+                helper=helper,
+                baud=args.baud,
+                snapshots=args.snapshots,
+                pause_seconds=args.pause,
+                on_snapshot=archive_snapshot if directory is not None else None,
+            )
+        else:
+            snapshot = capture_inav_pages(args.port, helper=helper, baud=args.baud)
+            archive_snapshot(snapshot)
+            campaign = InavCampaign((snapshot,))
+    restoration = preserved.restoration
+    runtime_state: dict[str, object] = {
+        "restored": preserved.restored,
+        "differences": [] if restoration is None else list(restoration.differences),
+        "errors": ([] if restoration is None else list(restoration.errors))
+        + ([] if preserved.error is None else [preserved.error]),
+    }
     _write_snapshot_report(
         campaign,
         args.json,
         native_nav=args.native_nav is not False,
         summary=args.summary,
         archive=archive,
+        runtime_state=runtime_state,
     )
-    return 0
+    return 0 if preserved.restored else 2
 
 
 if __name__ == "__main__":

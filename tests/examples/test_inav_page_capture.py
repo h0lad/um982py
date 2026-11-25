@@ -2,8 +2,11 @@ from __future__ import annotations
 
 import json
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
+from types import SimpleNamespace
 
 import examples.inav_page_capture.__main__ as cli
 import pytest
@@ -31,6 +34,11 @@ FIXTURES = Path(__file__).resolve().parents[1] / "fixtures"
 
 TRACKING_BASE = 0x3C2C00
 PAGE_STATE_BASE = 0x3E5B00
+
+
+@contextmanager
+def _restored_state(*args: object, **kwargs: object) -> Iterator[SimpleNamespace]:
+    yield SimpleNamespace(restoration=None, restored=True, error=None)
 
 
 def _snapshot() -> InavSnapshot:
@@ -70,6 +78,7 @@ def test_live_report_native_navigation(
         argv.append(option)
     monkeypatch.setattr(sys, "argv", argv)
     monkeypatch.setattr(cli, "capture_inav_pages", lambda *args, **kwargs: _snapshot())
+    monkeypatch.setattr(cli, "preserved_receiver_state", _restored_state)
     gps = GpsLnavSubframe(26, 1, 3, 577038, (0x22C18D0D,), (0x8B0634,))
     glonass = GlonassFdmaString(65, 34, 11, 0x0B7EDAA35FFFFDD9EFD682)
     monkeypatch.setattr(cli, "extract_native_nav", lambda regions: ((gps,), (glonass,)))
@@ -212,6 +221,7 @@ def test_archived_tracking_replays_raw_pages_and_utc_bounds(
         capture_finished_utc=finished,
     )
     monkeypatch.setattr(cli, "capture_inav_pages", lambda *args, **kwargs: snapshot)
+    monkeypatch.setattr(cli, "preserved_receiver_state", _restored_state)
     archive, result = tmp_path / "ram", tmp_path / "nav.json"
     monkeypatch.setattr(
         sys,

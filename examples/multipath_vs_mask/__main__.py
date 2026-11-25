@@ -131,6 +131,54 @@ def payload(
     }
 
 
+def live_capture_sweep(args: argparse.Namespace) -> dict[str, object]:
+    """Capture one pass with the receiver's mask and sweep masks over it.
+
+    Every mask is applied to the same observations, so differences between
+    steps come from the excluded satellites alone and not from changes of sky,
+    multipath or satellite set between separate collection windows. The
+    receiver configuration is not changed.
+    """
+    range_log = selected_log(args, Log.RANGE)
+    with open_receiver(args) as receiver:
+        before = ReceiverState.from_parts(receiver_state(receiver))
+        with temporary_subscriptions(
+            receiver,
+            (
+                range_log.wire_name(binary=True),
+                range_log.output(args.interval, binary=True),
+            ),
+            (
+                Log.SATVIS2.wire_name(binary=True),
+                Log.SATVIS2.output(args.interval, binary=True),
+            ),
+        ):
+            print(
+                f"Collecting {args.frames} epochs once for all masks...",
+                file=sys.stderr,
+                flush=True,
+            )
+            captured = receive_records(
+                receiver,
+                [range_log, Log.SATVIS2],
+                duration=args.frames * args.interval + args.timeout,
+                show_progress=True,
+            )
+        after = ReceiverState.from_parts(receiver_state(receiver))
+    observations = observations_from(
+        captured["RANGE"][: args.frames],
+        interval=args.interval,
+        frequency_hz=args.frequency,
+    )
+    series = elevated_series(observations, gps_elevations(captured["SATVIS2"]))
+    report = verify_restore(before, after)
+    result = payload(
+        mask_sweep(series, args.masks), restore=(report.identical, report.changed)
+    )
+    result["design"] = "one capture, masks applied in post-processing"
+    return result
+
+
 def live_sweep(args: argparse.Namespace) -> dict[str, object]:
     """Sweep the mask on a receiver and restore the captured mask afterwards."""
     range_log = selected_log(args, Log.RANGE)
@@ -179,7 +227,12 @@ def live_sweep(args: argparse.Namespace) -> dict[str, object]:
                 receiver.execute(elevation_mask(original))
         after = ReceiverState.from_parts(receiver_state(receiver))
     report = verify_restore(before, after)
-    return payload(steps, restore=(report.identical, report.changed))
+    result = payload(steps, restore=(report.identical, report.changed))
+    result["design"] = (
+        "receiver mask changed per step; steps use separate time windows, so the "
+        "mask effect is confounded with sky and multipath changes"
+    )
+    return result
 
 
 def replay_sweep(args: argparse.Namespace) -> dict[str, object]:
@@ -225,7 +278,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="elevation masks in degrees, swept in ascending order",
     )
     parser.add_argument(
-        "--frames", type=int, default=60, help="number of RANGE frames per mask"
+        "--frames",
+        type=int,
+        default=60,
+        help="number of RANGE frames (per mask with --receiver-sweep)",
     )
     parser.add_output_interval(default=1.0, help="seconds between RANGE frames")
     parser.add_argument(
@@ -251,6 +307,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         help="injected multipath amplitude at zenith in metres",
     )
     parser.add_argument(
+        "--receiver-sweep",
+        action="store_true",
+        help=(
+            "change the receiver's own mask and collect a new window per step "
+            "instead of applying every mask to one capture"
+        ),
+    )
+    parser.add_argument(
         "--debug",
         action="store_true",
         help="print live capture updates to stderr",
@@ -258,7 +322,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     args = parser.parse_args(argv)
     debug_header(args, "multipath_vs_mask")
     if args.port is not None:
-        result = live_sweep(args)
+        result = live_sweep(args) if args.receiver_sweep else live_capture_sweep(args)
     elif args.replay is not None:
         result = replay_sweep(args)
     else:

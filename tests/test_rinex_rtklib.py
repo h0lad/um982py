@@ -159,6 +159,9 @@ def test_rtklib_reads_galileo_and_beidou_navigation(
     convert(convbin, source, output, nav=True)
     data = output.read_text().split("END OF HEADER", 1)[1]
     lines = [line for line in data.splitlines() if line.strip()]
+    if not any(line.startswith("C60") for line in lines):
+        # RTKLIB builds with the default MAXPRNCMP of 50 drop BeiDou PRN 60.
+        pytest.skip("convbin was built without support for BeiDou PRN 60")
     assert len(lines) == 24
     assert [lines[index][:23] for index in (0, 8, 16)] == [
         "E36 2021 12 30 03 00 00",

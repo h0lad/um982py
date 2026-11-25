@@ -196,3 +196,43 @@ def test_snapshot_reports_an_unsupported_mode_without_assuming_a_replacement() -
     assert snapshot.settings.rover_mode is None
     assert snapshot.settings.problems == ("mode: unsupported receiver mode",)
     assert "rover_mode" not in snapshot.settings.available
+
+
+def test_runtime_config_lost_by_a_reset_is_resent_but_ports_are_not() -> None:
+    # Live R4.10Build25164, 2026-11-24: a warm reset reloaded the saved
+    # configuration, so CONFIG RTK RELIABILITY 1 1 came back as 3 1.
+    def config(text: str) -> bytes:
+        topic = text.split()[1]
+        body = f"CONFIG,{topic},{text}".encode()
+        return b"$" + body + f"*{nmea_checksum(b'$' + body):02X}\r\n".encode()
+
+    base = state()
+    expected = ReceiverState(
+        (
+            *base.configuration,
+            config("CONFIG RTK RELIABILITY 1 1"),
+            config("CONFIG COM2 115200"),
+        ),
+        base.mode,
+        base.masks,
+        base.logs,
+    )
+    current = ReceiverState(
+        (
+            *base.configuration,
+            config("CONFIG RTK RELIABILITY 3 1"),
+            config("CONFIG COM2 9600"),
+        ),
+        base.mode,
+        base.masks,
+        base.logs,
+    )
+    receiver = MagicMock()
+    with patch(
+        "um982py.state.snapshot_receiver_state",
+        side_effect=[current, current, current, current],
+    ):
+        result = restore_receiver_state(receiver, expected)
+    sent = [call.args[0].text for call in receiver.execute.call_args_list]
+    assert sent == ["CONFIG RTK RELIABILITY 1 1"]
+    assert result.differences == ("configuration",)

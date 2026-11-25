@@ -31,6 +31,11 @@ from um982py.errors import ResponseTimeout, TransportError
 from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.messages.record import Record
 from um982py.quality import FixClass, position_type_code, solution_status_code
+from um982py.state import (
+    ReceiverState,
+    restore_receiver_state,
+    snapshot_receiver_state,
+)
 from um982py.subscriptions import temporary_subscriptions
 
 INJECTED_RUNS = {
@@ -164,6 +169,35 @@ def live_run(args: argparse.Namespace) -> tuple[tuple[FixEpoch, ...], TtffMeasur
     return tuple(epochs), measure(epochs, start=args.start, reset_seconds=0.0)
 
 
+RESTORE_ATTEMPTS = 20
+"""Reconnection attempts, one per second, while the receiver restarts."""
+
+
+def restore_after_resets(
+    args: argparse.Namespace, before: ReceiverState
+) -> dict[str, object]:
+    """Re-apply runtime settings that the resets dropped and report the result.
+
+    A RESET reloads the saved configuration, so log subscriptions and CONFIG
+    entries applied only at runtime are lost unless they are restored.
+    """
+    failure = "receiver did not answer after the reset"
+    for _ in range(RESTORE_ATTEMPTS):
+        try:
+            with open_receiver(args) as receiver:
+                receiver.version()
+                result = restore_receiver_state(receiver, before)
+            return {
+                "restored": result.restored,
+                "differences": list(result.differences),
+                "errors": list(result.errors),
+            }
+        except (TransportError, ResponseTimeout) as error:
+            failure = str(error)
+            sleep(1.0)
+    return {"restored": False, "differences": [], "errors": [failure]}
+
+
 def statistics_payload(statistics: TtffStatistics) -> dict[str, object]:
     """Serialise the repeatability of one start kind."""
     return {
@@ -264,8 +298,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     args = parser.parse_args(argv)
     debug_header(args, "ttff_profile")
+    restoration = None
     if args.port is not None:
-        pairs = [live_run(args) for _ in range(args.runs)]
+        with open_receiver(args) as receiver:
+            before = snapshot_receiver_state(receiver)
+        try:
+            pairs = [live_run(args) for _ in range(args.runs)]
+        finally:
+            restoration = restore_after_resets(args, before)
     elif args.replay is not None:
         pairs = [replay_run(args)]
     else:
@@ -285,12 +325,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.replay is not None
         else "injected reset at zero"
     )
+    if restoration is not None:
+        result["restoration"] = restoration
     print(
         f"TTFF: {len(pairs)} runs, {result['failed_runs']} failed ({result['source']})",
         file=sys.stderr,
     )
+    if restoration is not None and not restoration["restored"]:
+        print(
+            f"warning: receiver state not fully restored: {restoration}",
+            file=sys.stderr,
+        )
     write_json(result, args.json)
-    return 1 if result["failed_runs"] else 0
+    unrestored = restoration is not None and not restoration["restored"]
+    return 1 if result["failed_runs"] or unrestored else 0
 
 
 if __name__ == "__main__":

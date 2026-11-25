@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
+from contextlib import nullcontext
 from dataclasses import asdict
 from math import degrees
 from pathlib import Path
@@ -29,6 +30,7 @@ from um982py.experimental import (
     extract_dsp_tracking,
     read_dsp_satellite_state_windows,
 )
+from um982py.state import PreservedState, preserved_receiver_state
 
 DEFAULT_READER = (
     Path(__file__).resolve().parents[2] / "tools" / "boot-reader" / "reader.bin"
@@ -266,6 +268,19 @@ def _print_glonass_propagation(
         print(f"  {_compact(asdict(record))}")
 
 
+def _runtime_state_report(preserved: PreservedState | None) -> dict[str, object] | None:
+    """Whether the runtime settings lost by the restart were restored."""
+    if preserved is None:
+        return None
+    restoration = preserved.restoration
+    return {
+        "restored": preserved.restored,
+        "differences": [] if restoration is None else list(restoration.differences),
+        "errors": ([] if restoration is None else list(restoration.errors))
+        + ([] if preserved.error is None else [preserved.error]),
+    }
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     """Capture or replay a per-channel UM982 tracking snapshot."""
     parser = ExampleParser(prog="python3 -m examples.dsp_tracking", description=__doc__)
@@ -326,6 +341,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     restored = None
     regions = {}
     satellite_state_data = {}
+    runtime_state: dict[str, object] | None = None
     if args.replay is not None:
         for name in DSP_SATELLITE_STATE_FILES:
             path = args.replay / f"{name}.bin"
@@ -345,12 +361,23 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             regions[name] = (base, data)
     else:
-        with BootMemoryReader.connect(
-            args.port or "/dev/ttyUSB0",
-            args.baud,
-            helper=args.helper,
-            boot_menu_only=args.boot_menu,
-        ) as reader:
+        port = args.port or "/dev/ttyUSB0"
+        # The boot-menu session restarts the application, which reloads the
+        # saved configuration. Runtime settings are captured first and
+        # restored afterwards, unless the application is not running.
+        with (
+            (
+                nullcontext(None)
+                if args.boot_menu
+                else preserved_receiver_state(port, args.baud)
+            ) as preserved,
+            BootMemoryReader.connect(
+                port,
+                args.baud,
+                helper=args.helper,
+                boot_menu_only=args.boot_menu,
+            ) as reader,
+        ):
             regions = {
                 name: (base, reader.read_range(base, length))
                 for name, base, length in windows
@@ -358,6 +385,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.satellite_states:
                 satellite_state_data = read_dsp_satellite_state_windows(reader)
         restored = reader.application_restored
+        runtime_state = _runtime_state_report(preserved)
         if args.save_ram is not None:
             args.save_ram.mkdir(parents=True)
             for name, (_, data) in regions.items():
@@ -385,6 +413,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.json is not None:
         report = {
             "application_restored": restored,
+            "runtime_state": runtime_state,
             "channels": [_channel_report(entry) for entry in channels],
             "receiver_state": _receiver_report(dsp),
         }
@@ -395,7 +424,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         report["broadcast_ephemerides"] = [asdict(entry) for entry in ephemerides]
         report["glonass_propagation"] = [asdict(entry) for entry in glonass_propagation]
         write_json(report, args.json)
-    if restored is False:
+    if restored is False or (
+        runtime_state is not None and not runtime_state["restored"]
+    ):
         return 2
     return 0 if channels else 1
 

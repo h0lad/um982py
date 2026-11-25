@@ -10,6 +10,7 @@ from math import isfinite
 from pathlib import Path
 from typing import Self
 
+from um982py.errors import BootMenuError
 from um982py.experimental.boot_memory import BootMemoryReader
 from um982py.experimental.inav_coding import (
     INAV_SYNC_PATTERN,
@@ -288,8 +289,33 @@ class InavSnapshot:
         """Audit only the symbol windows captured in this snapshot."""
         return audit_page_windows(extract_channel_states(self.memory_windows))
 
+    def consistency(self) -> dict[str, object]:
+        """Whether the stored odd parts agree on the secondary sync pattern.
+
+        Galileo satellites transmit pages synchronously, so odd parts
+        completed at one time counter share one SSP. R4.10Build25164 stores it
+        as an index 1-3. After long tracking all valid odd parts of a snapshot
+        agree (2026-11-24). Snapshots taken shortly after a receiver restart
+        held mixed or out-of-range values, and their decoded fields are not
+        trustworthy.
+        """
+        by_time: dict[int, set[int]] = {}
+        for page in self.pages:
+            if page.page_valid and not page.part.even and page.part.ssp is not None:
+                by_time.setdefault(page.time_counter, set()).add(page.part.ssp)
+        consistent = bool(by_time) and all(
+            len(values) == 1 and values <= {1, 2, 3} for values in by_time.values()
+        )
+        return {
+            "ssp_by_time_counter": {
+                str(time): sorted(values) for time, values in sorted(by_time.items())
+            },
+            "consistent": consistent,
+        }
+
     def manifest(self) -> dict[str, object]:
         return {
+            "consistency": self.consistency(),
             "pages": len(self.pages),
             "prns": sorted({page.prn for page in self.pages}),
             "odd_pages": sum(not page.part.even for page in self.pages),
@@ -1159,6 +1185,8 @@ class InavCampaign:
 
     snapshots: tuple[InavSnapshot, ...]
     """One snapshot per completed capture cycle."""
+    stopped: str | None = None
+    """Why the campaign ended before the requested snapshots, if it did."""
 
     @property
     def pages(self) -> tuple[InavPage, ...]:
@@ -1268,11 +1296,20 @@ def capture_inav_campaign(
         raise ValueError(
             "Capture needs at least one snapshot and a finite, nonnegative pause"
         )
-    collected = []
+    collected: list[InavSnapshot] = []
     for index in range(snapshots):
         if index:
             sleep(pause_seconds)
-        snapshot = capture_inav_pages(port, helper=helper, baud=baud)
+        try:
+            snapshot = capture_inav_pages(port, helper=helper, baud=baud)
+        except BootMenuError as error:
+            # Keep the completed snapshots. The reader has already tried to
+            # return the receiver to the application.
+            if not collected:
+                raise
+            return InavCampaign(
+                tuple(collected), stopped=f"snapshot {index + 1}: {error}"
+            )
         collected.append(snapshot)
         if on_snapshot is not None:
             on_snapshot(snapshot)

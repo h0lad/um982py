@@ -1,6 +1,9 @@
 """Snapshot and restore the receiver settings supported by this module."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
+from time import sleep
 from typing import Literal
 
 from um982py._receiver_state import receiver_state
@@ -11,7 +14,9 @@ from um982py.commands.configuration.corrections import (
     ppp_datum,
     rtk_assists_ppp,
 )
+from um982py.commands.core import action
 from um982py.commands.types import RoverDynamics, Trigger
+from um982py.errors import ResponseTimeout, TransportError
 from um982py.messages import Sentence
 from um982py.protocol import StreamDecoder
 from um982py.receiver import Receiver
@@ -175,13 +180,41 @@ def _settings(state: ReceiverState) -> RestorableSettings:
     )
 
 
+# Settings whose re-application would change the link or reboot the receiver,
+# and settings that have their own restoration step above.
+_UNREPLAYED_CONFIG_PREFIXES = (
+    "CONFIG COM1 ",
+    "CONFIG COM2 ",
+    "CONFIG COM3 ",
+    "CONFIG SIGNALGROUP ",
+    "CONFIG MMP ",
+    "CONFIG PSRVELDRPOS ",
+    "CONFIG RTKASITPPP ",
+    "CONFIG PPP DATUM ",
+)
+
+
+def _config_commands(state: ReceiverState) -> frozenset[str]:
+    """The CONFIG command texts echoed in a configuration snapshot."""
+    commands = set()
+    for raw in state.configuration:
+        for message in StreamDecoder().feed(raw):
+            if isinstance(message, Sentence) and len(message.fields) >= 2:
+                text = " ".join(message.fields[1].split())
+                if text.startswith("CONFIG "):
+                    commands.add(text)
+    return frozenset(commands)
+
+
 def restore_receiver_state(
     receiver: Receiver, expected: ReceiverState
 ) -> StateRestoration:
     """Restore supported settings and report any remaining differences.
 
     Restore the signal group and reconnect after a reboot before calling this
-    function. The report lists differences in other configuration and masks.
+    function. Other CONFIG entries that differ are re-sent from the echoed
+    command text, except port and signal-group settings. The report lists the
+    differences that remain, including masks.
     The caller must handle these settings. A changed ONCE subscription cannot
     be reconstructed without knowing whether it has already fired.
     """
@@ -228,7 +261,18 @@ def restore_receiver_state(
             receiver.execute(ppp_datum(saved.ppp_datum))
     except Exception as error:
         errors.append(f"PPP datum: {error}")
+    # A reset or reboot reloads the saved configuration, which loses settings
+    # that were only applied at runtime. Each CONFIG reply echoes the command
+    # that sets it, so differing entries are re-sent verbatim.
     current = snapshot_receiver_state(receiver)
+    missing = _config_commands(expected) - _config_commands(current)
+    for text in sorted(missing):
+        if text.startswith(_UNREPLAYED_CONFIG_PREFIXES):
+            continue
+        try:
+            receiver.execute(action(text))
+        except Exception as error:
+            errors.append(f"{text}: {error}")
     expected_logs = set(expected.logs)
     current_logs = set(current.logs)
     once_keys = {
@@ -258,3 +302,61 @@ def restore_receiver_state(
                 errors.append(f"restore {entry.name} on {entry.port}: {error}")
     after = snapshot_receiver_state(receiver)
     return StateRestoration(expected, after, tuple(errors))
+
+
+class PreservedState:
+    """The outcome of :func:`preserved_receiver_state`, filled in on exit."""
+
+    __slots__ = ("before", "error", "restoration")
+
+    def __init__(self) -> None:
+        self.before: ReceiverState | None = None
+        self.restoration: StateRestoration | None = None
+        self.error: str | None = None
+
+    @property
+    def restored(self) -> bool:
+        return self.restoration is not None and self.restoration.restored
+
+
+@contextmanager
+def preserved_receiver_state(
+    port: str,
+    baud: int,
+    *,
+    timeout: float = 3.0,
+    attempts: int = 20,
+) -> Iterator[PreservedState]:
+    """Snapshot runtime settings, then restore them after a receiver restart.
+
+    A reset, reboot or boot-menu session reloads the saved configuration, so
+    CONFIG entries and log subscriptions applied only at runtime are lost.
+    The snapshot uses the running application before the body, and on exit
+    the receiver is reopened, once per second for up to ``attempts`` tries,
+    and :func:`restore_receiver_state` is applied.
+    """
+    outcome = PreservedState()
+    receiver = Receiver.connect(port, baud, timeout=timeout)
+    try:
+        outcome.before = snapshot_receiver_state(receiver)
+    finally:
+        receiver.close()
+    try:
+        yield outcome
+    finally:
+        outcome.error = "receiver did not answer after the restart"
+        for _ in range(attempts):
+            try:
+                receiver = Receiver.connect(port, baud, timeout=timeout)
+                try:
+                    receiver.version()
+                    outcome.restoration = restore_receiver_state(
+                        receiver, outcome.before
+                    )
+                finally:
+                    receiver.close()
+                outcome.error = None
+                break
+            except (TransportError, ResponseTimeout) as error:
+                outcome.error = str(error)
+                sleep(1.0)

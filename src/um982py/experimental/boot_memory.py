@@ -172,7 +172,14 @@ class BootMemoryReader:
                 reader._enter_boot_menu(baud)
             reader._upload(payload)
         except BootMenuError:
-            handle.close()
+            # A failure after the reset request leaves the receiver in the boot
+            # menu or with the helper resident, so return to the application.
+            try:
+                reader.application_restored = reader._return_to_application()
+            except (OSError, serial.SerialException):
+                reader.application_restored = False
+            finally:
+                handle.close()
             raise
         return reader
 
@@ -277,21 +284,40 @@ class BootMemoryReader:
     def close(self) -> None:
         """Reset the receiver and verify that the application returns."""
         try:
-            self._wire.send(b"Q")
-            deadline = monotonic() + APPLICATION_TIMEOUT
-            data = bytearray()
-            while monotonic() < deadline:
-                data += self._port.read(65536)
-                if b"$GN" in data or b"$GP" in data or b"#VERSION" in data:
-                    break
-            self._wire.send(b"\r\nVERSION\r\n")
-            deadline = monotonic() + 3.0
-            while monotonic() < deadline:
-                data += self._port.read(65536)
-                if IDENTITY_MARKER in data:
-                    self.application_restored = True
-                    break
-            else:
-                self.application_restored = False
+            self.application_restored = self._return_to_application()
         finally:
             self._port.close()
+
+    def _return_to_application(self) -> bool:
+        """Leave the helper or the boot menu and confirm the application answers.
+
+        ``Q`` makes a resident helper reset the receiver. When the receiver
+        instead waits at the top-level boot prompt, for example after a failed
+        upload, menu 0 loads the application from flash. Without this a
+        failed session left the receiver in the boot menu until a power cycle.
+        """
+        data = bytearray()
+        self._wire.send(b"Q")
+        if not self._application_output(data, APPLICATION_TIMEOUT):
+            self._wire.send(b"\r\n")
+            deadline = monotonic() + MENU_IDLE_TIMEOUT
+            while monotonic() < deadline and BOOT_PROMPT not in data:
+                data += self._port.read(65536)
+            if BOOT_PROMPT in data:
+                self._wire.send(b"0\r")
+                self._application_output(data, APPLICATION_TIMEOUT)
+        self._wire.send(b"\r\nVERSION\r\n")
+        deadline = monotonic() + 3.0
+        while monotonic() < deadline:
+            data += self._port.read(65536)
+            if IDENTITY_MARKER in data:
+                return True
+        return False
+
+    def _application_output(self, data: bytearray, timeout: float) -> bool:
+        deadline = monotonic() + timeout
+        while monotonic() < deadline:
+            data += self._port.read(65536)
+            if b"$GN" in data or b"$GP" in data or b"#VERSION" in data:
+                return True
+        return False
