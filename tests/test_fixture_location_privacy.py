@@ -27,6 +27,11 @@ POSITION_LOGS = {
     Log.RTKPOS,
     Log.BESTXYZ,
     Log.REFSTATION,
+    Log.PSRPOS2,
+    Log.RTKPOS2,
+    Log.PPPPOS,
+    Log.MPPPPOS,
+    Log.BASESTATION,
 }
 
 

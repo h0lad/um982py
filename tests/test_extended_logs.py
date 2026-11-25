@@ -47,13 +47,26 @@ AUDIT_LOGS = {
     Log.SSR1ORBIT,
 }
 
+# Covered with their own captures in test_extended_variants.
+VARIANTS = {
+    Log.PSRPOS2,
+    Log.RTKPOS2,
+    Log.PPPPOS,
+    Log.MPPPPOS,
+    Log.MPPPDOP,
+    Log.BD2EPHEM,
+    Log.BD3B2AEPHEM,
+    Log.BD3IONUTC,
+    Log.BASESTATION,
+}
+
 FORMATS = [
     (log, binary)
     for log in Log
     for binary in (False, True)
     if (log.value in EXTENDED_LOGS or log == Log.RTKSTATUS2)
     and (not binary or log.definition.binary_command is not None)
-    and log not in SENSITIVE | AUDIT_LOGS
+    and log not in SENSITIVE | AUDIT_LOGS | VARIANTS
     and not log.value.startswith("SBAS")
 ]
 

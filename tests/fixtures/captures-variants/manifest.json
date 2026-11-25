@@ -1,0 +1,73 @@
+{
+  "receiver": "UM982",
+  "frames": [
+    {
+      "file": "BASESTATIONB.bin",
+      "sha256": "52bf47063cf1d9fc3ca3953c034ce88e7ea19f7ae6c97a54f91ee5bb5163c7a0"
+    },
+    {
+      "file": "BD2EPHEMA.bin",
+      "sha256": "861e4175fe8b0b51785d9e2553794ca50a72d90fee5867625902db38f3d2fee4"
+    },
+    {
+      "file": "BD2EPHEMB.bin",
+      "sha256": "846be2c0e4d7c8d92317d1d2966739c21f7535244730634ade9414ea9ccd02c7"
+    },
+    {
+      "file": "BD3B2AEPHEMA.bin",
+      "sha256": "a6a6ae79075407726abe647f6fa50c9f863c045857ff79b440d26dda6afd9fcb"
+    },
+    {
+      "file": "BD3B2AEPHEMB.bin",
+      "sha256": "35c267d006d14893d7e2dc3ffec1bcd37d4e250e5718888913284d45a416ac86"
+    },
+    {
+      "file": "BD3IONUTCA.bin",
+      "sha256": "60d8d2ddc00344a5a05808fcf50a6e426cef8af10d2596e27eab91ceb507d441"
+    },
+    {
+      "file": "BD3IONUTCB.bin",
+      "sha256": "23cb46ce63d6101fda6d8f7550597ff175e3eb51c7149fc063e665646311efba"
+    },
+    {
+      "file": "MPPPDOPA.bin",
+      "sha256": "e1cb860d878d2e543c73935f4ed7d9abec237fabe8a2dd7cbf624b42e191c035"
+    },
+    {
+      "file": "MPPPDOPB.bin",
+      "sha256": "43ef4569f87af7a5f10744306ecbc72135b9e802d9c4645e141ea1ef9cbdd3e6"
+    },
+    {
+      "file": "MPPPPOSA.bin",
+      "sha256": "202907ee1275094e1b054d9888d5eba096d993b5b31d2ee55fcdee0a3a06146a"
+    },
+    {
+      "file": "MPPPPOSB.bin",
+      "sha256": "6ff5cf2c5325489df959589dfb9b0751fe52f561fd471a6dec8bb05b41585083"
+    },
+    {
+      "file": "PPPPOSA.bin",
+      "sha256": "12aea9defcfee400ec99c807d1600df6d51c219330e9e0519e2b6f7ef223003e"
+    },
+    {
+      "file": "PPPPOSB.bin",
+      "sha256": "07af1d4741b78966fce516d5b35662b541e83141587706c993054d0155f0fe3d"
+    },
+    {
+      "file": "PSRPOS2A.bin",
+      "sha256": "18eecab3c72ff8e66d5480c51f9cfedba3f204c42b2bf8ea2172b841370512ec"
+    },
+    {
+      "file": "PSRPOS2B.bin",
+      "sha256": "a77d9d3615649b253cf12eed780bc3a0781ebf0b66c859dbb7f6d8852bec0e0a"
+    },
+    {
+      "file": "RTKPOS2A.bin",
+      "sha256": "de8a19e0182e0e1355ee0f81069f2cef5fea7298198d6bdaba822f1e9332bd7b"
+    },
+    {
+      "file": "RTKPOS2B.bin",
+      "sha256": "2ee1ac464983bc70797596aa4574a98251cc51f0ac2d7bb5e009b4f909941e0c"
+    }
+  ]
+}

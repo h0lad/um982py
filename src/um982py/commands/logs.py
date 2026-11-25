@@ -252,6 +252,15 @@ class Log(StrEnum):
     SBAS26 = "SBAS26"
     SBAS28 = "SBAS28"
     SBASALMANAC = "SBASALMANAC"
+    PSRPOS2 = "PSRPOS2"
+    RTKPOS2 = "RTKPOS2"
+    PPPPOS = "PPPPOS"
+    MPPPPOS = "MPPPPOS"
+    MPPPDOP = "MPPPDOP"
+    BD2EPHEM = "BD2EPHEM"
+    BD3B2AEPHEM = "BD3B2AEPHEM"
+    BD3IONUTC = "BD3IONUTC"
+    BASESTATION = "BASESTATION"
 
     @property
     def definition(self) -> LogDefinition:

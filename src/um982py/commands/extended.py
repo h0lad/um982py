@@ -79,6 +79,17 @@ _BINARY_IDS = {
     "SBAS26": 985,
     "SBAS28": 60032,
     "SBASALMANAC": 1425,
+    # Alternative renderings of documented solutions and navigation data,
+    # each matched against its counterpart on a live receiver.
+    "PSRPOS2": 2057,  # SPPNAVH (secondary antenna) in the BESTPOS layout
+    "RTKPOS2": 2023,  # RTK position in the BESTPOS layout
+    "PPPPOS": 1024,  # PPPNAV in the BESTPOS layout
+    "MPPPPOS": 2316,  # PPP position in the BESTPOS layout
+    "MPPPDOP": 2317,  # STADOP layout
+    "BD2EPHEM": 1047,  # BDSEPH
+    "BD3B2AEPHEM": 11408,  # BD3EPH without the B2b group delays
+    "BD3IONUTC": 3001,  # BD3ION and BD3UTC in one message
+    "BASESTATION": 6002,  # primary-antenna observations and reference position
 }
 
 _SBAS_LOGS = tuple(name for name in _BINARY_IDS if name.startswith("SBAS"))
@@ -91,6 +102,8 @@ _ONCHANGED_ONLY = frozenset(
         "ALIGNBSLNXYZ",
         "MPSRPOS",
         "MPSRPOS2",
+        "MPPPPOS",
+        "MPPPDOP",
         "EVENTMARK",
         "EVENTALL",
         *_SBAS_LOGS,
@@ -170,6 +183,15 @@ EXTENDED_LOGS = MappingProxyType(
             "EVENTALL",
             "BBPPSMSG",
             *_SBAS_LOGS,
+            "PSRPOS2",
+            "RTKPOS2",
+            "PPPPOS",
+            "MPPPPOS",
+            "MPPPDOP",
+            "BD2EPHEM",
+            "BD3B2AEPHEM",
+            "BD3IONUTC",
+            "BASESTATION",
         )
     }
 )

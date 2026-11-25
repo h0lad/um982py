@@ -180,7 +180,16 @@ LAYOUTS = {
 LAYOUTS.update(
     {
         name: replace(POSITION, name=name)
-        for name in ("PSRPOS", "MPSRPOS", "MPSRPOS2", "RTKPOS")
+        for name in (
+            "PSRPOS",
+            "MPSRPOS",
+            "MPSRPOS2",
+            "RTKPOS",
+            "PSRPOS2",
+            "RTKPOS2",
+            "PPPPOS",
+            "MPPPPOS",
+        )
     }
 )
 LAYOUTS["RANGEH"] = replace(RANGE, name="RANGEH")
@@ -196,6 +205,8 @@ LAYOUTS.update(
             ("SATXYZ2", "SATECEF"),
             ("EVENTMARK", "EVENTFLAG"),
             ("EVENTALL", "EVENTSLN"),
+            ("MPPPDOP", "STADOP"),
+            ("BD2EPHEM", "BDSEPH"),
         )
     }
 )
@@ -306,6 +317,77 @@ LAYOUTS["PTOBSINFO"] = Layout(
         for index in range(29)
     ),
     116,
+)
+_BD3EPH = {
+    field.name: field
+    for field in DOCUMENTED["BD3EPH"].fields
+    if isinstance(field, Field)
+}
+# BD3EPH through toc, then the B1C/B2a group delays and the clock terms.
+LAYOUTS["BD3B2AEPHEM"] = Layout(
+    "BD3B2AEPHEM",
+    "extended",
+    (
+        *DOCUMENTED["BD3EPH"].fields[:28],
+        *(
+            replace(_BD3EPH[name], offset=172 + 8 * index)
+            for index, name in enumerate(("tgdb1cp", "tgdb2ap", "iscb2ad"))
+        ),
+        Field("reserved_3", "d", 196, 8),
+        *(
+            replace(_BD3EPH[name], offset=204 + 8 * index)
+            for index, name in enumerate(("af0", "af1", "af2"))
+        ),
+        replace(_BD3EPH["itop"], offset=228),
+        *(
+            replace(_BD3EPH[name], offset=232 + index)
+            for index, name in enumerate(
+                ("sisaioe", "sisaiocb", "sisaioc1", "sisaioc2")
+            )
+        ),
+        replace(_BD3EPH["reserved"], offset=236),
+        replace(_BD3EPH["freqtype"], offset=240),
+    ),
+    244,
+)
+LAYOUTS["BD3IONUTC"] = Layout(
+    "BD3IONUTC",
+    "extended",
+    (
+        *DOCUMENTED["BD3ION"].fields[:9],
+        Field("field_10", "u", 36, 4),
+        Field("utc_a0", "d", 40, 8),
+        Field("utc_a1", "d", 48, 8),
+        Field("utc_a2", "d", 56, 8),
+        Field("utc_wn", "u", 64, 2),
+        Field("wn_lsf", "u", 66, 2),
+        Field("field_16", "u", 68, 1),
+        Field("deltat_ls", "i", 69, 1),
+        Field("deltat_lsf", "i", 70, 1),
+        Field("dn", "u", 71, 1),
+        Field("field_20", "u", 72, 4),
+    ),
+    76,
+)
+# Primary-antenna observations in the RANGE record format, using the
+# system-offset satellite numbering, in 240 fixed slots. Unused slots are zero.
+LAYOUTS["BASESTATION"] = Layout(
+    "BASESTATION",
+    "extended",
+    (
+        Field("week", "u", 0, 4),
+        Field("field_2", "u", 4, 4),
+        Field("field_3", "u", 8, 4),
+        Field("field_4", "f", 12, 4),
+        Field("field_5", "u", 16, 4),
+        Field("field_6", "u", 20, 4),
+        Field("p_x", "d", 24, 8),
+        Field("p_y", "d", 32, 8),
+        Field("p_z", "d", 40, 8),
+        Field("station_name", "s", 72, 16),
+        replace(RANGE.fields[1], offset=232, count=240, limit=240),
+    ),
+    232 + 240 * 44,
 )
 BESTSATS = Layout(
     "BESTSATS",
