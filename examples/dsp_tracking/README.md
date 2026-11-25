@@ -93,6 +93,37 @@ in JSON under `receiver_state`.
 | Raw sensor channel and two ADC values | Unscaled sensor readings |
 | GPS broadcast ionosphere alpha and beta coefficients and status flags | Navigation model supplied to the receiver |
 | Retained diagnostic messages | Antenna status, RF gain state, and leap-second state |
+| `clock_state`: receiver clock offset per constellation, system times and GLONASS N4/NT | Inter-system biases of the receiver's own solution |
+
+### Inter-system biases
+
+No receiver log reports the clock offset per constellation. The DSP keeps one
+for GPS, BeiDou, Galileo and GLONASS, together with each system's time of week
+(GLONASS: time of day in UTC(SU) + 3 h) and week. The decoder first checks a
+layout signature in memory. If it does not match, `clock_state` is `null`.
+The console prints them as
+`CLK gps=… isb GLONASS=… BEIDOU=… GALILEO=…`.
+
+`inter_system_bias_s()` is each constellation's offset minus the GPS offset.
+`bias_vector_consistent` reports whether a separately stored bias vector
+equals these differences. It did so exactly in every capture checked. The offsets have the sign of the RECTIME clock offset, so pseudoranges
+follow P = ρ − c·offset. RTKLIB's receiver clock and its `GLO-GPS`, `GAL-GPS`
+and `BDS-GPS` offsets have the opposite sign.
+
+Verification:
+
+| Check | Result |
+| --- | --- |
+| Time tags against the capture epoch | GPS TOW equals the last logged epoch. BDT is 14 s earlier. GLONASS equals UTC + 3 h. N4/NT matches the calendar date |
+| GPS slot against RECTIME at the same epoch | 8.7 ns and 77 ns in two captures |
+| Biases in three captures (GLO, BDS, GAL) | −50/−36/−44 ns, −15/−17/−18 ns, −6/+0.3/−7 ns |
+| RTKLIB on 10 minutes of the same receiver's OBSVM, sign flipped | GLO −27 (free SPP) and −39 ± 2 ns (fixed position). BDS −18 and −23…−26 ± 5 ns. GAL +8 and −10 ± 4 ns |
+
+The indoor test site has 30–100 ns of multipath per satellite. A single epoch,
+or the 45 s before a capture, therefore cannot check the biases independently.
+The 10-minute averages above are the meaningful comparison. Each capture
+restarts the receiver, so these values describe the solution state just before
+the restart.
 
 Replay automatically reads the additional files when present. Cached messages
 may predate the binary state. Buffer order does not establish chronology.

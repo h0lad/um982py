@@ -45,6 +45,20 @@ _ALTERNATE_SIGNALS = (
 )
 
 
+_RF_GROUPS = (
+    "GPS L1 C/A",
+    "GPS L2C",
+    "GLONASS G1",
+    "GLONASS G2",
+    "BeiDou B1I",
+    "BeiDou B3I",
+    "Galileo E1 (unverified)",
+    "Galileo E5b",
+    "Galileo E5a",
+)
+"""Bank-slot RF groups, matched against RANGE and RANGEH."""
+
+
 @dataclass(frozen=True, slots=True)
 class TrackingField:
     """A diagnostic field with its wire offset and storage type."""
@@ -64,6 +78,36 @@ class TrackingSlot:
     bank_slot: int
     written: bool
     native_value: float
+
+    @property
+    def antenna(self) -> int:
+        """Antenna of the bank: bank 0 is ANT1 and bank 1 is ANT2."""
+        return self.bank + 1
+
+    @property
+    def rf_group(self) -> str:
+        """RF signal group of the bank slot in the standard signal mode."""
+        return (
+            _RF_GROUPS[self.bank_slot]
+            if self.bank_slot < len(_RF_GROUPS)
+            else "unknown"
+        )
+
+    @property
+    def reference_cn0_db_hz(self) -> float | None:
+        """Reference C/N0 of this antenna and RF group, or ``None`` when empty.
+
+        The value equalled, to 0.01 dB, the mean C/N0 of the three or four
+        strongest satellites of the group in RANGE (ANT1) or RANGEH (ANT2) at
+        the same epoch, for both antennas. The number
+        of averaged satellites varied between captures, and the Galileo E1
+        slot did not match better than 0.16 dB. A drop across a whole group
+        on one antenna points at interference rather than a single-satellite
+        fade.
+        """
+        if not self.written or not self.native_value > 0:
+            return None
+        return self.native_value
 
     def matches_rf_group(
         self, *, antenna: int, signal_code: int, status: int, mode: int

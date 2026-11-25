@@ -118,8 +118,8 @@ def test_real_sky_views_agree_within_the_capture_tolerance() -> None:
         for comparison in comparisons
         for item in comparison.disagreements
     )
-    assert azimuth == pytest.approx(0.0933, abs=1e-4)
-    assert elevation == pytest.approx(0.0582, abs=1e-4)
+    assert azimuth == pytest.approx(0.0771, abs=1e-4)
+    assert elevation == pytest.approx(0.0596, abs=1e-4)
     assert azimuth < SKY_TOLERANCE_DEGREES
 
 

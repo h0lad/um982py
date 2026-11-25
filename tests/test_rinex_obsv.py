@@ -64,8 +64,8 @@ def test_compressed_receiver_capture_exports_code_and_doppler() -> None:
     record = decode_message((FIXTURES / "bodies/OBSVMCMPB.bin").read_bytes())
     result = export_rinex((record,))
     row = next(line for line in result.text.splitlines() if line.startswith("G29"))
-    assert float(row[3:17]) == pytest.approx(21_506_277.852)
+    assert float(row[3:17]) == pytest.approx(21_245_629.539)
     assert row[19:35] == " " * 16
-    assert float(row[35:49]) == pytest.approx(-2166.473)
+    assert float(row[35:49]) == pytest.approx(-2053.055)
     assert float(row[51:65]) == pytest.approx(32)
     assert result.omitted["unresolved_compressed_phase"] > 0

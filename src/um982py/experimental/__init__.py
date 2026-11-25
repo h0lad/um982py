@@ -130,12 +130,14 @@ from um982py.experimental.dsp_ephemeris import (
 )
 from um982py.experimental.dsp_receiver import (
     DSP_RECEIVER_MEMORY_WINDOWS,
+    DspClockState,
     DspGpsEpoch,
     DspGpsIonosphere,
     DspNavPosition,
     DspNavVelocity,
     DspReceiverDiagnostics,
     DspSensorAdc,
+    DspSystemClock,
     extract_dsp_receiver_diagnostics,
 )
 from um982py.experimental.dsp_satellite import (
@@ -427,6 +429,7 @@ __all__ = [
     "DebugOutput",
     "DsmHeader",
     "DsmKroot",
+    "DspClockState",
     "DspDopplerCalibration",
     "DspGalileoEphemeris",
     "DspGlonassEphemeris",
@@ -439,6 +442,7 @@ __all__ = [
     "DspReceiverDiagnostics",
     "DspSatellitePosition",
     "DspSensorAdc",
+    "DspSystemClock",
     "DspTrackingChannel",
     "DspTrackingObservation",
     "Fec2Recovery",

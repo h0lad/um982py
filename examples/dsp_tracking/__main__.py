@@ -113,6 +113,18 @@ def _print_receiver_state(dsp: DspReceiverDiagnostics, restored: bool | None) ->
             f"extra={velocity.values[3]:.3f}/{velocity.values[4]:.3f}/"
             f"{velocity.trailing:.3f}"
         )
+    clock_state = dsp.clock_state
+    if clock_state is not None:
+        gps = clock_state.clocks[0]
+        biases = " ".join(
+            f"{name}={bias * 1e9:+.2f}ns"
+            for name, bias in clock_state.inter_system_bias_s().items()
+        )
+        consistent = "yes" if clock_state.bias_vector_consistent else "no"
+        print(
+            f"  CLK gps={gps.clock_offset_s * 1e6:+.6f}us isb {biases} "
+            f"consistent={consistent}"
+        )
 
 
 def _print_channels(channels: Sequence[DspTrackingChannel]) -> None:

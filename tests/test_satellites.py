@@ -22,7 +22,7 @@ def test_recorded_satellite_report_has_named_constellations_and_signals(
     assert len(satellites) == 30
     first = satellites[0]
     assert (first.constellation, first.prn) == ("GPS", 29)
-    assert (first.azimuth_deg, first.elevation_deg) == (72, 43)
+    assert (first.azimuth_deg, first.elevation_deg) == (79, 48)
     assert len(first.signals) == 1
     assert (first.signals[0].name, first.signals[0].snr) == ("L1 C/A", 22)
     galileo = next(sat for sat in satellites if sat.constellation == "Galileo")

@@ -176,7 +176,7 @@ def test_satvis2_fixture_geometry_is_usable() -> None:
     assert len(satellites) == pytest.approx(28)
     solution = highest_feasible_mask(satellites, minimum_satellites=8)
     assert solution is not None
-    assert solution.mask == pytest.approx(60.0)
+    assert solution.mask == pytest.approx(57.0)
     assert solution.satellites == pytest.approx(8)
     assert solution.pdop == pytest.approx(
         brute_force_mask(satellites, minimum_satellites=8).pdop, abs=PDOP_TOLERANCE

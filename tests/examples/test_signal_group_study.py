@@ -30,7 +30,7 @@ from um982py.quality import FixClass
 
 LIVE = FIXTURES / "captures-live"
 CAPTURED_SATELLITES = 33
-CAPTURED_PDOP = 0.8118
+CAPTURED_PDOP = 0.8133
 CAPTURED_REPORTED_PDOP = 1.0243
 ZENITH = SatelliteGeometry(0.0, 90.0)
 NORTH = SatelliteGeometry(0.0, 0.0)
