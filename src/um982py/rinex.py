@@ -10,14 +10,14 @@ from pathlib import Path
 from typing import Literal
 
 from um982py._observation import range_observation
+from um982py.gnss import GPS_EPOCH
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
+from um982py.messages.enums import SatelliteSystem
 from um982py.provenance import _observation_source
 from um982py.signals import tracking_signal
 
-_LETTERS = "GRSECJI"
 _GLONASS_CHANNEL_OFFSET = 7
-_GPS_EPOCH = datetime(1980, 1, 6)
 
 
 @dataclass(frozen=True, slots=True)
@@ -30,9 +30,14 @@ class RinexExport:
 
     def write(self, path: str | PathLike[str]) -> Path:
         """Write the RINEX observation file, replacing an existing file."""
-        destination = Path(path)
-        destination.write_text(self.text, encoding="ascii", newline="\n")
-        return destination
+        return _write_text(path, self.text)
+
+
+def _write_text(path: str | PathLike[str], text: str) -> Path:
+    """Write ASCII RINEX text with LF line endings, replacing an existing file."""
+    destination = Path(path)
+    destination.write_text(text, encoding="ascii", newline="\n")
+    return destination
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,7 +105,9 @@ def satellite_id(system: int, wire_prn: int) -> str | None:
         prn, low, high = wire_prn - 192, 1, 10
     else:
         prn, low, high = wire_prn, 1, {0: 32, 3: 36, 4: 63, 6: 15}.get(system, 0)
-    return f"{_LETTERS[system]}{prn:02d}" if low <= prn <= high else None
+    if not low <= prn <= high:
+        return None
+    return f"{SatelliteSystem(system).rinex}{prn:02d}"
 
 
 def _header(content: str, label: str) -> str:
@@ -222,7 +229,7 @@ def _header_lines(
     metadata: RinexMetadata,
     created_at: datetime,
 ) -> list[str]:
-    stamp = _GPS_EPOCH + timedelta(seconds=first_epoch)
+    stamp = GPS_EPOCH + timedelta(seconds=first_epoch)
     created = created_at.astimezone(UTC).strftime("%Y%m%d %H%M%S UTC")
     lines = [
         _header(f"{'3.05':>9}{'':11}{'OBSERVATION DATA':<20}M", "RINEX VERSION / TYPE"),
@@ -333,7 +340,7 @@ def _epoch_lines(
     lines: list[str] = []
     satellite_count = observation_count = 0
     for epoch, satellites in epochs:
-        stamp = _GPS_EPOCH + timedelta(seconds=epoch)
+        stamp = GPS_EPOCH + timedelta(seconds=epoch)
         lines.append(
             f"> {stamp:%Y %m %d %H %M} "
             f"{stamp.second + stamp.microsecond / 1e6:10.7f}  0{len(satellites):3d}"

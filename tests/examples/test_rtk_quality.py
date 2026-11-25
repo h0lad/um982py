@@ -8,15 +8,13 @@ from examples.rtk_quality.__main__ import _diagnostic_rows
 
 from um982py.capture import decode_records, read_frames
 from um982py.commands import Log
-from um982py.messages.enums import PositionType, SolutionStatus
-from um982py.quality import (
+from um982py.messages.enums import (
     POSITION_CLASSES,
-    EpochSolution,
     FixClass,
-    classify,
-    summarise,
-    timeline,
+    PositionType,
+    SolutionStatus,
 )
+from um982py.quality import EpochSolution, classify, summarise, timeline
 
 
 def test_fixed_ppp_remains_distinct_from_rtk_fix() -> None:

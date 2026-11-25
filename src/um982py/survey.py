@@ -4,10 +4,9 @@ import csv
 import json
 from collections import Counter
 from dataclasses import dataclass
-from decimal import Decimal, InvalidOperation
+from decimal import Decimal
 from math import fsum, isfinite, sqrt
 from pathlib import Path
-from re import fullmatch
 from time import monotonic, sleep
 from typing import Protocol
 
@@ -16,6 +15,7 @@ from um982py.commands.core import Command
 from um982py.errors import ResponseTimeout
 from um982py.geodesy import ecef_from_geodetic, enu_from_ecef, geodetic_from_ecef
 from um982py.messages.navigation import Fix
+from um982py.precision import utc_seconds
 
 
 class _FixReader(Protocol):
@@ -46,15 +46,10 @@ def _acceptable(fix: Fix, rtk_fixed: bool, max_correction_age: float | None) -> 
 
 
 def _gga_seconds_of_day(value: str) -> Decimal | None:
-    if fullmatch(r"[0-9]{6}(?:\.[0-9]+)?", value) is None:
-        return None
     try:
-        hour, minute, second = int(value[:2]), int(value[2:4]), Decimal(value[4:])
-    except (ValueError, InvalidOperation):
+        return utc_seconds(value)
+    except ValueError:
         return None
-    if hour >= 24 or minute >= 60 or second >= 60:
-        return None
-    return Decimal(hour * 3600 + minute * 60) + second
 
 
 def wait_for_fix(

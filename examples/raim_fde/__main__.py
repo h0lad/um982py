@@ -22,12 +22,7 @@ from examples.wls_position import (
     geodetic_position_error,
 )
 from examples.wls_position import measurements as wls_measurements
-from um982py.capture import (
-    decode_records,
-    read_frames,
-    record_epoch,
-    select_position_pair,
-)
+from um982py.capture import decode_records, read_frames, select_position_pair
 from um982py.commands import Log
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef
 from um982py.measurement import gps_epoch
@@ -169,7 +164,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if range_record.message is None:
         parser.error("RANGE frame carries no timestamp")
     epoch = gps_epoch(range_record.message) % 604800.0
-    absolute_epoch = record_epoch(range_record)
+    absolute_epoch = gps_epoch(range_record)
     ephemerides = wls_measurements.select_gps_ephemerides(
         decode_records(ephemeris_frames, Log.GPSEPH),
         absolute_epoch,

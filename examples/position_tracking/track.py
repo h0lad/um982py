@@ -8,8 +8,8 @@ from dataclasses import asdict, dataclass
 from itertools import pairwise
 
 from examples.position_tracking.quality import summary_statistics
-from um982py.capture import record_epoch
 from um982py.geodesy import haversine_distance
+from um982py.measurement import gps_epoch
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record, Value
 from um982py.precision import PositionPrecision
@@ -55,7 +55,7 @@ class TrackPoint:
             up_std_m=_optional_sigma(record, "hgt_std"),
         )
         return cls(
-            timestamp=record_epoch(record) if timestamp is None else timestamp,
+            timestamp=gps_epoch(record) if timestamp is None else timestamp,
             latitude=record.real("lat"),
             longitude=record.real("lon"),
             altitude=height,

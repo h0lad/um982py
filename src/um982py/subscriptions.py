@@ -6,12 +6,12 @@ from sys import exception
 
 from um982py.commands import logging
 from um982py.commands.core import Command
+from um982py.commands.queries import log_list
 from um982py.commands.types import Port, Trigger
 from um982py.errors import CommandRejected, ProtocolError, UM982Error
 from um982py.messages import CommandResponse
 from um982py.receiver import Receiver
 from um982py.receiver_models import LogEntry
-from um982py.receiver_queries import log_list
 
 
 def _affected(

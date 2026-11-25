@@ -117,7 +117,7 @@ class EphemerisHealth:
             )
         if record.name == "BDSEPH":
             return cls(
-                "BeiDou",
+                "BEIDOU",
                 record.integer("prn"),
                 record.integer("health"),
                 record.name,
@@ -125,7 +125,7 @@ class EphemerisHealth:
         if record.name == "BD3EPH":
             signal = {0: "B1C", 1: "B2a", 2: "B2b"}.get(record.integer("freqtype"))
             return cls(
-                "BeiDou",
+                "BEIDOU",
                 record.integer("prn"),
                 record.integer("health"),
                 record.name,

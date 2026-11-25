@@ -2,24 +2,23 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Generator
+from collections.abc import Callable, Generator, Iterator
 from contextlib import suppress
 from dataclasses import dataclass
 from datetime import datetime
 from math import isfinite
 from queue import Empty
-from threading import Event, Lock, Thread
+from threading import Event, Thread
 from typing import TYPE_CHECKING, Literal
 
 from um982py.errors import (
     ProtocolError,
     ResponseTimeout,
     TransportClosed,
-    TransportError,
 )
 from um982py.messages import Message, Sentence
 from um982py.messages.navigation import Fix
-from um982py.ntrip import ReconnectPolicy
+from um982py.ntrip import ReconnectPolicy, _Reconnecting
 from um982py.rtk_session import RtkHealth, RtkSession
 from um982py.streaming import ReceiverStream
 
@@ -103,7 +102,7 @@ class PositionSubscription:
         self.close()
 
 
-class PositionSession:
+class PositionSession(_Reconnecting):
     """Own successive receiver connections and read their already-emitted GGA fixes.
 
     Use this for a passive GGA reader that reconnects. For BESTNAV positions
@@ -153,6 +152,7 @@ class PositionSession:
             or not 0 < poll_seconds <= 60
         ):
             raise ValueError("poll_seconds must be finite, positive and at most 60")
+        super().__init__(reconnect)
         self.receiver_factory = receiver_factory
         self.configure = configure
         self.on_disconnect = on_disconnect
@@ -163,37 +163,20 @@ class PositionSession:
         self.ntrip_password = ntrip_password
         self.ntrip_version = ntrip_version
         self.poll_seconds = poll_seconds
-        self.reconnect = reconnect or ReconnectPolicy()
-        self._lock = Lock()
-        self._state = "idle"
-        self._attempts = 0
-        self._connections = 0
         self._fixes = 0
         self._malformed = 0
         self._last_fix: float | None = None
-        self._error: str | None = None
+        self._previous_quality: int | None = None
         self._rtk: RtkSession | None = None
-        self._reconnect_delay = self.reconnect.initial_seconds
 
-    def _require_idle(self) -> None:
-        with self._lock:
-            if self._state != "idle":
-                raise RuntimeError("session can only be run once")
-            self._state = "connecting"
-
-    def _begin_connection_attempt(self) -> None:
-        with self._lock:
-            self._state = "connecting"
-            self._attempts += 1
-
-    def _next_position_update(
-        self, receiver: Receiver, connection: int, previous: int | None
+    def _position_update(
+        self,
+        message: Message,
+        received_at: datetime,
+        received_monotonic: float,
+        connection: int,
     ) -> PositionUpdate | None:
-        try:
-            frame = receiver._receive_timed(timeout=self.poll_seconds)
-        except ResponseTimeout:
-            return None
-        message = frame.message
+        """Pass a frame to ``on_message`` and turn a valid GGA into an update."""
         if self.on_message is not None:
             self.on_message(message)
         if not isinstance(message, Sentence) or message.kind != "GGA":
@@ -204,32 +187,15 @@ class PositionSession:
             with self._lock:
                 self._malformed += 1
             return None
-        now = frame.received_monotonic
         with self._lock:
             self._fixes += 1
-            self._last_fix = now
-        return PositionUpdate(fix, frame.received_at, now, previous, connection)
-
-    def _wait_reconnect_backoff(self, stop: Event, error: Exception) -> bool:
-        if self.on_disconnect is not None:
-            self.on_disconnect(error)
-        with self._lock:
-            self._error = str(error)
-            self._state = "backoff"
-        if stop.wait(self._reconnect_delay):
-            return True
-        self._reconnect_delay = self.reconnect.next_delay(self._reconnect_delay)
-        return False
-
-    def _mark_failed(self, error: Exception) -> None:
-        with self._lock:
-            self._error = str(error)
-            self._state = "failed"
-
-    def _mark_stopped(self) -> None:
-        with self._lock:
-            if self._state != "failed":
-                self._state = "stopped"
+            self._last_fix = received_monotonic
+        update = PositionUpdate(
+            fix, received_at, received_monotonic, self._previous_quality, connection
+        )
+        self._previous_quality = fix.quality
+        self._reset_backoff()
+        return update
 
     def health(self) -> LiveHealth:
         with self._lock:
@@ -253,143 +219,92 @@ class PositionSession:
         with suppress(Exception):
             rtk.run(stop)
 
-    def _subscribed_positions(
-        self, stop: Event
-    ) -> Generator[PositionUpdate, None, None]:
-        """Yield fixes from a ReceiverStream subscription on each connection."""
-        self._require_idle()
-        previous: int | None = None
-        try:
+    def _polled_connection(self, stop: Event) -> Iterator[PositionUpdate]:
+        """Read fixes directly from one receiver connection."""
+        with self.receiver_factory() as receiver:
+            if self.configure is not None:
+                self.configure(receiver)
+            connection = self._connected()
             while not stop.is_set():
-                self._begin_connection_attempt()
                 try:
-                    with self.receiver_factory() as receiver:
-                        if self.configure is not None:
-                            self.configure(receiver)
-                        stream = ReceiverStream(
-                            receiver, poll_seconds=min(self.poll_seconds, 1.0)
+                    frame = receiver._receive_timed(timeout=self.poll_seconds)
+                except ResponseTimeout:
+                    continue
+                update = self._position_update(
+                    frame.message,
+                    frame.received_at,
+                    frame.received_monotonic,
+                    connection,
+                )
+                if update is not None:
+                    yield update
+
+    def _subscribed_connection(self, stop: Event) -> Iterator[PositionUpdate]:
+        """Read fixes from a ReceiverStream subscription on one connection."""
+        with self.receiver_factory() as receiver:
+            if self.configure is not None:
+                self.configure(receiver)
+            stream = ReceiverStream(receiver, poll_seconds=min(self.poll_seconds, 1.0))
+            subscription = stream.subscribe(capacity=1024)
+            with stream:
+                connection = self._connected()
+                relay_stop = Event()
+                relay: Thread | None = None
+                if self.ntrip_url is not None:
+                    rtk = RtkSession.from_url(
+                        stream,
+                        self.ntrip_url,
+                        username=self.ntrip_username,
+                        password=self.ntrip_password,
+                        version=self.ntrip_version,
+                    )
+                    with self._lock:
+                        self._rtk = rtk
+                    relay = Thread(
+                        target=self._run_rtk, args=(rtk, relay_stop), daemon=True
+                    )
+                    relay.start()
+                try:
+                    while not stop.is_set():
+                        try:
+                            event = subscription.get_event(
+                                timeout=min(self.poll_seconds, 0.2)
+                            )
+                        except Empty:
+                            failure = stream.failure
+                            if failure is not None:
+                                raise failure from None
+                            continue
+                        except TransportClosed:
+                            failure = stream.failure
+                            if stop.is_set():
+                                break
+                            if isinstance(failure, BaseException):
+                                raise failure from None
+                            raise
+                        update = self._position_update(
+                            event.message,
+                            event.received_at,
+                            event.received_monotonic,
+                            connection,
                         )
-                        subscription = stream.subscribe(capacity=1024)
-                        with stream:
-                            with self._lock:
-                                self._connections += 1
-                                connection = self._connections
-                                self._state = "connected"
-                            relay_stop = Event()
-                            relay: Thread | None = None
-                            if self.ntrip_url is not None:
-                                rtk = RtkSession.from_url(
-                                    stream,
-                                    self.ntrip_url,
-                                    username=self.ntrip_username,
-                                    password=self.ntrip_password,
-                                    version=self.ntrip_version,
-                                )
-                                with self._lock:
-                                    self._rtk = rtk
-                                relay = Thread(
-                                    target=self._run_rtk,
-                                    args=(rtk, relay_stop),
-                                    daemon=True,
-                                )
-                                relay.start()
-                            try:
-                                while not stop.is_set():
-                                    try:
-                                        event = subscription.get_event(
-                                            timeout=min(self.poll_seconds, 0.2)
-                                        )
-                                    except Empty:
-                                        failure = stream.failure
-                                        if failure is not None:
-                                            raise failure from None
-                                        continue
-                                    except TransportClosed:
-                                        failure = stream.failure
-                                        if stop.is_set():
-                                            break
-                                        if isinstance(failure, BaseException):
-                                            raise failure from None
-                                        raise
-                                    message = event.message
-                                    if self.on_message is not None:
-                                        self.on_message(message)
-                                    if (
-                                        not isinstance(message, Sentence)
-                                        or message.kind != "GGA"
-                                    ):
-                                        continue
-                                    try:
-                                        fix = Fix.from_message(message)
-                                    except ProtocolError:
-                                        with self._lock:
-                                            self._malformed += 1
-                                        continue
-                                    with self._lock:
-                                        self._fixes += 1
-                                        self._last_fix = event.received_monotonic
-                                    update = PositionUpdate(
-                                        fix,
-                                        event.received_at,
-                                        event.received_monotonic,
-                                        previous,
-                                        connection,
-                                    )
-                                    previous = fix.quality
-                                    self._reconnect_delay = (
-                                        self.reconnect.initial_seconds
-                                    )
-                                    yield update
-                                failure = stream.failure
-                                if failure is not None and not stop.is_set():
-                                    raise failure from None
-                            finally:
-                                relay_stop.set()
-                                if relay is not None:
-                                    relay.join()
-                                with self._lock:
-                                    self._rtk = None
-                except (TransportError, OSError) as error:
-                    if self._wait_reconnect_backoff(stop, error):
-                        break
-        except Exception as error:
-            self._mark_failed(error)
-            raise
-        finally:
-            self._mark_stopped()
+                        if update is not None:
+                            yield update
+                    failure = stream.failure
+                    if failure is not None and not stop.is_set():
+                        raise failure from None
+                finally:
+                    relay_stop.set()
+                    if relay is not None:
+                        relay.join()
+                    with self._lock:
+                        self._rtk = None
 
     def positions(self, stop: Event) -> Generator[PositionUpdate, None, None]:
         """Yield fixes until stopped, and close the iterator if you stop early."""
-        if self.subscribe:
-            yield from self._subscribed_positions(stop)
-            return
-        self._require_idle()
-        previous: int | None = None
-        try:
-            while not stop.is_set():
-                self._begin_connection_attempt()
-                try:
-                    with self.receiver_factory() as receiver:
-                        if self.configure is not None:
-                            self.configure(receiver)
-                        with self._lock:
-                            self._connections += 1
-                            connection = self._connections
-                            self._state = "connected"
-                        while not stop.is_set():
-                            update = self._next_position_update(
-                                receiver, connection, previous
-                            )
-                            if update is None:
-                                continue
-                            previous = update.fix.quality
-                            self._reconnect_delay = self.reconnect.initial_seconds
-                            yield update
-                except (TransportError, OSError) as error:
-                    if self._wait_reconnect_backoff(stop, error):
-                        break
-        except Exception as error:
-            self._mark_failed(error)
-            raise
-        finally:
-            self._mark_stopped()
+        connection = (
+            self._subscribed_connection if self.subscribe else self._polled_connection
+        )
+        yield from self._run_connections(
+            stop, lambda: connection(stop), self.on_disconnect
+        )

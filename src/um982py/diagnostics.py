@@ -8,13 +8,13 @@ from statistics import median
 from time import monotonic
 
 from um982py.commands import Log, Trigger, logging, queries
+from um982py.commands.queries import log_list
 from um982py.corrections import audit_corrections, audit_has, correction_events
 from um982py.errors import ResponseTimeout
 from um982py.measurement import gps_epoch
 from um982py.messages import Record, Sentence
-from um982py.messages.enums import PositionType, SolutionStatus
+from um982py.messages.enums import PositionType, SolutionStatus, enum_member
 from um982py.receiver import Receiver
-from um982py.receiver_queries import log_list
 from um982py.signals import tracking_signal
 from um982py.subscriptions import temporary_subscriptions
 
@@ -293,6 +293,7 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
         ),
         None,
     )
+    reported = enum_member(PositionType, position_label)
     return {
         "status": "correction_telemetry_observed"
         if (events or has_records or madoca_records)
@@ -307,8 +308,7 @@ def ppp_diagnostics(capture: DiagnosticCapture) -> dict[str, object]:
         "signal_group": signal_group,
         "b2b_documented_signal_group_met": signal_group
         in (["3", "6"], ["7", "0"], ["7"]),
-        "receiver_reports_ppp": position_label
-        in ("PPP_CONVERGING", "PPP", "PPP_AR", "PPP_RTK"),
+        "receiver_reports_ppp": reported is not None and reported.is_ppp,
         "dop": _latest(capture, "PPPDOP"),
         "correction_application_verified": False,
         "coherence_checks": [asdict(check) for check in checks],

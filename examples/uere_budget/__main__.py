@@ -21,8 +21,8 @@ from examples.uere_budget import (
     median_uere,
     pseudorange_uere,
 )
-from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.stats import percentile
 
@@ -57,27 +57,25 @@ def _payload(
     *,
     assume_matched_geometry: bool = False,
 ) -> dict[str, object]:
-    by_epoch = {record_epoch(record): record for record in dilutions}
+    by_epoch = {gps_epoch(record): record for record in dilutions}
     paired = [
-        (position, by_epoch[record_epoch(position)])
+        (position, by_epoch[gps_epoch(position)])
         for position in positions
-        if record_epoch(position) in by_epoch
+        if gps_epoch(position) in by_epoch
         and position.get("sol_status", position.get("p_sol_status"))
         in (0, "SOL_COMPUTED")
         and position.get("pos_type") in (16, "SINGLE")
         and (
             assume_matched_geometry
-            or _same_satellite_set(position, by_epoch[record_epoch(position)])
+            or _same_satellite_set(position, by_epoch[gps_epoch(position)])
         )
     ]
     estimates = [
-        estimate_epoch(record_epoch(position), position, dilution)
+        estimate_epoch(gps_epoch(position), position, dilution)
         for position, dilution in paired
     ]
-    paired_epochs = {record_epoch(position) for position, _ in paired}
-    matched_ranges = [
-        record for record in ranges if record_epoch(record) in paired_epochs
-    ]
+    paired_epochs = {gps_epoch(position) for position, _ in paired}
+    matched_ranges = [record for record in ranges if gps_epoch(record) in paired_epochs]
     reference_ranges = matched_ranges or ranges[:1]
     pseudorange = (
         percentile([pseudorange_uere(record) for record in reference_ranges], 0.5)

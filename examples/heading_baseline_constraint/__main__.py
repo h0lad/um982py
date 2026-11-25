@@ -12,8 +12,8 @@ from examples.heading_baseline_constraint import (
     attitude_from_record,
     heading_residual,
 )
-from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 LENGTH_Z_LIMIT = 3.0
@@ -28,7 +28,7 @@ def _payload(
     # Index receiver heading reports by GPS seconds for matching.
     heading_by_epoch: dict[float, Record] = {}
     for heading in heading_records:
-        epoch = record_epoch(heading)
+        epoch = gps_epoch(heading)
         if epoch is not None:
             heading_by_epoch[epoch] = heading
 
@@ -39,7 +39,7 @@ def _payload(
     length_scores: list[float] = []
 
     for record in records:
-        epoch = record_epoch(record)
+        epoch = gps_epoch(record)
         try:
             attitude = attitude_from_record(record, baseline_length_m)
         except ValueError:

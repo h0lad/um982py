@@ -3,7 +3,7 @@
 import pytest
 
 from um982py.geodesy import (
-    dms_to_degrees,
+    degrees_from_ddmm,
     ecef_from_geodetic,
     geodetic_from_ecef,
     haversine_distance,
@@ -83,7 +83,7 @@ def test_basic_geodesy_without_optional_dependencies() -> None:
 
 
 def test_dms_rejects_invalid_minutes_and_nonfinite_input() -> None:
-    assert dms_to_degrees(-4807.038) == pytest.approx(-48.1173)
+    assert degrees_from_ddmm(-4807.038) == pytest.approx(-48.1173)
     for value in (4860.0, -1260.0, float("nan"), float("inf")):
         with pytest.raises(ValueError):
-            dms_to_degrees(value)
+            degrees_from_ddmm(value)

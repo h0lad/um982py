@@ -4,8 +4,8 @@ import math
 
 import pytest
 
+from um982py.gnss import SPEED_OF_LIGHT as C
 from um982py.science_experiments import (
-    C,
     noise_multipath_summary,
     orbit_position_effect,
     phase_detrended,

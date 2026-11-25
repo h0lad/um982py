@@ -14,6 +14,7 @@ import pytest
 from um982py import Receiver
 from um982py.commands import configuration, queries
 from um982py.commands.core import action
+from um982py.commands.queries import log_list
 from um982py.commands.types import Port, Trigger
 from um982py.errors import CommandRejected, ResponseTimeout
 from um982py.experimental import (
@@ -30,7 +31,6 @@ from um982py.experimental import (
 )
 from um982py.experimental.capture import ordered_log_list
 from um982py.messages import CommandResponse, Sentence
-from um982py.receiver_queries import log_list
 
 pytestmark = pytest.mark.hardware
 

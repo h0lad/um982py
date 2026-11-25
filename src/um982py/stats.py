@@ -33,6 +33,7 @@ __all__ = [
     "stddev",
     "subtract",
     "unit",
+    "variance",
 ]
 
 
@@ -41,13 +42,18 @@ def mean(values: Sequence[float]) -> float:
     return fmean(values) if values else math.nan
 
 
-def stddev(values: Sequence[float], *, sample: bool = True) -> float:
-    """Return standard deviation, or ``nan`` when there are too few values."""
+def variance(values: Sequence[float], *, sample: bool = True) -> float:
+    """Return the variance, or ``nan`` when there are too few values."""
     if not values or (sample and len(values) < 2):
         return math.nan
     average = mean(values)
     denominator = len(values) - 1 if sample else len(values)
-    return math.sqrt(sum((value - average) ** 2 for value in values) / denominator)
+    return math.fsum((value - average) ** 2 for value in values) / denominator
+
+
+def stddev(values: Sequence[float], *, sample: bool = True) -> float:
+    """Return standard deviation, or ``nan`` when there are too few values."""
+    return math.sqrt(variance(values, sample=sample))
 
 
 def percentile(values: Sequence[float], fraction: float) -> float:

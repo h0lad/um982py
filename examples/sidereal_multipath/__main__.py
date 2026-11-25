@@ -17,9 +17,9 @@ from examples._console import (
 from examples._console_capture import capture_logs, selected_log
 from examples.sidereal_multipath import SkyResidual, evaluate_repeatability
 from um982py import Observations
-from um982py.capture import load_records, record_epoch
+from um982py.capture import load_records
 from um982py.commands import Log
-from um982py.measurement import RangeSample
+from um982py.measurement import RangeSample, gps_epoch
 from um982py.messages import Record
 from um982py.stats import detrend, is_continuous
 
@@ -32,7 +32,7 @@ def sky_residuals(
     for record in visibility:
         if record.get("constellation") not in (0, "GPS"):
             continue
-        sky = skies.setdefault(record_epoch(record), {})
+        sky = skies.setdefault(gps_epoch(record), {})
         for satellite in record.records("satellites"):
             sky[satellite.integer("prn")] = (
                 satellite.real("azimuth"),

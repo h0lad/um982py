@@ -15,10 +15,10 @@ from um982py._receiver_state import ordered_log_list, receiver_state
 from um982py.commands import Log, configuration, logging, queries
 from um982py.commands.catalog import LOGS, RTCM_LOGS
 from um982py.commands.core import action, normalize
+from um982py.commands.queries import firmware_info
 from um982py.commands.types import NmeaVersion, Trigger
 from um982py.errors import CommandRejected, ProtocolError, ResponseTimeout, UM982Error
 from um982py.messages import AsciiHeader, AsciiMessage, CommandResponse, Fix, Sentence
-from um982py.receiver_queries import firmware_info
 from um982py.streaming import ReceiverStream
 from um982py.subscriptions import temporary_subscriptions
 

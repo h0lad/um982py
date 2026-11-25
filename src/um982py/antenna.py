@@ -83,8 +83,7 @@ class AntennaLog:
     def read(
         self, *, binary: bool = False, port: Port | None = None
     ) -> Command[Record]:
-        request = self.request(binary=binary, port=port)
-        return Command(request.text, request.matches, self.decode)
+        return self.request(binary=binary, port=port).decoded_with(self.decode)
 
     def decode(self, message: Message) -> Record:
         record = self.wire.decode(message)
@@ -177,8 +176,8 @@ def swap_antenna(log: Log | AntennaLog) -> Log | AntennaLog:
     An :class:`AntennaLog` keeps its logical key when the wire input changes.
     Its logical source also disambiguates shared secondary navigation logs.
     """
-    logical = log.logical if isinstance(log, AntennaLog) else log
-    wire = log.wire if isinstance(log, AntennaLog) else log
+    logical = log.logical
+    wire = log.wire
     secondary = _SECONDARY.get(logical)
     if secondary is not None:
         if wire == logical:

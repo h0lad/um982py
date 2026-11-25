@@ -5,7 +5,7 @@ from bisect import bisect_left, bisect_right
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from um982py.capture import record_epoch
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.provenance import _observation_source
 
@@ -71,11 +71,9 @@ def pair_base_rover_observations(
         row.name != "OBSVM" for row in rover
     ):
         raise ValueError("expected OBSVBASE base and OBSVM primary rover records")
-    base_rows = sorted(
-        ((record_epoch(row), row) for row in base), key=lambda row: row[0]
-    )
+    base_rows = sorted(((gps_epoch(row), row) for row in base), key=lambda row: row[0])
     rover_rows = sorted(
-        ((record_epoch(row), row) for row in rover), key=lambda row: row[0]
+        ((gps_epoch(row), row) for row in rover), key=lambda row: row[0]
     )
     base_times = [epoch for epoch, _ in base_rows]
     rover_times = [epoch for epoch, _ in rover_rows]

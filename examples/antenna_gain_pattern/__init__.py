@@ -8,8 +8,9 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from examples.satellite_monitor import Constellation as SkyConstellation
-from um982py.capture import gps_signals, record_epoch
+from um982py.capture import gps_signals
 from um982py.geodesy import records_from
+from um982py.measurement import gps_epoch
 from um982py.messages import Record, Value
 from um982py.stats import least_squares, percentile
 
@@ -200,12 +201,12 @@ def epoch_sky_samples(
     """Samples of every epoch, grouping the per-constellation visibility frames."""
     epochs: dict[float, list[Record]] = {}
     for record in visibility:
-        epochs.setdefault(record_epoch(record), []).append(record)
+        epochs.setdefault(gps_epoch(record), []).append(record)
     return tuple(
         sample
         for record in observations
         for sample in sky_samples(
-            epochs.get(record_epoch(record), ()),
+            epochs.get(gps_epoch(record), ()),
             record,
             system=system,
             signal=signal,

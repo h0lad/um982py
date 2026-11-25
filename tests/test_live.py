@@ -78,7 +78,13 @@ def test_position_session_passes_non_gga_frames_to_callback() -> None:
         lambda: receiver,  # type: ignore[arg-type]
         on_message=lambda message: seen.append(message),
     )
-    assert session._next_position_update(receiver, 1, None) is None
+    frame = receiver._receive_timed(timeout=1.0)
+    assert (
+        session._position_update(
+            frame.message, frame.received_at, frame.received_monotonic, 1
+        )
+        is None
+    )
     assert seen == [doppler]
 
 

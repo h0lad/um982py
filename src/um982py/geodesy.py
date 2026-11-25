@@ -6,6 +6,8 @@ import math
 from collections.abc import Iterable
 from typing import TYPE_CHECKING
 
+from um982py.gnss import SPEED_OF_LIGHT, WGS84_A, WGS84_E2, WGS84_F
+
 if TYPE_CHECKING:
     from um982py.messages import Record
 
@@ -14,30 +16,26 @@ __all__ = [
     "WGS84_A",
     "WGS84_E2",
     "WGS84_F",
-    "dms_to_degrees",
+    "degrees_from_ddmm",
     "ecef_from_geodetic",
     "elevation_mask_filter",
+    "enu_angles",
+    "enu_between",
     "enu_from_ecef",
     "geodetic_from_ecef",
     "haversine_distance",
     "receiver_ecef",
     "records_from",
+    "rotate_z",
     "wavelength",
 ]
 
-SPEED_OF_LIGHT = 299_792_458.0
 
-WGS84_A = 6_378_137.0
+def degrees_from_ddmm(value: float) -> float:
+    """Convert a DDMM.MMMM / DDDMM.MMMM degrees-and-minutes field to degrees.
 
-
-WGS84_F = 1 / 298.257_223_563
-
-
-WGS84_E2 = WGS84_F * (2 - WGS84_F)
-
-
-def dms_to_degrees(value: float) -> float:
-    """Convert a Unicore DDMM.MMMM / DDDMM.MMMM field to signed degrees."""
+    This is the NMEA and Unicore latitude/longitude encoding, not DMS.
+    """
     if not math.isfinite(value):
         raise ValueError("coordinate must be finite")
     sign = -1.0 if value < 0 else 1.0
@@ -143,6 +141,36 @@ def enu_from_ecef(
         + math.sin(phi) * dz
     )
     return east, north, up
+
+
+def enu_between(
+    origin: tuple[float, float, float], target: tuple[float, float, float]
+) -> tuple[float, float, float]:
+    """Return the ECEF vector from ``origin`` to ``target`` in origin ENU metres."""
+    latitude, longitude, _ = geodetic_from_ecef(*origin)
+    return enu_from_ecef(
+        target[0] - origin[0],
+        target[1] - origin[1],
+        target[2] - origin[2],
+        latitude,
+        longitude,
+    )
+
+
+def enu_angles(east: float, north: float, up: float) -> tuple[float, float]:
+    """Return the azimuth from true north and the elevation of an ENU vector."""
+    azimuth = math.degrees(math.atan2(east, north)) % 360.0
+    return azimuth, math.degrees(math.atan2(up, math.hypot(east, north)))
+
+
+def rotate_z(x: float, y: float, z: float, angle: float) -> tuple[float, float, float]:
+    """Express a vector in a frame rotated by ``angle`` radians about z (R3).
+
+    With the Earth rotation rate times an elapsed time, this carries an
+    Earth-fixed vector into the Earth-fixed frame of the later instant.
+    """
+    cosine, sine = math.cos(angle), math.sin(angle)
+    return cosine * x + sine * y, -sine * x + cosine * y, z
 
 
 def wavelength(frequency_hz: float) -> float:

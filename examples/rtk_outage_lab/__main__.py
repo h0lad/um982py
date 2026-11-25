@@ -22,9 +22,10 @@ from examples.rtk_outage_lab import (
     epoch_timeline,
     summarize_outages,
 )
-from um982py.capture import record_epoch
 from um982py.commands import Log
-from um982py.quality import FixClass, solution_from_record
+from um982py.measurement import gps_epoch
+from um982py.messages.enums import FixClass
+from um982py.quality import solution_from_record
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -58,7 +59,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
     epochs = []
     for record in data["BESTXYZ"]:
-        time = record_epoch(record)
+        time = gps_epoch(record)
         quality = solution_from_record(time, record)
         epochs.append(
             PositionEpoch(

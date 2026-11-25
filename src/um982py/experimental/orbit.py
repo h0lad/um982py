@@ -7,24 +7,29 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from typing import TYPE_CHECKING
 
-from um982py.geodesy import SPEED_OF_LIGHT, geodetic_from_ecef, receiver_ecef
-from um982py.geodesy import WGS84_A as WGS84_SEMI_MAJOR
+from um982py.geodesy import (
+    enu_angles,
+    enu_between,
+    receiver_ecef,
+    rotate_z,
+)
+from um982py.gnss import (
+    EARTH_ROTATION_RATE,
+    EARTH_ROTATION_RATE_BEIDOU,
+    EARTH_ROTATION_RATE_GLONASS,
+    J2_GLONASS,
+    MU,
+    MU_GALILEO_BEIDOU,
+    MU_GLONASS,
+    PZ90_A,
+    SPEED_OF_LIGHT,
+    WEEK_SECONDS,
+    wrap,
+)
+from um982py.gnss import WGS84_A as WGS84_SEMI_MAJOR
 
 if TYPE_CHECKING:
     from um982py.messages.record import Record
-
-MU = 3.986005e14
-"""GPS/QZSS geocentric gravitational constant, IS-GPS-200 (m^3/s^2)."""
-MU_GALILEO_BEIDOU = 3.986004418e14
-"""Galileo OS SIS ICD and BeiDou B1I ICD gravitational constant (m^3/s^2)."""
-MU_GLONASS = 3.9860044e14
-"""GLONASS PZ-90 ICD gravitational constant (m^3/s^2)."""
-EARTH_ROTATION_RATE = 7.2921151467e-5
-"""GPS/Galileo Earth rotation rate (rad/s), IS-GPS-200 and Galileo OS SIS ICD."""
-EARTH_ROTATION_RATE_BEIDOU = 7.292115e-5
-"""BeiDou B1I ICD Earth rotation rate (rad/s)."""
-J2 = 1.0826257e-3
-WEEK_SECONDS = 604_800.0
 
 # BeiDou GEO ephemerides are fitted in a frame rotated 5 degrees about the
 # X axis, which the user algorithm must undo (BDS-SIS-ICD-2.0 and RTKLIB
@@ -219,9 +224,7 @@ def orbit_state(
     axis = elements.semi_major_axis
     if axis <= 0:
         raise ValueError("semi-major axis must be positive")
-    time_of_flight = (
-        time_of_flight + WEEK_SECONDS / 2
-    ) % WEEK_SECONDS - WEEK_SECONDS / 2
+    time_of_flight = wrap(time_of_flight, WEEK_SECONDS)
     mean_motion = math.sqrt(mu / axis**3) + elements.delta_n
     mean_anomaly = elements.mean_anomaly + mean_motion * time_of_flight
     eccentric_anomaly = solve_kepler(mean_anomaly, elements.eccentricity)
@@ -263,14 +266,11 @@ def orbit_state(
     if geo:
         # Coordinates above are in the inertial GK frame. Rotate about X by
         # +5 degrees and about Z by the Earth rotation since t_oe (BDS ICD).
-        sine, cosine = (
-            math.sin(earth_rate * time_of_flight),
-            math.cos(earth_rate * time_of_flight),
-        )
-        x, y, z = (
-            x * cosine + y * sine * GEO_ROTATION_COS + z * sine * GEO_ROTATION_SIN,
-            -x * sine + y * cosine * GEO_ROTATION_COS + z * cosine * GEO_ROTATION_SIN,
+        x, y, z = rotate_z(
+            x,
+            y * GEO_ROTATION_COS + z * GEO_ROTATION_SIN,
             -y * GEO_ROTATION_SIN + z * GEO_ROTATION_COS,
+            earth_rate * time_of_flight,
         )
     return SatelliteState(
         x=x,
@@ -295,7 +295,7 @@ def clock_correction(
         + elements.toe
         - (elements.toe if elements.toc is None else elements.toc)
     )
-    clock_time = (clock_time + WEEK_SECONDS / 2) % WEEK_SECONDS - WEEK_SECONDS / 2
+    clock_time = wrap(clock_time, WEEK_SECONDS)
     return (
         elements.af0
         + elements.af1 * clock_time
@@ -309,37 +309,8 @@ def azimuth_elevation(
     state: SatelliteState, observer: tuple[float, float, float]
 ) -> tuple[float, float, float]:
     """Calculate azimuth and elevation in degrees and slant range in metres."""
-    delta = (
-        state.x - observer[0],
-        state.y - observer[1],
-        state.z - observer[2],
-    )
-    east = (
-        -math.sin(_longitude(observer)) * delta[0]
-        + math.cos(_longitude(observer)) * delta[1]
-    )
-    north = (
-        -math.sin(_latitude(observer)) * math.cos(_longitude(observer)) * delta[0]
-        - math.sin(_latitude(observer)) * math.sin(_longitude(observer)) * delta[1]
-        + math.cos(_latitude(observer)) * delta[2]
-    )
-    up = (
-        math.cos(_latitude(observer)) * math.cos(_longitude(observer)) * delta[0]
-        + math.cos(_latitude(observer)) * math.sin(_longitude(observer)) * delta[1]
-        + math.sin(_latitude(observer)) * delta[2]
-    )
-    horizontal = math.hypot(east, north)
-    azimuth = math.degrees(math.atan2(east, north)) % 360.0
-    elevation = math.degrees(math.atan2(up, horizontal))
-    return azimuth, elevation, math.sqrt(sum(component**2 for component in delta))
-
-
-def _latitude(observer: tuple[float, float, float]) -> float:
-    return math.radians(geodetic_from_ecef(*observer)[0])
-
-
-def _longitude(observer: tuple[float, float, float]) -> float:
-    return math.atan2(observer[1], observer[0])
+    enu = enu_between(observer, (state.x, state.y, state.z))
+    return *enu_angles(*enu), math.hypot(*enu)
 
 
 @dataclass(frozen=True, slots=True)
@@ -404,10 +375,10 @@ def _acceleration(state: Sequence[float]) -> tuple[float, float, float]:
     radius = math.sqrt(x * x + y * y + z * z)
     if radius <= 0:
         raise ValueError("GLONASS state has zero radius")
-    factor = 1.5 * J2 * MU_GLONASS * 6378136.0**2 / radius**5
+    factor = 1.5 * J2_GLONASS * MU_GLONASS * PZ90_A**2 / radius**5
     oblateness_term = 5 * z * z / radius**2
     gravity = -MU_GLONASS / radius**3 - factor * (1 - oblateness_term)
-    omega = 7.292115e-5
+    omega = EARTH_ROTATION_RATE_GLONASS
     return (
         (gravity + omega**2) * x + 2 * omega * state[4],
         (gravity + omega**2) * y - 2 * omega * state[3],

@@ -8,6 +8,7 @@ from um982py.commands import logging
 from um982py.commands.core import Command
 from um982py.commands.types import Port
 from um982py.errors import ProtocolError
+from um982py.gnss import WEEK_SECONDS
 from um982py.messages import BinaryMessage, CommandResponse, Message
 
 __all__ = [
@@ -40,7 +41,7 @@ class VelocityData:
 
     @property
     def epoch_gps_seconds(self) -> float:
-        return self.gps_week * 604800 + self.milliseconds_of_week / 1000
+        return self.gps_week * WEEK_SECONDS + self.milliseconds_of_week / 1000
 
 
 def decode_velocity_data(message: Message) -> VelocityData:
@@ -54,7 +55,7 @@ def decode_velocity_data(message: Message) -> VelocityData:
     if len(payload) != _BODY_SIZE:
         raise ProtocolError("Invalid VELDATAB body length")
     week, milliseconds = unpack_from("<H2xI", payload)
-    if milliseconds >= 604800000:
+    if milliseconds >= WEEK_SECONDS * 1000:
         raise ProtocolError("Invalid VELDATAB GPS milliseconds of week")
     vx, vy, vz, native_clock_drift = _SOLUTION.unpack_from(payload, 16)
     deviations = unpack_from("<3d", payload, 48)
@@ -76,8 +77,9 @@ def decode_velocity_data(message: Message) -> VelocityData:
 
 def velocity_data_read(*, port: Port | None = None) -> Command[VelocityData]:
     """Request one binary VELDATA report."""
-    request = logging.request(_LOG_NAME, port=port, message_id=_MESSAGE_ID)
-    return Command(request.text, request.matches, decode_velocity_data)
+    return logging.request(_LOG_NAME, port=port, message_id=_MESSAGE_ID).decoded_with(
+        decode_velocity_data
+    )
 
 
 def velocity_data_output(

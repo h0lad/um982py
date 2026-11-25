@@ -7,7 +7,7 @@ from collections import Counter, defaultdict
 from collections.abc import Mapping, Sequence
 from typing import cast
 
-from um982py.capture import record_epoch
+from um982py.measurement import gps_epoch
 from um982py.messages.enums import SatelliteSystem
 from um982py.messages.record import Record
 from um982py.stats import mean, percentile, stddev
@@ -43,7 +43,7 @@ def dop_report(captured: Mapping[str, Sequence[Record]]) -> dict[str, object]:
             )
             epochs.append(
                 {
-                    "time_gps_s": record_epoch(record),
+                    "time_gps_s": gps_epoch(record),
                     "source": source,
                     "valid": valid,
                     "used_satellites": record.integer("count_prn"),
@@ -121,7 +121,7 @@ def satellite_report(records: Sequence[Record]) -> dict[str, object]:
         counts.append(float(len(satellites)))
         epochs.append(
             {
-                "time_gps_s": record_epoch(record),
+                "time_gps_s": gps_epoch(record),
                 "reported_satellites": record.integer("satellite_count"),
                 "frequency_flags": record.integer("frequency_flags"),
                 "satellites": satellites,

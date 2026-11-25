@@ -4,57 +4,25 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from enum import IntEnum, StrEnum
+from enum import IntEnum
 from itertools import pairwise
 from math import isfinite
 from types import MappingProxyType
 from typing import TYPE_CHECKING
 
-from um982py.capture import record_epoch
 from um982py.corrections import stale_correction
+from um982py.measurement import gps_epoch
 from um982py.messages import Value
 
 if TYPE_CHECKING:
     from um982py.messages import Record
-from um982py.messages.enums import PositionType, SolutionStatus
-from um982py.stats import mean
-
-
-class FixClass(StrEnum):
-    """Solution categories used by the quality timeline."""
-
-    FIXED = "fixed"
-    FLOAT = "float"
-    PPP = "ppp"
-    PPP_CONVERGING = "ppp_converging"
-    SINGLE = "single"
-    NONE = "none"
-
-
-POSITION_CLASSES: Mapping[PositionType, FixClass] = MappingProxyType(
-    {
-        PositionType.NONE: FixClass.NONE,
-        PositionType.FIXEDPOS: FixClass.SINGLE,
-        PositionType.FIXEDHEIGHT: FixClass.SINGLE,
-        PositionType.SINGLE: FixClass.SINGLE,
-        PositionType.PSRDIFF: FixClass.SINGLE,
-        PositionType.SBAS: FixClass.SINGLE,
-        PositionType.L1_FLOAT: FixClass.FLOAT,
-        PositionType.IONOFREE_FLOAT: FixClass.FLOAT,
-        PositionType.NARROW_FLOAT: FixClass.FLOAT,
-        PositionType.L1_INT: FixClass.FIXED,
-        PositionType.WIDE_INT: FixClass.FIXED,
-        PositionType.NARROW_INT: FixClass.FIXED,
-        PositionType.INS_PSRSP: FixClass.SINGLE,
-        PositionType.INS_PSRDIFF: FixClass.SINGLE,
-        PositionType.INS_RTKFLOAT: FixClass.FLOAT,
-        PositionType.INS_RTKFIXED: FixClass.FIXED,
-        PositionType.PPP_CONVERGING: FixClass.PPP_CONVERGING,
-        PositionType.PPP: FixClass.PPP,
-        PositionType.PPP_AR: FixClass.PPP,
-        PositionType.PPP_RTK: FixClass.PPP,
-    }
+from um982py.messages.enums import (
+    FixClass,
+    PositionType,
+    SolutionStatus,
+    enum_member,
 )
+from um982py.stats import mean
 
 
 @dataclass(frozen=True, slots=True)
@@ -130,10 +98,10 @@ def classify(position_type: int) -> FixClass:
         documented = PositionType(position_type)
     except ValueError:
         raise ValueError(f"unknown position type {position_type}") from None
-    try:
-        return POSITION_CLASSES[documented]
-    except KeyError:
-        raise ValueError(f"no fix class for {documented.name}") from None
+    fix_class = documented.fix_class
+    if fix_class is None:
+        raise ValueError(f"no fix class for {documented.name}")
+    return fix_class
 
 
 def position_label(position_type: int) -> str:
@@ -159,12 +127,12 @@ def solution_status_code(record: Record) -> int:
 def _numeric_code(value: Value, enum: type[IntEnum], field: str) -> int:
     if isinstance(value, int):
         return value
-    if isinstance(value, str):
-        try:
-            return enum[value].value
-        except KeyError:
-            raise ValueError(f"unknown {field} label {value}") from None
-    raise ValueError(f"{field} is neither a code nor a label")
+    if not isinstance(value, str):
+        raise ValueError(f"{field} is neither a code nor a label")
+    member = enum_member(enum, value)
+    if member is None:
+        raise ValueError(f"unknown {field} label {value}")
+    return member.value
 
 
 def solution_from_record(epoch: float, record: Record) -> EpochSolution:
@@ -189,7 +157,7 @@ def timeline(records: Sequence[Record]) -> tuple[EpochSolution, ...]:
         raise ValueError("position records must either all have timestamps or none")
     return tuple(
         solution_from_record(
-            record_epoch(record) if record.message is not None else float(epoch), record
+            gps_epoch(record) if record.message is not None else float(epoch), record
         )
         for epoch, record in enumerate(records)
     )

@@ -20,8 +20,9 @@ from examples.ionosphere_tec import (
     slant_tec,
     tec_report,
 )
-from um982py.capture import GPS_FREQUENCIES, gps_signals, record_epoch
+from um982py.capture import GPS_FREQUENCIES, gps_signals
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 
 
@@ -36,7 +37,7 @@ def read_observations(
             pseudorange=item.real("pseudorange"),
             carrier_phase=item.real("carrier_phase"),
             carrier_state=CarrierState(
-                epoch=record_epoch(record),
+                epoch=gps_epoch(record),
                 frequency_hz=frequency,
                 signal=(item.integer("tracking_status") >> 21) & 31,
                 lock_seconds=item.real("lock_time"),
@@ -336,7 +337,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         parser.error("capture contains no RANGE records")
     epochs = [
         (
-            record_epoch(record),
+            gps_epoch(record),
             read_observations(record, args.frequency, args.secondary_frequency),
         )
         for record in records

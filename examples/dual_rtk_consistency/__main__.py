@@ -15,8 +15,8 @@ from examples.dual_rtk_consistency import (
     heading_from_enu,
     pitch_from_enu,
 )
-from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 
@@ -28,19 +28,19 @@ def _match_epochs(
     """Match master, slave and heading records by epoch."""
     headings: dict[float, Record] = {}
     for h in heading_records:
-        epoch = record_epoch(h)
+        epoch = gps_epoch(h)
         if epoch is not None:
             headings[epoch] = h
 
     slaves: dict[float, Record] = {}
     for s in slave_records:
-        epoch = record_epoch(s)
+        epoch = gps_epoch(s)
         if epoch is not None:
             slaves[epoch] = s
 
     epochs: list[ConsistencyEpoch] = []
     for master in master_records:
-        epoch = record_epoch(master)
+        epoch = gps_epoch(master)
         if epoch is None:
             continue
         slave = slaves.get(epoch)

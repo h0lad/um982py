@@ -3,9 +3,17 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from math import cos, isfinite, sin, sqrt
+from math import isfinite, sqrt
 from struct import unpack_from
 from typing import TYPE_CHECKING
+
+from um982py.geodesy import rotate_z
+from um982py.gnss import (
+    BDT_GPS_WEEKS,
+    DAY_SECONDS,
+    EARTH_ROTATION_RATE_GLONASS,
+    wrap,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -15,7 +23,6 @@ if TYPE_CHECKING:
 __all__ = [
     "DSP_EPHEMERIS_MEMORY_WINDOWS",
     "DSP_GLONASS_PROPAGATION_WINDOW",
-    "GLONASS_EARTH_RATE",
     "DspGalileoEphemeris",
     "DspGlonassEphemeris",
     "DspGlonassPropagationRecord",
@@ -63,10 +70,6 @@ class DspGlonassPropagationRecord:
     velocity_inertial_mps: tuple[float, float, float] | None = None
 
 
-GLONASS_EARTH_RATE = 7.292115e-5
-"""PZ-90 Earth rotation rate in rad/s (GLONASS ICD)."""
-
-
 def earth_fixed_state(
     position: tuple[float, float, float],
     velocity: tuple[float, float, float],
@@ -79,17 +82,10 @@ def earth_fixed_state(
     stored positions equalled IGS broadcast PZ-90 positions rotated by
     omega * (propagation - reference) about z, to a few metres.
     """
-    angle = GLONASS_EARTH_RATE * elapsed_s
-    cosine, sine = cos(angle), sin(angle)
-    x, y, z = position
-    vx, vy, vz = velocity
-    ex, ey = cosine * x + sine * y, -sine * x + cosine * y
-    evx, evy = cosine * vx + sine * vy, -sine * vx + cosine * vy
-    return (ex, ey, z), (
-        evx + GLONASS_EARTH_RATE * ey,
-        evy - GLONASS_EARTH_RATE * ex,
-        vz,
-    )
+    omega = EARTH_ROTATION_RATE_GLONASS
+    ex, ey, ez = rotate_z(*position, omega * elapsed_s)
+    evx, evy, evz = rotate_z(*velocity, omega * elapsed_s)
+    return (ex, ey, ez), (evx + omega * ey, evy - omega * ex, evz)
 
 
 @dataclass(frozen=True, slots=True)
@@ -135,7 +131,9 @@ class DspKeplerEphemeris:
         """GPS week after applying the constellation's week offset."""
         if self.week_native is None:
             return None
-        return self.week_native + {"GPS": 0, "BEIDOU": 1356}[self.constellation]
+        return self.week_native + (
+            BDT_GPS_WEEKS if self.constellation == "BEIDOU" else 0
+        )
 
     @property
     def iode(self) -> int | None:
@@ -416,7 +414,7 @@ def extract_dsp_glonass_propagation(
         if reference == 0 or not all(map(isfinite, values)):
             continue
         propagation_time, x, y, z, vx, vy, vz = values
-        elapsed = (propagation_time - reference + 43200.0) % 86400.0 - 43200.0
+        elapsed = wrap(propagation_time - reference, DAY_SECONDS)
         position, velocity = earth_fixed_state((x, y, z), (vx, vy, vz), elapsed)
         result.append(
             DspGlonassPropagationRecord(

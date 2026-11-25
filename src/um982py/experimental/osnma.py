@@ -21,6 +21,7 @@ from um982py.experimental.inav_pages import (
     assemble_osnma_subframe,
     decode_inav_page_part,
 )
+from um982py.gnss import WEEK_SECONDS
 
 __all__ = [
     "DsmHeader",
@@ -113,7 +114,6 @@ KROOT_BLOCKS = {0: None, 1: 7, 2: 8, 3: 9, 4: 10, 5: 11, 6: 12, 7: 13, 8: 14}
 """Number of DSM-KROOT blocks indexed by the NB field."""
 
 PKR_BLOCKS = {7: 13, 8: 14, 9: 15, 10: 16}
-WEEK_SECONDS = 604800
 SUBFRAME_SECONDS = 30
 
 DSM_KROOT_FIXED_BITS = 104

@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from statistics import median
 
-from um982py.capture import record_epoch
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.signals import tracking_signal
 from um982py.stats import percentile
@@ -103,7 +103,7 @@ def paired_observation_details(
     ) -> dict[tuple[float, ReceptionKey], Record]:
         observations: dict[tuple[float, ReceptionKey], Record] = {}
         for record in records:
-            epoch = record_epoch(record)
+            epoch = gps_epoch(record)
             for row in record.records("observations"):
                 status = row.integer("tracking_status")
                 cn0 = row.real("cn0")
@@ -166,7 +166,7 @@ def _receptions(records: Sequence[Record]) -> dict[float, dict[ReceptionKey, flo
     result: dict[float, dict[ReceptionKey, float]] = {}
     previous = -math.inf
     for record in records:
-        epoch = record_epoch(record)
+        epoch = gps_epoch(record)
         if epoch <= previous:
             raise ValueError("each antenna needs strictly increasing RANGE epochs")
         previous = epoch
@@ -302,7 +302,7 @@ def summarize_by_elevation(
             system = systems.get(system)
         if not isinstance(system, int) or system not in range(7):
             continue
-        epoch = record_epoch(record)
+        epoch = gps_epoch(record)
         for satellite in record.records("satellites"):
             elevation = satellite.real("elevation")
             if math.isfinite(elevation) and 0 <= elevation <= 90:

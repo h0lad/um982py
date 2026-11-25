@@ -90,6 +90,16 @@ _BINARY_IDS = {
     "BD3B2AEPHEM": 11408,  # BD3EPH without the B2b group delays
     "BD3IONUTC": 3001,  # BD3ION and BD3UTC in one message
     "BASESTATION": 6002,  # primary-antenna observations and reference position
+    "GPSEPHEM": 7,  # GPSEPH
+    "GPSEPHEMERIS": 14,  # GPSEPH
+    "BDSEPHEM": 15,  # BDSEPH
+    "GALEPHEM": 16,  # GALEPH
+    "GLOEPHEM": 17,  # GLOEPH
+    "ALMANAC": 73,  # one GPS almanac page per frame
+    "GLOEPHEMERIS": 723,  # GLOEPH
+    "GALEPHEMERIS": 1122,  # GALEPH
+    "BDSEPHEMERIS": 1696,  # BDSEPH values with sqrt(A), in NovAtel order
+    "BD3EPHEM": 3000,  # BD3B2AEPHEM with one trailing word
 }
 
 _SBAS_LOGS = tuple(name for name in _BINARY_IDS if name.startswith("SBAS"))
@@ -192,6 +202,16 @@ EXTENDED_LOGS = MappingProxyType(
             "BD3B2AEPHEM",
             "BD3IONUTC",
             "BASESTATION",
+            "GPSEPHEM",
+            "GPSEPHEMERIS",
+            "BDSEPHEM",
+            "GALEPHEM",
+            "GLOEPHEM",
+            "ALMANAC",
+            "GLOEPHEMERIS",
+            "GALEPHEMERIS",
+            "BDSEPHEMERIS",
+            "BD3EPHEM",
         )
     }
 )

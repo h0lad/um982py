@@ -261,10 +261,30 @@ class Log(StrEnum):
     BD3B2AEPHEM = "BD3B2AEPHEM"
     BD3IONUTC = "BD3IONUTC"
     BASESTATION = "BASESTATION"
+    GPSEPHEM = "GPSEPHEM"
+    GPSEPHEMERIS = "GPSEPHEMERIS"
+    BDSEPHEM = "BDSEPHEM"
+    GALEPHEM = "GALEPHEM"
+    GLOEPHEM = "GLOEPHEM"
+    ALMANAC = "ALMANAC"
+    GLOEPHEMERIS = "GLOEPHEMERIS"
+    GALEPHEMERIS = "GALEPHEMERIS"
+    BDSEPHEMERIS = "BDSEPHEMERIS"
+    BD3EPHEM = "BD3EPHEM"
 
     @property
     def definition(self) -> LogDefinition:
         return LOGS[self.value] if self.value in LOGS else EXTENDED_LOGS[self.value]
+
+    @property
+    def wire(self) -> "Log":
+        """The log sent on the wire, matching ``AntennaLog.wire``."""
+        return self
+
+    @property
+    def logical(self) -> "Log":
+        """The measured quantity, matching ``AntennaLog.logical``."""
+        return self
 
     @property
     def onchanged_only(self) -> bool:
@@ -349,8 +369,9 @@ class Log(StrEnum):
     def read(
         self, *, binary: bool = False, table: bool = False, port: Port | None = None
     ) -> Command[Record]:
-        command = self.request(binary=binary, table=table, port=port)
-        return Command(command.text, command.matches, self.decode)
+        return self.request(binary=binary, table=table, port=port).decoded_with(
+            self.decode
+        )
 
     def decode(self, message: Message) -> Record:
         """Decode a log body.

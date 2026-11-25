@@ -26,10 +26,10 @@ from examples.broadcast_orbit_audit import (
     compare_state,
     sisre_summary,
 )
-from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.experimental.gps_motion import choose_ephemeris
 from um982py.experimental.orbit import KeplerElements, orbit_state
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.precise import parse_sp3
 from um982py.stats import rms
@@ -113,7 +113,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     metadata: list[dict[str, float | bool]] = []
     ephemerides: dict[int, list[tuple[float, Record]]] = defaultdict(list)
     for record in data["GPSEPH"]:
-        ephemerides[record.integer("prn")].append((record_epoch(record), record))
+        ephemerides[record.integer("prn")].append((gps_epoch(record), record))
     skipped: dict[str, int] = defaultdict(int)
     for point in product.points:
         if not point.satellite.startswith("G"):
@@ -148,7 +148,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         metadata.append(
             {
                 "ephemeris_toe_gps_seconds": toe,
-                "ephemeris_received_gps_seconds": record_epoch(record),
+                "ephemeris_received_gps_seconds": gps_epoch(record),
                 "predicted_reference_orbit": predicted_orbit,
                 "predicted_reference_clock": predicted_clock,
             }

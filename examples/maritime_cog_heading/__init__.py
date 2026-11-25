@@ -21,10 +21,10 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from um982py.capture import record_epoch
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
-from um982py.messages.enums import SolutionStatus
-from um982py.quality import FixClass, classify, position_type_code, solution_status_code
+from um982py.messages.enums import FixClass, SolutionStatus
+from um982py.quality import classify, position_type_code, solution_status_code
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,7 +82,7 @@ def compute_cog_heading(
 
     def timestamp(row: Record) -> float | None:
         try:
-            epoch = record_epoch(row)
+            epoch = gps_epoch(row)
         except (KeyError, TypeError, ValueError):
             return None
         return epoch if math.isfinite(epoch) else None

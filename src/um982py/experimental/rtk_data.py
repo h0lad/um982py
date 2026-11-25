@@ -190,8 +190,9 @@ def decode_rtk_data(message: Message) -> RtkData:
 
 
 def _read(name: str, message_id: int, port: Port | None) -> Command[RtkData]:
-    request = logging.request(name, port=port, message_id=message_id)
-    return Command(request.text, request.matches, decode_rtk_data)
+    return logging.request(name, port=port, message_id=message_id).decoded_with(
+        decode_rtk_data
+    )
 
 
 def _output(name: str, port: Port | None) -> Command[CommandResponse]:

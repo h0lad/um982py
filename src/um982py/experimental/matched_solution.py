@@ -68,8 +68,9 @@ def decode_matched_solution(message: Message) -> MatchedSolution:
 
 def matched_solution_read(*, port: Port | None = None) -> Command[MatchedSolution]:
     """Request one binary MATCHEDSOLUTION frame."""
-    request = logging.request("MATCHEDSOLUTIONB", port=port, message_id=2020)
-    return Command(request.text, request.matches, decode_matched_solution)
+    return logging.request("MATCHEDSOLUTIONB", port=port, message_id=2020).decoded_with(
+        decode_matched_solution
+    )
 
 
 def matched_solution_output(*, port: Port | None = None) -> Command[CommandResponse]:

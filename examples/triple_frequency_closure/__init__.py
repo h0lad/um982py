@@ -4,8 +4,7 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from um982py.capture import record_epoch
-from um982py.measurement import RangeSample, range_samples
+from um982py.measurement import RangeSample, gps_epoch, range_samples
 from um982py.messages import Record
 from um982py.signals import tracking_signal
 
@@ -109,7 +108,7 @@ def frequency_closures(
     output = []
     last_epoch = -math.inf
     for record in records:
-        epoch = record_epoch(record)
+        epoch = gps_epoch(record)
         if epoch <= last_epoch:
             raise ValueError("RANGE epochs must increase strictly")
         preceding_epoch, last_epoch = last_epoch, epoch

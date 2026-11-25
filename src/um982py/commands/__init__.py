@@ -1,7 +1,8 @@
 """Command builders and the documented log catalogue."""
 
-from importlib import import_module
 from typing import TYPE_CHECKING
+
+from um982py import _lazy_exports
 
 if TYPE_CHECKING:
     from um982py.commands import (
@@ -66,16 +67,4 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str) -> object:
-    try:
-        module, attribute = _EXPORTS[name]
-    except KeyError:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from None
-    target = import_module(module)
-    value = target if attribute is None else getattr(target, attribute)
-    globals()[name] = value
-    return value
-
-
-def __dir__() -> list[str]:
-    return sorted(set(globals()) | set(__all__))
+__getattr__, __dir__ = _lazy_exports(globals(), _EXPORTS)

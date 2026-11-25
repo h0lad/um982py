@@ -2,8 +2,16 @@
   "receiver": "UM982",
   "frames": [
     {
+      "file": "ALMANACA.bin",
+      "sha256": "71306254bbd2c537f2df1ba59dc37a3984221e4fc70758c55bca0364046dfab5"
+    },
+    {
+      "file": "ALMANACB.bin",
+      "sha256": "b942083635871aaaaf84a6f278a505aebc051b418ba45fe46502f94d420e6116"
+    },
+    {
       "file": "BASESTATIONB.bin",
-      "sha256": "52bf47063cf1d9fc3ca3953c034ce88e7ea19f7ae6c97a54f91ee5bb5163c7a0"
+      "sha256": "100acd5db30551c5f969ff085297b22878e5fb0969bb71aa056cc0c0a28c5172"
     },
     {
       "file": "BD2EPHEMA.bin",
@@ -22,12 +30,92 @@
       "sha256": "35c267d006d14893d7e2dc3ffec1bcd37d4e250e5718888913284d45a416ac86"
     },
     {
+      "file": "BD3EPHEMA.bin",
+      "sha256": "3784eff4636072ec13b0fd6f15655a3939b2b9a900f9cfc96652bc89ecd85828"
+    },
+    {
+      "file": "BD3EPHEMB.bin",
+      "sha256": "32e8b9bc7f1f1dad6cb2fb6b9b1db2766f6b2543731c28bb3cc083f651ac312e"
+    },
+    {
       "file": "BD3IONUTCA.bin",
       "sha256": "60d8d2ddc00344a5a05808fcf50a6e426cef8af10d2596e27eab91ceb507d441"
     },
     {
       "file": "BD3IONUTCB.bin",
       "sha256": "23cb46ce63d6101fda6d8f7550597ff175e3eb51c7149fc063e665646311efba"
+    },
+    {
+      "file": "BDSEPHEMA.bin",
+      "sha256": "de2f2d7618da18f04907934f197b39b5f3c26c51f1564847eb0a805c606f7d6b"
+    },
+    {
+      "file": "BDSEPHEMB.bin",
+      "sha256": "98caf3eee2cf1eef67b20b38f1e1ca878fb45e2321b4974eff05cae3337f4227"
+    },
+    {
+      "file": "BDSEPHEMERISA.bin",
+      "sha256": "870919868e20f92032df47661488b7a61969ac07d74a82152f3ce82a232d7bad"
+    },
+    {
+      "file": "BDSEPHEMERISB.bin",
+      "sha256": "eccc2f5f6b6d9567d142408e65e1f9f5ab545200c9361a9e0a57014821bc29ed"
+    },
+    {
+      "file": "GALEPHEMA.bin",
+      "sha256": "682e3791f4761d6f540922a5714115ff8a097e27ea4e39b4e93b6408dfbe12d5"
+    },
+    {
+      "file": "GALEPHEMB.bin",
+      "sha256": "74e62937008a1fdb9aa2c88655d56b081a28413777f7bc9ecbd477ccb94c03cc"
+    },
+    {
+      "file": "GALEPHEMERISA.bin",
+      "sha256": "778c19d984636f39080188b30205c0cdf963ca471baa838476fb561725f6163b"
+    },
+    {
+      "file": "GALEPHEMERISB.bin",
+      "sha256": "0278d8cdf10f8b65bd9dd48b370923cc9ad43aabc86152f8e5c2e9b4e19b4c0e"
+    },
+    {
+      "file": "GLOEPHEMA.bin",
+      "sha256": "cff0c67820fd70dbaff023cd04ba1b7c4afedd2daede4412715eebea304d0260"
+    },
+    {
+      "file": "GLOEPHEMB.bin",
+      "sha256": "61efd44e8367f676c6bbf495b43a92911f83f33ff05e88fdac361832bc1501b5"
+    },
+    {
+      "file": "GLOEPHEMERISA.bin",
+      "sha256": "0b0732aba492273c021f43a483c054d39d1a20d498615c98597e91e0f7258095"
+    },
+    {
+      "file": "GLOEPHEMERISB.bin",
+      "sha256": "7aa01395821b61e2b58e3c14f6b90a1ecd8e9a543865f59860d959d2e61f3e4c"
+    },
+    {
+      "file": "GPSEPHEMA.bin",
+      "sha256": "dce8b5a348ff93bac572a0c6d3e7a60b4715c038da13cd9e5db01bba4b8be3c1"
+    },
+    {
+      "file": "GPSEPHEMB.bin",
+      "sha256": "e187aadb9ec2628b7137d24dad2fd4ff69a5387c180671d6da5483a851d8c828"
+    },
+    {
+      "file": "GPSEPHEMERISA.bin",
+      "sha256": "7213430cd771a27efd3da61648fd14c65b92a77773929a0a73a3753edae96c9b"
+    },
+    {
+      "file": "GPSEPHEMERISB.bin",
+      "sha256": "181ef6154de6d132cf9e8d4e9df778458aff5894c73577930612c904e78c955b"
+    },
+    {
+      "file": "MATCHEDPOSHA.bin",
+      "sha256": "627479c819e4a6e6da75065e5bd13339f9c82034a38e1e4fa13313889f83c314"
+    },
+    {
+      "file": "MATCHEDPOSHB.bin",
+      "sha256": "dc4fdb2e7d55c5494fa4a1f34e53107669a8362275c03808f357affa3683c30d"
     },
     {
       "file": "MPPPDOPA.bin",

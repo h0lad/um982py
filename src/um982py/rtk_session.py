@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from threading import Event, Lock
+from threading import Event
 from time import monotonic
 from typing import TYPE_CHECKING, Literal, Self
 
@@ -11,7 +11,12 @@ from um982py.commands import logging
 from um982py.errors import ResponseTimeout
 from um982py.messages import RtcmMessage, Sentence
 from um982py.messages.navigation import Fix
-from um982py.ntrip import NtripClient, ReconnectPolicy, retryable_ntrip_error
+from um982py.ntrip import (
+    NtripClient,
+    ReconnectPolicy,
+    _Reconnecting,
+    retryable_ntrip_error,
+)
 from um982py.protocol import StreamDecoder
 from um982py.protocol.checksums import nmea_checksum
 from um982py.streaming import ReceiverStream
@@ -50,7 +55,7 @@ class RtkHealth:
         return max(0.0, monotonic() - self.last_correction_monotonic)
 
 
-class RtkSession:
+class RtkSession(_Reconnecting):
     """Relay RTCM corrections, retrying transient caster failures.
 
     This advanced component owns caster connections, not a receiver connection.
@@ -78,21 +83,16 @@ class RtkSession:
         for value in (gga_interval, read_interval, correction_timeout):
             if not 0 < value < float("inf"):
                 raise ValueError("intervals must be finite and positive")
+        super().__init__(reconnect)
         self.stream = stream
         self.client_factory = client_factory
         self.gga_provider = gga_provider
         self.gga_interval = gga_interval
         self.read_interval = min(read_interval, gga_interval, correction_timeout)
         self.correction_timeout = correction_timeout
-        self.reconnect = reconnect or ReconnectPolicy()
-        self._lock = Lock()
-        self._state = "idle"
-        self._attempts = 0
-        self._connections = 0
         self._frames = 0
         self._last_byte: float | None = None
         self._last_correction: float | None = None
-        self._error: str | None = None
         self._message_counts: dict[int, int] = {}
         self._unidentified = 0
 
@@ -176,24 +176,17 @@ class RtkSession:
         The terminal error is raised to the caller and reflected in ``health``.
         A stop may wait for an in-flight connect or receiver write to finish.
         """
-        with self._lock:
-            if self._state != "idle":
-                raise RuntimeError("session can only be run once")
-            self._state = "connecting"
-        delay = self.reconnect.initial_seconds
+        self._require_idle()
         try:
             while not stop.is_set():
+                self._begin_connection_attempt()
                 with self._lock:
-                    self._state = "connecting"
-                    self._attempts += 1
                     frames_before = self._frames
                 client = self.client_factory()
                 try:
                     client.connect()
                     client.set_read_timeout(self.read_interval)
-                    with self._lock:
-                        self._state = "connected"
-                        self._connections += 1
+                    self._connected()
                     self._relay(client, stop)
                     if stop.is_set():
                         break
@@ -203,22 +196,16 @@ class RtkSession:
                     if not retryable_ntrip_error(error):
                         raise
                     if self._frames > frames_before:
-                        delay = self.reconnect.initial_seconds
+                        self._reset_backoff()
                 finally:
                     client.close()
-                with self._lock:
-                    self._state = "backoff"
-                if stop.wait(delay):
+                if self._backoff(stop):
                     break
-                delay = self.reconnect.next_delay(delay)
         except Exception as error:
-            with self._lock:
-                self._state = "failed"
-                self._error = str(error)
+            self._fail(error)
             raise
-        else:
-            with self._lock:
-                self._state = "stopped"
+        finally:
+            self._mark_stopped()
 
     def _relay(self, client: NtripClient, stop: Event) -> None:
         decoder = StreamDecoder()

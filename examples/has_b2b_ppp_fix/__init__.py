@@ -7,8 +7,8 @@ from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from um982py.capture import record_epoch
 from um982py.geodesy import ecef_from_geodetic, enu_from_ecef, geodetic_from_ecef
+from um982py.measurement import gps_epoch
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 
@@ -221,7 +221,7 @@ def ppp_epochs(records: Sequence[Record]) -> tuple[PppEpoch, ...]:
     """Parse PPPNAV fixes in receiver-epoch order."""
     epochs = [
         PppEpoch(
-            record_epoch(record),
+            gps_epoch(record),
             record.real("lat"),
             record.real("lon"),
             record.real("hgt") + record.real("undulation"),

@@ -5,6 +5,8 @@ import binascii
 __all__ = [
     "CONVOLUTIONAL_G1",
     "CONVOLUTIONAL_G2",
+    "GF_EXP",
+    "GF_LOG",
     "INAV_CRC_POLYNOMIAL",
     "INAV_SYNC_PATTERN",
     "SSP_PATTERNS",
@@ -12,6 +14,9 @@ __all__ = [
     "convolutional_decode",
     "convolutional_encode",
     "deinterleave",
+    "gf_eliminate",
+    "gf_inverse",
+    "gf_multiply",
     "inav_crc24",
     "interleave",
     "pack_bits",
@@ -78,21 +83,23 @@ def inav_crc24(bitstring: str) -> int:
     return register
 
 
+def _transpose(bitstring: str, length: int, count: int) -> str:
+    """Write ``count`` blocks of ``length`` symbols and read them across."""
+    blocks = [
+        bitstring[block * length : (block + 1) * length] for block in range(count)
+    ]
+    return "".join(
+        blocks[block][index] for index in range(length) for block in range(count)
+    )
+
+
 def interleave(bitstring: str) -> str:
     """Return the I/NAV block-interleaved symbol stream.
 
     Symbols are written into 30 columns of 8 symbols and read out row by
     row, as specified for the I/NAV message.
     """
-    columns = [
-        bitstring[column * INTERLEAVER_ROWS : (column + 1) * INTERLEAVER_ROWS]
-        for column in range(INTERLEAVER_COLUMNS)
-    ]
-    return "".join(
-        columns[column][row]
-        for row in range(INTERLEAVER_ROWS)
-        for column in range(INTERLEAVER_COLUMNS)
-    )
+    return _transpose(bitstring, INTERLEAVER_ROWS, INTERLEAVER_COLUMNS)
 
 
 def deinterleave(bitstring: str) -> str:
@@ -101,15 +108,63 @@ def deinterleave(bitstring: str) -> str:
     This is the inverse of :func:`interleave`: symbols are written into
     8 rows of 30 symbols and read out column by column.
     """
-    rows = [
-        bitstring[row * INTERLEAVER_COLUMNS : (row + 1) * INTERLEAVER_COLUMNS]
-        for row in range(INTERLEAVER_ROWS)
-    ]
-    return "".join(
-        rows[row][column]
-        for column in range(INTERLEAVER_COLUMNS)
-        for row in range(INTERLEAVER_ROWS)
-    )
+    return _transpose(bitstring, INTERLEAVER_COLUMNS, INTERLEAVER_ROWS)
+
+
+def _gf_tables() -> tuple[tuple[int, ...], tuple[int, ...]]:
+    powers = [1]
+    for _ in range(254):
+        value = powers[-1] << 1
+        powers.append(value ^ 0x11D if value >= 256 else value)
+    logarithms = [0] * 256
+    for exponent, value in enumerate(powers):
+        logarithms[value] = exponent
+    return tuple(powers * 2), tuple(logarithms)
+
+
+GF_EXP, GF_LOG = _gf_tables()
+"""Powers of alpha and discrete logarithms in GF(2^8) with x^8+x^4+x^3+x^2+1.
+
+This is the Reed-Solomon field of the Galileo HAS and I/NAV CED codes.
+"""
+
+
+def gf_multiply(left: int, right: int) -> int:
+    """Multiply two GF(2^8) elements."""
+    if left == 0 or right == 0:
+        return 0
+    return GF_EXP[GF_LOG[left] + GF_LOG[right]]
+
+
+def gf_inverse(value: int) -> int:
+    """Return the multiplicative inverse of a non-zero GF(2^8) element."""
+    return GF_EXP[255 - GF_LOG[value]]
+
+
+def gf_eliminate(rows: list[list[int]], columns: int) -> bool:
+    """Reduce the first ``columns`` columns of ``rows`` to the identity in place.
+
+    Gauss-Jordan elimination over GF(2^8). Rows beyond ``columns`` are reduced
+    to zero in those columns. Return False when the columns are singular.
+    """
+    for column in range(columns):
+        pivot = next(
+            (index for index in range(column, len(rows)) if rows[index][column]),
+            None,
+        )
+        if pivot is None:
+            return False
+        rows[column], rows[pivot] = rows[pivot], rows[column]
+        scale = gf_inverse(rows[column][column])
+        row = rows[column] = [gf_multiply(value, scale) for value in rows[column]]
+        for index, other in enumerate(rows):
+            if index != column and other[column]:
+                factor = other[column]
+                rows[index] = [
+                    value ^ gf_multiply(factor, lead)
+                    for value, lead in zip(other, row, strict=True)
+                ]
+    return True
 
 
 def _branch(register: int, polynomial: int) -> int:

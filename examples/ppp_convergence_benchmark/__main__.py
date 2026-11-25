@@ -22,9 +22,9 @@ from um982py.assessment import PositionLimits
 from um982py.commands import Log
 from um982py.convergence import ConvergenceMonitor
 from um982py.messages import Message
-from um982py.messages.enums import PositionType
+from um982py.messages.enums import FixClass, PositionType
 from um982py.messages.navigation import BestNavigation
-from um982py.quality import FixClass, classify
+from um982py.quality import classify
 from um982py.subscriptions import temporary_subscriptions
 
 

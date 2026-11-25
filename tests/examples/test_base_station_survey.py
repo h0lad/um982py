@@ -199,7 +199,7 @@ def test_cli_deduplicates_receiver_epochs(
             "BESTNAV": (),
         },
     )
-    monkeypatch.setattr(cli, "record_epoch", lambda row: 123.0)
+    monkeypatch.setattr(cli, "gps_epoch", lambda row: 123.0)
     destination = tmp_path / "survey.json"
     assert cli.main(["--port", "test", "--json", str(destination)]) == 0
     data = json.loads(destination.read_text())

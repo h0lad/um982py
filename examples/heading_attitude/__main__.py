@@ -15,8 +15,8 @@ from examples.heading_attitude import (
     baseline_fix_class,
     swapped_attitude,
 )
-from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 
@@ -46,7 +46,7 @@ def _payload(records: Sequence[Record], *, swapped: bool = False) -> dict[str, o
     ]
     rates = []
     for first, second in itertools.pairwise(records):
-        interval = record_epoch(second) - record_epoch(first)
+        interval = gps_epoch(second) - gps_epoch(first)
         if interval <= 0:
             continue
         rate = angular_rate(
@@ -56,7 +56,7 @@ def _payload(records: Sequence[Record], *, swapped: bool = False) -> dict[str, o
         )
         rates.append(
             {
-                "epoch": record_epoch(second),
+                "epoch": gps_epoch(second),
                 "interval_seconds": interval,
                 "rate_degrees_per_second": rate,
             }

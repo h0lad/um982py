@@ -5,41 +5,21 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from um982py.b2b import b2b_epoch
+from um982py.gnss import b2b_epoch
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
-from um982py.messages.enums import PositionType
+from um982py.messages.enums import PositionType, enum_member
 from um982py.stats import finite
-
-_CORRECTION_TYPES = {
-    PositionType.PSRDIFF,
-    PositionType.L1_FLOAT,
-    PositionType.IONOFREE_FLOAT,
-    PositionType.NARROW_FLOAT,
-    PositionType.L1_INT,
-    PositionType.WIDE_INT,
-    PositionType.NARROW_INT,
-    PositionType.INS_PSRDIFF,
-    PositionType.INS_RTKFLOAT,
-    PositionType.INS_RTKFIXED,
-}
 
 
 def stale_correction(
     position_type: object, age_s: object, *, max_age_s: float = 10.0
 ) -> bool:
     """Check whether a differential or RTK fix relies on old corrections."""
-    try:
-        if isinstance(position_type, str):
-            kind = PositionType[position_type]
-        elif isinstance(position_type, int):
-            kind = PositionType(position_type)
-        else:
-            return False
-    except (KeyError, ValueError):
-        return False
+    kind = enum_member(PositionType, position_type)
     return (
-        kind in _CORRECTION_TYPES
+        kind is not None
+        and kind.is_differential
         and isinstance(age_s, (int, float))
         and (not math.isfinite(age_s) or age_s < 0 or age_s > max_age_s)
     )

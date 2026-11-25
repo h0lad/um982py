@@ -17,7 +17,7 @@ from examples._console import (
     write_json,
 )
 from examples._console_capture import capture_logs
-from um982py.capture import load_records, record_epoch
+from um982py.capture import load_records
 from um982py.commands import Log
 from um982py.experimental.gps_motion import (
     choose_ephemeris,
@@ -27,7 +27,7 @@ from um982py.experimental.gps_motion import (
     solve_velocity,
 )
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
-from um982py.measurement import RangeSample, range_samples
+from um982py.measurement import RangeSample, gps_epoch, range_samples
 from um982py.messages import Record
 from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.stats import Vector, is_continuous, norm, rms, subtract
@@ -56,7 +56,7 @@ def _observer(
         ):
             continue
         try:
-            timestamp = record_epoch(record)
+            timestamp = gps_epoch(record)
             position_ecef = (record.real("p_x"), record.real("p_y"), record.real("p_z"))
         except (KeyError, TypeError, ValueError):
             continue
@@ -85,16 +85,16 @@ def _receiver_comparison(
         if row.get("v_sol_status") in (SolutionStatus.SOL_COMPUTED, "SOL_COMPUTED")
         and row.get("vel_type") in (PositionType.DOPPLER_VELOCITY, "DOPPLER_VELOCITY")
     ]
-    near = min(eligible, key=lambda row: abs(record_epoch(row) - epoch), default=None)
-    if near is None or abs(record_epoch(near) - epoch) > tolerance:
+    near = min(eligible, key=lambda row: abs(gps_epoch(row) - epoch), default=None)
+    if near is None or abs(gps_epoch(near) - epoch) > tolerance:
         return None
     latitude, longitude, _ = geodetic_from_ecef(*observer)
     east, north, up = enu_from_ecef(*velocity, latitude, longitude)
     horizontal = near.real("hor_spd")
     vertical = near.real("vert_spd")
     return {
-        "receiver_epoch": record_epoch(near),
-        "time_difference_s": record_epoch(near) - epoch,
+        "receiver_epoch": gps_epoch(near),
+        "time_difference_s": gps_epoch(near) - epoch,
         "receiver_latency_s": near.real("latency"),
         "receiver_age_s": near.real("age"),
         "receiver_horizontal_mps": horizontal,
@@ -179,7 +179,7 @@ def motion_main(name: str, argv: Sequence[str] | None) -> int:
     previous: dict[int, RangeSample] = {}
     previous_epoch: float | None = None
     for record in data["RANGE"]:
-        epoch = record_epoch(record)
+        epoch = gps_epoch(record)
         if previous_epoch is not None and epoch <= previous_epoch:
             raise ValueError("RANGE epochs must increase strictly")
         samples = {

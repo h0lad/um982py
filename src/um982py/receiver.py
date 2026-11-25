@@ -21,6 +21,12 @@ from um982py.commands.configuration.receiver import (
     current_signal_group,
 )
 from um982py.commands.core import Command, normalize
+from um982py.commands.queries import (
+    firmware_info,
+    log_list,
+    performance_status,
+    receiver_system_status,
+)
 from um982py.commands.types import Port, Trigger
 from um982py.errors import (
     BufferOverflow,
@@ -44,12 +50,6 @@ from um982py.receiver_models import (
     ReceiverConfig,
     ReceiverSystemStatus,
     parse_configuration,
-)
-from um982py.receiver_queries import (
-    firmware_info,
-    log_list,
-    performance_status,
-    receiver_system_status,
 )
 from um982py.satellites import Satellite, satellites_from_record
 from um982py.transports.base import Transport
@@ -331,7 +331,7 @@ class Receiver:
             raise TypeError("logs must contain Log or AntennaLog values")
         commands: list[tuple[str, Command[CommandResponse]]] = []
         for log in selected:
-            wire_log = log.wire if isinstance(log, AntennaLog) else log
+            wire_log = log.wire
             if wire_log is Log.UNILOGLIST:
                 raise ValueError("UNILOGLIST only has a one-shot query")
             form = binary
@@ -457,7 +457,7 @@ class Receiver:
         """
         if type(antenna) is not int or antenna not in (1, 2):
             raise ValueError("antenna must be 1 or 2")
-        from um982py.stream_capture import iter_live_records
+        from um982py.capture import iter_live_records
 
         log = antenna_log(Log.GPGGA, antenna)
         records = iter_live_records(self, [log], duration=duration, rate_hz=rate_hz)

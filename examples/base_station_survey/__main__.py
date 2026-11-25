@@ -15,10 +15,10 @@ from examples.base_station_survey import (
     SurveySample,
     survey,
 )
-from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.corrections import stale_correction
 from um982py.geodesy import haversine_distance
+from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 
 
@@ -212,7 +212,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.json,
         )
         return 1
-    by_epoch = {record_epoch(record): record for record in fresh}
+    by_epoch = {gps_epoch(record): record for record in fresh}
     if len(by_epoch) != len(fresh):
         print(
             f"Skipped {len(fresh) - len(by_epoch)} duplicate position epochs",

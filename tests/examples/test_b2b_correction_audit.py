@@ -15,9 +15,9 @@ from examples.b2b_correction_audit import (
 )
 
 from tests.examples._new_api import record as range_record
-from um982py.b2b import b2b_epoch
-from um982py.capture import record_epoch
 from um982py.corrections import correction_events
+from um982py.gnss import b2b_epoch
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 MASK = CorrectionEvent(100, 219, "mask", 99, 1, 2, mask=b"\x01" * 32)
@@ -125,7 +125,7 @@ def test_correction_blocks_are_ordered_by_epoch_not_by_log_name() -> None:
 
     from examples.b2b_correction_audit import chronological
 
-    from um982py.capture import decode_records, read_frames, record_epoch
+    from um982py.capture import decode_records, gps_epoch, read_frames
     from um982py.commands import Log
 
     fixtures = Path(__file__).resolve().parents[1] / "fixtures" / "captures-extra"
@@ -138,7 +138,7 @@ def test_correction_blocks_are_ordered_by_epoch_not_by_log_name() -> None:
     )
     combined = (*clock, *orbit, *mask)
     ordered = chronological(combined)
-    epochs = [record_epoch(record) for record in ordered]
+    epochs = [gps_epoch(record) for record in ordered]
     assert epochs == sorted(epochs)
     assert len(ordered) == len(combined)
 
@@ -147,7 +147,7 @@ def test_ppp_alignment_reports_recent_delivery_without_claiming_application() ->
     message = range_record(0, []).message
     assert message is not None
     navigation = Record("PPPNAV", (("pos_type", 68), ("sol_status", 0)), message)
-    epoch = record_epoch(navigation)
+    epoch = gps_epoch(navigation)
     checks = (CorrectionCheck(epoch - 1, 219, "orbit", 1, ()),)
     has = ({"received_gps_seconds": epoch - 2, "flags": []},)
     aligned = align_navigation((navigation,), checks, has, window_seconds=5)[0]

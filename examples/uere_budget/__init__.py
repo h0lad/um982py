@@ -74,13 +74,13 @@ def epoch_estimates(
     """One estimate per BESTPOS record, paired with the DOP record of its epoch."""
     if len(positions) != len(dilutions):
         raise ValueError("BESTPOS and DOP series must hold the same number of epochs")
-    from um982py.capture import record_epoch
+    from um982py.measurement import gps_epoch
 
-    epochs = [record_epoch(position) for position in positions]
+    epochs = [gps_epoch(position) for position in positions]
     if any(a >= b for a, b in itertools.pairwise(epochs)):
         raise ValueError("position epochs must increase strictly")
     if any(
-        epoch != record_epoch(dilution)
+        epoch != gps_epoch(dilution)
         for epoch, dilution in zip(epochs, dilutions, strict=True)
     ):
         raise ValueError("position and DOP epochs must match")

@@ -207,6 +207,13 @@ LAYOUTS.update(
             ("EVENTALL", "EVENTSLN"),
             ("MPPPDOP", "STADOP"),
             ("BD2EPHEM", "BDSEPH"),
+            ("BDSEPHEM", "BDSEPH"),
+            ("GPSEPHEM", "GPSEPH"),
+            ("GPSEPHEMERIS", "GPSEPH"),
+            ("GALEPHEM", "GALEPH"),
+            ("GALEPHEMERIS", "GALEPH"),
+            ("GLOEPHEM", "GLOEPH"),
+            ("GLOEPHEMERIS", "GLOEPH"),
         )
     }
 )
@@ -349,6 +356,86 @@ LAYOUTS["BD3B2AEPHEM"] = Layout(
         replace(_BD3EPH["freqtype"], offset=240),
     ),
     244,
+)
+LAYOUTS["BD3EPHEM"] = replace(
+    LAYOUTS["BD3B2AEPHEM"],
+    name="BD3EPHEM",
+    fields=(*LAYOUTS["BD3B2AEPHEM"].fields, Field("field_43", "u", 244, 4)),
+    size=248,
+)
+LAYOUTS["BDSEPHEMERIS"] = Layout(
+    "BDSEPHEMERIS",
+    "extended",
+    (
+        Field("prn", "u", 0, 4),
+        Field("week", "u", 4, 4),
+        Field("ura", "d", 8, 8),
+        Field("health", "u", 16, 4),
+        Field("tgd1", "d", 20, 8),
+        Field("tgd2", "d", 28, 8),
+        Field("aodc", "u", 36, 4),
+        Field("toc", "u", 40, 4),
+        Field("af0", "d", 44, 8),
+        Field("af1", "d", 52, 8),
+        Field("af2", "d", 60, 8),
+        Field("aode", "u", 68, 4),
+        Field("toe", "u", 72, 4),
+        Field("sqrt_a", "d", 76, 8),
+        *(
+            Field(name, "d", 84 + 8 * index, 8)
+            for index, name in enumerate(
+                (
+                    "ecc",
+                    "omega",
+                    "delta_n",
+                    "m0",
+                    "omega_0",
+                    "omega_dot",
+                    "i0",
+                    "idot",
+                    "cuc",
+                    "cus",
+                    "crc",
+                    "crs",
+                    "cic",
+                    "cis",
+                )
+            )
+        ),
+    ),
+    196,
+)
+# One GPS almanac page. Its inclination is 0.3 pi plus the offset.
+LAYOUTS["ALMANAC"] = Layout(
+    "ALMANAC",
+    "extended",
+    (
+        Field("prn", "u", 0, 4),
+        Field("week", "u", 4, 4),
+        *(
+            Field(name, "d", 8 + 8 * index, 8)
+            for index, name in enumerate(
+                (
+                    "toa",
+                    "ecc",
+                    "omega_dot",
+                    "omega_0",
+                    "omega",
+                    "m0",
+                    "af0",
+                    "af1",
+                    "mean_motion",
+                    "a",
+                    "inclination_offset",
+                )
+            )
+        ),
+        Field("sv_config", "u", 96, 4),
+        Field("health_prn", "u", 100, 4),
+        Field("health_almanac", "u", 104, 4),
+        Field("antispoof", "e", 108, 4),
+    ),
+    112,
 )
 LAYOUTS["BD3IONUTC"] = Layout(
     "BD3IONUTC",

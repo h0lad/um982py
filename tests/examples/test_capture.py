@@ -19,13 +19,13 @@ from um982py.capture import (
     gps_signals,
     read_frames,
     receive_records,
-    record_epoch,
     uniform_interval,
 )
 from um982py.commands import Log
 from um982py.commands.types import Port
 from um982py.corrections import stale_correction
 from um982py.errors import ProtocolError
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 
@@ -318,7 +318,7 @@ def test_uniform_sampling_checks_actual_receiver_timestamps() -> None:
     message = StreamDecoder().feed(binary((0).to_bytes(4, "little"), 43))[0]
     assert isinstance(message, BinaryMessage)
     first = Log.RANGE.decode(message)
-    assert record_epoch(first) == 2400 * 604800 + 123
+    assert gps_epoch(first) == 2400 * 604800 + 123
     header = message.header
     second = Log.RANGE.decode(
         replace(message, header=replace(header, milliseconds=125000))

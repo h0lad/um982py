@@ -14,13 +14,13 @@ from um982py.capture import (
     InterruptedCapture,
     RecordingTransport,
     capture_live,
+    iter_decoded_records,
     iter_frames,
     replay_receiver,
 )
 from um982py.commands.configuration import ppp, ppp_datum
 from um982py.messages import Record
 from um982py.receiver import Receiver
-from um982py.stream_capture import iter_decoded_records
 
 
 def open_receiver(args: argparse.Namespace) -> Receiver:

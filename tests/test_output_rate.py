@@ -9,13 +9,12 @@ import pytest
 from conftest import SubscriptionTransport
 from um982py import AsyncReceiver, Log, Receiver, Rover, capture_live
 from um982py.antenna import AntennaLog, antenna_log
-from um982py.capture import subscription_plan
+from um982py.capture import iter_live_records, subscription_plan
 from um982py.cli import main
 from um982py.commands.core import action
 from um982py.commands.types import Port, Trigger
 from um982py.errors import CommandRejected, ProtocolError
 from um982py.receiver_models import LogEntry
-from um982py.stream_capture import iter_live_records
 from um982py.streaming import ReceiverStream
 
 

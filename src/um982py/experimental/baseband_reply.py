@@ -683,8 +683,8 @@ def decode_baseband_notice(notice: BasebandNotice) -> Record:
     raise ProtocolError(f"Unknown baseband notice: {notice.name}")
 
 
-class BasebandNoticeStream:
-    """Scan diagnostic lines and resynchronise after malformed input."""
+class _ByteStream:
+    """Buffered bytes and a discard counter shared by the baseband scanners."""
 
     def __init__(self) -> None:
         self._buffer = bytearray()
@@ -698,14 +698,19 @@ class BasebandNoticeStream:
         self._buffer.clear()
         self.discarded = 0
 
-    def _trim_oversized_partial_line(self) -> None:
-        if len(self._buffer) > MAX_PARTIAL_LINE:
-            del self._buffer[:-MAX_PARTIAL_LINE]
-
     def finish(self) -> bytes:
+        """Return and clear the buffered trailing bytes."""
         remainder = bytes(self._buffer)
         self._buffer.clear()
         return remainder
+
+
+class BasebandNoticeStream(_ByteStream):
+    """Scan diagnostic lines and resynchronise after malformed input."""
+
+    def _trim_oversized_partial_line(self) -> None:
+        if len(self._buffer) > MAX_PARTIAL_LINE:
+            del self._buffer[:-MAX_PARTIAL_LINE]
 
     def feed(self, data: bytes) -> tuple[BasebandNotice, ...]:
         self._buffer.extend(data)

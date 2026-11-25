@@ -17,8 +17,9 @@ from examples.cycle_slip_detection import (
     doppler_residuals,
     report,
 )
-from um982py.capture import gps_signals, record_epoch
+from um982py.capture import gps_signals
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 
 
@@ -116,7 +117,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     observations = [
         observation
         for record in records
-        for observation in read_observations(record, record_epoch(record))
+        for observation in read_observations(record, gps_epoch(record))
     ]
     groups: dict[int, list[Observation]] = {}
     for observation in observations:

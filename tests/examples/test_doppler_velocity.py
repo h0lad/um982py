@@ -14,9 +14,10 @@ from examples.doppler_velocity.receiver_state import main as receiver_state
 
 from tests.examples._specialist import TRUTH
 from tests.test_protocol import binary
-from um982py.capture import decode_records, read_frames, record_epoch
+from um982py.capture import decode_records, read_frames
 from um982py.commands import Log
 from um982py.experimental.gps_motion import RateMeasurement, solve_velocity
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 
@@ -59,7 +60,7 @@ def test_observer_ignores_invalid_and_uncomputed_positions(
             ),
         )
 
-    monkeypatch.setattr("examples._gps_motion.record_epoch", lambda r: r.real("epoch"))
+    monkeypatch.setattr("examples._gps_motion.gps_epoch", lambda r: r.real("epoch"))
     records = [
         position(1, "INSUFFICIENT_OBS", 6378137),
         position(1, "SOL_COMPUTED", 0),
@@ -139,7 +140,7 @@ def test_duplicate_signals_cannot_count_as_independent_satellites() -> None:
 def test_receiver_speed_comparison_is_time_bounded_and_excludes_invalid_fixes() -> None:
     path = Path("tests/fixtures/captures/DOPPVELA.bin")
     record = decode_records(read_frames(path), Log.DOPPVEL)[0]
-    epoch = record_epoch(record)
+    epoch = gps_epoch(record)
     result = _receiver_comparison(
         epoch, (1.0, 2.0, 3.0), (6378137.0, 0.0, 0.0), [record], tolerance=0.1
     )

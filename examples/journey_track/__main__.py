@@ -7,12 +7,12 @@ from dataclasses import dataclass
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
 from examples.heading_attitude import attitude_from_record, swapped_attitude
-from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.field_data import file_sha256, nearest_epoch
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
-from um982py.waypoint import waypoint_direction
+from um982py.motion import waypoint_direction
 
 _COMPUTED = (0, "SOL_COMPUTED")
 _DOPPLER_VELOCITY = (8, "DOPPLER_VELOCITY")
@@ -62,7 +62,7 @@ def _doppler_samples(
             rejected += 1
             continue
         try:
-            epoch = record_epoch(row)
+            epoch = gps_epoch(row)
         except (KeyError, TypeError, ValueError):
             rejected += 1
             continue
@@ -164,7 +164,7 @@ def analyze(
                 attitude = swapped_attitude(attitude)
             if not math.isfinite(attitude.heading):
                 continue
-            headings.append((record_epoch(record), attitude.heading))
+            headings.append((gps_epoch(record), attitude.heading))
         except (KeyError, TypeError, ValueError):
             continue
 
@@ -177,7 +177,7 @@ def analyze(
     matched_samples: set[_DopplerSample] = set()
     sources: set[str] = set()
     for row in positions:
-        epoch = record_epoch(row)
+        epoch = gps_epoch(row)
         if last_epoch is not None and epoch <= last_epoch:
             raise ValueError("BESTNAVXYZ epochs must be strictly increasing")
         last_epoch = epoch

@@ -7,10 +7,11 @@ from time import monotonic
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import open_receiver
-from um982py.capture import iter_frames, record_epoch
+from um982py.capture import iter_frames
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
 from um982py.experimental import VelocityData, velocity_data_output, velocity_data_read
+from um982py.measurement import gps_epoch
 from um982py.messages import Message, Record
 from um982py.messages.enums import PositionType, SolutionStatus
 from um982py.receiver import Receiver
@@ -41,7 +42,7 @@ def _report(frames: Iterable[Message]) -> dict[str, object]:
                 record.get("v_sol_status") == SolutionStatus.SOL_COMPUTED
                 and record.get("vel_type") == PositionType.DOPPLER_VELOCITY
             ):
-                reference[record_epoch(record)] = record
+                reference[gps_epoch(record)] = record
 
     velocity_errors = []
     uncertainty_errors = []

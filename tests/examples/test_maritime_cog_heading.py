@@ -25,7 +25,7 @@ def test_rejects_gap_duplicates_and_zero_displacement(
         )
 
     monkeypatch.setattr(
-        "examples.maritime_cog_heading.record_epoch",
+        "examples.maritime_cog_heading.gps_epoch",
         lambda record: record.real("epoch"),
     )
     rows = [

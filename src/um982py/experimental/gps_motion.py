@@ -4,12 +4,12 @@ import math
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from um982py.experimental.orbit import EARTH_ROTATION_RATE, KeplerElements, orbit_state
+from um982py.experimental.orbit import KeplerElements, orbit_state
+from um982py.geodesy import rotate_z
+from um982py.gnss import EARTH_ROTATION_RATE, SPEED_OF_LIGHT, WEEK_SECONDS
 from um982py.measurement import RangeSample
 from um982py.messages import Record
 from um982py.stats import Vector, dot, finite, least_squares, norm, rms, subtract, unit
-
-C = 299792458.0
 
 
 @dataclass(frozen=True, slots=True)
@@ -181,7 +181,7 @@ def choose_ephemeris(
         and record.integer("health") == 0
         and record.integer("iode1") == record.integer("iode2")
         and record.integer("iodc") & 255 == record.integer("iode1")
-        and abs(epoch - (record.integer("week") * 604800 + record.real("toe")))
+        and abs(epoch - (record.integer("week") * WEEK_SECONDS + record.real("toe")))
         <= max_age
     ]
     if not choices:
@@ -189,7 +189,7 @@ def choose_ephemeris(
     return min(
         choices,
         key=lambda record: abs(
-            epoch - (record.integer("week") * 604800 + record.real("toe"))
+            epoch - (record.integer("week") * WEEK_SECONDS + record.real("toe"))
         ),
     )
 
@@ -200,20 +200,14 @@ def satellite_point(record: Record, epoch: float, code_m: float) -> OrbitPoint:
     if code_m <= 0:
         raise ValueError("pseudorange must be positive")
     elements = KeplerElements.from_record(record)
-    toe = record.integer("week") * 604800 + elements.toe
-    travel = code_m / C
+    toe = record.integer("week") * WEEK_SECONDS + elements.toe
+    travel = code_m / SPEED_OF_LIGHT
     time = epoch - toe - travel
     state = orbit_state(elements, time)
     state = orbit_state(elements, time - state.clock_bias)
-    angle = EARTH_ROTATION_RATE * travel
-    cosine, sine = math.cos(angle), math.sin(angle)
     return OrbitPoint(
-        (
-            cosine * state.x + sine * state.y,
-            -sine * state.x + cosine * state.y,
-            state.z,
-        ),
-        C * (state.clock_bias + elements.tgd),
+        rotate_z(state.x, state.y, state.z, EARTH_ROTATION_RATE * travel),
+        SPEED_OF_LIGHT * (state.clock_bias + elements.tgd),
     )
 
 

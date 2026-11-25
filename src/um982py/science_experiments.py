@@ -4,12 +4,10 @@ import itertools
 import math
 from collections.abc import Sequence
 
-from um982py.geodesy import SPEED_OF_LIGHT
-from um982py.stats import correlation as _correlation
+from um982py.gnss import SPEED_OF_LIGHT
+from um982py.stats import correlation, least_squares, variance
 from um982py.stats import finite as _finite
-from um982py.stats import least_squares
 
-C = SPEED_OF_LIGHT
 TECU = 1e16
 
 
@@ -39,18 +37,7 @@ def sample_variance(values: Sequence[float]) -> float:
     if len(values) < 2:
         raise ValueError("at least two samples required")
     _finite(*values)
-    avg = math.fsum(values) / len(values)
-    return math.fsum((v - avg) ** 2 for v in values) / (len(values) - 1)
-
-
-def correlation(a: Sequence[float], b: Sequence[float]) -> float | None:
-    """Return Pearson correlation, or None if either series has zero variance.
-
-    At least two paired samples are required.
-    """
-    if len(a) != len(b) or len(a) < 2:
-        raise ValueError("at least two paired samples required")
-    return _correlation(a, b, minimum_samples=2)
+    return variance(values)
 
 
 def tec_spatial_summary(
@@ -64,7 +51,7 @@ def tec_spatial_summary(
         "pairs": len(a),
         "mean_difference_tecu": math.fsum(diffs) / len(diffs),
         "difference_std_tecu": math.sqrt(sample_variance(diffs)),
-        "correlation": correlation(a, b),
+        "correlation": correlation(a, b, minimum_samples=2),
     }
 
 
@@ -110,7 +97,10 @@ def slip_response(
     r2, r3 = (f1 / f2) ** 2, (f1 / f3) ** 2
     w2 = (r3 - 1) / (r2 - r3)
     weights = (1.0, w2, -1.0 - w2)
-    jumps = tuple(C / f * n for f, n in zip(frequencies_hz, slips_cycles, strict=True))
+    jumps = tuple(
+        SPEED_OF_LIGHT / f * n
+        for f, n in zip(frequencies_hz, slips_cycles, strict=True)
+    )
     return {
         "gf12_m": jumps[0] - jumps[1],
         "closure_m": math.fsum(w * x for w, x in zip(weights, jumps, strict=True)),
@@ -244,7 +234,9 @@ def orbit_position_effect(
                 "weights must be positive and line-of-sight vectors unit length"
             )
         row = [-u[0], -u[1], -u[2], 1.0]
-        residual = -math.fsum(x * y for x, y in zip(u, dr, strict=True)) + C * dc
+        residual = (
+            -math.fsum(x * y for x, y in zip(u, dr, strict=True)) + SPEED_OF_LIGHT * dc
+        )
         rows.append(row)
         values.append(residual)
         sigmas.append(1 / math.sqrt(weight))

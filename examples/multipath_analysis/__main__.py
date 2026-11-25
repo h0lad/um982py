@@ -15,8 +15,9 @@ from examples.multipath_analysis import (
     epoch_summaries,
     multipath_series,
 )
-from um982py.capture import GPS_FREQUENCIES, gps_signals, record_epoch
+from um982py.capture import GPS_FREQUENCIES, gps_signals
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 
 
@@ -153,9 +154,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     observations = [
         observation
         for index, record in enumerate(records)
-        for observation in read_observations(
-            record, record_epoch(record), args.frequency
-        )
+        for observation in read_observations(record, gps_epoch(record), args.frequency)
     ]
     series = multipath_series(observations, max_gap=2.5 * args.interval)
     payload = build_payload(series, args.frequency)

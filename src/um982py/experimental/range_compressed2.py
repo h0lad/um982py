@@ -141,8 +141,9 @@ def rangecmp2_read(
 ) -> Command[CompressedRange2]:
     """Request native binary RANGECMP2 blocks for the selected antenna."""
     name, message_id = _LOGS[antenna_index(antenna)]
-    request = logging.request(name, port=port, message_id=message_id)
-    return Command(request.text, request.matches, decode_rangecmp2)
+    return logging.request(name, port=port, message_id=message_id).decoded_with(
+        decode_rangecmp2
+    )
 
 
 def rangecmp2_output(

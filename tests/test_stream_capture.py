@@ -4,13 +4,17 @@ import pytest
 
 from conftest import SubscriptionTransport, ascii_message
 from test_bodies import manual_message
-from um982py.capture import iter_frames
+from um982py.capture import (
+    EpochTracker,
+    iter_decoded_records,
+    iter_frames,
+    iter_live_records,
+)
 from um982py.commands import Log
 from um982py.commands.types import Port
 from um982py.errors import ProtocolError
 from um982py.protocol.ascii import parse_ascii
 from um982py.receiver import Receiver
-from um982py.stream_capture import EpochTracker, iter_decoded_records, iter_live_records
 
 
 def test_epoch_tracker_flags_gaps_and_duplicates() -> None:

@@ -39,9 +39,10 @@ from examples.gnss_reflectometry.report import (
 from examples.satellite_monitor import Constellation
 from um982py import Observations
 from um982py.antenna import AntennaLog, antenna_index, antenna_log
-from um982py.capture import DataLog, record_epoch
+from um982py.capture import DataLog
 from um982py.commands import Log
 from um982py.diagnostics import signal_inventory
+from um982py.measurement import gps_epoch
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 
@@ -96,7 +97,7 @@ def epoch_samples(
         except ValueError:
             omitted["unknown_satvis_constellation"] += 1
             continue
-        sky[record_epoch(record)].extend(
+        sky[gps_epoch(record)].extend(
             (system, row) for row in record.records("satellites")
         )
     epochs = sorted(sky)
@@ -104,7 +105,7 @@ def epoch_samples(
     ambiguous: set[tuple[int, int]] = set()
     previous = -math.inf
     for record in ranges:
-        epoch = record_epoch(record)
+        epoch = gps_epoch(record)
         if not math.isfinite(epoch) or epoch <= previous:
             raise ValueError("RANGE epochs must increase strictly per antenna")
         previous = epoch

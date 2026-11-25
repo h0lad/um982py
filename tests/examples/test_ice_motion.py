@@ -64,7 +64,7 @@ def test_replay_invalid_position_breaks_velocity(
         position(8, "SOL_COMPUTED", 8),
     )
     monkeypatch.setattr(motion, "load_records", lambda *_: records)
-    monkeypatch.setattr(motion, "record_epoch", lambda row: row.real("epoch"))
+    monkeypatch.setattr(motion, "gps_epoch", lambda row: row.real("epoch"))
     source, output = tmp_path / "capture", tmp_path / "out.json"
     source.write_bytes(b"test capture")
     assert (
@@ -115,7 +115,7 @@ def test_replay_checks_order_of_rejected_epochs(
         ),
     )
     monkeypatch.setattr(motion, "load_records", lambda *_: records)
-    monkeypatch.setattr(motion, "record_epoch", lambda row: row.real("epoch"))
+    monkeypatch.setattr(motion, "gps_epoch", lambda row: row.real("epoch"))
     source = tmp_path / "capture"
     source.write_bytes(b"test capture")
     with pytest.raises(ValueError, match="strictly increasing"):

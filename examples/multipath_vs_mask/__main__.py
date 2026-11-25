@@ -36,11 +36,11 @@ from um982py.capture import (
     gps_signals,
     read_frames,
     receive_records,
-    record_epoch,
 )
 from um982py.commands import Log
 from um982py.commands.configuration import elevation_mask
 from um982py.experimental.capture import receiver_state
+from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 from um982py.subscriptions import temporary_subscriptions
 
@@ -62,7 +62,7 @@ def observations_from(
     """First observation per satellite of every collected RANGE frame."""
     observations = []
     for record in records:
-        epoch = record_epoch(record)
+        epoch = gps_epoch(record)
         seen = set()
         for observation, _ in gps_signals(record, [frequency_hz]):
             prn = observation.integer("prn")

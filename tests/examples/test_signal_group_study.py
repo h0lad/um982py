@@ -23,10 +23,9 @@ from um982py.geometry import (
     SatelliteGeometry,
     geometry_from_records,
 )
-from um982py.messages.enums import PositionType
+from um982py.messages.enums import FixClass, PositionType
 from um982py.messages.record import Record
 from um982py.protocol import StreamDecoder
-from um982py.quality import FixClass
 
 LIVE = FIXTURES / "captures-live"
 CAPTURED_SATELLITES = 33

@@ -23,17 +23,18 @@ from examples.dual_antenna_rf_audit import (
     summarize_by_signal,
 )
 from um982py.antenna import AntennaLog
-from um982py.capture import DataLog, record_epoch
+from um982py.capture import DataLog
 from um982py.commands import Log
 from um982py.diagnostics import signal_inventory
 from um982py.experimental.rf import AgcReadings, AntennaSignalProfile
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 
 def _profile_row(record: Record) -> dict[str, object]:
     profile = AntennaSignalProfile.from_record(record)
     return {
-        "gps_epoch_s": record_epoch(record),
+        "gps_epoch_s": gps_epoch(record),
         "antenna": profile.antenna,
         "group": profile.group,
         "masks": [
@@ -206,7 +207,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             ],
             "agc_receiver_units": [
                 {
-                    "gps_epoch_s": record_epoch(record),
+                    "gps_epoch_s": gps_epoch(record),
                     **asdict(AgcReadings.from_record(record)),
                 }
                 for record in data["AGC"]

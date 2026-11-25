@@ -24,8 +24,9 @@ from examples.elevation_optimizer import (
     solution_at,
 )
 from examples.satellite_monitor import constellation_of
-from um982py.capture import latest_epoch, record_epoch
+from um982py.capture import latest_epoch
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 
@@ -111,7 +112,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "satellites": len(satellites),
             "minimum_satellites": args.minimum_satellites,
             "ceiling": args.ceiling,
-            "gps_seconds": record_epoch(frames[0]) if frames else None,
+            "gps_seconds": gps_epoch(frames[0]) if frames else None,
             "clock_model": "one receiver clock per constellation",
             "maximum_pdop": args.max_pdop,
             "chosen": chosen_payload,

@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from um982py.commands import queries
+from um982py.commands.queries import log_list
 from um982py.errors import ProtocolError
 from um982py.messages.frames import AsciiMessage, Message, Sentence
 from um982py.receiver_models import LogList
-from um982py.receiver_queries import log_list
 
 if TYPE_CHECKING:
     from um982py.receiver import Receiver

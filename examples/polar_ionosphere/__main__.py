@@ -10,8 +10,9 @@ from examples._console import ExampleParser, add_receiver_arguments, run, write_
 from examples._console_capture import capture_records
 from examples.ionosphere_tec import Observation, slant_tec
 from um982py import Observations
-from um982py.capture import gps_signals, record_epoch
+from um982py.capture import gps_signals
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 
@@ -67,7 +68,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     timeline = []
     previous_record_epoch = None
     for record in captured["RANGE"]:
-        epoch = record_epoch(record)
+        epoch = gps_epoch(record)
         if not math.isfinite(epoch) or (
             previous_record_epoch is not None and epoch <= previous_record_epoch
         ):
@@ -155,7 +156,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             previous[prn] = (epoch, tec, high_lock, low_lock, high_signal, low_signal)
     solution = [
         {
-            "gps_seconds": record_epoch(r),
+            "gps_seconds": gps_epoch(r),
             "solution_status": r["p_sol_status"],
             "position_type": r["pos_type"],
         }
@@ -174,7 +175,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             "jamming_log_count": len(captured["JAMSTATUS"]),
             "jamming_events": [
                 {
-                    "gps_seconds": record_epoch(row),
+                    "gps_seconds": gps_epoch(row),
                     "cwratio": row["cwratio"],
                     "cwflag": row["cwflag"],
                 }

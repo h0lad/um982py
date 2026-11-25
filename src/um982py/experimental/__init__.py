@@ -252,7 +252,9 @@ from um982py.experimental.inav_pages import (
     replay_sar_stream,
 )
 from um982py.experimental.matched_position import (
+    MatchedBaseline,
     decode_matched_position,
+    matched_baseline,
     matched_position_output,
     matched_position_read,
     matched_position_stop,
@@ -466,6 +468,7 @@ __all__ = [
     "InvalidSignature",
     "MackMessage",
     "MackTag",
+    "MatchedBaseline",
     "MatchedSatellite",
     "MatchedSolution",
     "MptDebugBlock",
@@ -593,6 +596,7 @@ __all__ = [
     "log_config",
     "log_enable",
     "mac_lookup_sequences",
+    "matched_baseline",
     "matched_position_output",
     "matched_position_read",
     "matched_position_stop",

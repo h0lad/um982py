@@ -48,7 +48,7 @@ def test_roti_coverage_and_missing_frequency_reset(
         )
         for epoch in range(11)
     )
-    monkeypatch.setattr(polar, "record_epoch", lambda row: row.real("epoch"))
+    monkeypatch.setattr(polar, "gps_epoch", lambda row: row.real("epoch"))
     monkeypatch.setattr(
         polar,
         "capture_records",

@@ -31,11 +31,10 @@ from examples.has_b2b_ppp_fix import (
     precision_statistics,
     xyz_fallback,
 )
-from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.diagnostics import B2B_LOGS, HAS_LOGS
 from um982py.experimental.carrier import monitor_divergence
-from um982py.measurement import RangeSample, SignalKey, range_samples
+from um982py.measurement import RangeSample, SignalKey, gps_epoch, range_samples
 from um982py.messages import Record
 
 
@@ -49,7 +48,7 @@ def _divergence_by_signal(
 ) -> tuple[tuple[str, int, int, int, float | None], ...]:
     series: dict[SignalKey, list[RangeSample]] = defaultdict(list)
     for record in range_records:
-        for sample in range_samples(record, epoch=record_epoch(record)):
+        for sample in range_samples(record, epoch=gps_epoch(record)):
             series[sample.key].append(sample)
     summary = []
     for key in sorted(series):

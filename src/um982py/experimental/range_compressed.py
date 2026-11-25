@@ -8,6 +8,7 @@ from um982py.commands import logging
 from um982py.commands.core import Command
 from um982py.commands.types import Port, Trigger
 from um982py.errors import ProtocolError
+from um982py.gnss import SPEED_OF_LIGHT
 from um982py.messages import AsciiMessage, BinaryMessage, CommandResponse, Message
 from um982py.signals import tracking_signal
 
@@ -28,7 +29,6 @@ _ASCII_ANTENNAS = {"RANGECMPA": 1, "RANGECMPHA": 2}
 _ENTRY_SIZE = 24
 _HEX_ENTRY_SIZE = 48
 _MAX_OBSERVATIONS = 256
-_LIGHT_SPEED = 299792458.0
 _FOLD = 1 << 24
 _HALF_FOLD = 1 << 23
 _PSRSTD = (
@@ -107,8 +107,8 @@ def _reconstruct_phase(
     adr: int, pseudorange: float, frequency_hz: float
 ) -> tuple[float, float]:
     """Recover absolute carrier phase and its code-carrier divergence in cycles."""
-    fold = round(pseudorange * frequency_hz / _LIGHT_SPEED / _FOLD)
-    scaled = pseudorange * frequency_hz / _LIGHT_SPEED
+    fold = round(pseudorange * frequency_hz / SPEED_OF_LIGHT / _FOLD)
+    scaled = pseudorange * frequency_hz / SPEED_OF_LIGHT
     candidates = tuple(
         adr / 256 - (fold + shift) * _FOLD + half
         for shift in (-1, 0, 1)
@@ -206,8 +206,9 @@ def rangecmp_read(
 ) -> Command[CompressedRange]:
     """Request one binary compressed observation frame for the selected antenna."""
     name, message_id = _BINARY_LOGS[antenna_index(antenna)]
-    request = logging.request(name, port=port, message_id=message_id)
-    return Command(request.text, request.matches, decode_rangecmp)
+    return logging.request(name, port=port, message_id=message_id).decoded_with(
+        decode_rangecmp
+    )
 
 
 def rangecmp_output(

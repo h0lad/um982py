@@ -17,8 +17,7 @@ from examples.ttff_profile import (
 from examples.ttff_profile.__main__ import main
 
 from um982py.commands.types import ResetTarget
-from um982py.messages.enums import PositionType, SolutionStatus
-from um982py.quality import FixClass
+from um982py.messages.enums import FixClass, PositionType, SolutionStatus
 
 COLD_MEAN = 45.0
 WARM_MEAN = 12.0

@@ -16,8 +16,14 @@ from um982py.commands import Log, queries
 from um982py.commands.configuration import SignalGroup, ppp, signal_group
 from um982py.errors import ProtocolError
 from um982py.measurement import gps_epoch
-from um982py.messages.enums import PositionType, SolutionStatus, _reported_datum
+from um982py.messages.enums import (
+    PositionType,
+    SolutionStatus,
+    _reported_datum,
+    enum_or_raw,
+)
 from um982py.messages.frames import AsciiMessage, Message
+from um982py.messages.navigation import _GeoidHeights
 from um982py.messages.record import Record, Value
 from um982py.precision import PositionPrecision
 
@@ -28,27 +34,14 @@ if TYPE_CHECKING:
 __all__ = ["PppService", "PppSession", "PppSolution"]
 
 PppService = Literal["AUTO", "E6-HAS", "B2B-PPP", "L6MDCPPP"]
-_PPP_TYPES = frozenset(
-    (
-        PositionType.PPP_CONVERGING,
-        PositionType.PPP,
-        PositionType.PPP_AR,
-        PositionType.PPP_RTK,
-    )
-)
 
 
-def _enum_or_raw_value[T: IntEnum](value: Value, enum: type[T]) -> T | int | str | None:
-    if isinstance(value, str):
-        try:
-            return enum[value]
-        except KeyError:
-            return value
-    if type(value) is int:
-        try:
-            return enum(value)
-        except ValueError:
-            return value
+def _enum_field[E: IntEnum](
+    record: Record, name: str, enum: type[E]
+) -> E | int | str | None:
+    value = record.get(name)
+    if isinstance(value, str) or type(value) is int:
+        return enum_or_raw(enum, value)
     return None
 
 
@@ -68,7 +61,7 @@ def _nonnegative_integer(record: Record, name: str) -> int | None:
 
 
 @dataclass(frozen=True, slots=True)
-class PppSolution:
+class PppSolution(_GeoidHeights):
     """One receiver PPPNAV solution and its estimated precision.
 
     Check ``valid`` before using the coordinates. Selecting a service does not
@@ -104,7 +97,8 @@ class PppSolution:
     def valid(self) -> bool:
         return (
             self.solution_status == SolutionStatus.SOL_COMPUTED
-            and self.position_type in _PPP_TYPES
+            and isinstance(self.position_type, PositionType)
+            and self.position_type.is_ppp
             and self.latitude is not None
             and self.longitude is not None
             and -90 <= self.latitude <= 90
@@ -114,10 +108,10 @@ class PppSolution:
     @property
     def converged(self) -> bool:
         """Whether the receiver reports a computed PPP solution beyond convergence."""
-        return self.valid and self.position_type in (
-            PositionType.PPP,
-            PositionType.PPP_AR,
-            PositionType.PPP_RTK,
+        return (
+            self.valid
+            and isinstance(self.position_type, PositionType)
+            and self.position_type.is_ppp_converged
         )
 
     @property
@@ -142,12 +136,6 @@ class PppSolution:
         )
         return result if result.available else None
 
-    @property
-    def ellipsoidal_height(self) -> float | None:
-        if self.altitude_msl is None or self.geoid_separation is None:
-            return None
-        return self.altitude_msl + self.geoid_separation
-
     @classmethod
     def from_record(cls, record: Record) -> PppSolution:
         if record.name not in ("PPPNAV", "PPPNAVH"):
@@ -161,10 +149,8 @@ class PppSolution:
             longitude=_finite_number(record, "lon"),
             altitude_msl=_finite_number(record, "hgt"),
             geoid_separation=_finite_number(record, "undulation"),
-            solution_status=_enum_or_raw_value(
-                record.get("sol_status"), SolutionStatus
-            ),
-            position_type=_enum_or_raw_value(record.get("pos_type"), PositionType),
+            solution_status=_enum_field(record, "sol_status", SolutionStatus),
+            position_type=_enum_field(record, "pos_type", PositionType),
             latitude_std_m=_finite_number(record, "lat_std", nonnegative=True),
             longitude_std_m=_finite_number(record, "lon_std", nonnegative=True),
             height_std_m=_finite_number(record, "hgt_std", nonnegative=True),

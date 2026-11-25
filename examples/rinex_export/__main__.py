@@ -19,9 +19,9 @@ from examples._console import (
 from examples._console_capture import capture_records
 from um982py import Observations
 from um982py.antenna import AntennaLog
-from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.field_data import file_sha256
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.rinex import RinexMetadata
 
@@ -29,12 +29,10 @@ from um982py.rinex import RinexMetadata
 def _shared_records(
     first: Sequence[Record], second: Sequence[Record]
 ) -> tuple[tuple[Record, ...], tuple[Record, ...]]:
-    common = {record_epoch(item) for item in first} & {
-        record_epoch(item) for item in second
-    }
+    common = {gps_epoch(item) for item in first} & {gps_epoch(item) for item in second}
     return (
-        tuple(item for item in first if record_epoch(item) in common),
-        tuple(item for item in second if record_epoch(item) in common),
+        tuple(item for item in first if gps_epoch(item) in common),
+        tuple(item for item in second if gps_epoch(item) in common),
     )
 
 
@@ -211,8 +209,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "omitted": result.omitted,
                 "input_log": records[0].name,
                 "time_scale": "GPST",
-                "first_epoch_gps_seconds": record_epoch(records[0]),
-                "last_epoch_gps_seconds": record_epoch(records[-1]),
+                "first_epoch_gps_seconds": gps_epoch(records[0]),
+                "last_epoch_gps_seconds": gps_epoch(records[-1]),
                 "station_metadata_supplied_by_user": asdict(metadata)
                 if metadata
                 else None,

@@ -69,7 +69,7 @@ def test_reference_position_must_be_computed_and_matched(
 ) -> None:
     from um982py import capture
 
-    monkeypatch.setattr(capture, "record_epoch", lambda record: record.real("epoch"))
+    monkeypatch.setattr(capture, "gps_epoch", lambda record: record.real("epoch"))
 
     def fix(epoch: float, status: str) -> Record:
         return Record(

@@ -13,6 +13,7 @@ from typing import TYPE_CHECKING
 
 from um982py.commands import Log
 from um982py.commands.core import Command
+from um982py.commands.queries import log_list
 from um982py.errors import ProtocolError, UM982Error, UnknownLogError
 from um982py.experimental import DebugOutput
 from um982py.experimental.baseband import RawBasebandPacket, scan_packets
@@ -29,7 +30,6 @@ from um982py.messages import (
 )
 from um982py.messages.decode import decode_log
 from um982py.messages.record import Record, Value
-from um982py.receiver_queries import log_list
 
 if TYPE_CHECKING:
     from um982py.receiver import Receiver

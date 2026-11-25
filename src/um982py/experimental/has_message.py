@@ -17,7 +17,11 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import pairwise
 
-from um982py.experimental.inav_coding import bits_of
+from um982py.experimental.inav_coding import (
+    bits_of,
+    gf_eliminate,
+    gf_multiply,
+)
 from um982py.experimental.native_nav import GalileoHasPage
 
 __all__ = [
@@ -108,8 +112,6 @@ GPS_SIGNALS = (
 
 # Primitive polynomial alpha**8 + alpha**4 + alpha**3 + alpha**2 + 1
 # of Table 41, Issue 1.0, May 2022.
-_FIELD_POLYNOMIAL = 0x11D
-_FIELD_ORDER = 0xFF
 """Order of the multiplicative group of the Galois field, 2**8 - 1."""
 
 # Coefficients of the RS(255,32,224) generator polynomial from Table 42,
@@ -355,39 +357,10 @@ _IOD_REF_BITS = {GNSS_ID_GPS: 8, GNSS_ID_GALILEO: 10}
 _MT1_HEADER_BITS = 32
 
 
-def _field_tables() -> tuple[tuple[int, ...], tuple[int, ...]]:
-    """Powers and discrete logarithms of the Table 41 Galois field."""
-    powers: list[int] = [0] * (2 * _FIELD_ORDER + 2)
-    logs: list[int] = [0] * 256
-    value = 1
-    for power in range(_FIELD_ORDER):
-        powers[power] = value
-        logs[value] = power
-        value <<= 1
-        if value & 0x100:
-            value ^= _FIELD_POLYNOMIAL
-    for power in range(_FIELD_ORDER, 2 * _FIELD_ORDER + 2):
-        powers[power] = powers[power - _FIELD_ORDER]
-    return tuple(powers), tuple(logs)
-
-
-_POWERS, _LOGS = _field_tables()
-
-
-def _gf_multiply(left: int, right: int) -> int:
-    if left == 0 or right == 0:
-        return 0
-    return _POWERS[_LOGS[left] + _LOGS[right]]
-
-
-def _gf_inverse(value: int) -> int:
-    return _POWERS[_FIELD_ORDER - _LOGS[value]]
-
-
 def _gf_dot(left: Sequence[int], right: Sequence[int]) -> int:
     total = 0
     for a, b in zip(left, right, strict=True):
-        total ^= _gf_multiply(a, b)
+        total ^= gf_multiply(a, b)
     return total
 
 
@@ -404,7 +377,7 @@ def _residues(count: int) -> tuple[tuple[int, ...], ...]:
         shifted = [0, *columns[-1][:-1]]
         if top:
             for index, coefficient in enumerate(_GENERATOR_POLYNOMIAL):
-                shifted[index] ^= _gf_multiply(coefficient, top)
+                shifted[index] ^= gf_multiply(coefficient, top)
         columns.append(shifted)
     return tuple(tuple(columns[31 - column]) for column in range(count))
 
@@ -423,25 +396,8 @@ def _invert(matrix: Sequence[Sequence[int]]) -> list[list[int]] | None:
         [*row, *(1 if index == column else 0 for column in range(size))]
         for index, row in enumerate(matrix)
     ]
-    for column in range(size):
-        pivot = next(
-            (row for row in range(column, size) if augmented[row][column]),
-            None,
-        )
-        if pivot is None:
-            return None
-        augmented[column], augmented[pivot] = augmented[pivot], augmented[column]
-        scale = _gf_inverse(augmented[column][column])
-        augmented[column] = [_gf_multiply(value, scale) for value in augmented[column]]
-        for row in range(size):
-            if row != column and augmented[row][column]:
-                factor = augmented[row][column]
-                augmented[row] = [
-                    value ^ _gf_multiply(factor, other)
-                    for value, other in zip(
-                        augmented[row], augmented[column], strict=True
-                    )
-                ]
+    if not gf_eliminate(augmented, size):
+        return None
     return [row[size:] for row in augmented]
 
 

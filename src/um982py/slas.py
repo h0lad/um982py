@@ -4,16 +4,17 @@ from dataclasses import dataclass
 from typing import Literal
 
 from um982py.messages import Record
+from um982py.messages.enums import SatelliteSystem
 
 # Each entry gives a system, SLAS slot prefix, and mask width in bits. QZSS
 # slots J01..J09 are mask indices. Their mapping to navigation PRNs (193+)
 # depends on the revision and remains unverified, so results stay unusable.
-_SLOT_WIDTHS: tuple[tuple[str, str, int], ...] = (
-    ("GPS", "G", 64),
-    ("QZSS", "J", 9),
-    ("GLONASS", "R", 36),
-    ("GALILEO", "E", 36),
-    ("BEIDOU", "C", 36),
+_SLOT_WIDTHS: tuple[tuple[SatelliteSystem, int], ...] = (
+    (SatelliteSystem.GPS, 64),
+    (SatelliteSystem.QZSS, 9),
+    (SatelliteSystem.GLONASS, 36),
+    (SatelliteSystem.GALILEO, 36),
+    (SatelliteSystem.BEIDOU, 36),
 )
 
 _MASK_FIELDS = {
@@ -99,11 +100,12 @@ def slas_candidates(
 ) -> tuple[SlasCandidate, ...]:
     """Extract candidate satellite slots from an L1SMT48 record."""
     candidates: list[SlasCandidate] = []
-    for system, prefix, width in _SLOT_WIDTHS:
-        bits = _bits(_mask_bytes(mask_record, system), width, msb=msb)
+    for system, width in _SLOT_WIDTHS:
+        bits = _bits(_mask_bytes(mask_record, system.name), width, msb=msb)
         for index, bit in enumerate(bits, 1):
             if bit:
-                candidates.append(SlasCandidate(system, index, f"{prefix}{index:02d}"))
+                slot = f"{system.rinex}{index:02d}"
+                candidates.append(SlasCandidate(system.name, index, slot))
     if len(candidates) > 23:
         raise ValueError(f"MT48 has {len(candidates)} selected satellites (>23)")
     return tuple(candidates)

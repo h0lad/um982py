@@ -62,7 +62,7 @@ def doppler(
 def test_doppler_supplies_speed_course_and_vertical(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(journey, "record_epoch", lambda row: row.real("epoch"))
+    monkeypatch.setattr(journey, "gps_epoch", lambda row: row.real("epoch"))
     result = journey.analyze(
         [position(1, 2), position(2, 4)],
         doppler=[doppler(1.1, 10, vertical=2), doppler(2.1, 12, vertical=4)],
@@ -91,7 +91,7 @@ def test_doppler_supplies_speed_course_and_vertical(
 def test_invalid_and_distant_doppler_reports_are_not_used(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(journey, "record_epoch", lambda row: row.real("epoch"))
+    monkeypatch.setattr(journey, "gps_epoch", lambda row: row.real("epoch"))
     result = journey.analyze(
         [position(1, 2)],
         [
@@ -145,7 +145,7 @@ def test_manual_replay_uses_doppler_velocity_report(tmp_path: Path) -> None:
 
 
 def test_motion_and_gap(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(journey, "record_epoch", lambda row: row.real("epoch"))
+    monkeypatch.setattr(journey, "gps_epoch", lambda row: row.real("epoch"))
     result = journey.analyze(
         [
             position(1, 2),
@@ -191,7 +191,7 @@ def test_manual_replay(tmp_path: Path) -> None:
 
 
 def test_waypoint_and_baseline_pairing(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(journey, "record_epoch", lambda row: row.real("epoch"))
+    monkeypatch.setattr(journey, "gps_epoch", lambda row: row.real("epoch"))
     baseline = Record(
         "BSLNENUHD",
         (

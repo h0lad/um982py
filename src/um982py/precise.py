@@ -6,9 +6,10 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from itertools import pairwise
 
+from um982py.gnss import GPS_EPOCH
+
 __all__ = ["PrecisePoint", "Sp3Product", "interpolate_sp3", "parse_sp3"]
 
-GPS_ORIGIN = datetime(1980, 1, 6, tzinfo=UTC)
 _MISSING_CLOCK_MICROSECONDS = 999999.0
 
 
@@ -74,7 +75,7 @@ def parse_sp3(text: str) -> Sp3Product:
             if not math.isfinite(seconds) or not 0 <= seconds < 60:
                 raise ValueError("invalid GPS-time SP3 seconds")
             epoch = (
-                datetime(year, month, day, hour, minute, tzinfo=UTC) - GPS_ORIGIN
+                datetime(year, month, day, hour, minute, tzinfo=UTC) - GPS_EPOCH
             ).total_seconds() + seconds
             if previous_epoch is not None and epoch <= previous_epoch:
                 raise ValueError("SP3 epochs must increase strictly")

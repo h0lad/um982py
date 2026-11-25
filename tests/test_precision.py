@@ -14,13 +14,12 @@ from um982py import Log, Position, load_records
 from um982py.adapters import geojson_feature, navsatfix
 from um982py.assessment import PositionLimits, assess_position
 from um982py.messages import AsciiHeader, BestNavigation, Record, decode_log
-from um982py.messages.enums import PositionType, SolutionStatus
+from um982py.messages.enums import FixClass, PositionType, SolutionStatus
 from um982py.messages.navigation import Fix
 from um982py.ppp import PppSolution
 from um982py.precision import ErrorEllipse, PositionPrecision
 from um982py.precision_matching import match_precision, match_stream_precision
 from um982py.protocol.ascii import parse_ascii
-from um982py.quality import FixClass
 from um982py.rover import RoverPosition
 from um982py.streaming import StreamEvent
 from um982py.track import TrackWriter

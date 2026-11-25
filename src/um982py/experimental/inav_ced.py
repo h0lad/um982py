@@ -5,7 +5,9 @@ from dataclasses import asdict, dataclass
 from itertools import pairwise
 from math import ldexp
 
+from um982py.experimental.inav_coding import GF_EXP, gf_eliminate, gf_multiply
 from um982py.experimental.inav_pages import InavWord, WordTiming, assemble_inav_word
+from um982py.gnss import WEEK_SECONDS
 
 __all__ = [
     "Fec2Recovery",
@@ -15,8 +17,7 @@ __all__ = [
     "replay_inav_ced",
 ]
 
-_WEEK_SECONDS = 604800
-_GST_CYCLE_SECONDS = 4096 * _WEEK_SECONDS
+_GST_CYCLE_SECONDS = 4096 * WEEK_SECONDS
 _CED_TYPES = (1, 2, 3, 4)
 _PARITY_TYPES = (17, 18, 19, 20)
 _FEC2_TYPES = (*_CED_TYPES, *_PARITY_TYPES)
@@ -66,34 +67,14 @@ def decode_redced(word: InavWord) -> RedCed:
     return RedCed(*values)
 
 
-def _field_tables() -> tuple[tuple[int, ...], tuple[int, ...]]:
-    powers = [1]
-    for _ in range(254):
-        value = powers[-1] << 1
-        powers.append(value ^ 0x11D if value >= 256 else value)
-    logarithms = [0] * 256
-    for exponent, value in enumerate(powers):
-        logarithms[value] = exponent
-    return tuple(powers * 2), tuple(logarithms)
-
-
-_GF_EXP, _GF_LOG = _field_tables()
-
-
-def _multiply(left: int, right: int) -> int:
-    if left == 0 or right == 0:
-        return 0
-    return _GF_EXP[_GF_LOG[left] + _GF_LOG[right]]
-
-
 def _parity_columns() -> tuple[bytes, ...]:
     # Annex F indexes coefficients in ascending order. The codeword in
     # polynomial order has parity in degrees 0-59 and data in 60-117.
     generator = [1]
-    for root in _GF_EXP[1 : _PARITY_SIZE + 1]:
+    for root in GF_EXP[1 : _PARITY_SIZE + 1]:
         product = [0, *generator]
         for degree, coefficient in enumerate(generator):
-            product[degree] ^= _multiply(coefficient, root)
+            product[degree] ^= gf_multiply(coefficient, root)
         generator = product
 
     # The column for data octet i is the remainder of x**(60 + i).
@@ -106,7 +87,7 @@ def _parity_columns() -> tuple[bytes, ...]:
         remainder = [0, *remainder[:-1]]
         if leading:
             for degree, coefficient in enumerate(first):
-                remainder[degree] ^= _multiply(coefficient, leading)
+                remainder[degree] ^= gf_multiply(coefficient, leading)
     return tuple(columns)
 
 
@@ -115,24 +96,7 @@ _PARITY_COLUMNS = _parity_columns()
 
 def _solve_erasures(rows: list[list[int]], count: int) -> list[int] | None:
     """Eliminate the erased octets and check all surplus parity equations."""
-    for column in range(count):
-        pivot = next(
-            (index for index in range(column, len(rows)) if rows[index][column]), None
-        )
-        if pivot is None:
-            return None
-        rows[pivot], rows[column] = rows[column], rows[pivot]
-        row = rows[column]
-        inverse = _GF_EXP[255 - _GF_LOG[row[column]]]
-        for index in range(column, count + 1):
-            row[index] = _multiply(row[index], inverse)
-        for other_index, other in enumerate(rows):
-            if other_index == column or not other[column]:
-                continue
-            factor = other[column]
-            for index in range(column, count + 1):
-                other[index] ^= _multiply(row[index], factor)
-    if any(row[-1] for row in rows[count:]):
+    if not gf_eliminate(rows, count) or any(row[-1] for row in rows[count:]):
         return None
     return [row[-1] for row in rows[:count]]
 
@@ -199,7 +163,7 @@ def recover_fec2_ced(words: Mapping[int, InavWord]) -> Fec2Recovery | None:
     known = [(i, value) for i, value in enumerate(information) if value]
     for index, symbol in parity.items():
         for position, value in known:
-            symbol ^= _multiply(_PARITY_COLUMNS[position][index], value)
+            symbol ^= gf_multiply(_PARITY_COLUMNS[position][index], value)
         rows.append([*(_PARITY_COLUMNS[pos][index] for pos in erased), symbol])
     recovered = _solve_erasures(rows, len(erased))
     if recovered is None:
@@ -241,7 +205,7 @@ def replay_inav_ced(parts: Sequence[bytes]) -> dict[str, object]:
         (word.timing.gst_seconds - index) % _GST_CYCLE_SECONDS
         for index, word in words
         if word.timing is not None
-        and 0 <= word.timing.time_of_week < _WEEK_SECONDS
+        and 0 <= word.timing.time_of_week < WEEK_SECONDS
         and word.timing.time_of_week % 2 == 1
     }
     origin = next(iter(origins)) if len(origins) == 1 else None
@@ -254,7 +218,7 @@ def replay_inav_ced(parts: Sequence[bytes]) -> dict[str, object]:
         if word.word_type == 16:
             reference = None
             if frame_start is not None:
-                reference = WordTiming(*divmod(frame_start + 1, _WEEK_SECONDS))
+                reference = WordTiming(*divmod(frame_start + 1, WEEK_SECONDS))
             reduced.append(
                 {
                     "even_part_index": index,
@@ -276,7 +240,7 @@ def replay_inav_ced(parts: Sequence[bytes]) -> dict[str, object]:
             continue
         fec2.append(
             {
-                "subframe_time": asdict(WordTiming(*divmod(start, _WEEK_SECONDS))),
+                "subframe_time": asdict(WordTiming(*divmod(start, WEEK_SECONDS))),
                 "iod_nav": result.iod_nav,
                 "recovered_types": result.recovered_types,
                 "words": [word.hex() for word in result.words],

@@ -7,12 +7,11 @@ from um982py.assessment import PositionLimits
 from um982py.commands import Log
 from um982py.convergence import ConvergenceMonitor
 from um982py.messages import AsciiHeader, AsciiMessage
-from um982py.messages.enums import PositionType, SolutionStatus
+from um982py.messages.enums import FixClass, PositionType, SolutionStatus
 from um982py.messages.navigation import BestNavigation
 from um982py.ppp import PppSolution
 from um982py.protocol import StreamDecoder
 from um982py.protocol.ascii import parse_ascii
-from um982py.quality import FixClass
 
 LIMITS = PositionLimits(
     max_epoch_age_s=2,

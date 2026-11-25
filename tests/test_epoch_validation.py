@@ -2,7 +2,8 @@
 
 import pytest
 
-from um982py.measurement import bdt_week_to_gps_seconds, gps_epoch
+from um982py.gnss import bdt_week_to_gps_seconds
+from um982py.measurement import gps_epoch
 from um982py.messages import (
     AsciiHeader,
     AsciiMessage,

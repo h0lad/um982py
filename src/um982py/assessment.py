@@ -4,9 +4,9 @@ from dataclasses import dataclass
 from math import isfinite
 from typing import TYPE_CHECKING
 
-from um982py.messages.enums import PositionType
+from um982py.messages.enums import FixClass, PositionType, enum_member
 from um982py.messages.navigation import Fix
-from um982py.quality import EpochSolution, FixClass, classify
+from um982py.quality import EpochSolution
 
 if TYPE_CHECKING:
     from um982py.messages.navigation import Position
@@ -58,6 +58,18 @@ class PositionAssessment:
         return not self.reasons
 
 
+def limit_reason(name: str, value: float | None, maximum: float | None) -> str | None:
+    """Return ``<name>_unknown`` or ``<name>_exceeded`` when a limit is not met.
+
+    A measurement must be finite and non-negative to pass a configured limit.
+    """
+    if maximum is None:
+        return None
+    if value is None or not isfinite(value) or value < 0:
+        return f"{name}_unknown"
+    return f"{name}_exceeded" if value > maximum else None
+
+
 def assess_position(
     solution: "EpochSolution | Position",
     limits: PositionLimits,
@@ -100,12 +112,7 @@ def assess_position(
         available = solution.valid
         native = getattr(solution, "position", solution)
         if isinstance(native, Fix):
-            fix_class = {
-                1: FixClass.SINGLE,
-                2: FixClass.SINGLE,
-                4: FixClass.FIXED,
-                5: FixClass.FLOAT,
-            }.get(native.quality)
+            fix_class = native.fix_class
             if limits.reject_predicted:
                 predicted = native.possibly_predicted
                 if predicted is True:
@@ -113,13 +120,8 @@ def assess_position(
                 elif predicted is None:
                     reasons.append("prediction_status_unknown")
         else:
-            raw_type = getattr(native, "position_type", None)
-            try:
-                code = PositionType[raw_type] if isinstance(raw_type, str) else raw_type
-                if isinstance(code, int) and not isinstance(code, bool):
-                    fix_class = classify(code)
-            except (KeyError, ValueError):
-                pass
+            member = enum_member(PositionType, getattr(native, "position_type", None))
+            fix_class = None if member is None else member.fix_class
         solution_age = getattr(native, "solution_age_s", None)
         correction_age = solution.correction_age_s
         precision = solution.precision
@@ -151,13 +153,11 @@ def assess_position(
         ("horizontal_rms", horizontal_rms_m, limits.max_horizontal_rms_m),
         ("vertical_std", vertical_std_m, limits.max_vertical_std_m),
     )
-    for name, value, maximum in checks:
-        if maximum is None:
-            continue
-        if value is None or not isfinite(value) or value < 0:
-            reasons.append(f"{name}_unknown")
-        elif value > maximum:
-            reasons.append(f"{name}_exceeded")
+    reasons.extend(
+        reason
+        for name, value, maximum in checks
+        if (reason := limit_reason(name, value, maximum)) is not None
+    )
     return PositionAssessment(
         solution, epoch_age_s, horizontal_rms_m, vertical_std_m, tuple(reasons)
     )

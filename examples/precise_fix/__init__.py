@@ -8,8 +8,8 @@ from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
 from itertools import pairwise
 
-from um982py.capture import record_epoch
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
+from um982py.measurement import gps_epoch
 from um982py.messages.enums import PositionType
 from um982py.messages.record import Record
 
@@ -185,7 +185,7 @@ def fix_sample(record: Record, *, undulation: float | None = None) -> FixSample:
     )
     age = record.get("diff_age")
     return FixSample(
-        epoch=record_epoch(record),
+        epoch=gps_epoch(record),
         x=record.real("p_x"),
         y=record.real("p_y"),
         z=record.real("p_z"),
@@ -203,12 +203,12 @@ def join_undulations(
 ) -> tuple[FixSample, ...]:
     """Attach the geoid separation of the matching epoch, when it is present."""
     undulations = {
-        record_epoch(record): record.real("undulation")
+        gps_epoch(record): record.real("undulation")
         for record in geodetic
         if record.message is not None
     }
     return tuple(
-        fix_sample(record, undulation=undulations.get(record_epoch(record)))
+        fix_sample(record, undulation=undulations.get(gps_epoch(record)))
         for record in positions
     )
 

@@ -6,7 +6,14 @@ from math import isfinite
 from typing import TYPE_CHECKING, Protocol, Self, runtime_checkable
 
 from um982py.errors import ProtocolError
-from um982py.messages.enums import PositionType, SolutionStatus, _reported_datum
+from um982py.geodesy import degrees_from_ddmm
+from um982py.messages.enums import (
+    FixClass,
+    PositionType,
+    SolutionStatus,
+    _reported_datum,
+    enum_or_raw,
+)
 from um982py.messages.frames import AsciiMessage, BinaryMessage, Message, Sentence
 from um982py.messages.record import Record, Value
 from um982py.precision import PositionPrecision, utc_seconds
@@ -87,33 +94,14 @@ def _enum_value(value: Value) -> str | int:
     raise ProtocolError("Invalid BESTNAV enumeration")
 
 
-def _solution_status(value: str | int) -> SolutionStatus | str | int:
-    try:
-        return (
-            SolutionStatus[value] if isinstance(value, str) else SolutionStatus(value)
-        )
-    except (KeyError, ValueError):
-        return value
-
-
-def _position_type(value: str | int) -> PositionType | str | int:
-    try:
-        return PositionType[value] if isinstance(value, str) else PositionType(value)
-    except (KeyError, ValueError):
-        return value
-
-
 def _coordinate(value: str, direction: str, *, latitude: bool) -> float | None:
     if not value or not direction:
         return None
-    number = float(value)
-    degrees, minutes = divmod(number, 100)
     limit = 90 if latitude else 180
-    directions = ("N", "S") if latitude else ("E", "W")
-    if direction not in directions or not 0 <= minutes < 60:
-        raise ValueError("Invalid NMEA coordinate")
-    coordinate = degrees + minutes / 60
-    if not isfinite(coordinate) or not 0 <= coordinate <= limit:
+    if direction not in (("N", "S") if latitude else ("E", "W")):
+        raise ValueError("Invalid NMEA coordinate direction")
+    coordinate = degrees_from_ddmm(float(value))
+    if not 0 <= coordinate <= limit:
         raise ValueError("NMEA coordinate out of range")
     return -coordinate if direction in ("S", "W") else coordinate
 
@@ -131,8 +119,31 @@ _QUALITY_LABELS: dict[int, str] = {
 }
 
 
+_GGA_FIX_CLASSES = {
+    1: FixClass.SINGLE,
+    2: FixClass.SINGLE,
+    4: FixClass.FIXED,
+    5: FixClass.FLOAT,
+}
+
+
+class _GeoidHeights:
+    """Ellipsoidal height from reported orthometric height and geoid separation."""
+
+    __slots__ = ()
+    altitude_msl: float | None
+    geoid_separation: float | None
+
+    @property
+    def ellipsoidal_height(self) -> float | None:
+        """Height above the ellipsoid in metres when both heights are present."""
+        if self.altitude_msl is None or self.geoid_separation is None:
+            return None
+        return self.altitude_msl + self.geoid_separation
+
+
 @dataclass(frozen=True, slots=True)
-class Fix:
+class Fix(_GeoidHeights):
     utc: str
     latitude: float | None
     longitude: float | None
@@ -155,6 +166,15 @@ class Fix:
             and self.latitude is not None
             and self.longitude is not None
         )
+
+    @property
+    def fix_class(self) -> FixClass | None:
+        """Return the solution category of the GGA quality code.
+
+        Quality 1 and 2 are single or differential code solutions, 4 is RTK
+        fixed and 5 is RTK float. Other codes have no category.
+        """
+        return _GGA_FIX_CLASSES.get(self.quality)
 
     @property
     def quality_label(self) -> str:
@@ -205,13 +225,6 @@ class Fix:
     @property
     def satellites_used(self) -> int | None:
         return self.satellites if self.satellites_known else None
-
-    @property
-    def ellipsoidal_height(self) -> float | None:
-        """Height above the ellipsoid in metres when both GGA heights are present."""
-        if self.altitude_msl is None or self.geoid_separation is None:
-            return None
-        return self.altitude_msl + self.geoid_separation
 
     @property
     def precision(self) -> PositionPrecision | None:
@@ -343,8 +356,10 @@ class DopplerVelocity:
             track = _optional_number(record["trk_gnd"])
             epoch = gps_epoch(message)
             return cls(
-                status=_solution_status(_enum_value(record["v_sol_status"])),
-                velocity_type=_position_type(_enum_value(record["vel_type"])),
+                status=enum_or_raw(SolutionStatus, _enum_value(record["v_sol_status"])),
+                velocity_type=enum_or_raw(
+                    PositionType, _enum_value(record["vel_type"])
+                ),
                 ground_speed_mps=speed,
                 course_true_deg=track % 360 if track is not None else None,
                 vertical_speed_mps=_optional_number(record["vert_spd"]),
@@ -487,11 +502,10 @@ class BestNavigation:
     @property
     def rtk_fixed(self) -> bool:
         """Whether a computed solution reports a fixed RTK position type."""
-        return self.valid and self.position_type in (
-            PositionType.L1_INT,
-            PositionType.WIDE_INT,
-            PositionType.NARROW_INT,
-            PositionType.INS_RTKFIXED,
+        return (
+            self.valid
+            and isinstance(self.position_type, PositionType)
+            and self.position_type.is_rtk_fixed
         )
 
     @property
@@ -582,22 +596,16 @@ class BestNavigation:
             raise ProtocolError("Not a BESTNAV record")
         message = record.message
         try:
-            position_type = _position_type(_enum_value(record["pos_type"]))
-            solution_status = _solution_status(_enum_value(record["p_sol_status"]))
+            position_type = enum_or_raw(PositionType, _enum_value(record["pos_type"]))
+            solution_status = enum_or_raw(
+                SolutionStatus, _enum_value(record["p_sol_status"])
+            )
             age = _optional_number(record.get("diff_age"))
             solution_age = _standard_deviation(record.get("sol_age"))
             latency = _standard_deviation(record.get("latency"))
-            differential = position_type in (
-                PositionType.PSRDIFF,
-                PositionType.L1_FLOAT,
-                PositionType.IONOFREE_FLOAT,
-                PositionType.NARROW_FLOAT,
-                PositionType.L1_INT,
-                PositionType.WIDE_INT,
-                PositionType.NARROW_INT,
-                PositionType.INS_PSRDIFF,
-                PositionType.INS_RTKFLOAT,
-                PositionType.INS_RTKFIXED,
+            differential = (
+                isinstance(position_type, PositionType)
+                and position_type.is_differential
             )
             epoch = None
             if message is not None:
@@ -617,8 +625,8 @@ class BestNavigation:
                 record.real("hor_spd"),
                 record.real("trk_gnd"),
                 record.real("vert_spd"),
-                _solution_status(_enum_value(record["v_sol_status"])),
-                _position_type(_enum_value(record["vel_type"])),
+                enum_or_raw(SolutionStatus, _enum_value(record["v_sol_status"])),
+                enum_or_raw(PositionType, _enum_value(record["vel_type"])),
                 _reported_datum(_enum_value(record["datum_id"])),
                 _standard_deviation(record["lat_std"]),
                 _standard_deviation(record["lon_std"]),

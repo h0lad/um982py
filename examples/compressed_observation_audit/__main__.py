@@ -21,7 +21,7 @@ from examples._console_capture import open_receiver
 from examples.compressed_observation_audit import agree_epoch, summarise_epochs
 from examples.compressed_observation_audit.rangecmp2 import report_gps_l1
 from um982py.antenna import antenna_index
-from um982py.capture import epoch_seconds, iter_frames
+from um982py.capture import iter_frames
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
 from um982py.experimental import (
@@ -32,6 +32,7 @@ from um982py.experimental import (
     rangecmp_output,
     rangecmp_read,
 )
+from um982py.measurement import gps_epoch
 from um982py.messages import BinaryMessage
 from um982py.subscriptions import temporary_subscriptions
 
@@ -125,8 +126,8 @@ def main(argv: Sequence[str] | None = None) -> int:
         range_frames, compressed_frames = _collect_live_range_frames(
             args, range_log, antenna
         )
-    ranges = {epoch_seconds(frame): frame for frame in range_frames}
-    compressed_ranges = {epoch_seconds(frame): frame for frame in compressed_frames}
+    ranges = {gps_epoch(frame): frame for frame in range_frames}
+    compressed_ranges = {gps_epoch(frame): frame for frame in compressed_frames}
     shared = ranges.keys() & compressed_ranges.keys()
     if not shared:
         family = "RANGECMP2" if args.rangecmp2 else "RANGECMP"

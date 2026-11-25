@@ -2,39 +2,23 @@
 
 from dataclasses import dataclass
 
+from um982py.messages.enums import SatelliteSystem
 from um982py.messages.record import Record
+from um982py.signals import _SIGNALS as _RANGE_SIGNALS
 
-_SYSTEMS = ("GPS", "GLONASS", "SBAS", "Galileo", "BeiDou", "QZSS", "NavIC")
 
-# SATSINFO uses the frequency identifiers from N4 R1.4 table 7-112.
-# Its QZSS identifiers differ from the RANGE tracking-status identifiers.
-_SIGNALS: dict[int, dict[int, str]] = {
-    0: {
-        0: "L1 C/A",
-        3: "L1C pilot",
-        6: "L5 data",
-        9: "L2 P(Y)",
-        11: "L1C data",
-        14: "L5 pilot",
-        17: "L2C L",
-    },
-    1: {0: "L1 C/A", 5: "L2 C/A", 6: "G3 I", 7: "G3 Q"},
-    2: {0: "L1 C/A", 6: "L5 I"},
-    3: {1: "E1 B", 2: "E1 C", 12: "E5a pilot", 17: "E5b pilot", 18: "E6 B", 22: "E6 C"},
-    4: {
-        0: "B1 I",
-        4: "B1 Q",
-        5: "B2 Q",
-        6: "B3 Q",
-        8: "B1C pilot",
-        12: "B2a pilot",
-        13: "B2b I",
-        17: "B2 I",
-        21: "B3 I",
-        23: "B1C data",
-        28: "B2a data",
-    },
-    5: {
+def _satsinfo_signals() -> dict[int, dict[int, str]]:
+    """Name SATSINFO signals from N4 R1.4 table 7-112.
+
+    The table reuses the RANGE identifiers of table 7-55 except for the GLONASS
+    names, the SBAS L5 entry and the QZSS identifiers below.
+    """
+    table: dict[int, dict[int, str]] = {}
+    for (system, signal), (name, _, _) in _RANGE_SIGNALS.items():
+        table.setdefault(system, {})[signal] = name
+    table[1] |= {0: "L1 C/A", 5: "L2 C/A"}
+    table[2][6] = "L5 I"
+    table[5] = {
         0: "L1 C/A",
         6: "L5 data",
         14: "L5 pilot",
@@ -43,9 +27,18 @@ _SIGNALS: dict[int, dict[int, str]] = {
         22: "L61 pilot",
         24: "L62 data 1",
         25: "L62 data 2",
-    },
-    6: {6: "L5 data", 14: "L5 pilot"},
-}
+    }
+    return table
+
+
+_SIGNALS = _satsinfo_signals()
+
+
+def _constellation(system_id: int) -> str | None:
+    try:
+        return SatelliteSystem(system_id).name
+    except ValueError:
+        return None
 
 
 @dataclass(frozen=True, slots=True)
@@ -62,9 +55,7 @@ class SatelliteSignal:
     @property
     def constellation(self) -> str | None:
         """Return the constellation name when the system identifier is known."""
-        if 0 <= self.system_id < len(_SYSTEMS):
-            return _SYSTEMS[self.system_id]
-        return None
+        return _constellation(self.system_id)
 
     @property
     def name(self) -> str | None:
@@ -87,10 +78,7 @@ class Satellite:
         systems = {signal.system_id for signal in self.signals}
         if len(systems) != 1:
             return None
-        system = next(iter(systems))
-        if 0 <= system < len(_SYSTEMS):
-            return _SYSTEMS[system]
-        return None
+        return _constellation(next(iter(systems)))
 
 
 def satellites_from_record(record: Record) -> tuple[Satellite, ...]:

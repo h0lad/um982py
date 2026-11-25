@@ -29,10 +29,11 @@ from examples.spoof_dual_antenna import (
     compare_snapshots,
     sky_snapshots,
 )
-from um982py.capture import iter_frames, record_epoch, select_position
+from um982py.capture import iter_frames, select_position
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout
 from um982py.geodesy import geodetic_from_ecef, receiver_ecef
+from um982py.measurement import gps_epoch
 from um982py.messages import Record, SpoofInfo
 
 
@@ -105,10 +106,10 @@ def _heading_agreement(
         ]
         if not valid_enu or not valid_ecef:
             return None
-        enu_record = max(valid_enu, key=record_epoch)
-        epoch = record_epoch(enu_record)
-        ecef_record = min(valid_ecef, key=lambda row: abs(record_epoch(row) - epoch))
-        if abs(record_epoch(ecef_record) - epoch) > tolerance:
+        enu_record = max(valid_enu, key=gps_epoch)
+        epoch = gps_epoch(enu_record)
+        ecef_record = min(valid_ecef, key=lambda row: abs(gps_epoch(row) - epoch))
+        if abs(gps_epoch(ecef_record) - epoch) > tolerance:
             return None
         position = select_position(capture.position, epoch, tolerance)
         latitude, longitude, _ = geodetic_from_ecef(*receiver_ecef(position))

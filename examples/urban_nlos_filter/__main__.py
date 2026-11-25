@@ -14,8 +14,8 @@ from pathlib import Path
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
 from examples.urban_nlos_filter import classify_record, evaluate_labelled
-from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 
 
@@ -46,7 +46,7 @@ def _payload(
         nlos += labels["NLOS"]
         epochs.append(
             {
-                "epoch": record_epoch(record),
+                "epoch": gps_epoch(record),
                 "mean_score": mean_score,
                 "satellites": len(candidates),
                 "counts": labels,

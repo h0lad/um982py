@@ -5,8 +5,8 @@ from dataclasses import asdict
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
-from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.messages.gps_health import GpsLnavHealth
 from um982py.messages.satellite_health import EphemerisHealth, GalileoEphemerisHealth
@@ -22,7 +22,7 @@ def _native_number(system: object, prn: int) -> int:
 
 
 def decode_health(record: Record) -> list[dict[str, object]]:
-    timestamp = record_epoch(record)
+    timestamp = gps_epoch(record)
     if record.name == "GPSEPH":
         gps = GpsLnavHealth.from_record(record)
         return [
@@ -52,7 +52,7 @@ def decode_health(record: Record) -> list[dict[str, object]]:
             {
                 "epoch_gps_seconds": timestamp,
                 "source": record.name,
-                "system": "Galileo",
+                "system": "GALILEO",
                 "satellite": gal.satellite_id,
                 "signals": signals,
             }

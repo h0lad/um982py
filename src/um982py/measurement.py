@@ -5,10 +5,16 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from contextlib import suppress
 from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Literal
 
-from um982py.geodesy import SPEED_OF_LIGHT
+from um982py.gnss import (
+    GPS_EPOCH,
+    SPEED_OF_LIGHT,
+    WEEK_SECONDS,
+    _check_leap_seconds,
+    bdt_week_to_gps_seconds,
+)
 from um982py.messages import (
     AsciiHeader,
     AsciiMessage,
@@ -27,9 +33,7 @@ __all__ = [
     "RangeSample",
     "ReceiverTime",
     "SignalKey",
-    "bdt_week_to_gps_seconds",
     "gps_epoch",
-    "gps_to_utc",
     "message_utc",
     "range_samples",
     "receiver_time",
@@ -108,27 +112,10 @@ class RangeSample:
     lock_seconds: float
 
 
-def bdt_week_to_gps_seconds(week: int, seconds_of_week: float) -> float:
-    """Convert a continuous BDT week and seconds to nominal GPST seconds.
-
-    BDT week zero starts in GPS week 1356, and BDT is nominally 14 seconds
-    behind GPST. The conversion uses this nominal offset.
-    """
-    if type(week) is not int or not 0 <= week <= 65535:
-        raise ValueError("BDT week must be an integer in 0..65535")
-    if (
-        isinstance(seconds_of_week, bool)
-        or not math.isfinite(seconds_of_week)
-        or not 0 <= seconds_of_week < 604800
-    ):
-        raise ValueError("BDT seconds outside week range")
-    return (week + 1356) * 604800.0 + seconds_of_week + 14.0
-
-
 def gps_epoch(
-    message: Message, *, week_scale: Literal["GPST", "BDT"] | None = None
+    source: Message | Record, *, week_scale: Literal["GPST", "BDT"] | None = None
 ) -> float:
-    """Return absolute GPST seconds from a receiver data-frame header.
+    """Return absolute GPST seconds from a frame or decoded record header.
 
     N4 ASCII GPS headers and binary reference 0 have been observed to use GPST.
     For non-GPS headers, supply an independently verified ``week_scale``.
@@ -139,6 +126,11 @@ def gps_epoch(
     """
     if week_scale not in (None, "GPST", "BDT"):
         raise ValueError("week_scale must be GPST or BDT")
+    if isinstance(source, Record):
+        if source.message is None:
+            raise ValueError(f"{source.name} record carries no receiver timestamp")
+        source = source.message
+    message = source
     if not isinstance(message, (AsciiMessage, BinaryMessage)):
         raise ValueError("message carries no receiver timestamp")
     header = message.header
@@ -168,37 +160,12 @@ def gps_epoch(
     if (
         not 0 <= week <= 65535
         or not math.isfinite(seconds)
-        or not 0 <= seconds < 604800
+        or not 0 <= seconds < WEEK_SECONDS
     ):
         raise ValueError("receiver timestamp outside week range")
     if week_scale == "BDT":
         return bdt_week_to_gps_seconds(week, seconds)
-    return week * 604800.0 + seconds
-
-
-def _check_leap_seconds(leap_seconds: int) -> None:
-    if type(leap_seconds) is not int or not 0 <= leap_seconds <= 99:
-        raise ValueError("GPS-UTC leap seconds must be an integer in 0..99")
-
-
-def gps_to_utc(week: int, seconds_of_week: float, *, leap_seconds: int) -> datetime:
-    """Convert GPS week and seconds to UTC using a verified GPS-UTC offset.
-
-    Python datetimes cannot represent a leap second. The caller supplies the
-    offset valid at the observation epoch.
-    """
-    if type(week) is not int or not 0 <= week <= 65535:
-        raise ValueError("GPS week must be an integer in 0..65535")
-    if (
-        isinstance(seconds_of_week, bool)
-        or not math.isfinite(seconds_of_week)
-        or not 0 <= seconds_of_week < 604800
-    ):
-        raise ValueError("GPS seconds outside week range")
-    _check_leap_seconds(leap_seconds)
-    return datetime(1980, 1, 6, tzinfo=UTC) + timedelta(
-        weeks=week, seconds=seconds_of_week - leap_seconds
-    )
+    return week * float(WEEK_SECONDS) + seconds
 
 
 def message_utc(
@@ -213,13 +180,9 @@ def message_utc(
     references, the verified week scale. Check the receiver's time status
     before treating the result as a valid timestamp.
     """
-    if isinstance(source, Record):
-        if source.message is None:
-            raise ValueError("record carries no receiver timestamp")
-        source = source.message
     _check_leap_seconds(leap_seconds)
     epoch = gps_epoch(source, week_scale=week_scale)
-    return datetime(1980, 1, 6, tzinfo=UTC) + timedelta(seconds=epoch - leap_seconds)
+    return GPS_EPOCH + timedelta(seconds=epoch - leap_seconds)
 
 
 def range_samples(

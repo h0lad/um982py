@@ -4,8 +4,8 @@ from math import nan
 import pytest
 
 from um982py.assessment import PositionLimits, assess_position
-from um982py.messages.enums import PositionType, SolutionStatus
-from um982py.quality import EpochSolution, FixClass
+from um982py.messages.enums import FixClass, PositionType, SolutionStatus
+from um982py.quality import EpochSolution
 
 
 def solution() -> EpochSolution:

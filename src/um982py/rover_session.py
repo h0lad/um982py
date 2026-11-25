@@ -1,15 +1,14 @@
 """Reconnect a rover receiver while maintaining correction and stream status."""
 
 from collections.abc import Callable, Iterator
-from contextlib import contextmanager
 from dataclasses import dataclass
 from math import isfinite
-from threading import Event, Lock
+from threading import Event
 from time import monotonic
 from typing import Literal
 
-from um982py.errors import ResponseTimeout, TransportError
-from um982py.ntrip import ReconnectPolicy
+from um982py.errors import ResponseTimeout
+from um982py.ntrip import ReconnectPolicy, _Reconnecting
 from um982py.receiver import Receiver
 from um982py.rover import Rover, RoverPosition
 from um982py.rtk_session import RtkHealth
@@ -40,7 +39,7 @@ class RoverSessionHealth:
     corrections: RtkHealth | None
 
 
-class RoverSession:
+class RoverSession(_Reconnecting):
     """Own reconnecting BESTNAV polling, with optional NTRIP and matched heading.
 
     Use ``Rover`` for one receiver connection. This class owns a fresh receiver
@@ -79,39 +78,29 @@ class RoverSession:
             raise TypeError("on_disconnect must be callable")
         if ntrip_url is None and (username is not None or password is not None):
             raise ValueError("credentials require an NTRIP URL")
+        super().__init__(reconnect)
         self.receiver_factory = receiver_factory
         self.configure = configure
         self.on_disconnect = on_disconnect
-        self.reconnect = reconnect or ReconnectPolicy()
         self.ntrip_url = ntrip_url
         self.username = username
         self.password = password
         self.ntrip_version = ntrip_version
         self.rtk_reliability_level = rtk_reliability_level
         self.adr_reliability_level = adr_reliability_level
-        self._lock = Lock()
-        self._state = "idle"
-        self._attempts = 0
-        self._connections = 0
         self._positions = 0
         self._last_position: float | None = None
-        self._error: str | None = None
         self._rover: Rover | None = None
-        self._reconnect_delay = self.reconnect.initial_seconds
 
-    def _require_idle(self) -> None:
-        with self._lock:
-            if self._state != "idle":
-                raise RuntimeError("session can only be run once")
-            self._state = "connecting"
-
-    def _begin_connection_attempt(self) -> None:
-        with self._lock:
-            self._state = "connecting"
-            self._attempts += 1
-
-    @contextmanager
-    def _connect(self) -> Iterator[tuple[Rover, int]]:
+    def _connected_positions(
+        self,
+        stop: Event,
+        *,
+        interval: float,
+        heading: bool,
+        heading_tolerance: float,
+    ) -> Iterator[RoverUpdate]:
+        """Poll positions from one receiver connection."""
         with self.receiver_factory() as receiver:
             if self.configure is not None:
                 self.configure(receiver)
@@ -124,61 +113,27 @@ class RoverSession:
                 rtk_reliability_level=self.rtk_reliability_level,
                 adr_reliability_level=self.adr_reliability_level,
             ) as rover:
+                connection = self._connected()
                 with self._lock:
-                    self._connections += 1
-                    connection = self._connections
-                    self._state = "connected"
                     self._rover = rover
                 try:
-                    yield rover, connection
+                    while not stop.is_set():
+                        position = rover.position(
+                            heading=heading, heading_tolerance=heading_tolerance
+                        )
+                        now = monotonic()
+                        with self._lock:
+                            self._positions += 1
+                            self._last_position = now
+                        self._reset_backoff()
+                        yield RoverUpdate(
+                            position, connection, rover.stream.session_id, now
+                        )
+                        if stop.wait(interval):
+                            return
                 finally:
                     with self._lock:
                         self._rover = None
-
-    def _wait_reconnect_backoff(self, stop: Event, error: Exception) -> bool:
-        if self.on_disconnect is not None:
-            self.on_disconnect(error)
-        with self._lock:
-            self._error = str(error)
-            self._state = "backoff"
-        if stop.wait(self._reconnect_delay):
-            return True
-        self._reconnect_delay = self.reconnect.next_delay(self._reconnect_delay)
-        return False
-
-    def _yield_connected_positions(
-        self,
-        rover: Rover,
-        connection: int,
-        stop: Event,
-        *,
-        interval: float,
-        heading: bool,
-        heading_tolerance: float,
-    ) -> Iterator[RoverUpdate]:
-        while not stop.is_set():
-            position = rover.position(
-                heading=heading,
-                heading_tolerance=heading_tolerance,
-            )
-            now = monotonic()
-            with self._lock:
-                self._positions += 1
-                self._last_position = now
-            self._reconnect_delay = self.reconnect.initial_seconds
-            yield RoverUpdate(position, connection, rover.stream.session_id, now)
-            if stop.wait(interval):
-                return
-
-    def _fail(self, error: Exception) -> None:
-        with self._lock:
-            self._error = str(error)
-            self._state = "failed"
-
-    def _mark_stopped(self) -> None:
-        with self._lock:
-            if self._state != "failed":
-                self._state = "stopped"
 
     def health(self) -> RoverSessionHealth:
         """Return receiver and correction state for the current connection."""
@@ -212,27 +167,14 @@ class RoverSession:
             or heading_tolerance < 0
         ):
             raise ValueError("heading_tolerance must be finite and non-negative")
-        self._require_idle()
-        try:
-            while not stop.is_set():
-                self._begin_connection_attempt()
-                try:
-                    with self._connect() as (rover, connection):
-                        yield from self._yield_connected_positions(
-                            rover,
-                            connection,
-                            stop,
-                            interval=interval,
-                            heading=heading,
-                            heading_tolerance=heading_tolerance,
-                        )
-                except ResponseTimeout:
-                    raise
-                except (TransportError, OSError) as error:
-                    if self._wait_reconnect_backoff(stop, error):
-                        break
-        except Exception as error:
-            self._fail(error)
-            raise
-        finally:
-            self._mark_stopped()
+        yield from self._run_connections(
+            stop,
+            lambda: self._connected_positions(
+                stop,
+                interval=interval,
+                heading=heading,
+                heading_tolerance=heading_tolerance,
+            ),
+            self.on_disconnect,
+            fatal=(ResponseTimeout,),
+        )

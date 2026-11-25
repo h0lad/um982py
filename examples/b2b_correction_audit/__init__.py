@@ -4,8 +4,8 @@ import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from um982py.capture import record_epoch
 from um982py.corrections import CorrectionCheck, CorrectionEvent, audit_corrections
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.messages.enums import PositionType, SolutionStatus
 
@@ -67,7 +67,7 @@ def align_navigation(
         raise ValueError("alignment window must be finite and positive")
     result = []
     for record in records:
-        epoch = record_epoch(record)
+        epoch = gps_epoch(record)
         b2b = [
             item for item in b2b_checks if 0 <= epoch - item.received <= window_seconds
         ]
@@ -133,4 +133,4 @@ def service_census(
 
 def chronological(records: Sequence[Record]) -> tuple[Record, ...]:
     """Order correction records by their receiver epoch, not by log name."""
-    return tuple(sorted(records, key=record_epoch))
+    return tuple(sorted(records, key=gps_epoch))

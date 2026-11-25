@@ -25,12 +25,13 @@ from examples.ttff_profile import (
     measure,
     repeatability,
 )
-from um982py.capture import decode_records, iter_frames, record_epoch
+from um982py.capture import decode_records, iter_frames
 from um982py.commands import Log
 from um982py.errors import ResponseTimeout, TransportError
-from um982py.messages.enums import PositionType, SolutionStatus
+from um982py.measurement import gps_epoch
+from um982py.messages.enums import FixClass, PositionType, SolutionStatus
 from um982py.messages.record import Record
-from um982py.quality import FixClass, position_type_code, solution_status_code
+from um982py.quality import position_type_code, solution_status_code
 from um982py.state import (
     ReceiverState,
     restore_receiver_state,
@@ -86,11 +87,11 @@ def recorded_epochs(
 ) -> tuple[FixEpoch, ...]:
     """Convert BESTPOS records to elapsed epochs, using cadence when unstamped."""
     origin = (
-        record_epoch(records[0]) if records and records[0].message is not None else None
+        gps_epoch(records[0]) if records and records[0].message is not None else None
     )
     return tuple(
         FixEpoch(
-            seconds=record_epoch(record) - origin
+            seconds=gps_epoch(record) - origin
             if origin is not None
             else index * cadence,
             solution_status=solution_status_code(record),

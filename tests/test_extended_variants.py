@@ -1,5 +1,6 @@
 """Alternative renderings of documented solutions and navigation data."""
 
+import math
 from dataclasses import replace
 
 import pytest
@@ -7,6 +8,12 @@ import pytest
 from conftest import FIXTURES
 from um982py.commands import Log, Trigger
 from um982py.errors import ProtocolError
+from um982py.experimental import (
+    decode_matched_position,
+    matched_baseline,
+    matched_position_output,
+    matched_position_read,
+)
 from um982py.geodesy import geodetic_from_ecef
 from um982py.messages import AsciiMessage, BinaryMessage, decode_log
 from um982py.messages.layouts import LAYOUTS
@@ -16,9 +23,25 @@ from um982py.signals import tracking_signal
 VARIANTS = FIXTURES / "captures-variants"
 POSITIONS = (Log.PSRPOS2, Log.RTKPOS2, Log.PPPPOS, Log.MPPPPOS)
 NAVIGATION = (Log.MPPPDOP, Log.BD2EPHEM, Log.BD3B2AEPHEM, Log.BD3IONUTC)
+EPHEMERIS_COPIES = {
+    Log.GPSEPHEM: "GPSEPH",
+    Log.GPSEPHEMERIS: "GPSEPH",
+    Log.BDSEPHEM: "BDSEPH",
+    Log.GALEPHEM: "GALEPH",
+    Log.GALEPHEMERIS: "GALEPH",
+    Log.GLOEPHEM: "GLOEPH",
+    Log.GLOEPHEMERIS: "GLOEPH",
+}
+ALMANAC_AND_PACKINGS = (Log.ALMANAC, Log.BDSEPHEMERIS, Log.BD3EPHEM)
 FORMATS = [
     (log, binary)
-    for log in (*POSITIONS, *NAVIGATION, Log.BASESTATION)
+    for log in (
+        *POSITIONS,
+        *NAVIGATION,
+        *EPHEMERIS_COPIES,
+        *ALMANAC_AND_PACKINGS,
+        Log.BASESTATION,
+    )
     for binary in (False, True)
     if binary or log is not Log.BASESTATION
 ]
@@ -161,8 +184,94 @@ def test_basestation_holds_primary_antenna_observations() -> None:
     slots = record.records("observations")
     used = [slot for slot in slots if slot.real("pseudorange") > 0]
     assert len(slots) == 240
-    assert len(used) == 84
+    assert len(used) == 82
     first = used[0]
     signal = tracking_signal(first.integer("tracking_status"))
     assert signal is not None and signal.constellation == "GPS"
     assert 1.9e7 < first.real("pseudorange") < 2.6e7
+
+
+@pytest.mark.parametrize("log", list(EPHEMERIS_COPIES))
+def test_ephemeris_copies_use_the_documented_layout(log: Log) -> None:
+    names = [field.name for field in LAYOUTS[EPHEMERIS_COPIES[log]].fields]
+    for binary in (False, True):
+        record = log.decode(captured(log, binary))
+        assert list(record) == names
+
+
+def test_bdsephemeris_is_bdseph_with_the_square_root_of_a() -> None:
+    reference = Log.BD2EPHEM.decode(captured(Log.BD2EPHEM, True))
+    for binary in (False, True):
+        record = Log.BDSEPHEMERIS.decode(captured(Log.BDSEPHEMERIS, binary))
+        assert record.integer("prn") == reference.integer("prn") == 8
+        assert record.integer("week") == 1090
+        assert record.real("sqrt_a") ** 2 == pytest.approx(reference.real("a"))
+        for name in ("ecc", "omega_0", "i0", "crc", "cis", "af0"):
+            assert record.real(name) == pytest.approx(reference.real(name)), name
+
+
+def test_bd3ephem_adds_one_word_to_the_b2a_packing() -> None:
+    reference = Log.BD3B2AEPHEM.decode(captured(Log.BD3B2AEPHEM, True))
+    record = Log.BD3EPHEM.decode(captured(Log.BD3EPHEM, True))
+    assert list(record) == [*reference, "field_43"]
+    assert record.integer("field_43") == 1
+    for name in ("prn", "toe", "deltaa", "tgdb1cp", "iscb2ad", "af0"):
+        assert record[name] == reference[name], name
+
+
+def test_almanac_page_is_a_gps_almanac() -> None:
+    ascii_record = Log.ALMANAC.decode(captured(Log.ALMANAC, False))
+    binary_record = Log.ALMANAC.decode(captured(Log.ALMANAC, True))
+    for record in (ascii_record, binary_record):
+        assert record.integer("prn") == 1
+        assert record.integer("week") == 2446
+        assert record.real("a") == pytest.approx(2.6560404e7)
+        inclination = 0.3 * math.pi + record.real("inclination_offset")
+        assert math.degrees(inclination) == pytest.approx(54.75, abs=0.01)
+        assert record.real("mean_motion") == pytest.approx(
+            math.sqrt(3.986005e14 / record.real("a") ** 3), rel=1e-4
+        )
+        assert record.integer("health_prn") == record.integer("health_almanac") == 0
+    assert ascii_record["antispoof"] == "TRUE"
+    assert binary_record["antispoof"] == 1
+
+
+def test_matched_position_reads_the_secondary_antenna() -> None:
+    for binary in (False, True):
+        record = decode_matched_position(
+            captured_variant("MATCHEDPOSH" + ("B" if binary else "A"))
+        )
+        assert record.name == "MATCHEDPOSH"
+        assert list(record) == list(Log.BESTPOS.decode(captured(Log.BESTPOS, True)))
+    assert matched_position_read(antenna=2).text == "MATCHEDPOSHB"
+    assert matched_position_output(antenna="secondary").text == (
+        "MATCHEDPOSHB ONCHANGED"
+    )
+    assert matched_position_read().text == "MATCHEDPOSB"
+
+
+def test_matched_baseline_reproduces_the_heading_vector() -> None:
+    base = Log.BASESTATION.decode(captured(Log.BASESTATION, True))
+    rover = decode_matched_position(captured_variant("MATCHEDPOSHB"))
+    baseline = matched_baseline(base, rover)
+    assert baseline.length_m == pytest.approx(3.9866, abs=1e-4)
+    assert math.dist(baseline.ecef_m, (0.0, 0.0, 0.0)) == pytest.approx(
+        baseline.length_m
+    )
+    east, north, _ = baseline.enu_m
+    assert baseline.heading_deg == pytest.approx(
+        math.degrees(math.atan2(east, north)) % 360
+    )
+    assert baseline.pitch_deg == pytest.approx(-51.60, abs=0.01)
+    with pytest.raises(ValueError):
+        matched_baseline(rover, base)
+
+
+def captured_variant(name: str) -> AsciiMessage | BinaryMessage:
+    raw = (VARIANTS / f"{name}.bin").read_bytes()
+    (message,) = (
+        m
+        for m in StreamDecoder(strict=True).feed(raw)
+        if isinstance(m, (AsciiMessage, BinaryMessage))
+    )
+    return message

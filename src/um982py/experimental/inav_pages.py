@@ -1,7 +1,7 @@
 """Galileo E1-B I/NAV page capture from receiver memory snapshots."""
 
 import csv
-from collections.abc import Callable, Mapping, Sequence
+from collections.abc import Callable, Iterator, Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -19,7 +19,9 @@ from um982py.experimental.inav_coding import (
     deinterleave,
     inav_crc24,
     pack_bits,
+    slice_bits,
 )
+from um982py.gnss import WEEK_SECONDS
 
 __all__ = [
     "CHANNEL_STATE_WINDOW_OFFSET",
@@ -350,17 +352,6 @@ class InavSnapshot:
         }
 
 
-def _bits(data: bytes) -> str:
-    return "".join(f"{value:08b}" for value in data)
-
-
-def _slice(data: bytes, start: int, length: int) -> bytes:
-    """Extract ``length`` bits from ``start`` as right-padded bytes."""
-    bits = _bits(data)[start : start + length]
-    bits += "0" * (-len(bits) % 8)
-    return bytes(int(bits[index : index + 8], 2) for index in range(0, len(bits), 8))
-
-
 def decode_inav_page_part(page: bytes) -> InavPagePart:
     """Nominal pages follow the E1-B layout of the Galileo Open Service SIS
     ICD: the even part carries the first half of a navigation word, the odd
@@ -370,7 +361,7 @@ def decode_inav_page_part(page: bytes) -> InavPagePart:
     """
     if not page:
         raise ValueError("Page content is empty")
-    bits = _bits(page)
+    bits = bits_of(page)
     even = bits[0] == "0"
     page_type = int(bits[1])
     if even:
@@ -379,7 +370,7 @@ def decode_inav_page_part(page: bytes) -> InavPagePart:
                 even=True,
                 page_type=0,
                 word_type=int(bits[2:8], 2),
-                data=_slice(page, 2, 112),
+                data=pack_bits(slice_bits(page, 2, 112)),
                 osnma=None,
                 sar=None,
                 crc=None,
@@ -389,7 +380,7 @@ def decode_inav_page_part(page: bytes) -> InavPagePart:
             even=True,
             page_type=1,
             word_type=None,
-            data=_slice(page, 2, 112),
+            data=pack_bits(slice_bits(page, 2, 112)),
             osnma=None,
             sar=None,
             crc=None,
@@ -400,20 +391,20 @@ def decode_inav_page_part(page: bytes) -> InavPagePart:
             even=False,
             page_type=0,
             word_type=None,
-            data=_slice(page, 2, 16),
-            osnma=_slice(page, 18, OSNMA_FIELD_BITS),
-            sar=_slice(page, 58, SAR_FIELD_BITS),
-            crc=_slice(page, 82, 24),
+            data=pack_bits(slice_bits(page, 2, 16)),
+            osnma=pack_bits(slice_bits(page, 18, OSNMA_FIELD_BITS)),
+            sar=pack_bits(slice_bits(page, 58, SAR_FIELD_BITS)),
+            crc=pack_bits(slice_bits(page, 82, 24)),
             ssp=int(bits[106:114], 2) if len(bits) >= 114 else None,
         )
     return InavPagePart(
         even=False,
         page_type=1,
         word_type=None,
-        data=_slice(page, 2, 80),
+        data=pack_bits(slice_bits(page, 2, 80)),
         osnma=None,
         sar=None,
-        crc=_slice(page, 82, 24),
+        crc=pack_bits(slice_bits(page, 82, 24)),
         ssp=int(bits[106:114], 2) if len(bits) >= 114 else None,
     )
 
@@ -469,16 +460,10 @@ def assemble_osnma_subframe(osnma_fields: bytes) -> OsnmaSubframe:
     return OsnmaSubframe(hkroot, mack)
 
 
-def extract_inav_pages(
+def _galileo_channels(
     regions: Mapping[str, tuple[int, bytes]],
-) -> tuple[InavPage, ...]:
-    """Collect the stored Galileo pages from one or more memory regions.
-
-    Each entry of ``regions`` maps a name to the base address and content of
-    one memory window. Tracking records of Galileo signals are located by
-    their signal-family byte and their page-state pointer, and the page
-    content is read from the state record of every checksum-verified page.
-    """
+) -> Iterator[tuple[bytes, bytes, int]]:
+    """Yield each Galileo channel record with its page-state record and PRN."""
     windows = tuple((base, content) for _, (base, content) in regions.items())
 
     def window(address: int) -> tuple[int, bytes] | None:
@@ -487,7 +472,6 @@ def extract_inav_pages(
                 return base, content
         return None
 
-    pages = []
     for _base, content in windows:
         for offset in range(0, max(len(content) - CHANNEL_RECORD_SIZE, 0), 4):
             record = content[offset : offset + CHANNEL_RECORD_SIZE]
@@ -507,24 +491,38 @@ def extract_inav_pages(
             if len(state) < STATE_RECORD_SIZE:
                 continue
             prn = record[1] - GALILEO_SVID_BASE
-            if not 1 <= prn <= 36:
-                continue
-            flags = int.from_bytes(state[:4], "little")
-            time_counter = int.from_bytes(state[STATE_TIME_OFFSET:][:4], "little")
-            page = state[STATE_PAGE_OFFSET:][:STATE_PAGE_LENGTH]
-            if not any(page):
-                continue
-            pages.append(
-                InavPage(
-                    svid=record[1],
-                    prn=prn,
-                    channel=int.from_bytes(record[4:8], "little"),
-                    time_counter=time_counter,
-                    page_valid=bool(flags & PAGE_VALID_FLAG),
-                    page=bytes(page),
-                    part=decode_inav_page_part(bytes(page)),
-                )
+            if 1 <= prn <= 36:
+                yield record, state, prn
+
+
+def extract_inav_pages(
+    regions: Mapping[str, tuple[int, bytes]],
+) -> tuple[InavPage, ...]:
+    """Collect the stored Galileo pages from one or more memory regions.
+
+    Each entry of ``regions`` maps a name to the base address and content of
+    one memory window. Tracking records of Galileo signals are located by
+    their signal-family byte and their page-state pointer, and the page
+    content is read from the state record of every checksum-verified page.
+    """
+    pages = []
+    for record, state, prn in _galileo_channels(regions):
+        flags = int.from_bytes(state[:4], "little")
+        time_counter = int.from_bytes(state[STATE_TIME_OFFSET:][:4], "little")
+        page = state[STATE_PAGE_OFFSET:][:STATE_PAGE_LENGTH]
+        if not any(page):
+            continue
+        pages.append(
+            InavPage(
+                svid=record[1],
+                prn=prn,
+                channel=int.from_bytes(record[4:8], "little"),
+                time_counter=time_counter,
+                page_valid=bool(flags & PAGE_VALID_FLAG),
+                page=bytes(page),
+                part=decode_inav_page_part(bytes(page)),
             )
+        )
     return tuple(pages)
 
 
@@ -804,7 +802,7 @@ class WordTiming:
     @property
     def gst_seconds(self) -> int:
         """Galileo system time in seconds of the week."""
-        return self.week_number * 604800 + self.time_of_week
+        return self.week_number * WEEK_SECONDS + self.time_of_week
 
 
 @dataclass(frozen=True, slots=True)
@@ -1090,47 +1088,17 @@ def extract_channel_states(
     have no verified physical meaning. All records of one snapshot share one
     demodulation instant.
     """
-    windows = tuple((base, content) for _, (base, content) in regions.items())
-
-    def window(address: int) -> tuple[int, bytes] | None:
-        for base, content in windows:
-            if base <= address and address + STATE_RECORD_SIZE <= base + len(content):
-                return base, content
-        return None
-
     states = []
-    for _base, content in windows:
-        for offset in range(0, max(len(content) - CHANNEL_RECORD_SIZE, 0), 4):
-            record = content[offset : offset + CHANNEL_RECORD_SIZE]
-            if record[0] != GALILEO_SIGNAL:
-                continue
-            pointer = int.from_bytes(
-                record[CHANNEL_STATE_POINTER_OFFSET : CHANNEL_STATE_POINTER_OFFSET + 4],
-                "little",
+    for record, state, prn in _galileo_channels(regions):
+        states.append(
+            ChannelState(
+                prn=prn,
+                channel=int.from_bytes(record[4:8], "little"),
+                time_counter=int.from_bytes(state[STATE_TIME_OFFSET:][:4], "little"),
+                record=bytes(record),
+                state=bytes(state),
             )
-            target = window(pointer)
-            if target is None:
-                continue
-            state_base, state_content = target
-            if not state_base <= pointer < state_base + len(state_content):
-                continue
-            state = state_content[pointer - state_base :][:STATE_RECORD_SIZE]
-            if len(state) < STATE_RECORD_SIZE:
-                continue
-            prn = record[1] - GALILEO_SVID_BASE
-            if not 1 <= prn <= 36:
-                continue
-            states.append(
-                ChannelState(
-                    prn=prn,
-                    channel=int.from_bytes(record[4:8], "little"),
-                    time_counter=int.from_bytes(
-                        state[STATE_TIME_OFFSET:][:4], "little"
-                    ),
-                    record=bytes(record),
-                    state=bytes(state),
-                )
-            )
+        )
     return tuple(states)
 
 

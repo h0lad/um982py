@@ -9,6 +9,21 @@ from typing import TYPE_CHECKING
 
 from um982py.experimental.inav_pages import TRACKING_MEMORY_BASE, TRACKING_MEMORY_LENGTH
 from um982py.geodesy import wavelength
+from um982py.gnss import (
+    DAY_SECONDS,
+    F_B1I,
+    F_B3I,
+    F_E5B,
+    F_E6,
+    F_G1,
+    F_G1_STEP,
+    F_G2,
+    F_G2_STEP,
+    F_L1,
+    F_L2,
+    F_L5,
+    WEEK_SECONDS,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Mapping
@@ -37,9 +52,6 @@ _RF_STRIDE = 0x50
 _RF_COUNT = 22
 _OBSERVATION_SIZE = 0xDC
 _PHASE_TRACKED_FLAG = 0x10
-_GPS_WEEK_MS = 604_800_000
-_GPS_WEEK_S = 604_800.0
-_GLONASS_DAY_S = 86_400.0
 _NATIVE_TIME_SCALES = {
     0x00: "GPST",
     0x08: "GPST",
@@ -55,20 +67,20 @@ _NATIVE_TIME_SCALES = {
     0x3C: "GLOT",
 }
 _SIGNAL_LAYOUTS = {
-    0x00: ("GPS", "L1", 1575.42e6, 0),
-    0x08: ("GPS", "L2", 1227.60e6, 0),
-    0x10: ("GPS", "L5", 1176.45e6, 0),
-    0x03: ("GALILEO", "E1", 1575.42e6, 100),
-    0x13: ("GALILEO", "E5a", 1176.45e6, 100),
-    0x1B: ("GALILEO", "E5b", 1207.14e6, 100),
-    0x43: ("GALILEO", "E6", 1278.75e6, 100),
-    0x12: ("BEIDOU", "B2a", 1176.45e6, 160),
-    0x22: ("BEIDOU", "B1I", 1561.098e6, 160),
-    0x2A: ("BEIDOU", "B3", 1268.52e6, 160),
-    0x34: ("GLONASS", "G1", 1602e6, 64),
-    0x3C: ("GLONASS", "G2", 1246e6, 64),
+    0x00: ("GPS", "L1", F_L1, 0),
+    0x08: ("GPS", "L2", F_L2, 0),
+    0x10: ("GPS", "L5", F_L5, 0),
+    0x03: ("GALILEO", "E1", F_L1, 100),
+    0x13: ("GALILEO", "E5a", F_L5, 100),
+    0x1B: ("GALILEO", "E5b", F_E5B, 100),
+    0x43: ("GALILEO", "E6", F_E6, 100),
+    0x12: ("BEIDOU", "B2a", F_L5, 160),
+    0x22: ("BEIDOU", "B1I", F_B1I, 160),
+    0x2A: ("BEIDOU", "B3", F_B3I, 160),
+    0x34: ("GLONASS", "G1", F_G1, 64),
+    0x3C: ("GLONASS", "G2", F_G2, 64),
 }
-_GLONASS_SPACING_HZ = {0x34: 562500, 0x3C: 437500}
+_GLONASS_SPACING_HZ = {0x34: F_G1_STEP, 0x3C: F_G2_STEP}
 _ALIGNED_WINDOW_ADDRESSES = range(
     TRACKING_MEMORY_BASE, TRACKING_MEMORY_BASE + TRACKING_MEMORY_LENGTH, 4
 )
@@ -252,9 +264,9 @@ def _decode_observation(
         if reference is not None and valid_clock and isfinite(raw_clock)
         else None
     )
-    time_limit = _GLONASS_DAY_S if signal_family in _GLONASS_SPACING_HZ else _GPS_WEEK_S
+    time_limit = DAY_SECONDS if signal_family in _GLONASS_SPACING_HZ else WEEK_SECONDS
     has_native_time = isfinite(native_time) and 0 <= native_time < time_limit
-    has_epoch = bool(counter or tow_ms) and tow_ms < _GPS_WEEK_MS
+    has_epoch = bool(counter or tow_ms) and tow_ms < WEEK_SECONDS * 1000
     has_range = isfinite(pseudorange) and pseudorange > 0
     has_phase = bool(flags & _PHASE_TRACKED_FLAG) and isfinite(phase)
     return DspTrackingObservation(

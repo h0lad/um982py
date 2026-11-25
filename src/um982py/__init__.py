@@ -4,6 +4,7 @@ Specialist APIs are imported from their defining submodules. See the API guide
 in README.md for streaming, reconnection, antenna routing and data formats.
 """
 
+from collections.abc import Callable as _Callable
 from importlib import import_module as _import_module
 from typing import TYPE_CHECKING as _TYPE_CHECKING
 
@@ -19,17 +20,17 @@ if _TYPE_CHECKING:
     from um982py.receiver import Receiver as Receiver
     from um982py.rover import Rover as Rover
 
-_EXPORTS: dict[str, str] = {
-    "AsyncReceiver": "um982py.async_receiver",
-    "Log": "um982py.commands",
-    "Observations": "um982py.observations",
-    "Position": "um982py.messages.navigation",
-    "Receiver": "um982py.receiver",
-    "Rover": "um982py.rover",
-    "capture_live": "um982py.capture",
-    "decode_message": "um982py.decode",
-    "load_records": "um982py.capture",
-    "record_observations": "um982py.observations",
+_EXPORTS: dict[str, tuple[str, str | None]] = {
+    "AsyncReceiver": ("um982py.async_receiver", "AsyncReceiver"),
+    "Log": ("um982py.commands", "Log"),
+    "Observations": ("um982py.observations", "Observations"),
+    "Position": ("um982py.messages.navigation", "Position"),
+    "Receiver": ("um982py.receiver", "Receiver"),
+    "Rover": ("um982py.rover", "Rover"),
+    "capture_live": ("um982py.capture", "capture_live"),
+    "decode_message": ("um982py.decode", "decode_message"),
+    "load_records": ("um982py.capture", "load_records"),
+    "record_observations": ("um982py.observations", "record_observations"),
 }
 
 __all__ = [
@@ -46,15 +47,30 @@ __all__ = [
 ]
 
 
-def __getattr__(name: str) -> object:
-    try:
-        module = _EXPORTS[name]
-    except KeyError:
-        raise AttributeError(f"module {__name__!r} has no attribute {name!r}") from None
-    value = getattr(_import_module(module), name)
-    globals()[name] = value
-    return value
+def _lazy_exports(
+    namespace: dict[str, object], exports: dict[str, tuple[str, str | None]]
+) -> tuple[_Callable[[str], object], _Callable[[], list[str]]]:
+    """Build a package's ``__getattr__`` and ``__dir__`` for on-demand imports.
+
+    Each export names its module and attribute, or None to export the module.
+    """
+
+    def getattr_(name: str) -> object:
+        try:
+            module, attribute = exports[name]
+        except KeyError:
+            raise AttributeError(
+                f"module {namespace['__name__']!r} has no attribute {name!r}"
+            ) from None
+        target = _import_module(module)
+        value = target if attribute is None else getattr(target, attribute)
+        namespace[name] = value
+        return value
+
+    def dir_() -> list[str]:
+        return sorted(set(namespace) | set(exports))
+
+    return getattr_, dir_
 
 
-def __dir__() -> list[str]:
-    return sorted(set(globals()) | set(__all__))
+__getattr__, __dir__ = _lazy_exports(globals(), _EXPORTS)

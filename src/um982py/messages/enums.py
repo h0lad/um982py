@@ -1,9 +1,29 @@
-from enum import IntEnum, IntFlag
+from collections.abc import Mapping
+from enum import IntEnum, IntFlag, StrEnum
+from types import MappingProxyType
 
 
 def _reported_datum[T](value: T) -> T | str:
     """Name the documented WGS84 datum code and preserve other values."""
     return "WGS84" if type(value) is int and value == 61 else value
+
+
+def enum_member[E: IntEnum](enum: type[E], value: object) -> E | None:
+    """Find an enum member by numeric code or ASCII label, or return None."""
+    try:
+        if isinstance(value, str):
+            return enum[value]
+        if isinstance(value, int) and not isinstance(value, bool):
+            return enum(value)
+    except (KeyError, ValueError):
+        pass
+    return None
+
+
+def enum_or_raw[E: IntEnum, V](enum: type[E], value: V) -> E | V:
+    """Return the enum member for a code or label, keeping unknown values."""
+    member = enum_member(enum, value)
+    return value if member is None else member
 
 
 _POSITION_TYPE_LABELS: dict[int, str] = {
@@ -67,12 +87,91 @@ class PositionType(IntEnum):
     @property
     def is_ppp(self) -> bool:
         """Whether this is one of the receiver's PPP position types."""
-        return self in (
-            PositionType.PPP_CONVERGING,
-            PositionType.PPP,
-            PositionType.PPP_AR,
-            PositionType.PPP_RTK,
-        )
+        return self in _PPP or self is PositionType.PPP_CONVERGING
+
+    @property
+    def is_ppp_converged(self) -> bool:
+        """Whether this is a PPP position type beyond convergence."""
+        return self in _PPP
+
+    @property
+    def is_rtk_fixed(self) -> bool:
+        """Whether carrier ambiguities are fixed by RTK, with or without INS."""
+        return self in _RTK_FIXED
+
+    @property
+    def is_rtk_float(self) -> bool:
+        """Whether this is a float-ambiguity RTK type, with or without INS."""
+        return self in _RTK_FLOAT
+
+    @property
+    def is_differential(self) -> bool:
+        """Whether the position depends on differential base corrections."""
+        return self in _DIFFERENTIAL
+
+    @property
+    def fix_class(self) -> "FixClass | None":
+        """Return the solution category, or None for unclassified types."""
+        return POSITION_CLASSES.get(self)
+
+
+class FixClass(StrEnum):
+    """Solution categories shared by position types and GGA quality codes."""
+
+    FIXED = "fixed"
+    FLOAT = "float"
+    PPP = "ppp"
+    PPP_CONVERGING = "ppp_converging"
+    SINGLE = "single"
+    NONE = "none"
+
+
+POSITION_CLASSES: Mapping[PositionType, FixClass] = MappingProxyType(
+    {
+        PositionType.NONE: FixClass.NONE,
+        PositionType.FIXEDPOS: FixClass.SINGLE,
+        PositionType.FIXEDHEIGHT: FixClass.SINGLE,
+        PositionType.SINGLE: FixClass.SINGLE,
+        PositionType.PSRDIFF: FixClass.SINGLE,
+        PositionType.SBAS: FixClass.SINGLE,
+        PositionType.L1_FLOAT: FixClass.FLOAT,
+        PositionType.IONOFREE_FLOAT: FixClass.FLOAT,
+        PositionType.NARROW_FLOAT: FixClass.FLOAT,
+        PositionType.L1_INT: FixClass.FIXED,
+        PositionType.WIDE_INT: FixClass.FIXED,
+        PositionType.NARROW_INT: FixClass.FIXED,
+        PositionType.INS_PSRSP: FixClass.SINGLE,
+        PositionType.INS_PSRDIFF: FixClass.SINGLE,
+        PositionType.INS_RTKFLOAT: FixClass.FLOAT,
+        PositionType.INS_RTKFIXED: FixClass.FIXED,
+        PositionType.PPP_CONVERGING: FixClass.PPP_CONVERGING,
+        PositionType.PPP: FixClass.PPP,
+        PositionType.PPP_AR: FixClass.PPP,
+        PositionType.PPP_RTK: FixClass.PPP,
+    }
+)
+
+
+_PPP = frozenset((PositionType.PPP, PositionType.PPP_AR, PositionType.PPP_RTK))
+_RTK_FIXED = frozenset(
+    (
+        PositionType.L1_INT,
+        PositionType.WIDE_INT,
+        PositionType.NARROW_INT,
+        PositionType.INS_RTKFIXED,
+    )
+)
+_RTK_FLOAT = frozenset(
+    (
+        PositionType.L1_FLOAT,
+        PositionType.IONOFREE_FLOAT,
+        PositionType.NARROW_FLOAT,
+        PositionType.INS_RTKFLOAT,
+    )
+)
+_DIFFERENTIAL = frozenset(
+    (PositionType.PSRDIFF, PositionType.INS_PSRDIFF, *_RTK_FIXED, *_RTK_FLOAT)
+)
 
 
 class SolutionStatus(IntEnum):
@@ -86,8 +185,38 @@ class SolutionStatus(IntEnum):
         return self.name
 
 
-class SatelliteSystem(IntEnum):
-    """Satellite system in RANGE/OBSV channel tracking status."""
+_RINEX_LETTERS = {
+    "GPS": "G",
+    "GLONASS": "R",
+    "SBAS": "S",
+    "GALILEO": "E",
+    "BEIDOU": "C",
+    "QZSS": "J",
+    "NAVIC": "I",
+}
+
+
+class _Constellation:
+    """Canonical constellation naming shared by the receiver's wire numberings.
+
+    Member names are the library-wide constellation strings. NavIC replaces
+    the former IRNSS name, as in RINEX 4.
+    """
+
+    __slots__ = ()
+    name: str
+
+    @property
+    def rinex(self) -> str:
+        """Return the RINEX satellite-system letter."""
+        return _RINEX_LETTERS[self.name]
+
+
+class SatelliteSystem(_Constellation, IntEnum):
+    """Satellite system in RANGE/OBSV channel tracking status.
+
+    ``IRNSS`` is an alias of ``NAVIC`` for the receiver's legacy label.
+    """
 
     GPS = 0
     GLONASS = 1
@@ -95,10 +224,11 @@ class SatelliteSystem(IntEnum):
     GALILEO = 3
     BEIDOU = 4
     QZSS = 5
+    NAVIC = 6
     IRNSS = 6
 
 
-class MessageSatelliteSystem(IntEnum):
+class MessageSatelliteSystem(_Constellation, IntEnum):
     """Satellite-system values from R1.15 table 7-175."""
 
     GPS = 0

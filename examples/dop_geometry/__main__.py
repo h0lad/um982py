@@ -9,7 +9,7 @@ from dataclasses import asdict
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
 from examples.satellite_monitor import constellation_of
-from um982py.capture import latest_epoch, record_epoch
+from um982py.capture import latest_epoch
 from um982py.commands import Log
 from um982py.geometry import (
     DilutionOfPrecision,
@@ -17,6 +17,7 @@ from um982py.geometry import (
     SatelliteGeometry,
     geometry_from_record,
 )
+from um982py.measurement import gps_epoch
 from um982py.messages.record import Record
 
 _REPORTED_TIMEOUT = 0.2
@@ -218,7 +219,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         matching = [
             record
             for record in captured[name]
-            if frames and abs(record_epoch(record) - record_epoch(frames[0])) < 0.01
+            if frames and abs(gps_epoch(record) - gps_epoch(frames[0])) < 0.01
         ]
         if matching:
             reported_record = matching[-1]
@@ -256,7 +257,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     payload = _payload(computed, reported, mask, clock_groups=groups)
     if reported is not None and reported_record is not None:
         _add_receiver_set(payload, frames, reported, reported_record)
-    payload["gps_seconds"] = record_epoch(frames[0])
+    payload["gps_seconds"] = gps_epoch(frames[0])
     payload["visible_satellites"] = len(satellites)
     payload["common_clock_assumption"] = asdict(
         DilutionOfPrecision.from_geometry(satellites)

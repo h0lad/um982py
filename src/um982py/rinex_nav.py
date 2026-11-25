@@ -11,14 +11,17 @@ from os import PathLike
 from pathlib import Path
 from typing import Literal
 
+from um982py.gnss import (
+    BDT_EPOCH,
+    BDT_GPS_SECONDS,
+    BDT_GPS_WEEKS,
+    GPS_EPOCH,
+    WEEK_SECONDS,
+    unwrap_time,
+)
 from um982py.measurement import gps_epoch
 from um982py.messages import Record
-from um982py.rinex import _header
-
-_WEEK = 604800
-_GPS_EPOCH = datetime(1980, 1, 6)
-_BDT_EPOCH = datetime(2006, 1, 1)
-_BDT_GPS_WEEKS = 1356
+from um982py.rinex import _header, _write_text
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,9 +32,7 @@ class RinexNavigationExport:
 
     def write(self, path: str | PathLike[str]) -> Path:
         """Write the RINEX navigation file, replacing an existing file."""
-        destination = Path(path)
-        destination.write_text(self.text, encoding="ascii", newline="\n")
-        return destination
+        return _write_text(path, self.text)
 
 
 def _number(value: float | int | None) -> str:
@@ -46,12 +47,8 @@ def _number(value: float | int | None) -> str:
 
 
 def _week_of(reference_week: int, reference_sow: float, target_sow: float) -> int:
-    difference = target_sow - reference_sow
-    if difference > _WEEK / 2:
-        return reference_week - 1
-    if difference < -_WEEK / 2:
-        return reference_week + 1
-    return reference_week
+    reference = reference_week * WEEK_SECONDS + reference_sow
+    return int(unwrap_time(reference, target_sow, WEEK_SECONDS) // WEEK_SECONDS)
 
 
 def _gps(record: Record) -> list[str]:
@@ -61,7 +58,7 @@ def _gps(record: Record) -> list[str]:
     tow, toe, toc = record.real("tow"), record.real("toe"), record.real("toc")
     if not 1 <= prn <= 32 or not 0 <= week <= 65535:
         raise ValueError("invalid GPS PRN or week")
-    if any(not math.isfinite(x) or not 0 <= x < _WEEK for x in (tow, toe, toc)):
+    if any(not math.isfinite(x) or not 0 <= x < WEEK_SECONDS for x in (tow, toe, toc)):
         raise ValueError("GPS ephemeris times must be finite seconds of week")
     if toc != int(toc):
         raise ValueError("RINEX navigation clock epoch requires whole seconds")
@@ -74,7 +71,7 @@ def _gps(record: Record) -> list[str]:
         raise ValueError("invalid GPS semi-major axis or URA variance")
     toe_week = _week_of(week, tow, toe)
     toc_week = _week_of(toe_week, toe, toc)
-    stamp = _GPS_EPOCH + timedelta(weeks=toc_week, seconds=toc)
+    stamp = GPS_EPOCH + timedelta(weeks=toc_week, seconds=toc)
     line = f"G{prn:02d} {stamp:%Y %m %d %H %M %S}" + "".join(
         _number(record.real(field)) for field in ("af0", "af1", "af2")
     )
@@ -109,7 +106,7 @@ def _receiver_epoch(record: Record) -> tuple[int, float]:
     if record.message is None:
         raise ValueError(f"{record.name} requires a receiver timestamp")
     epoch = gps_epoch(record.message)
-    week, seconds = divmod(epoch, _WEEK)
+    week, seconds = divmod(epoch, WEEK_SECONDS)
     return int(week), seconds
 
 
@@ -142,7 +139,7 @@ def _galileo(record: Record, inav_sources: frozenset[str]) -> list[list[str]]:
         health |= (dvs | (hs << 1)) << (index * 3)
     gps_week, gps_sow = _receiver_epoch(record)
     toe = record.integer("toe")
-    if not 0 <= toe < _WEEK:
+    if not 0 <= toe < WEEK_SECONDS:
         raise ValueError("invalid Galileo ephemeris time")
     week = _week_of(gps_week, gps_sow, toe)
     root_a = record.real("roota")
@@ -154,10 +151,10 @@ def _galileo(record: Record, inav_sources: frozenset[str]) -> list[list[str]]:
     )
     for kind, code in (("inav", inav_code), ("fnav", 258)):
         toc = record.integer(kind + "t0c")
-        if not 0 <= toc < _WEEK:
+        if not 0 <= toc < WEEK_SECONDS:
             raise ValueError("invalid Galileo clock time")
         clock_week = _week_of(week, toe, toc)
-        stamp = _GPS_EPOCH + timedelta(weeks=clock_week, seconds=toc)
+        stamp = GPS_EPOCH + timedelta(weeks=clock_week, seconds=toc)
         line = f"E{prn:02d} {stamp:%Y %m %d %H %M %S}" + "".join(
             _number(record.real(kind + field)) for field in ("af0", "af1", "af2")
         )
@@ -194,17 +191,23 @@ def _beidou(record: Record, time_scale: Literal["BDT", "GPST"]) -> list[str]:
     if not math.isfinite(axis) or axis <= 0 or not math.isfinite(ura) or ura < 0:
         raise ValueError("invalid BeiDou semi-major axis or URA variance")
     gps_week, gps_sow = _receiver_epoch(record)
-    bdt_reference = gps_week * _WEEK + gps_sow - 14 - _BDT_GPS_WEEKS * _WEEK
-    bdt_week, bdt_sow = divmod(bdt_reference, _WEEK)
+    bdt_reference = (
+        gps_week * WEEK_SECONDS
+        + gps_sow
+        - BDT_GPS_SECONDS
+        - BDT_GPS_WEEKS * WEEK_SECONDS
+    )
+    bdt_week, bdt_sow = divmod(bdt_reference, WEEK_SECONDS)
 
     def bdt_time(seconds: float) -> tuple[int, float]:
-        if not math.isfinite(seconds) or not 0 <= seconds < _WEEK:
+        if not math.isfinite(seconds) or not 0 <= seconds < WEEK_SECONDS:
             raise ValueError("invalid BeiDou ephemeris time")
         if time_scale == "BDT":
             return _week_of(int(bdt_week), bdt_sow, seconds), seconds
         week = _week_of(gps_week, gps_sow, seconds)
         result_week, result_sow = divmod(
-            (week - _BDT_GPS_WEEKS) * _WEEK + seconds - 14, _WEEK
+            (week - BDT_GPS_WEEKS) * WEEK_SECONDS + seconds - BDT_GPS_SECONDS,
+            WEEK_SECONDS,
         )
         return int(result_week), result_sow
 
@@ -212,9 +215,9 @@ def _beidou(record: Record, time_scale: Literal["BDT", "GPST"]) -> list[str]:
     toc_week, toc = bdt_time(record.real("toc"))
     if toe_week < 0 or toc_week < 0 or toc != int(toc):
         raise ValueError("invalid BeiDou clock epoch")
-    if abs(record.integer("week") - (toe_week + _BDT_GPS_WEEKS)) > 1:
+    if abs(record.integer("week") - (toe_week + BDT_GPS_WEEKS)) > 1:
         raise ValueError("BeiDou ephemeris week disagrees with receiver timestamp")
-    stamp = _BDT_EPOCH + timedelta(weeks=toc_week, seconds=toc)
+    stamp = BDT_EPOCH + timedelta(weeks=toc_week, seconds=toc)
     line = f"C{prn:02d} {stamp:%Y %m %d %H %M %S}" + "".join(
         _number(record.real(field)) for field in ("af0", "af1", "af2")
     )
@@ -256,13 +259,13 @@ def _glonass(record: Record, leap_seconds: int, version: str) -> list[str]:
     )
     if not 1 <= slot <= 24 or not -7 <= frequency <= 13:
         raise ValueError("invalid GLONASS slot or frequency channel")
-    if not 0 <= week <= 65535 or not 0 <= milliseconds < _WEEK * 1000:
+    if not 0 <= week <= 65535 or not 0 <= milliseconds < WEEK_SECONDS * 1000:
         raise ValueError("invalid GLONASS reference epoch")
     if milliseconds % 1000 or health not in (0, 1) or not 0 <= age <= 31:
         raise ValueError("invalid GLONASS epoch, health or age")
     if not 0 <= frame_time < 86400:
         raise ValueError("invalid GLONASS frame time")
-    stamp = _GPS_EPOCH + timedelta(
+    stamp = GPS_EPOCH + timedelta(
         weeks=week, milliseconds=milliseconds, seconds=-leap_seconds
     )
     midnight = stamp.replace(hour=0, minute=0, second=0, microsecond=0)
@@ -273,7 +276,7 @@ def _glonass(record: Record, leap_seconds: int, version: str) -> list[str]:
         candidate + timedelta(days=1),
     )
     frame = min(candidates, key=lambda value: abs((value - stamp).total_seconds()))
-    frame_sow = (frame - _GPS_EPOCH).total_seconds() % _WEEK
+    frame_sow = (frame - GPS_EPOCH).total_seconds() % WEEK_SECONDS
     line = f"R{slot:02d} {stamp:%Y %m %d %H %M %S}" + "".join(
         map(_number, (-record.real("tau_n"), record.real("gamma"), frame_sow))
     )

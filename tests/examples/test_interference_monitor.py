@@ -17,8 +17,8 @@ from examples.interference_monitor import (
     status_alerts,
 )
 
-from um982py.capture import epoch_seconds
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import BinaryHeader, BinaryMessage, Record, SpoofInfo
 from um982py.messages.enums import PositionType
 from um982py.protocol import StreamDecoder
@@ -242,11 +242,11 @@ def test_replay_alert_keeps_its_source_index_and_receiver_timestamp() -> None:
 
     payload = _payload((healthy, suspect), (), (), threshold=3.5)
 
-    assert payload["spoof_gps_seconds"] == epoch_seconds(later)
+    assert payload["spoof_gps_seconds"] == gps_epoch(later)
     assert payload["alerts"] == [
         {
             "epoch": 1,
-            "gps_seconds": epoch_seconds(later),
+            "gps_seconds": gps_epoch(later),
             "source": "SPOOFINFO",
             "kind": "spoofing",
             "severity": "critical",

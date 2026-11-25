@@ -25,6 +25,9 @@ from um982py.protocol.listing import (
     parse_listing,
 )
 
+FRAME_STARTS = (b"$", b"#", BINARY_SYNC, OEM_BINARY_SYNC, b"\xd3", *BINEX_MARKERS)
+"""Byte sequences that can begin a supported frame."""
+
 
 class StreamDecoder:
     def __init__(self, *, strict: bool = False, max_frame_size: int = 65_794) -> None:
@@ -124,14 +127,7 @@ class StreamDecoder:
                 if first not in (ord("$"), ord("#")):
                     starts = [
                         pos
-                        for marker in (
-                            b"$",
-                            b"#",
-                            BINARY_SYNC,
-                            OEM_BINARY_SYNC,
-                            b"\xd3",
-                            *BINEX_MARKERS,
-                        )
+                        for marker in FRAME_STARTS
                         if (pos := self._buffer.find(marker)) > 0
                         and (newline < 0 or pos < newline)
                     ]

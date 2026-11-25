@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Self
 
 from um982py.commands import logging
 from um982py.commands.core import Command, action
+from um982py.commands.queries import log_list
 from um982py.commands.types import Port, Trigger
 from um982py.experimental.baseband import BasebandStream, RawBasebandPacket
 from um982py.experimental.baseband_command import bb_message_to_ap
@@ -21,7 +22,6 @@ from um982py.experimental.capture import (
 )
 from um982py.experimental.debug import InternalDebugLog
 from um982py.messages import CommandResponse, Sentence
-from um982py.receiver_queries import log_list
 
 if TYPE_CHECKING:
     from um982py.receiver import Receiver

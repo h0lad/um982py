@@ -13,8 +13,9 @@ from um982py.geometry import (
     ReportedDilution,
     SatelliteGeometry,
 )
+from um982py.messages.enums import FixClass
 from um982py.messages.record import Record
-from um982py.quality import FixClass, classify
+from um982py.quality import classify
 from um982py.receiver_models import LogList
 from um982py.stats import mean
 

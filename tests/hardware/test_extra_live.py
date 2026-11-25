@@ -10,7 +10,7 @@ import pytest
 
 from um982py import Receiver
 from um982py._observation import range_observation
-from um982py.capture import capture_live, record_epoch
+from um982py.capture import capture_live
 from um982py.commands import Log, configuration
 from um982py.diagnostics import (
     DOCTOR_LOGS,
@@ -30,7 +30,7 @@ from um982py.experimental import (
 )
 from um982py.experimental.capture import receiver_state
 from um982py.experimental.tracking import tracking_slots
-from um982py.measurement import range_samples
+from um982py.measurement import gps_epoch, range_samples
 from um982py.messages import Record
 from um982py.rinex import export_rinex
 
@@ -61,8 +61,8 @@ def save(request: pytest.FixtureRequest, name: str, payload: object) -> None:
 def test_live_range_and_obsv_report_same_receiver_phases(device: Receiver) -> None:
     """Compare same-epoch receiver logs, not independent phase alignment."""
     captured = capture_live(device, [Log.RANGE, Log.OBSVM], duration=10, interval=1)
-    ranges = {record_epoch(item): item for item in captured["RANGE"]}
-    obsv = {record_epoch(item): item for item in captured["OBSVM"]}
+    ranges = {gps_epoch(item): item for item in captured["RANGE"]}
+    obsv = {gps_epoch(item): item for item in captured["OBSVM"]}
     shared = ranges.keys() & obsv.keys()
     if not shared:
         pytest.skip("receiver produced no shared observation epochs")

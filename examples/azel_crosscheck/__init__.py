@@ -214,7 +214,7 @@ def visibility_from_ephemerides(
 def visibility_from_satvis(record: Record) -> tuple[SatelliteGeometry, ...]:
     """Decode one SATVIS2 frame into the receiver's reported geometry."""
     name = str(constellation_of(record))
-    system = _SYSTEM_NAMES.get(name)
+    system = SatelliteSystem.__members__.get(name)
     if system is None:
         return ()
     return tuple(
@@ -269,18 +269,6 @@ def cross_check(
         ephemeris_counts=MappingProxyType(ephemeris_counts),
         matched_counts=MappingProxyType(matched_counts),
     )
-
-
-_SYSTEM_NAMES: Mapping[str, SatelliteSystem] = {
-    "GPS": SatelliteSystem.GPS,
-    "GLONASS": SatelliteSystem.GLONASS,
-    "GALILEO": SatelliteSystem.GALILEO,
-    "BEIDOU": SatelliteSystem.BEIDOU,
-    "QZSS": SatelliteSystem.QZSS,
-    "SBAS": SatelliteSystem.SBAS,
-    "NAVIC": SatelliteSystem.IRNSS,
-    "IRNSS": SatelliteSystem.IRNSS,
-}
 
 
 def _counts(satellites: Sequence[SatelliteGeometry]) -> dict[SatelliteSystem, int]:

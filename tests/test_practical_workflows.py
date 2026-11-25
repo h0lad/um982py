@@ -13,10 +13,10 @@ from conftest import FIXTURES, ReplayTransport, ascii_message, rtcm, sentence
 from um982py import Receiver, Rover
 from um982py.errors import ResponseTimeout
 from um982py.messages.navigation import BestNavigation, Fix
+from um982py.motion import waypoint_direction
 from um982py.protocol.ascii import parse_ascii
 from um982py.survey import survey_point, wait_for_fix
 from um982py.track import TrackWriter
-from um982py.waypoint import waypoint_direction
 
 
 def gga(utc: str, *, quality: int = 4, age: str = "2.0") -> bytes:

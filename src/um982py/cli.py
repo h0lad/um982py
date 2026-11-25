@@ -12,6 +12,12 @@ from um982py.antenna import antenna_log
 from um982py.augmentation import enable_augmentation
 from um982py.capture import RecordingTransport
 from um982py.commands import Log, logging, queries
+from um982py.commands.queries import (
+    firmware_info,
+    log_list,
+    performance_status,
+    receiver_system_status,
+)
 from um982py.commands.types import Port
 from um982py.diagnostics import (
     DOCTOR_LOGS,
@@ -36,12 +42,6 @@ from um982py.experimental.raw_data import capture_baseband
 from um982py.experimental.tracking import tracking_fields, tracking_slots
 from um982py.messages.navigation import BestNavigation, Fix
 from um982py.receiver import Receiver
-from um982py.receiver_queries import (
-    firmware_info,
-    log_list,
-    performance_status,
-    receiver_system_status,
-)
 from um982py.rinex import export_rinex
 from um982py.satellites import Satellite
 

@@ -5,26 +5,19 @@ import math
 import pytest
 
 from um982py.corrections import finite as correction_finite
-from um982py.geodesy import SPEED_OF_LIGHT
-from um982py.science_experiments import C
-from um982py.science_experiments import correlation as experiment_correlation
 from um982py.stats import correlation, finite
 
 
 def test_correlation_minimum_contracts() -> None:
     assert correlation([1, 2], [3, 4]) is None
     assert correlation([1, 2], [3, 4], minimum_samples=2) == pytest.approx(1)
-    assert experiment_correlation([1, 2], [3, 4]) == pytest.approx(1)
-    assert experiment_correlation([1, 1], [3, 4]) is None
-    with pytest.raises(ValueError, match="at least two paired"):
-        experiment_correlation([1], [2])
+    assert correlation([1, 1], [3, 4], minimum_samples=2) is None
     with pytest.raises(ValueError, match="minimum_samples"):
         correlation([1, 2], [1, 2], minimum_samples=1)
 
 
 def test_finite_helper_and_constant_are_shared() -> None:
     assert correction_finite is finite
-    assert C == SPEED_OF_LIGHT
     with pytest.raises(ValueError, match="finite"):
         correction_finite(math.nan)
 

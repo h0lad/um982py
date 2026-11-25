@@ -7,6 +7,8 @@ from math import isfinite, pi, sqrt
 from struct import unpack_from
 from typing import TYPE_CHECKING
 
+from um982py.gnss import DAY_SECONDS, WEEK_SECONDS
+
 if TYPE_CHECKING:
     from collections.abc import Mapping
 
@@ -22,8 +24,6 @@ __all__ = [
 _RECORD_SIZE = 0x78
 _VECTOR_SIZE = 3 * 8
 _FLAGS_OFFSET = _RECORD_SIZE - 4
-_GPS_WEEK_MS = 604_800_000
-_GLONASS_DAY_MS = 86_400_000
 _TIME_SCALES = {
     "GPS": "GPST",
     "GALILEO": "GST",
@@ -169,7 +169,9 @@ def extract_dsp_satellite_positions(
             )
             state_time_ms, secondary_time_ms = unpack_from("<2I", table, offset + 0x68)
             ephemeris_age = unpack_from("<I", table, offset + 0x70)[0]
-            time_limit = _GLONASS_DAY_MS if constellation == "GLONASS" else _GPS_WEEK_MS
+            time_limit = 1000 * (
+                DAY_SECONDS if constellation == "GLONASS" else WEEK_SECONDS
+            )
             valid_state_time = 0 < state_time_ms < time_limit
             valid_secondary_time = 0 < secondary_time_ms < time_limit
             time_scale = (

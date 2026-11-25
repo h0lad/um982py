@@ -19,8 +19,8 @@ from dataclasses import dataclass
 
 from um982py.geodesy import ecef_from_geodetic, enu_from_ecef, geodetic_from_ecef
 from um982py.messages import Record
-from um982py.messages.enums import SolutionStatus
-from um982py.quality import FixClass, classify, position_type_code, solution_status_code
+from um982py.messages.enums import FixClass, SolutionStatus
+from um982py.quality import classify, position_type_code, solution_status_code
 
 
 @dataclass(frozen=True, slots=True)

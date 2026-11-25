@@ -4,8 +4,16 @@ import math
 import os
 import sys
 from bisect import bisect_left
-from collections.abc import Callable, Iterable, Iterator, Mapping, Sequence
+from collections.abc import (
+    Callable,
+    Generator,
+    Iterable,
+    Iterator,
+    Mapping,
+    Sequence,
+)
 from contextlib import suppress
+from dataclasses import dataclass
 from itertools import pairwise
 from pathlib import Path
 from time import monotonic
@@ -16,6 +24,7 @@ from um982py.commands import Log, Trigger, logging
 from um982py.commands.core import Command
 from um982py.errors import RecordingError, ResponseTimeout
 from um982py.geodesy import receiver_ecef
+from um982py.gnss import F_L1, F_L2, F_L5
 from um982py.measurement import gps_epoch
 from um982py.messages import CommandResponse, Message, Record
 from um982py.protocol import StreamDecoder
@@ -27,25 +36,27 @@ __all__ = [
     "GPS_FREQUENCIES",
     "AntennaLog",
     "DataLog",
+    "EpochEvent",
+    "EpochTracker",
     "InterruptedCapture",
     "RecordingTransport",
     "capture_live",
     "decode_records",
-    "epoch_seconds",
     "gps_signals",
+    "iter_decoded_records",
     "iter_frames",
+    "iter_live_records",
     "latest_epoch",
     "load_records",
     "matcher",
     "read_frames",
     "receive_records",
-    "record_epoch",
     "replay_receiver",
     "select_position",
     "uniform_interval",
 ]
 
-GPS_FREQUENCIES = {0: 1575.42e6, 9: 1227.60e6, 17: 1227.60e6, 14: 1176.45e6}
+GPS_FREQUENCIES = {0: F_L1, 9: F_L2, 17: F_L2, 14: F_L5}
 
 type DataLog = Log | AntennaLog
 
@@ -57,17 +68,6 @@ class InterruptedCapture(KeyboardInterrupt):
     def __init__(self, records: dict[str, tuple[Record, ...]]) -> None:
         super().__init__()
         self.records = records
-
-
-def epoch_seconds(message: Message) -> float:
-    """Return absolute GPS seconds from a supported data-frame header."""
-    return gps_epoch(message)
-
-
-def record_epoch(record: Record) -> float:
-    if record.message is None:
-        raise ValueError(f"{record.name} record carries no receiver timestamp")
-    return epoch_seconds(record.message)
 
 
 def select_position(
@@ -98,7 +98,7 @@ def _valid_positions(records: Iterable[Record]) -> Iterator[tuple[float, Record]
             continue
         try:
             xyz = receiver_ecef(record)
-            time = record_epoch(record)
+            time = gps_epoch(record)
         except (KeyError, TypeError, ValueError):
             continue
         if all(math.isfinite(x) for x in xyz) and math.dist(xyz, (0, 0, 0)) > 1e6:
@@ -116,7 +116,7 @@ def select_position_pair(
     epochs = sorted(by_epoch)
     if epochs:
         for observation in observations:
-            epoch = record_epoch(observation)
+            epoch = gps_epoch(observation)
             index = bisect_left(epochs, epoch)
             nearby = epochs[max(0, index - 1) : index + 1]
             nearest = min(nearby, key=lambda value: (abs(value - epoch), value))
@@ -129,17 +129,17 @@ def latest_epoch(records: Sequence[Record]) -> tuple[Record, ...]:
     """Return the constellation frames from the newest epoch only."""
     if not records:
         return ()
-    newest = max(record_epoch(record) for record in records)
+    newest = max(gps_epoch(record) for record in records)
     by_system: dict[str, Record] = {}
     for record in records:
-        if abs(record_epoch(record) - newest) < 1e-5:
+        if abs(gps_epoch(record) - newest) < 1e-5:
             by_system[str(record.get("constellation", record.name))] = record
     return tuple(by_system.values())
 
 
 def matcher(log: DataLog, binary: bool) -> Command[Message]:
     """Match a data log, including logs emitted only on events."""
-    wire = log.wire if isinstance(log, AntennaLog) else log
+    wire = log.wire
     return logging.request(
         log.wire_name(binary=binary), message_id=wire.definition.message_id
     )
@@ -154,17 +154,41 @@ def _log_matchers(log: DataLog) -> tuple[Command[Message], ...]:
 
 def decode_records(frames: Iterable[Message], log: DataLog) -> tuple[Record, ...]:
     """Decode matching ASCII and binary frames, raising on malformed bodies."""
-    requests = _log_matchers(log)
-    return tuple(
-        log.decode(frame)
-        for frame in frames
-        if any(request.matches(frame) for request in requests)
-    )
+    return tuple(record for _, record in iter_decoded_records(frames, (log,)))
+
+
+def iter_decoded_records(
+    messages: Iterable[Message],
+    logs: Sequence[DataLog],
+    *,
+    max_records_per_log: int | None = None,
+) -> Iterator[tuple[str, Record]]:
+    """Yield matching records in arrival order as input arrives.
+
+    An optional limit applies separately to each logical log. Frames beyond a
+    log's limit are not decoded, while other selected logs keep streaming.
+    """
+    if max_records_per_log is not None and (
+        type(max_records_per_log) is not int or max_records_per_log < 1
+    ):
+        raise ValueError("max_records_per_log must be a positive integer")
+    counts = {log.value: 0 for log in logs}
+    requests = [(log, _log_matchers(log)) for log in logs]
+    for message in messages:
+        for log, matchers in requests:
+            if (
+                max_records_per_log is not None
+                and counts[log.value] >= max_records_per_log
+            ):
+                continue
+            if any(request.matches(message) for request in matchers):
+                counts[log.value] += 1
+                yield log.value, log.decode(message)
 
 
 def gps_signals(
     record: Record,
-    frequencies: Sequence[float] = (1575.42e6, 1176.45e6),
+    frequencies: Sequence[float] = (F_L1, F_L5),
     *,
     phase: bool = True,
 ) -> tuple[tuple[Record, float], ...]:
@@ -194,7 +218,7 @@ def uniform_interval(records: Sequence[Record], fallback: float) -> float:
     """Measure regular sampling cadence, rejecting gaps and duplicates."""
     if len(records) < 2:
         return fallback
-    epochs = [record_epoch(record) for record in records]
+    epochs = [gps_epoch(record) for record in records]
     intervals = [later - earlier for earlier, later in pairwise(epochs)]
     interval = intervals[0]
     if interval <= 0 or any(abs(value - interval) > 1e-4 for value in intervals):
@@ -214,7 +238,7 @@ def subscription_plan(
     for log, value in overrides.items():
         if not isinstance(log, (Log, AntennaLog)) or log not in logs:
             raise ValueError("intervals must refer to selected logs")
-        wire_log = log.wire if isinstance(log, AntennaLog) else log
+        wire_log = log.wire
         if wire_log.onchanged_only:
             raise ValueError("ONCHANGED-only logs do not support intervals")
         if isinstance(value, bool) or not math.isfinite(value) or value <= 0:
@@ -226,7 +250,7 @@ def subscription_plan(
             matcher(log, binary_output)
         except ValueError:
             binary_output = False
-        wire_log = log.wire if isinstance(log, AntennaLog) else log
+        wire_log = log.wire
         trigger = (
             Trigger.ON_CHANGED
             if wire_log.onchanged_only
@@ -266,11 +290,6 @@ def capture_live(
     not resample. Subscription restoration can fail after a disconnect. For longer
     recordings use ``SessionRecorder`` or stream with ``iter_live_records``.
     """
-    interval = logging.output_interval(interval, rate_hz)
-    if not math.isfinite(duration) or duration <= 0:
-        raise ValueError("duration must be finite and positive")
-    if not math.isfinite(interval) or interval <= 0:
-        raise ValueError("interval must be finite and positive")
     if frames is not None and (
         isinstance(frames, bool) or not isinstance(frames, int) or frames < 1
     ):
@@ -285,11 +304,9 @@ def capture_live(
     names = [log.value for log in selected]
     if len(set(names)) != len(names):
         raise ValueError("logs must have distinct names")
-    if rate_hz is not None and any(
-        (log.wire if isinstance(log, AntennaLog) else log).onchanged_only
-        for log in selected
-    ):
-        raise ValueError("ONCHANGED-only logs do not support rate_hz")
+    interval = _capture_interval(
+        selected, duration=duration, interval=interval, rate_hz=rate_hz
+    )
     planned = subscription_plan(
         selected, interval=interval, binary=binary, intervals=intervals
     )
@@ -304,6 +321,40 @@ def capture_live(
             on_progress=on_progress,
             show_progress=show_progress,
         )
+
+
+def _capture_interval(
+    logs: Sequence[DataLog],
+    *,
+    duration: float,
+    interval: float | None,
+    rate_hz: float | None,
+) -> float:
+    """Validate a temporary capture and resolve its output interval."""
+    resolved = logging.output_interval(interval, rate_hz)
+    if not math.isfinite(duration) or duration <= 0:
+        raise ValueError("duration must be finite and positive")
+    if not math.isfinite(resolved) or resolved <= 0:
+        raise ValueError("interval must be finite and positive")
+    if rate_hz is not None and any(log.wire.onchanged_only for log in logs):
+        raise ValueError("ONCHANGED-only logs do not support rate_hz")
+    return resolved
+
+
+def _received(
+    receiver: Receiver,
+    duration: float,
+    tick: Callable[[float], None] | None = None,
+) -> Iterator[Message]:
+    """Yield frames until ``duration`` elapses, calling ``tick`` with time left."""
+    deadline = monotonic() + duration
+    while (remaining := deadline - monotonic()) > 0:
+        if tick is not None:
+            tick(remaining)
+        try:
+            yield receiver.receive(timeout=min(remaining, receiver.timeout))
+        except ResponseTimeout:
+            continue
 
 
 def receive_records(
@@ -321,46 +372,35 @@ def receive_records(
     if not math.isfinite(duration) or duration <= 0:
         raise ValueError("duration must be finite and positive")
     collected: dict[str, list[Record]] = {log.value: [] for log in logs}
-    requests = [(log, _log_matchers(log)) for log in logs]
-    deadline = monotonic() + duration
     next_progress = monotonic() + 5
+
+    def snapshot() -> dict[str, tuple[Record, ...]]:
+        return {name: tuple(values) for name, values in collected.items()}
+
+    def progress(remaining: float) -> None:
+        nonlocal next_progress
+        if monotonic() < next_progress:
+            return
+        if on_progress is not None:
+            on_progress(snapshot())
+        if show_progress:
+            counts = ", ".join(
+                f"{name}={len(values)}" for name, values in collected.items()
+            )
+            print(f"{counts}; {remaining:.0f}s remaining", file=sys.stderr, flush=True)
+        next_progress = monotonic() + 5
+
+    limited = (
+        frames is not None and len(logs) == 1 and logs[0].value != Log.SATVIS2.value
+    )
     try:
-        while (remaining := deadline - monotonic()) > 0:
-            if monotonic() >= next_progress:
-                if on_progress is not None:
-                    on_progress(
-                        {name: tuple(values) for name, values in collected.items()}
-                    )
-                if show_progress:
-                    counts = ", ".join(
-                        f"{name}={len(values)}" for name, values in collected.items()
-                    )
-                    print(
-                        f"{counts}; {remaining:.0f}s remaining",
-                        file=sys.stderr,
-                        flush=True,
-                    )
-                next_progress = monotonic() + 5
-            try:
-                message = receiver.receive(timeout=min(remaining, receiver.timeout))
-            except ResponseTimeout:
-                continue
-            for log, matchers in requests:
-                records = (
-                    (log.decode(message),)
-                    if any(request.matches(message) for request in matchers)
-                    else ()
-                )
-                values = collected[log.value]
-                values.extend(records)
-                if arrival_order is not None:
-                    arrival_order.extend(records)
-            if (
-                frames is not None
-                and len(logs) == 1
-                and logs[0].value != Log.SATVIS2.value
-                and len(collected[logs[0].value]) >= frames
-            ):
+        for name, record in iter_decoded_records(
+            _received(receiver, duration, progress), logs
+        ):
+            collected[name].append(record)
+            if arrival_order is not None:
+                arrival_order.append(record)
+            if limited and frames is not None and len(collected[name]) >= frames:
                 break
     except KeyboardInterrupt:
         if show_progress:
@@ -369,10 +409,73 @@ def receive_records(
                 file=sys.stderr,
                 flush=True,
             )
-        raise InterruptedCapture(
-            {name: tuple(values) for name, values in collected.items()}
-        ) from None
-    return {name: tuple(values) for name, values in collected.items()}
+        raise InterruptedCapture(snapshot()) from None
+    return snapshot()
+
+
+def iter_live_records(
+    receiver: Receiver,
+    logs: Sequence[DataLog],
+    *,
+    duration: float,
+    interval: float | None = None,
+    rate_hz: float | None = None,
+    intervals: Mapping[DataLog, float] | None = None,
+    binary: bool = True,
+) -> Generator[tuple[str, Record], None, None]:
+    """Temporarily subscribe and yield records until the duration elapses.
+
+    ``intervals`` overrides the default period in seconds for selected periodic
+    logs, allowing slow status logs alongside fast observations.
+
+    If you stop early, close the iterator so the receiver's subscriptions can be
+    restored. Processing happens in the reader thread, so a slow consumer can
+    cause data loss at the transport. Use RecordingTransport separately if you
+    need to preserve the raw bytes.
+    """
+    resolved = _capture_interval(
+        logs, duration=duration, interval=interval, rate_hz=rate_hz
+    )
+    planned = subscription_plan(
+        logs, interval=resolved, binary=binary, intervals=intervals
+    )
+    with temporary_subscriptions(receiver, *planned):
+        yield from iter_decoded_records(_received(receiver, duration), logs)
+
+
+@dataclass(frozen=True, slots=True)
+class EpochEvent:
+    previous: float
+    current: float
+    kind: str
+
+
+class EpochTracker:
+    """Detect gaps and non-increasing epochs for one explicitly chosen series."""
+
+    def __init__(
+        self, *, expected_interval_s: float, tolerance_s: float = 0.0001
+    ) -> None:
+        if not math.isfinite(expected_interval_s) or expected_interval_s <= 0:
+            raise ValueError("expected interval must be finite and positive")
+        if not math.isfinite(tolerance_s) or not 0 <= tolerance_s < expected_interval_s:
+            raise ValueError("tolerance must be non-negative and less than interval")
+        self.expected_interval_s = expected_interval_s
+        self.tolerance_s = tolerance_s
+        self.previous: float | None = None
+
+    def observe(self, epoch: float) -> EpochEvent | None:
+        if not math.isfinite(epoch):
+            raise ValueError("epoch must be finite")
+        previous, self.previous = self.previous, epoch
+        if previous is None:
+            return None
+        delta = epoch - previous
+        if delta <= 0:
+            return EpochEvent(previous, epoch, "non_increasing")
+        if delta > self.expected_interval_s + self.tolerance_s:
+            return EpochEvent(previous, epoch, "gap")
+        return None
 
 
 def iter_frames(

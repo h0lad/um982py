@@ -56,7 +56,7 @@ def test_uere_requires_valid_single_solution_and_geometry_assertion(
 ) -> None:
     from examples.uere_budget import __main__ as cli
 
-    monkeypatch.setattr(cli, "record_epoch", lambda record: record.real("epoch"))
+    monkeypatch.setattr(cli, "gps_epoch", lambda record: record.real("epoch"))
     position = Record(
         "PSRPOS",
         (

@@ -16,9 +16,9 @@ from examples._console import (
 )
 from examples._console_capture import capture_logs
 from examples.tracking_field_lab import correlate_fields, written_fields
-from um982py.capture import record_epoch
 from um982py.commands import Log
 from um982py.experimental import tracking_slots
+from um982py.measurement import gps_epoch
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -57,7 +57,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         ):
             continue
         selected.append((record, fields))
-    frames = [(record_epoch(record), fields) for record, fields in selected]
+    frames = [(gps_epoch(record), fields) for record, fields in selected]
     labels = read_numeric_csv(args.labels, ("epoch", "value")) if args.labels else ()
     if len({row["epoch"] for row in labels}) != len(labels):
         raise ValueError("label epochs must be unique")
@@ -84,7 +84,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             ],
             "slot_coverage": [
                 {
-                    "epoch": record_epoch(record),
+                    "epoch": gps_epoch(record),
                     "written_slots": [
                         slot.slot for slot in tracking_slots(record) if slot.written
                     ],

@@ -8,8 +8,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 
 from examples.satellite_monitor import constellation_of
-from um982py.capture import record_epoch
 from um982py.geodesy import enu_from_ecef, records_from
+from um982py.measurement import gps_epoch
 from um982py.messages import SpoofInfo
 from um982py.messages.record import Record
 
@@ -364,7 +364,7 @@ def sky_snapshots(records: Iterable[Record]) -> tuple[tuple[SkyView, ...], ...]:
     previous: float | None = None
     for record in records:
         view = SkyView.from_record(record)
-        epoch = record_epoch(record) if record.message is not None else None
+        epoch = gps_epoch(record) if record.message is not None else None
         if current and (epoch != previous or view.constellation in seen):
             snapshots.append(tuple(current))
             current, seen = [], set()

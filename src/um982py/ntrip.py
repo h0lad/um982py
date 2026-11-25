@@ -7,13 +7,13 @@ import math
 import re
 import socket
 import ssl
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
-from threading import Lock
+from threading import Event, Lock
 from typing import TYPE_CHECKING, Literal, Self
 from urllib.parse import urlsplit
 
-from um982py.errors import ProtocolError
+from um982py.errors import ProtocolError, TransportError
 from um982py.geodesy import haversine_distance
 from um982py.messages.navigation import Fix
 from um982py.protocol.ascii import parse_ascii
@@ -49,6 +49,96 @@ class ReconnectPolicy:
         if not 0 < current < float("inf"):
             raise ValueError("current delay must be finite and positive")
         return min(current * 2, self.maximum_seconds)
+
+
+class _Reconnecting:
+    """Run-once lifecycle, counters and backoff shared by reconnecting sessions.
+
+    States move from idle through connecting, connected and backoff to stopped
+    or failed. Subclasses guard their own counters with ``_lock``.
+    """
+
+    def __init__(self, reconnect: ReconnectPolicy | None) -> None:
+        self.reconnect = reconnect or ReconnectPolicy()
+        self._lock = Lock()
+        self._state = "idle"
+        self._attempts = 0
+        self._connections = 0
+        self._error: str | None = None
+        self._reconnect_delay = self.reconnect.initial_seconds
+
+    def _require_idle(self) -> None:
+        with self._lock:
+            if self._state != "idle":
+                raise RuntimeError("session can only be run once")
+            self._state = "connecting"
+
+    def _begin_connection_attempt(self) -> None:
+        with self._lock:
+            self._state = "connecting"
+            self._attempts += 1
+
+    def _connected(self) -> int:
+        """Record a new connection and return its one-based number."""
+        with self._lock:
+            self._connections += 1
+            self._state = "connected"
+            return self._connections
+
+    def _reset_backoff(self) -> None:
+        self._reconnect_delay = self.reconnect.initial_seconds
+
+    def _backoff(self, stop: Event, error: Exception | None = None) -> bool:
+        """Wait before reconnecting. Return True when stopped during the wait."""
+        with self._lock:
+            if error is not None:
+                self._error = str(error)
+            self._state = "backoff"
+        if stop.wait(self._reconnect_delay):
+            return True
+        self._reconnect_delay = self.reconnect.next_delay(self._reconnect_delay)
+        return False
+
+    def _fail(self, error: Exception) -> None:
+        with self._lock:
+            self._error = str(error)
+            self._state = "failed"
+
+    def _mark_stopped(self) -> None:
+        with self._lock:
+            if self._state != "failed":
+                self._state = "stopped"
+
+    def _run_connections[T](
+        self,
+        stop: Event,
+        connection: Callable[[], Iterator[T]],
+        on_disconnect: Callable[[Exception], None] | None,
+        *,
+        fatal: tuple[type[Exception], ...] = (),
+    ) -> Iterator[T]:
+        """Yield from successive connections, backing off after transport errors.
+
+        Errors in ``fatal`` and all other exceptions end the session.
+        """
+        self._require_idle()
+        try:
+            while not stop.is_set():
+                self._begin_connection_attempt()
+                try:
+                    yield from connection()
+                except fatal:
+                    raise
+                except (TransportError, OSError) as error:
+                    if on_disconnect is not None:
+                        on_disconnect(error)
+                    if self._backoff(stop, error):
+                        break
+        except Exception as error:
+            self._fail(error)
+            raise
+        finally:
+            self._mark_stopped()
 
 
 def retryable_ntrip_error(error: BaseException) -> bool:

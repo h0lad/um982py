@@ -7,8 +7,8 @@ from collections.abc import Callable, Sequence
 
 from examples._console import ExampleParser, add_receiver_arguments, run, write_json
 from examples._console_capture import capture_records
-from um982py.capture import record_epoch
 from um982py.commands import Log
+from um982py.measurement import gps_epoch
 from um982py.messages import Record
 from um982py.messages.solution_signals import bestsats_signal_bands
 from um982py.quality import (
@@ -26,12 +26,11 @@ def _diagnostic_rows(captured: dict[str, tuple[Record, ...]]) -> dict[str, objec
     """Retain diagnostic epochs and raw fields without joining different logs."""
     return {
         "RTKDOP": [
-            {"epoch": record_epoch(row), **dict(row.entries)}
-            for row in captured["RTKDOP"]
+            {"epoch": gps_epoch(row), **dict(row.entries)} for row in captured["RTKDOP"]
         ],
         "BESTSATS": [
             {
-                "epoch": record_epoch(row),
+                "epoch": gps_epoch(row),
                 "satellites": [
                     {**dict(item.entries), "signal_bands": bestsats_signal_bands(item)}
                     for item in row.records("satellites")
@@ -40,7 +39,7 @@ def _diagnostic_rows(captured: dict[str, tuple[Record, ...]]) -> dict[str, objec
             for row in captured["BESTSATS"]
         ],
         "RTKSTATUS2": [
-            {"epoch": record_epoch(row), **dict(row.entries)}
+            {"epoch": gps_epoch(row), **dict(row.entries)}
             for row in captured["RTKSTATUS2"]
         ],
         "limitation": (

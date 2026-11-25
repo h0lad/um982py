@@ -13,7 +13,8 @@ from test_protocol import binary
 from um982py.commands import Log
 from um982py.decode import decode_message
 from um982py.errors import ChecksumError, ProtocolError
-from um982py.measurement import gps_to_utc, message_utc, range_samples, sample_series
+from um982py.gnss import gps_to_utc
+from um982py.measurement import message_utc, range_samples, sample_series
 from um982py.messages import (
     AsciiHeader,
     AsciiMessage,

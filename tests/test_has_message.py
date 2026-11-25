@@ -17,6 +17,7 @@ from um982py.experimental import (
     parse_mt1_message,
     validity_interval_s,
 )
+from um982py.experimental.inav_coding import GF_EXP, gf_multiply
 from um982py.experimental.native_nav import GalileoHasPage
 
 
@@ -70,17 +71,17 @@ def test_field_powers_match_the_icd_table_41() -> None:
         254: 142,
     }
     for power, octet in sampled.items():
-        assert has_message._POWERS[power] == octet
+        assert GF_EXP[power] == octet
 
 
 def test_generator_polynomial_matches_the_published_roots() -> None:
     product = [1]
     for power in range(1, 224):
-        root = has_message._POWERS[power]
+        root = GF_EXP[power]
         scaled = [0] * (len(product) + 1)
         for index, coefficient in enumerate(product):
             scaled[index + 1] ^= coefficient
-            scaled[index] ^= has_message._gf_multiply(coefficient, root)
+            scaled[index] ^= gf_multiply(coefficient, root)
         product = scaled
     assert product == [*GENERATOR_POLYNOMIAL, 1]
 

@@ -4,6 +4,7 @@ from dataclasses import dataclass
 from math import isfinite
 from time import monotonic
 
+from um982py.assessment import limit_reason
 from um982py.geodesy import haversine_distance
 from um982py.live import PositionUpdate
 
@@ -128,12 +129,11 @@ class PositionMonitor:
                 reasons.append("satellites_unknown")
             elif fix.satellites < self.limits.min_satellites:
                 reasons.append("satellites_below_limit")
-        if self.limits.max_correction_age_s is not None:
-            age = fix.correction_age_s
-            if age is None or not isfinite(age) or age < 0:
-                reasons.append("correction_age_unknown")
-            elif age > self.limits.max_correction_age_s:
-                reasons.append("correction_age_exceeded")
+        correction = limit_reason(
+            "correction_age", fix.correction_age_s, self.limits.max_correction_age_s
+        )
+        if correction is not None:
+            reasons.append(correction)
         gap = (
             None
             if previous is None

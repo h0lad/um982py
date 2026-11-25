@@ -7,10 +7,11 @@ from itertools import pairwise
 from pathlib import Path
 
 from examples._console import ExampleParser
-from um982py.capture import load_records, record_epoch
+from um982py.capture import load_records
 from um982py.commands import Log
 from um982py.field_data import file_sha256, read_ecef_positions
 from um982py.geodesy import enu_from_ecef, geodetic_from_ecef
+from um982py.measurement import gps_epoch
 
 
 def main(argv: Sequence[str] | None = None) -> int:
@@ -41,7 +42,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.replay:
         records = load_records(args.replay, Log.BESTNAVXYZ)
         for row in records:
-            epoch = record_epoch(row)
+            epoch = gps_epoch(row)
             status = row["p_sol_status"]
             if status not in (0, "SOL_COMPUTED"):
                 rejected.append(

@@ -10,6 +10,7 @@ from um982py.experimental.baseband_messages import (
     decode_message_payload,
 )
 from um982py.experimental.baseband_messages import spec as message_spec
+from um982py.experimental.baseband_reply import _ByteStream
 from um982py.messages.record import Record
 
 HEADER_SIZE = 0x14
@@ -302,7 +303,7 @@ def build_message(
     return bytes(frame) + bytes(payload)
 
 
-class BasebandStream:
+class BasebandStream(_ByteStream):
     """Parse containers from a byte stream and resynchronise after errors."""
 
     def __init__(
@@ -315,24 +316,9 @@ class BasebandStream:
             raise ValueError(f"max_length must be an integer >= {MIN_LENGTH}")
         if first_message_offset < HEADER_SIZE or first_message_offset % 4:
             raise ValueError("first_message_offset must be word aligned after header")
+        super().__init__()
         self.max_length = max_length
         self.first_message_offset = first_message_offset
-        self._buffer = bytearray()
-        self.discarded = 0
-
-    @property
-    def pending(self) -> bytes:
-        return bytes(self._buffer)
-
-    def reset(self) -> None:
-        self._buffer.clear()
-        self.discarded = 0
-
-    def finish(self) -> bytes:
-        """Return and clear the buffered trailing bytes."""
-        remainder = bytes(self._buffer)
-        self._buffer.clear()
-        return remainder
 
     def feed(self, data: bytes) -> tuple[RawBasebandPacket, ...]:
         self._buffer.extend(data)
